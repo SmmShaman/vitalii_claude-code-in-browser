@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Mail, Info } from 'lucide-react';
 import { submitContactForm, isSupabaseConfigured } from '../../integrations/supabase/client';
-import { useTranslations } from '../../hooks/useTranslations';
+import { useTranslations } from '../../contexts/TranslationContext';
 
 export const ContactForm = () => {
   const { t } = useTranslations();

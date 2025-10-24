@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useTranslations } from '../../hooks/useTranslations';
+import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
 
 interface Section {

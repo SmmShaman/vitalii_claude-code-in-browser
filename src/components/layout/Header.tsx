@@ -1,5 +1,5 @@
 import { Globe } from 'lucide-react';
-import { useTranslations, type Language } from '../../hooks/useTranslations';
+import { useTranslations, type Language } from '../../contexts/TranslationContext';
 
 export const Header = () => {
   const { t, currentLanguage, setCurrentLanguage, isLoading } = useTranslations();
