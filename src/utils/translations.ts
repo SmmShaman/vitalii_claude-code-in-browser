@@ -1,0 +1,130 @@
+export const translations = {
+  en: {
+    title: "Vitalii Berbeha, an expert in e-commerce and marketing",
+    subtitle: "Professional in e-commerce, marketing, and project management",
+    description: "Helping businesses grow, optimize processes, and achieve success",
+
+    about: "About me",
+    about_title: "About me",
+    about_content: "Hi! My name is Vitalii Berbeha. I am a professional in e-commerce, marketing, and project management. My experience includes developing and managing online stores, optimizing and setting up Amazon Private Label, running advertising campaigns on social media (SMM), and lead generation and analytics. My philosophy: help businesses grow, optimize processes, and achieve success. Outside of work, you'll find me exploring history, playing football, or brainstorming creative ideas.",
+
+    projects: "Projects",
+    projects_title: "Projects",
+    projects_content: "Check out my latest work and achievements. I specialize in developing and optimizing e-commerce solutions, particularly focusing on Amazon marketplace integration and social media marketing campaigns.",
+
+    services: "Services",
+    services_title: "Services",
+    services_content: "I provide comprehensive e-commerce and marketing solutions including: E-commerce strategy development, Setting up stores on platforms like Amazon, Etsy, and eBay, Brand management and promotion via SMM, Consulting on marketing strategies and analytics, Targeted ad setup. My goal is to help your business grow and reach new heights!",
+
+    skills: "Skills",
+    skills_title: "Skills",
+    skills_content: "Technologies and competencies I work with include e-commerce platforms (Amazon, Shopify, WooCommerce), digital marketing tools, analytics platforms, and project management methodologies.",
+
+    testimonials: "Testimonials",
+    testimonials_title: "Testimonials",
+    testimonials_content: "What clients say about our collaboration. Read through the experiences of businesses I've helped succeed in the digital marketplace.",
+
+    contact: "Contact",
+    contact_title: "Contact",
+    contact_description: "Get in touch with me to discuss your project or business needs...",
+
+    name: "Name",
+    email: "Email",
+    message: "Message",
+    send_message: "Send Message",
+    sending: "Sending...",
+    message_sent: "Message sent successfully!",
+    message_error: "Error sending message. Please try again.",
+
+    name_required: "Name is required",
+    email_required: "Email is required",
+    email_invalid: "Invalid email address",
+    message_required: "Message is required",
+  },
+  no: {
+    title: "Vitalii Berbeha, en ekspert innen e-handel og markedsføring",
+    subtitle: "Profesjonell innen e-handel, markedsføring og prosjektledelse",
+    description: "Hjelper bedrifter med å vokse, optimalisere prosesser og oppnå suksess",
+
+    about: "Om meg",
+    about_title: "Om meg",
+    about_content: "Hei! Mitt navn er Vitalii Berbeha. Jeg er en profesjonell innen e-handel, markedsføring og prosjektledelse. Min erfaring inkluderer utvikling og administrasjon av nettbutikker, optimalisering og oppsett av Amazon Private Label, kjøring av reklamekampanjer på sosiale medier (SMM), og leadgenerering og analyse. Min filosofi: hjelpe bedrifter med å vokse, optimalisere prosesser og oppnå suksess. Utenom arbeid finner du meg utforske historie, spille fotball eller brainstorme kreative ideer.",
+
+    projects: "Prosjekter",
+    projects_title: "Prosjekter",
+    projects_content: "Se mine siste arbeid og prestasjoner. Jeg spesialiserer meg på å utvikle og optimalisere e-handelsløsninger, spesielt med fokus på Amazon markedsplass integrasjon og sosiale medier markedsføringskampanjer.",
+
+    services: "Tjenester",
+    services_title: "Tjenester",
+    services_content: "Jeg tilbyr omfattende e-handel og markedsføringsløsninger inkludert: E-handelsstrategi utvikling, Oppsett av butikker på plattformer som Amazon, Etsy og eBay, Merkevarehåndtering og promotering via SMM, Konsultasjon om markedsføringsstrategier og analyse, Oppsett av målrettede annonser. Mitt mål er å hjelpe din bedrift med å vokse og nå nye høyder!",
+
+    skills: "Ferdigheter",
+    skills_title: "Ferdigheter",
+    skills_content: "Teknologier og kompetanser jeg jobber med inkluderer e-handelsplattformer (Amazon, Shopify, WooCommerce), digitale markedsføringsverktøy, analyseplattformer og prosjektledelsesmetodikk.",
+
+    testimonials: "Anmeldelser",
+    testimonials_title: "Anmeldelser",
+    testimonials_content: "Hva klienter sier om vårt samarbeid. Les gjennom erfaringene til bedrifter jeg har hjulpet med å lykkes i det digitale markedet.",
+
+    contact: "Kontakt",
+    contact_title: "Kontakt",
+    contact_description: "Ta kontakt med meg for å diskutere prosjektet eller forretningsbehovene dine...",
+
+    name: "Navn",
+    email: "E-post",
+    message: "Melding",
+    send_message: "Send melding",
+    sending: "Sender...",
+    message_sent: "Melding sendt!",
+    message_error: "Feil ved sending av melding. Vennligst prøv igjen.",
+
+    name_required: "Navn er påkrevd",
+    email_required: "E-post er påkrevd",
+    email_invalid: "Ugyldig e-postadresse",
+    message_required: "Melding er påkrevd",
+  },
+  ua: {
+    title: "Віталій Бербеха, експерт з електронної комерції та маркетингу",
+    subtitle: "Професіонал у сфері електронної комерції, маркетингу та управління проєктами",
+    description: "Допомагаю бізнесу рости, оптимізувати процеси та досягати успіху",
+
+    about: "Про мене",
+    about_title: "Про мене",
+    about_content: "Привіт! Мене звуть Віталій Бербеха. Я професіонал у сфері електронної комерції, маркетингу та управління проєктами. Мій досвід включає розробку та управління онлайн-магазинами, оптимізацію та налаштування Amazon Private Label, проведення рекламних кампаній у соціальних мережах (SMM), лідогенерацію та аналітику. Моя філософія: допомагати бізнесу рости, оптимізувати процеси та досягати успіху. Поза роботою мене можна знайти за вивченням історії, грою у футбол або обговоренням креативних ідей.",
+
+    projects: "Проєкти",
+    projects_title: "Проєкти",
+    projects_content: "Ознайомтеся з моїми останніми роботами та досягненнями. Я спеціалізуюся на розробці та оптимізації рішень для електронної комерції, особливо зосереджуючись на інтеграції з Amazon marketplace та кампаніях у соціальних мережах.",
+
+    services: "Послуги",
+    services_title: "Послуги",
+    services_content: "Я надаю комплексні рішення для електронної комерції та маркетингу, включаючи: Розробка стратегії електронної комерції, Налаштування магазинів на платформах як Amazon, Etsy та eBay, Управління брендом та просування через SMM, Консультування з питань маркетингових стратегій та аналітики, Налаштування таргетованої реклами. Моя мета - допомогти вашому бізнесу рости та досягати нових висот!",
+
+    skills: "Навички",
+    skills_title: "Навички",
+    skills_content: "Технології та компетенції, з якими я працюю, включають платформи електронної комерції (Amazon, Shopify, WooCommerce), інструменти цифрового маркетингу, аналітичні платформи та методології управління проєктами.",
+
+    testimonials: "Відгуки",
+    testimonials_title: "Відгуки",
+    testimonials_content: "Що клієнти кажуть про нашу співпрацю. Ознайомтеся з досвідом компаній, яким я допоміг досягти успіху на цифровому ринку.",
+
+    contact: "Контакти",
+    contact_title: "Контакти",
+    contact_description: "Зв'яжіться зі мною, щоб обговорити ваш проєкт або бізнес-потреби...",
+
+    name: "Ім'я",
+    email: "Email",
+    message: "Повідомлення",
+    send_message: "Надіслати повідомлення",
+    sending: "Надсилання...",
+    message_sent: "Повідомлення надіслано успішно!",
+    message_error: "Помилка при надсиланні повідомлення. Будь ласка, спробуйте ще раз.",
+
+    name_required: "Ім'я обов'язкове",
+    email_required: "Email обов'язковий",
+    email_invalid: "Невірна email адреса",
+    message_required: "Повідомлення обов'язкове",
+  },
+} as const;
+
+export type TranslationKey = keyof typeof translations.en;
