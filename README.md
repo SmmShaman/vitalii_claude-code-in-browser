@@ -134,6 +134,26 @@ Preview production build:
 npm run preview
 ```
 
+## Deployment
+
+### Automatic Deployment with Netlify
+
+This project is configured for automatic deployment to Netlify with GitHub integration.
+
+**📖 See detailed instructions in [DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+Quick start:
+1. Push code to GitHub
+2. Connect GitHub repository to Netlify
+3. Netlify automatically deploys on every push
+4. Add your custom domain when ready
+
+The project includes:
+- ✅ `netlify.toml` - Pre-configured build settings
+- ✅ Redirects for SPA routing
+- ✅ Performance optimizations
+- ✅ Security headers
+
 ## Sections
 
 ### 1. About Me
