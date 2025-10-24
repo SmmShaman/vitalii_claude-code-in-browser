@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
+import { TypewriterText } from '../ui/TypewriterText';
 
 interface Section {
   id: string;
@@ -123,10 +124,20 @@ export const BentoGrid = () => {
                 </div>
 
                 {/* Content */}
-                <div className="relative h-full flex items-center justify-center p-6">
-                  <h3 className="text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg">
-                    {t(section.titleKey as any)}
-                  </h3>
+                <div className="relative h-full flex items-start justify-center p-6">
+                  {section.id === 'about' ? (
+                    <div className="w-full h-full">
+                      <TypewriterText
+                        text={t(section.contentKey as any)}
+                        speed={30}
+                        className="h-full"
+                      />
+                    </div>
+                  ) : (
+                    <h3 className="text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg self-center">
+                      {t(section.titleKey as any)}
+                    </h3>
+                  )}
                 </div>
 
                 {/* Hover Effect Overlay */}

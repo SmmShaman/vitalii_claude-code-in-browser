@@ -22,6 +22,31 @@ export const SectionDialog = ({
 }: SectionDialogProps) => {
   const isContact = sectionId === 'contact';
 
+  // Format text with basic markdown support
+  const formatText = (rawText: string) => {
+    return rawText.split('\n').map((line, index) => {
+      // Handle bold text **text**
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      const formattedLine = parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return (
+            <strong key={i} className="font-bold text-white">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        return part;
+      });
+
+      return (
+        <span key={index}>
+          {formattedLine}
+          {index < rawText.split('\n').length - 1 && <br />}
+        </span>
+      );
+    });
+  };
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -66,8 +91,8 @@ export const SectionDialog = ({
                   {isContact ? (
                     <ContactForm />
                   ) : (
-                    <div className="text-lg text-white/90 leading-relaxed pr-4">
-                      {content}
+                    <div className="text-lg text-white/90 leading-relaxed pr-4 whitespace-pre-wrap">
+                      {formatText(content)}
                     </div>
                   )}
                 </ScrollArea.Viewport>
