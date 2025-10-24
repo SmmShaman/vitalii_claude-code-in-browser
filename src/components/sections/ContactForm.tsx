@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Mail } from 'lucide-react';
-import { submitContactForm } from '../../integrations/supabase/client';
+import { Mail, Info } from 'lucide-react';
+import { submitContactForm, isSupabaseConfigured } from '../../integrations/supabase/client';
 import { useTranslations } from '../../hooks/useTranslations';
 
 export const ContactForm = () => {
@@ -30,8 +30,14 @@ export const ContactForm = () => {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      await submitContactForm(data);
-      alert(t('message_sent'));
+      const result = await submitContactForm(data);
+
+      if (result.demo) {
+        alert('✅ ' + result.message + '\n\n📝 Form data:\nName: ' + data.name + '\nEmail: ' + data.email);
+      } else {
+        alert(t('message_sent'));
+      }
+
       reset();
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -50,6 +56,15 @@ export const ContactForm = () => {
           <p className="text-white/80">{t('contact_description')}</p>
         </div>
       </div>
+
+      {!isSupabaseConfigured() && (
+        <div className="mb-4 p-4 bg-blue-500/20 border border-blue-500/50 rounded-lg flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-100">
+            <strong>Demo Mode:</strong> Form submissions are logged to console. Configure Supabase to store submissions.
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
