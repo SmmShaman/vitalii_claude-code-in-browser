@@ -12,6 +12,13 @@ export const TypewriterText = ({ text, speed = 50, className = '' }: TypewriterT
   const [isPaused, setIsPaused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Reset when text changes (language switch)
+  useEffect(() => {
+    setDisplayedText('');
+    setCurrentIndex(0);
+    setIsPaused(false);
+  }, [text]);
+
   useEffect(() => {
     if (isPaused || currentIndex >= text.length) {
       return;
@@ -55,12 +62,20 @@ export const TypewriterText = ({ text, speed = 50, className = '' }: TypewriterT
     });
   };
 
+  const handleMouseEnter = () => {
+    setIsPaused(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsPaused(false);
+  };
+
   return (
     <div
       ref={containerRef}
       className={`overflow-y-auto ${className}`}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{
         scrollbarWidth: 'thin',
         scrollbarColor: 'rgba(255, 255, 255, 0.3) transparent',
