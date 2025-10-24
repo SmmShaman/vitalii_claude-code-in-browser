@@ -113,15 +113,19 @@ export const BentoGrid = () => {
                   minHeight: '200px',
                 }}
               >
-                {/* Background Image */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-300"
-                  style={{
-                    backgroundImage: `url(${section.image})`,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-black/40" />
-                </div>
+                {/* Background - conditional based on section */}
+                {section.id === 'about' ? (
+                  <div className="absolute inset-0 bg-white" />
+                ) : (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center transition-transform duration-300"
+                    style={{
+                      backgroundImage: `url(${section.image})`,
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-black/40" />
+                  </div>
+                )}
 
                 {/* Content */}
                 <div className="relative h-full flex items-start justify-center p-6 overflow-hidden">

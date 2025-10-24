@@ -3,13 +3,20 @@ import { useState, useEffect, useRef } from 'react';
 interface TypewriterTextProps {
   text: string;
   speed?: number; // milliseconds per character
+  pauseAfterTyping?: number; // pause before erasing
   className?: string;
 }
 
-export const TypewriterText = ({ text, speed = 50, className = '' }: TypewriterTextProps) => {
+export const TypewriterText = ({
+  text,
+  speed = 50,
+  pauseAfterTyping = 2000,
+  className = ''
+}: TypewriterTextProps) => {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isTyping, setIsTyping] = useState(true); // true = typing, false = erasing
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Reset when text changes (language switch)
@@ -17,25 +24,62 @@ export const TypewriterText = ({ text, speed = 50, className = '' }: TypewriterT
     setDisplayedText('');
     setCurrentIndex(0);
     setIsPaused(false);
+    setIsTyping(true);
   }, [text]);
 
   useEffect(() => {
-    if (isPaused || currentIndex >= text.length) {
+    if (isPaused) {
       return;
     }
 
-    const timer = setTimeout(() => {
-      setDisplayedText((prev) => prev + text[currentIndex]);
-      setCurrentIndex((prev) => prev + 1);
+    // Typing phase
+    if (isTyping && currentIndex < text.length) {
+      const timer = setTimeout(() => {
+        setDisplayedText(text.substring(0, currentIndex + 1));
+        setCurrentIndex((prev) => prev + 1);
 
-      // Auto-scroll to bottom as text appears
-      if (containerRef.current) {
-        containerRef.current.scrollTop = containerRef.current.scrollHeight;
-      }
-    }, speed);
+        // Auto-scroll to bottom as text appears
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
+      }, speed);
 
-    return () => clearTimeout(timer);
-  }, [currentIndex, text, speed, isPaused]);
+      return () => clearTimeout(timer);
+    }
+
+    // Pause after typing is complete
+    if (isTyping && currentIndex >= text.length) {
+      const pauseTimer = setTimeout(() => {
+        setIsTyping(false);
+      }, pauseAfterTyping);
+
+      return () => clearTimeout(pauseTimer);
+    }
+
+    // Erasing phase
+    if (!isTyping && currentIndex > 0) {
+      const timer = setTimeout(() => {
+        setCurrentIndex((prev) => prev - 1);
+        setDisplayedText(text.substring(0, currentIndex - 1));
+
+        // Auto-scroll to bottom as text disappears
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
+      }, speed);
+
+      return () => clearTimeout(timer);
+    }
+
+    // Start typing again after erasing is complete
+    if (!isTyping && currentIndex === 0) {
+      const restartTimer = setTimeout(() => {
+        setIsTyping(true);
+      }, 500);
+
+      return () => clearTimeout(restartTimer);
+    }
+  }, [currentIndex, text, speed, isPaused, isTyping, pauseAfterTyping]);
 
   // Format text with basic markdown support
   const formatText = (rawText: string) => {
@@ -45,7 +89,7 @@ export const TypewriterText = ({ text, speed = 50, className = '' }: TypewriterT
       const formattedLine = parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**')) {
           return (
-            <strong key={i} className="font-bold text-white">
+            <strong key={i} className="font-bold text-gray-900">
               {part.slice(2, -2)}
             </strong>
           );
@@ -70,6 +114,8 @@ export const TypewriterText = ({ text, speed = 50, className = '' }: TypewriterT
     setIsPaused(false);
   };
 
+  const showCursor = currentIndex < text.length || !isTyping;
+
   return (
     <div
       ref={containerRef}
@@ -78,13 +124,13 @@ export const TypewriterText = ({ text, speed = 50, className = '' }: TypewriterT
       onMouseLeave={handleMouseLeave}
       style={{
         scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(255, 255, 255, 0.3) transparent',
+        scrollbarColor: 'rgba(0, 0, 0, 0.3) transparent',
       }}
     >
-      <div className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
+      <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
         {formatText(displayedText)}
-        {currentIndex < text.length && (
-          <span className="inline-block w-2 h-4 bg-white/70 ml-1 animate-pulse" />
+        {showCursor && (
+          <span className="inline-block w-2 h-4 bg-gray-800 ml-1 animate-pulse" />
         )}
       </div>
     </div>
