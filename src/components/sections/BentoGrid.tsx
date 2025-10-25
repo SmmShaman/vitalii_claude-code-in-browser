@@ -117,7 +117,7 @@ export const BentoGrid = () => {
   return (
     <>
       <div
-        className="container mx-auto px-2 sm:px-4 flex items-center justify-center min-h-screen pt-[110px] pb-[70px] sm:pt-[130px] sm:pb-[80px] lg:pt-[150px] lg:pb-[90px]"
+        className="container mx-auto px-2 sm:px-4 flex items-center justify-center min-h-screen pt-[100px] pb-[70px] sm:pt-[110px] sm:pb-[80px] lg:pt-[120px] lg:pb-[90px]"
       >
         <div className="w-full max-w-7xl">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
