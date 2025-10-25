@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
-import { AnimatedHeroText } from '../ui/AnimatedHeroText';
+import { TypewriterText } from '../ui/TypewriterText';
 import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
@@ -118,7 +118,13 @@ export const BentoGrid = () => {
     <>
       <div className="h-full w-full overflow-y-auto overflow-x-hidden flex items-center justify-center px-1 sm:px-2">
         <div className="w-full max-w-7xl flex items-center justify-center py-2">
-          <div className="flex flex-wrap gap-2 sm:gap-3 justify-center items-center w-full">
+          <div
+            className="grid gap-2 sm:gap-3 w-full"
+            style={{
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              justifyItems: 'center',
+            }}
+          >
             {sections.map((section, index) => (
               <motion.div
                 key={section.id}
@@ -129,9 +135,9 @@ export const BentoGrid = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={section.id === 'projects' || section.id === 'services' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
-                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl flex-shrink-0"
+                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
                 style={{
-                  width: 'clamp(280px, 30vw, 380px)',
+                  maxWidth: '380px',
                   height: 'clamp(200px, 25vh, 280px)',
                 }}
               >
@@ -155,8 +161,9 @@ export const BentoGrid = () => {
                 <div className="relative h-full max-h-full flex items-start justify-center p-4 sm:p-5 md:p-6 overflow-hidden">
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full overflow-hidden flex flex-col">
-                      <AnimatedHeroText
+                      <TypewriterText
                         text={t(section.contentKey as any)}
+                        speed={30}
                       />
                     </div>
                   ) : section.id === 'projects' ? (
