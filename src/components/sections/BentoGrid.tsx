@@ -128,13 +128,13 @@ export const BentoGrid = () => {
                 )}
 
                 {/* Content */}
-                <div className="relative h-full flex items-start justify-center p-6 overflow-hidden">
+                <div className="relative h-full flex items-start justify-center p-6 overflow-hidden min-h-0">
                   {section.id === 'about' ? (
-                    <div className="w-full h-full overflow-hidden">
+                    <div className="w-full h-full overflow-hidden min-h-0 flex flex-col">
                       <TypewriterText
                         text={t(section.contentKey as any)}
                         speed={30}
-                        className="h-full max-h-full"
+                        className="flex-1 min-h-0"
                       />
                     </div>
                   ) : (
