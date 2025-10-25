@@ -21,18 +21,18 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-40 mb-2 sm:mb-4 px-2 sm:px-4">
-      <div className="max-w-6xl mx-auto rounded-xl sm:rounded-[2rem] shadow-2xl border border-black/20"
+    <footer className="fixed bottom-0 left-0 right-0 z-40 px-2 sm:px-4"
+      style={{
+        marginBottom: '4px',
+      }}
+    >
+      <div className="max-w-6xl mx-auto rounded-xl sm:rounded-[2rem] shadow-2xl border border-black/20 h-[60px] sm:h-[70px] lg:h-[80px]"
         style={{
           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
           backdropFilter: 'blur(2px)',
         }}
       >
-        <div className="flex flex-row items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3 md:py-4"
-          style={{
-            minHeight: '50px',
-            maxHeight: '80px',
-          }}
+        <div className="h-full flex flex-row items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8"
         >
           {/* Clock */}
           <div className="text-white/80 text-sm sm:text-base md:text-lg lg:text-xl font-mono">

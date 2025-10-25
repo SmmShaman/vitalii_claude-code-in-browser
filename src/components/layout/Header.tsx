@@ -7,18 +7,18 @@ export const Header = () => {
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 mt-2 sm:mt-4 px-2 sm:px-4">
-      <div className="max-w-6xl mx-auto rounded-xl sm:rounded-[2rem] shadow-2xl border border-black/20"
+    <header className="fixed top-0 left-0 right-0 z-40 px-2 sm:px-4"
+      style={{
+        marginTop: '4px',
+      }}
+    >
+      <div className="max-w-6xl mx-auto rounded-xl sm:rounded-[2rem] shadow-2xl border border-black/20 h-[100px] sm:h-[120px] lg:h-[140px]"
         style={{
           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
           backdropFilter: 'blur(2px)',
         }}
       >
-        <div className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 md:p-6 lg:p-8 gap-3 sm:gap-4"
-          style={{
-            minHeight: '80px',
-            maxHeight: '160px',
-          }}
+        <div className="h-full flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 md:p-6 lg:p-8 gap-2 sm:gap-3"
         >
           {/* Title Section */}
           <div className="flex-1 text-center sm:text-left">
