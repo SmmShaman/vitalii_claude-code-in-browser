@@ -5,7 +5,7 @@ import { ParticlesBackground } from '../components/background/ParticlesBackgroun
 
 export const Index = () => {
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-x-hidden">
       {/* Animated Background */}
       <ParticlesBackground />
 
@@ -13,7 +13,7 @@ export const Index = () => {
       <Header />
 
       {/* Main Content */}
-      <main className="relative z-10" style={{ paddingTop: 'calc(22.2vh + 2rem)', paddingBottom: 'calc(11.1vh + 2rem)' }}>
+      <main className="relative z-10">
         <BentoGrid />
       </main>
 

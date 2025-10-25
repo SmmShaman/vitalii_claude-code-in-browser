@@ -92,11 +92,15 @@ export const BentoGrid = () => {
 
   return (
     <>
-      <div className="container mx-auto px-4 flex items-center justify-center"
-        style={{ height: 'calc(100vh - 33.3vh)' }}
+      <div className="container mx-auto px-2 sm:px-4 flex items-center justify-center py-4 sm:py-0"
+        style={{
+          minHeight: 'calc(100vh - 130px)',
+          paddingTop: 'max(90px, 10vh)',
+          paddingBottom: 'max(60px, 8vh)',
+        }}
       >
         <div className="w-full max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {sections.map((section, index) => (
               <motion.div
                 key={section.id}
@@ -107,10 +111,9 @@ export const BentoGrid = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={() => handleCardClick(section, cardRefs.current[section.id])}
-                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-250px)/2)]"
                 style={{
-                  height: 'calc((100vh - 33.3vh - 4rem) / 2)',
-                  maxHeight: 'calc((100vh - 33.3vh - 4rem) / 2)',
+                  maxHeight: '400px',
                   minHeight: '200px',
                 }}
               >
@@ -129,7 +132,7 @@ export const BentoGrid = () => {
                 )}
 
                 {/* Content */}
-                <div className="relative h-full max-h-full flex items-start justify-center p-6 overflow-hidden">
+                <div className="relative h-full max-h-full flex items-start justify-center p-4 sm:p-5 md:p-6 overflow-hidden">
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full overflow-hidden flex flex-col">
                       <TypewriterText
@@ -138,7 +141,7 @@ export const BentoGrid = () => {
                       />
                     </div>
                   ) : (
-                    <h3 className="text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg self-center">
+                    <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg self-center px-2">
                       {t(section.titleKey as any)}
                     </h3>
                   )}
