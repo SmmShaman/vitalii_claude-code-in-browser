@@ -157,7 +157,10 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
     >
       {/* Background text "Projects" */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-        <h2 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white/10 select-none">
+        <h2
+          className="font-bold text-white/10 select-none"
+          style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
+        >
           {backgroundText}
         </h2>
       </div>
@@ -182,13 +185,15 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
 
           <h4
             ref={titleRef}
-            className="text-lg sm:text-xl font-bold text-white mb-2 mt-1"
+            className="font-bold text-white mb-2 mt-1"
+            style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
           >
             {currentProject?.title}
           </h4>
           <p
             ref={descriptionRef}
-            className="text-sm sm:text-base text-white/80"
+            className="text-white/80"
+            style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
           >
             {currentProject?.short}
           </p>

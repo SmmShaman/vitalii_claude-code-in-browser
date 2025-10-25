@@ -133,7 +133,10 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
     >
       {/* Background text */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-        <h2 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white/10 select-none">
+        <h2
+          className="font-bold text-white/10 select-none"
+          style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
+        >
           {backgroundText}
         </h2>
       </div>
@@ -150,17 +153,23 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                 ref={(el) => {
                   serviceRefs.current[index] = el;
                 }}
-                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-3`}
+                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-2 sm:p-3`}
                 style={{
-                  maxWidth: '280px',
-                  minWidth: '200px',
+                  maxWidth: 'min(280px, 35vw)',
+                  minWidth: 'min(180px, 25vw)',
                   zIndex: 10 + index,
                 }}
               >
-                <h4 className="text-sm sm:text-base font-bold text-white mb-1">
+                <h4
+                  className="font-bold text-white mb-1"
+                  style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
+                >
                   {service.title}
                 </h4>
-                <p className="text-xs sm:text-sm text-white/80">
+                <p
+                  className="text-white/80"
+                  style={{ fontSize: 'clamp(0.65rem, 1.2vw, 0.875rem)' }}
+                >
                   {service.description}
                 </p>
               </div>

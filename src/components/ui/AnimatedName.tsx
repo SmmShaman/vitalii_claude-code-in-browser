@@ -5,9 +5,10 @@ interface AnimatedNameProps {
   fullText: string;
   namePattern: RegExp;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export const AnimatedName = ({ fullText, namePattern, className = '' }: AnimatedNameProps) => {
+export const AnimatedName = ({ fullText, namePattern, className = '', style }: AnimatedNameProps) => {
   const containerRef = useRef<HTMLHeadingElement>(null);
   const animationRef = useRef<any>(null);
 
@@ -71,7 +72,7 @@ export const AnimatedName = ({ fullText, namePattern, className = '' }: Animated
     <h1
       ref={containerRef}
       className={className}
-      style={{ whiteSpace: 'pre-wrap' }}
+      style={{ whiteSpace: 'pre-wrap', ...style }}
     >
       {fullText}
     </h1>

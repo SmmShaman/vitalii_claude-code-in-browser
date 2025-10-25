@@ -127,10 +127,19 @@ export const TypewriterText = ({
         scrollbarColor: 'rgba(0, 0, 0, 0.3) transparent',
       }}
     >
-      <div className="text-gray-800 text-xs sm:text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words">
+      <div
+        className="text-gray-800 leading-relaxed whitespace-pre-wrap break-words"
+        style={{ fontSize: 'clamp(0.65rem, 1.2vw, 1rem)' }}
+      >
         {formatText(displayedText)}
         {showCursor && (
-          <span className="inline-block w-1.5 sm:w-2 h-3 sm:h-4 bg-gray-800 ml-0.5 sm:ml-1 animate-pulse" />
+          <span
+            className="inline-block bg-gray-800 ml-0.5 sm:ml-1 animate-pulse"
+            style={{
+              width: 'clamp(4px, 0.5vw, 8px)',
+              height: 'clamp(10px, 1.5vw, 16px)'
+            }}
+          />
         )}
       </div>
     </div>

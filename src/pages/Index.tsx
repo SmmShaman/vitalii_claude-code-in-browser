@@ -5,20 +5,24 @@ import { ParticlesBackground } from '../components/background/ParticlesBackgroun
 
 export const Index = () => {
   return (
-    <div className="min-h-screen relative overflow-x-hidden">
+    <div className="h-screen w-screen overflow-hidden flex flex-col relative">
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Fixed Header */}
-      <Header />
+      {/* Compact Header - 12vh */}
+      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(80px, 12vh, 140px)' }}>
+        <Header />
+      </div>
 
-      {/* Main Content */}
-      <main className="relative z-10">
+      {/* Main Content - Takes remaining space */}
+      <main className="flex-1 relative z-10 overflow-hidden">
         <BentoGrid />
       </main>
 
-      {/* Fixed Footer */}
-      <Footer />
+      {/* Compact Footer - 8vh */}
+      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(60px, 8vh, 100px)' }}>
+        <Footer />
+      </div>
     </div>
   );
 };

@@ -21,26 +21,24 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-40 px-2 sm:px-4"
-      style={{
-        marginBottom: '4px',
-      }}
-    >
-      <div className="max-w-6xl mx-auto rounded-xl sm:rounded-[2rem] shadow-2xl border border-black/20 h-[60px] sm:h-[70px] lg:h-[80px]"
+    <footer className="h-full w-full px-2 sm:px-4 flex items-center">
+      <div className="max-w-6xl mx-auto rounded-xl sm:rounded-2xl shadow-2xl border border-black/20 h-full w-full"
         style={{
           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
           backdropFilter: 'blur(2px)',
         }}
       >
-        <div className="h-full flex flex-row items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8"
-        >
+        <div className="h-full flex flex-row items-center justify-between px-3 sm:px-4 md:px-6">
           {/* Clock */}
-          <div className="text-white/80 text-sm sm:text-base md:text-lg lg:text-xl font-mono">
+          <div
+            className="text-white/80 font-mono"
+            style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1.125rem)' }}
+          >
             {currentTime.toLocaleTimeString()}
           </div>
 
           {/* Social Icons */}
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             {socialLinks.map(({ icon: Icon, href, label }) => (
               <a
                 key={label}
@@ -50,7 +48,7 @@ export const Footer = () => {
                 className="text-white/80 hover:text-white transition-colors duration-300"
                 aria-label={label}
               >
-                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
               </a>
             ))}
           </div>

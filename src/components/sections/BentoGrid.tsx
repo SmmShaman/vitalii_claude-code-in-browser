@@ -116,11 +116,9 @@ export const BentoGrid = () => {
 
   return (
     <>
-      <div
-        className="container mx-auto px-2 sm:px-4 flex items-center justify-center min-h-screen pt-4 pb-[70px] sm:pt-6 sm:pb-[80px] lg:pt-8 lg:pb-[90px]"
-      >
-        <div className="w-full max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="h-full w-full overflow-hidden flex items-center justify-center px-1 sm:px-2">
+        <div className="w-full max-w-7xl h-full flex items-center py-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 w-full" style={{ height: 'calc(100% - 1rem)' }}>
             {sections.map((section, index) => (
               <motion.div
                 key={section.id}
@@ -131,10 +129,9 @@ export const BentoGrid = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={section.id === 'projects' || section.id === 'services' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
-                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-250px)/2)]"
+                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl"
                 style={{
-                  maxHeight: '400px',
-                  minHeight: '200px',
+                  height: 'clamp(180px, calc((100% - 1rem) / 2), 350px)',
                 }}
               >
                 {/* Background - conditional based on section */}
@@ -179,7 +176,10 @@ export const BentoGrid = () => {
                       />
                     </div>
                   ) : (
-                    <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg self-center px-2">
+                    <h3
+                      className="font-bold text-white text-center drop-shadow-lg self-center px-2"
+                      style={{ fontSize: 'clamp(1.25rem, 3vw, 2.5rem)' }}
+                    >
                       {t(section.titleKey as any)}
                     </h3>
                   )}
