@@ -1,4 +1,4 @@
-# Vitalii Berbeha - Portfolio Website
+# Vitalii Berbega - Portfolio Website
 
 A modern, animated portfolio website built with React, TypeScript, and Bento Grid design style.
 
@@ -221,7 +221,7 @@ All rights reserved.
 
 ## Contact
 
-**Vitalii Berbeha**
+**Vitalii Berbega**
 - Twitter: [@vitalii](https://twitter.com)
-- LinkedIn: [Vitalii Berbeha](https://linkedin.com)
+- LinkedIn: [Vitalii Berbega](https://linkedin.com)
 - Email: contact@example.com

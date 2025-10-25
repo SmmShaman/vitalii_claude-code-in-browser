@@ -1,5 +1,6 @@
 import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '../../contexts/TranslationContext';
+import { AnimatedTitle } from '../ui/AnimatedTitle';
 
 export const Header = () => {
   const { t, currentLanguage, setCurrentLanguage, isLoading } = useTranslations();
@@ -30,9 +31,10 @@ export const Header = () => {
               </div>
             ) : (
               <>
-                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-1 sm:mb-2 leading-tight">
-                  {t('title')}
-                </h1>
+                <AnimatedTitle
+                  text={t('title') as string}
+                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-1 sm:mb-2 leading-tight"
+                />
                 <h2 className="text-base sm:text-lg md:text-xl text-white/90 mb-0.5 sm:mb-1 leading-tight">
                   {t('subtitle')}
                 </h2>
