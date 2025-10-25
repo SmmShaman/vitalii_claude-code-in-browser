@@ -76,25 +76,43 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
   const currentProject = projects[currentIndex];
   const nextProject = projects[(currentIndex + 1) % projects.length];
 
-  // Current project: moves from bottom (100%) to top (-100%)
-  // Progress 0% → translateY(100%)
-  // Progress 100% → translateY(-100%)
-  const currentTranslateY = 100 - (progress * 2);
+  // Animation timeline (5 seconds):
+  // 0-70%: Current project moves and is fully visible
+  // 70-80%: Current project fades out (0.5s)
+  // 80-90%: Pause - nothing visible (0.5s)
+  // 90-100%: Next project fades in (0.5s)
 
-  // Current project opacity: fades out as it moves up
-  // Progress 0-50%: opacity 1
-  // Progress 50-100%: opacity 1 → 0
-  const currentOpacity = progress < 50 ? 1 : 1 - ((progress - 50) / 50);
+  // Current project: moves from bottom to top
+  // Progress 0-70%: moves from bottom (100%) to top (-40%)
+  const currentTranslateY = progress <= 70
+    ? 100 - (progress / 70) * 140  // Moves from 100% to -40%
+    : -40; // Stay at top
 
-  // Next project: starts appearing when current is at 50%
-  // When progress = 50%, next starts at bottom (100%)
-  // When progress = 100%, next is at center (0%)
-  const nextTranslateY = progress < 50 ? 100 : 100 - ((progress - 50) * 2);
+  // Current project opacity
+  // Progress 0-70%: opacity 1 (fully visible)
+  // Progress 70-80%: opacity 1 → 0 (fade out)
+  // Progress 80-100%: opacity 0 (invisible)
+  const currentOpacity = progress <= 70
+    ? 1
+    : progress <= 80
+      ? 1 - ((progress - 70) / 10)
+      : 0;
 
-  // Next project opacity: fades in
-  // Progress 0-50%: opacity 0
-  // Progress 50-100%: opacity 0 → 1
-  const nextOpacity = progress < 50 ? 0 : (progress - 50) / 50;
+  // Next project position: starts from bottom
+  // Progress 90-100%: moves from bottom (100%) to center (0%)
+  const nextTranslateY = progress >= 90
+    ? 100 - ((progress - 90) / 10) * 100  // Moves from 100% to 0%
+    : 100; // Stay at bottom (not visible yet)
+
+  // Next project opacity
+  // Progress 0-90%: opacity 0 (invisible)
+  // Progress 90-100%: opacity 0 → 1 (fade in)
+  const nextOpacity = progress < 90
+    ? 0
+    : (progress - 90) / 10;
+
+  // Show next project only when it should start appearing
+  const showNextProject = progress >= 90;
 
   return (
     <div
@@ -130,8 +148,8 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
         </div>
       </div>
 
-      {/* Next Project (appears when current is halfway up) */}
-      {progress >= 50 && (
+      {/* Next Project (appears after 0.5s pause) */}
+      {showNextProject && (
         <div
           className="absolute w-full px-4"
           style={{
