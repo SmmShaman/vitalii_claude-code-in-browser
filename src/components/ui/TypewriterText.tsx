@@ -119,7 +119,7 @@ export const TypewriterText = ({
   return (
     <div
       ref={containerRef}
-      className={`overflow-y-auto ${className}`}
+      className={`overflow-y-auto h-full max-h-full ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{
@@ -127,7 +127,7 @@ export const TypewriterText = ({
         scrollbarColor: 'rgba(0, 0, 0, 0.3) transparent',
       }}
     >
-      <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+      <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap break-words">
         {formatText(displayedText)}
         {showCursor && (
           <span className="inline-block w-2 h-4 bg-gray-800 ml-1 animate-pulse" />

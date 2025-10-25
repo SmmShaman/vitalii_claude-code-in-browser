@@ -110,6 +110,7 @@ export const BentoGrid = () => {
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl"
                 style={{
                   height: 'calc((100vh - 33.3vh - 4rem) / 2)',
+                  maxHeight: 'calc((100vh - 33.3vh - 4rem) / 2)',
                   minHeight: '200px',
                 }}
               >
@@ -128,13 +129,12 @@ export const BentoGrid = () => {
                 )}
 
                 {/* Content */}
-                <div className="relative h-full flex items-start justify-center p-6 overflow-hidden min-h-0">
+                <div className="relative h-full max-h-full flex items-start justify-center p-6 overflow-hidden">
                   {section.id === 'about' ? (
-                    <div className="w-full h-full overflow-hidden min-h-0 flex flex-col">
+                    <div className="w-full h-full max-h-full overflow-hidden flex flex-col">
                       <TypewriterText
                         text={t(section.contentKey as any)}
                         speed={30}
-                        className="flex-1 min-h-0"
                       />
                     </div>
                   ) : (
