@@ -59,6 +59,7 @@ export const BentoGrid = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [activeProjectIndex, setActiveProjectIndex] = useState(0);
+  const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
@@ -98,11 +99,19 @@ export const BentoGrid = () => {
     }, 600);
   };
 
-  const handleProjectsCardClick = (currentProjectIndex: number) => {
-    console.log('handleProjectsCardClick called with index:', currentProjectIndex);
-    setActiveProjectIndex(currentProjectIndex);
+  const handleProjectsCardClick = (activeIndex: number) => {
+    console.log('handleProjectsCardClick called with index:', activeIndex);
+    setActiveProjectIndex(activeIndex);
     setIsProjectsModalOpen(true);
   };
+
+  const handleProjectIndexChange = (index: number) => {
+    setCurrentProjectIndex(index);
+  };
+
+  // Get current project image
+  const currentProjects = translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list;
+  const currentProjectImage = currentProjects[currentProjectIndex]?.image || sections.find(s => s.id === 'projects')?.image;
 
   return (
     <>
@@ -132,9 +141,9 @@ export const BentoGrid = () => {
                   <div className="absolute inset-0 bg-white" />
                 ) : (
                   <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-300"
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-500"
                     style={{
-                      backgroundImage: `url(${section.image})`,
+                      backgroundImage: `url(${section.id === 'projects' ? currentProjectImage : section.image})`,
                     }}
                   >
                     <div className="absolute inset-0 bg-black/40" />
@@ -156,6 +165,7 @@ export const BentoGrid = () => {
                         projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
                         onCardClick={handleProjectsCardClick}
                         backgroundText={t('projects_title') as string}
+                        onIndexChange={handleProjectIndexChange}
                       />
                     </div>
                   ) : (

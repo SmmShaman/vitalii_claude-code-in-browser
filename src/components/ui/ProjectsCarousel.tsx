@@ -10,16 +10,23 @@ interface ProjectsCarouselProps {
   projects: Project[];
   onCardClick: (activeProjectIndex: number) => void;
   backgroundText: string;
+  onIndexChange?: (index: number) => void;
 }
 
-export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: ProjectsCarouselProps) => {
+export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onIndexChange }: ProjectsCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0); // 0 to 100
   const [isPaused, setIsPaused] = useState(false);
   const animationFrameRef = useRef<number | undefined>(undefined);
 
   const ANIMATION_DURATION = 5000; // 5 seconds total
-  const MOVE_DURATION_PERCENT = 80; // 80% of time for movement (4 seconds), 20% for pause
+
+  // Notify parent when index changes
+  useEffect(() => {
+    if (onIndexChange) {
+      onIndexChange(currentIndex);
+    }
+  }, [currentIndex, onIndexChange]);
 
   useEffect(() => {
     if (isPaused || projects.length === 0) return;
@@ -78,22 +85,32 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
 
   const currentProject = projects[currentIndex];
 
-  // Calculate position and opacity
-  // Progress 0-80%: Project moves from bottom (100%) to top (-100%)
-  // Progress 80-100%: Pause (project invisible, waiting for next)
+  // Calculate position and opacity with smooth fade-in and fade-out
+  // Progress 0-10%: Fade in from bottom
+  // Progress 10-85%: Move from bottom to top (fully visible)
+  // Progress 85-95%: Fade out at top
+  // Progress 95-100%: Pause (invisible)
 
   let translateY = 100;
   let opacity = 0;
 
-  if (progress <= MOVE_DURATION_PERCENT) {
-    // During movement phase (0-80%)
-    const moveProgress = progress / MOVE_DURATION_PERCENT; // 0 to 1
+  if (progress <= 10) {
+    // Fade in phase (0-10%)
+    translateY = 100; // Start at bottom
+    opacity = progress / 10; // 0 → 1
+  } else if (progress <= 85) {
+    // Move phase (10-85%)
+    const moveProgress = (progress - 10) / 75; // 0 to 1
     translateY = 100 - (moveProgress * 200); // 100% to -100%
     opacity = 1; // Fully visible
+  } else if (progress <= 95) {
+    // Fade out phase (85-95%)
+    translateY = -100; // At top
+    opacity = 1 - ((progress - 85) / 10); // 1 → 0
   } else {
-    // During pause phase (80-100%)
+    // Pause phase (95-100%)
     translateY = -100; // Stay at top
-    opacity = 0; // Invisible (preparing for next project)
+    opacity = 0; // Invisible
   }
 
   return (
