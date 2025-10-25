@@ -7,6 +7,7 @@ import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
 import { translations } from '../../utils/translations';
+import { useScreenSize } from '../../hooks/useScreenSize';
 
 interface Section {
   id: string;
@@ -56,6 +57,7 @@ const sections: Section[] = [
 
 export const BentoGrid = () => {
   const { t, currentLanguage } = useTranslations();
+  const screenSize = useScreenSize();
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
@@ -116,13 +118,14 @@ export const BentoGrid = () => {
 
   return (
     <>
-      <div className="h-full w-full overflow-y-auto overflow-x-hidden flex items-center justify-center px-1 sm:px-2">
-        <div className="w-full max-w-7xl flex items-center justify-center py-2">
+      <div className="h-full w-full overflow-y-auto overflow-x-hidden flex items-center justify-center px-2 sm:px-4 lg:px-6">
+        <div className="w-full flex items-center justify-center py-2">
           <div
-            className="grid gap-2 sm:gap-3 w-full"
+            className="grid gap-3 sm:gap-4 w-full"
             style={{
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
               justifyItems: 'center',
+              maxWidth: '100%',
             }}
           >
             {sections.map((section, index) => (
