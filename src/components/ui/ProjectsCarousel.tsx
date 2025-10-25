@@ -44,8 +44,9 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
     const description = descriptionRef.current;
     const progress = progressRef.current;
 
-    // Reset progress bar
+    // Reset progress bar and text elements
     gsap.set(progress, { width: '0%' });
+    gsap.set([title, description], { opacity: 1, y: 0 }); // Reset text to initial state
 
     // Create timeline
     const tl = gsap.timeline({
@@ -171,10 +172,10 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
       >
         <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg pointer-events-auto relative overflow-hidden">
           {/* === IMPROVEMENT 5: Progress indicator bar === */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-white/10">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
             <div
               ref={progressRef}
-              className="h-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full"
+              className="h-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"
               style={{ width: '0%' }}
             />
           </div>

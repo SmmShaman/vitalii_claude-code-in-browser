@@ -51,34 +51,28 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       const duration = 20; // 20 seconds to cross the screen
 
       if (isLeftToRight) {
-        // Move from left (0%) to right (100%)
+        // Move from left (0%) to right (100%) - continuous loop
         const tween = gsap.to(element, {
           left: '100%',
           duration: duration,
           ease: 'none',
           repeat: -1,
-          modifiers: {
-            left: (value) => {
-              // Loop back to 0% when reaching 100%
-              const numValue = parseFloat(value);
-              return `${numValue % 100}%`;
-            }
+          repeatDelay: 0,
+          onRepeat: () => {
+            gsap.set(element, { left: '0%' }); // Reset to start
           }
         });
         animationsRef.current.push(tween);
       } else {
-        // Move from right (100%) to left (0%)
+        // Move from right (100%) to left (0%) - continuous loop
         const tween = gsap.to(element, {
           left: '0%',
           duration: duration,
           ease: 'none',
           repeat: -1,
-          modifiers: {
-            left: (value) => {
-              // Loop back to 100% when reaching 0%
-              const numValue = parseFloat(value);
-              return numValue <= 0 ? '100%' : `${numValue}%`;
-            }
+          repeatDelay: 0,
+          onRepeat: () => {
+            gsap.set(element, { left: '100%' }); // Reset to start
           }
         });
         animationsRef.current.push(tween);
