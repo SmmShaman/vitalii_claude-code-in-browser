@@ -94,9 +94,9 @@ export const BentoGrid = () => {
     <>
       <div className="container mx-auto px-2 sm:px-4 flex items-center justify-center py-4 sm:py-0"
         style={{
-          minHeight: 'calc(100vh - 130px)',
-          paddingTop: 'max(90px, 10vh)',
-          paddingBottom: 'max(60px, 8vh)',
+          minHeight: 'calc(100vh - 200px)',
+          paddingTop: 'clamp(100px, 15vh, 180px)',
+          paddingBottom: 'clamp(70px, 10vh, 100px)',
         }}
       >
         <div className="w-full max-w-7xl">
