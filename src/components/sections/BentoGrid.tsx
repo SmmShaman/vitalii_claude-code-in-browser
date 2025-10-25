@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
 import { TypewriterText } from '../ui/TypewriterText';
+import { ProjectsCarousel } from '../ui/ProjectsCarousel';
+import { translations } from '../../utils/translations';
 
 interface Section {
   id: string;
@@ -51,13 +53,18 @@ const sections: Section[] = [
 ];
 
 export const BentoGrid = () => {
-  const { t } = useTranslations();
+  const { t, currentLanguage } = useTranslations();
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<{ title: string; full: string } | null>(null);
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
+
+    // Don't open dialog for projects section (projects handle their own clicks)
+    if (section.id === 'projects') return;
 
     // Add snake animation class
     cardElement.classList.add('snake-animation');
@@ -88,6 +95,11 @@ export const BentoGrid = () => {
       cardElement.style.width = '';
       cardElement.style.height = '';
     }, 600);
+  };
+
+  const handleProjectClick = (project: { title: string; short: string; full: string }) => {
+    setSelectedProject({ title: project.title, full: project.full });
+    setIsProjectDialogOpen(true);
   };
 
   return (
@@ -136,6 +148,13 @@ export const BentoGrid = () => {
                         speed={30}
                       />
                     </div>
+                  ) : section.id === 'projects' ? (
+                    <div className="w-full h-full overflow-hidden">
+                      <ProjectsCarousel
+                        projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
+                        onProjectClick={handleProjectClick}
+                      />
+                    </div>
                   ) : (
                     <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg self-center px-2">
                       {t(section.titleKey as any)}
@@ -160,6 +179,18 @@ export const BentoGrid = () => {
           content={t(selectedSection.contentKey as any)}
           image={selectedSection.image}
           sectionId={selectedSection.id}
+        />
+      )}
+
+      {/* Project Dialog */}
+      {selectedProject && (
+        <SectionDialog
+          open={isProjectDialogOpen}
+          onOpenChange={setIsProjectDialogOpen}
+          title={selectedProject.title}
+          content={selectedProject.full}
+          image="https://images.unsplash.com/photo-1460925895917-afdab827c52f"
+          sectionId="project"
         />
       )}
     </>

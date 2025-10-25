@@ -6,7 +6,7 @@ export type Language = "NO" | "EN" | "UA";
 interface TranslationContextType {
   currentLanguage: Language;
   setCurrentLanguage: (lang: Language) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey) => any;
   isLoading: boolean;
 }
 
@@ -24,7 +24,7 @@ export const TranslationProvider = ({ children }: { children: ReactNode }) => {
     }, 300);
   };
 
-  const t = (key: TranslationKey): string => {
+  const t = (key: TranslationKey): any => {
     const lang = currentLanguage.toLowerCase() as keyof typeof translations;
     return translations[lang][key] || translations.en[key];
   };

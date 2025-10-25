@@ -12,6 +12,74 @@ export const translations = {
     projects_title: "Projects",
     projects_content: "Check out my latest work and achievements. I specialize in developing and optimizing e-commerce solutions, particularly focusing on Amazon marketplace integration and social media marketing campaigns.",
 
+    projects_list: [
+      {
+        title: "E-Commerce Platform",
+        short: "Comprehensive e-commerce platform with React, Node.js and MongoDB",
+        full: "A comprehensive e-commerce platform built with React, Node.js and MongoDB. Features include user authentication, product catalog, shopping cart, payment processing, and order management. The platform is fully responsive and optimized for mobile devices. Implemented ML-based recommendation engine that increased average order value by 28%."
+      },
+      {
+        title: "Portfolio Website",
+        short: "Modern portfolio website with smooth animations and interactive elements",
+        full: "A modern portfolio website designed to showcase projects and skills. Features a clean, minimalist design with smooth animations and interactive elements. Built with React and Tailwind CSS, optimized for all devices. Implemented custom 3D elements to highlight technical capabilities."
+      },
+      {
+        title: "Task Management App",
+        short: "Collaborative task management application for teams",
+        full: "A collaborative task management application that helps teams organize their work. Features include task creation, assignment, due dates, progress tracking, and team communication tools. Built with React, TypeScript, and a Firebase backend. Implemented real-time updates and notifications system."
+      },
+      {
+        title: "Weather Dashboard",
+        short: "Real-time weather information and forecasts dashboard",
+        full: "A weather dashboard that provides real-time weather information and forecasts. Features include current conditions, 7-day forecast, hourly updates, radar maps, and location-based services. Uses OpenWeatherMap API and built with React. Implemented historical data comparisons and climate trend analysis."
+      },
+      {
+        title: "Social Media App",
+        short: "Professional networking platform for tech industry",
+        full: "A social media application focused on connecting professionals in the tech industry. Features include user profiles, posts, comments, likes, and direct messaging. Built with React, Redux, and a Node.js/Express backend. Implemented AI-powered content moderation and spam detection."
+      },
+      {
+        title: "Fitness Tracker",
+        short: "Comprehensive fitness tracking application with AI recommendations",
+        full: "A comprehensive fitness tracking application that helps users monitor their health and wellness goals. Features include workout logging, nutrition tracking, progress visualization, and personalized recommendations. Built with React Native. Implemented machine learning algorithms to generate custom workout recommendations."
+      },
+      {
+        title: "Recipe Finder",
+        short: "Discover new dishes based on available ingredients",
+        full: "A recipe finder application that helps users discover new dishes based on ingredients they have. Features include recipe search, filtering by dietary restrictions, save favorites, and meal planning. Integrates with a recipe API and built with React. Implemented advanced filtering algorithms for dietary needs and preferences."
+      },
+      {
+        title: "Virtual Learning Platform",
+        short: "E-learning platform for creating and consuming educational content",
+        full: "An e-learning platform designed for creating and consuming educational content. Features include course creation, video lectures, quizzes, progress tracking, and certificates. Built with React, Node.js, and MongoDB. Implemented advanced analytics dashboard for educators to track student progress and engagement."
+      },
+      {
+        title: "AI Content Generator",
+        short: "AI-powered content generation tool for marketers",
+        full: "An AI-powered content generation tool that helps marketers create compelling copy for various channels. The system uses advanced NLP models to generate contextually relevant content based on minimal input. Features include tone adjustment, length control, and content type templates. Built with OpenAI API, React, and Node.js backend."
+      },
+      {
+        title: "Data Visualization Dashboard",
+        short: "Real-time KPIs and metrics monitoring dashboard",
+        full: "A comprehensive data visualization dashboard for businesses to monitor KPIs and metrics in real-time. Features include customizable widgets, multiple data source integration, automated reporting, and trend analysis. Built with D3.js, React, and a Python/FastAPI backend that connects to various data sources including SQL databases and APIs."
+      },
+      {
+        title: "IoT Home Automation",
+        short: "Smart home platform connecting various IoT devices",
+        full: "An Internet of Things (IoT) platform for home automation that connects and controls various smart devices through a single interface. Features include scheduled routines, energy usage monitoring, voice control integration, and remote access. Built with React Native for mobile, with a Node.js backend and MQTT protocol for device communication."
+      },
+      {
+        title: "Blockchain Wallet",
+        short: "Secure cryptocurrency wallet supporting multiple blockchains",
+        full: "A secure cryptocurrency wallet application supporting multiple blockchain networks. Features include transaction history, multi-wallet management, QR code scanning, and real-time price tracking. Implemented enhanced security features including biometric authentication and cold storage options. Built with React Native and blockchain-specific libraries."
+      },
+      {
+        title: "Augmented Reality Tour Guide",
+        short: "AR application enhancing historical sites and museum visits",
+        full: "An augmented reality application that enhances the experience of visiting historical sites and museums. Users can point their device at landmarks to see historical information, 3D reconstructions of past appearances, and interactive storytelling elements. Built with Unity, ARKit/ARCore, and a content management system for curators to update information."
+      }
+    ],
+
     services: "Services",
     services_title: "Services",
     services_content: "I provide comprehensive e-commerce and marketing solutions including: E-commerce strategy development, Setting up stores on platforms like Amazon, Etsy, and eBay, Brand management and promotion via SMM, Consulting on marketing strategies and analytics, Targeted ad setup. My goal is to help your business grow and reach new heights!",
@@ -53,6 +121,74 @@ export const translations = {
     projects: "Prosjekter",
     projects_title: "Prosjekter",
     projects_content: "Se mine siste arbeid og prestasjoner. Jeg spesialiserer meg på å utvikle og optimalisere e-handelsløsninger, spesielt med fokus på Amazon markedsplass integrasjon og sosiale medier markedsføringskampanjer.",
+
+    projects_list: [
+      {
+        title: "E-handelsplattform",
+        short: "Omfattende e-handelsplattform med React, Node.js og MongoDB",
+        full: "En omfattende e-handelsplattform bygget med React, Node.js og MongoDB. Funksjoner inkluderer brukerautentisering, produktkatalog, handlekurv, betalingsbehandling og ordrehåndtering. Plattformen er fullstendig responsiv og optimalisert for mobile enheter. Implementert ML-basert anbefalingsmotor som økte gjennomsnittlig ordreverdi med 28%."
+      },
+      {
+        title: "Porteføljenettsside",
+        short: "Moderne porteføljenettsside med glatte animasjoner og interaktive elementer",
+        full: "En moderne porteføljenettsside designet for å vise frem prosjekter og ferdigheter. Har et rent, minimalistisk design med glatte animasjoner og interaktive elementer. Bygget med React og Tailwind CSS, optimalisert for alle enheter. Implementerte tilpassede 3D-elementer for å fremheve tekniske ferdigheter."
+      },
+      {
+        title: "Oppgavehåndteringsapp",
+        short: "Samarbeidsbasert oppgavehåndteringsapplikasjon for team",
+        full: "En samarbeidsbasert oppgavehåndteringsapplikasjon som hjelper team med å organisere arbeidet sitt. Funksjoner inkluderer opprettelse av oppgaver, tildeling, frister, fremdriftssporing og teamkommunikasjonsverktøy. Bygget med React, TypeScript og Firebase backend. Implementerte sanntidsoppdateringer og varslingssystem."
+      },
+      {
+        title: "Værdashboard",
+        short: "Sanntidsinformasjon om vær og værmeldinger",
+        full: "Et værdashboard som gir sanntidsinformasjon om vær og værmeldinger. Funksjoner inkluderer nåværende forhold, 7-dagers værmelding, timebaserte oppdateringer, radarkart og lokasjonsbaserte tjenester. Bruker OpenWeatherMap API og bygget med React. Implementert historiske datasammenligninger og klimatrendanalyse."
+      },
+      {
+        title: "Sosial medieapp",
+        short: "Profesjonell nettverksplattform for teknologibransjen",
+        full: "En sosial medieapplikasjon fokusert på å koble profesjonelle i teknologibransjen. Funksjoner inkluderer brukerprofiler, innlegg, kommentarer, likes og direkte meldinger. Bygget med React, Redux og Node.js/Express backend. Implementerte AI-drevet innholdsmoderering og spam-deteksjon."
+      },
+      {
+        title: "Treningssporer",
+        short: "Omfattende treningssporingsapplikasjon med AI-anbefalinger",
+        full: "En omfattende treningssporingsapplikasjon som hjelper brukere med å overvåke helse- og velværemål. Funksjoner inkluderer treningslogging, ernæringssporing, fremdriftsvisualisering og personaliserte anbefalinger. Bygget med React Native. Implementerte maskinlæringsalgoritmer for å generere tilpassede treningsanbefalinger."
+      },
+      {
+        title: "Oppskriftsfinner",
+        short: "Oppdag nye retter basert på tilgjengelige ingredienser",
+        full: "En oppskriftsfinnerapplikasjon som hjelper brukere med å oppdage nye retter basert på ingredienser de har. Funksjoner inkluderer oppskriftssøk, filtrering etter kostrestriksjoner, lagre favoritter og måltidsplanlegging. Integrerer med oppskrifts-API og bygget med React. Implementerte avanserte filtreringsalgoritmer for kostbehov og preferanser."
+      },
+      {
+        title: "Virtuell læringsplattform",
+        short: "E-læringsplattform for å lage og konsumere pedagogisk innhold",
+        full: "En e-læringsplattform designet for å lage og konsumere pedagogisk innhold. Funksjoner inkluderer kursopprettelse, videoforelesninger, quizer, fremdriftssporing og sertifikater. Bygget med React, Node.js og MongoDB. Implementerte avansert analysedashboard for lærere for å spore studentfremgang og engasjement."
+      },
+      {
+        title: "AI-innholdsgenerator",
+        short: "AI-drevet verktøy for innholdsgenerering for markedsførere",
+        full: "Et AI-drevet verktøy for innholdsgenerering som hjelper markedsførere med å lage overbevisende tekster for ulike kanaler. Systemet bruker avanserte NLP-modeller for å generere kontekstuelt relevant innhold basert på minimal input. Funksjoner inkluderer tonejustering, lengdekontroll og innholdstypemaler. Bygget med OpenAI API, React og Node.js backend."
+      },
+      {
+        title: "Datavisualiseringsdashboard",
+        short: "Sanntids KPI- og metrikkovervåkingsdashboard",
+        full: "Et omfattende datavisualiseringsdashboard for bedrifter å overvåke KPI-er og målinger i sanntid. Funksjoner inkluderer tilpassbare widgets, flere datakildeintegrasjoner, automatisert rapportering og trendanalyse. Bygget med D3.js, React og Python/FastAPI backend som kobler til ulike datakilder inkludert SQL-databaser og API-er."
+      },
+      {
+        title: "IoT-hjemmeautomatisering",
+        short: "Smart hjem-plattform som kobler ulike IoT-enheter",
+        full: "En Internet of Things (IoT)-plattform for hjemmeautomatisering som kobler og styrer ulike smarte enheter gjennom ett grensesnitt. Funksjoner inkluderer planlagte rutiner, energiforbruksovervåking, talestyringsintegrasjon og ekstern tilgang. Bygget med React Native for mobil, med Node.js backend og MQTT-protokoll for enhetskommunikasjon."
+      },
+      {
+        title: "Blockchain-lommebok",
+        short: "Sikker kryptovalutalommebok som støtter flere blokkjeder",
+        full: "En sikker kryptovalutalommebok-applikasjon som støtter flere blokkjedenettverk. Funksjoner inkluderer transaksjonshistorikk, multi-lommebokadministrasjon, QR-kodeskanning og sanntidsprissporing. Implementerte forbedrede sikkerhetsfunksjoner inkludert biometrisk autentisering og cold storage-alternativer. Bygget med React Native og blokkjede-spesifikke biblioteker."
+      },
+      {
+        title: "Augmented Reality-turguide",
+        short: "AR-applikasjon som forbedrer besøk på historiske steder og museer",
+        full: "En augmented reality-applikasjon som forbedrer opplevelsen av å besøke historiske steder og museer. Brukere kan peke enheten sin på landemerker for å se historisk informasjon, 3D-rekonstruksjoner av tidligere utseende og interaktive fortellingselementer. Bygget med Unity, ARKit/ARCore og et innholdsstyringssystem for kuratorer å oppdatere informasjon."
+      }
+    ],
 
     services: "Tjenester",
     services_title: "Tjenester",
@@ -96,6 +232,74 @@ export const translations = {
     projects_title: "Проєкти",
     projects_content: "Ознайомтеся з моїми останніми роботами та досягненнями. Я спеціалізуюся на розробці та оптимізації рішень для електронної комерції, особливо зосереджуючись на інтеграції з Amazon marketplace та кампаніях у соціальних мережах.",
 
+    projects_list: [
+      {
+        title: "E-Commerce платформа",
+        short: "Комплексна платформа електронної комерції на React, Node.js та MongoDB",
+        full: "Комплексна платформа електронної комерції, створена на React, Node.js та MongoDB. Функції включають автентифікацію користувачів, каталог продуктів, кошик покупок, обробку платежів та управління замовленнями. Платформа повністю адаптивна та оптимізована для мобільних пристроїв. Реалізовано ML-систему рекомендацій, яка збільшила середню вартість замовлення на 28%."
+      },
+      {
+        title: "Портфоліо вебсайт",
+        short: "Сучасний сайт-портфоліо з плавними анімаціями та інтерактивними елементами",
+        full: "Сучасний сайт-портфоліо, розроблений для демонстрації проєктів та навичок. Має чистий, мінімалістичний дизайн з плавними анімаціями та інтерактивними елементами. Створений на React та Tailwind CSS, оптимізований для всіх пристроїв. Реалізовано власні 3D-елементи для демонстрації технічних можливостей."
+      },
+      {
+        title: "Додаток управління завданнями",
+        short: "Колабораційний додаток для управління завданнями команди",
+        full: "Колабораційний додаток для управління завданнями, який допомагає командам організовувати роботу. Функції включають створення завдань, призначення, терміни, відстеження прогресу та інструменти комунікації команди. Створено на React, TypeScript та Firebase backend. Реалізовано систему оновлень в реальному часі та сповіщень."
+      },
+      {
+        title: "Погодна панель",
+        short: "Інформаційна панель з даними про погоду в реальному часі",
+        full: "Погодна панель, що надає інформацію про погоду в реальному часі та прогнози. Функції включають поточні умови, 7-денний прогноз, погодинні оновлення, радарні карти та послуги на основі локації. Використовує OpenWeatherMap API та створено на React. Реалізовано порівняння історичних даних та аналіз кліматичних трендів."
+      },
+      {
+        title: "Додаток соціальних мереж",
+        short: "Професійна мережева платформа для ІТ-індустрії",
+        full: "Додаток соціальних мереж, орієнтований на з'єднання професіоналів у технологічній індустрії. Функції включають профілі користувачів, публікації, коментарі, вподобання та прямі повідомлення. Створено на React, Redux та Node.js/Express backend. Реалізовано модерацію контенту на основі AI та виявлення спаму."
+      },
+      {
+        title: "Фітнес-трекер",
+        short: "Комплексний додаток відстеження фітнесу з AI-рекомендаціями",
+        full: "Комплексний додаток відстеження фітнесу, який допомагає користувачам моніторити цілі здоров'я та благополуччя. Функції включають ведення журналу тренувань, відстеження харчування, візуалізацію прогресу та персоналізовані рекомендації. Створено на React Native. Реалізовано алгоритми машинного навчання для генерації індивідуальних рекомендацій тренувань."
+      },
+      {
+        title: "Пошук рецептів",
+        short: "Відкривайте нові страви на основі наявних інгредієнтів",
+        full: "Додаток пошуку рецептів, який допомагає користувачам відкривати нові страви на основі наявних інгредієнтів. Функції включають пошук рецептів, фільтрацію за дієтичними обмеженнями, збереження улюблених та планування харчування. Інтегрується з API рецептів та створено на React. Реалізовано розширені алгоритми фільтрації для дієтичних потреб та уподобань."
+      },
+      {
+        title: "Віртуальна навчальна платформа",
+        short: "Платформа електронного навчання для створення та споживання освітнього контенту",
+        full: "Платформа електронного навчання, розроблена для створення та споживання освітнього контенту. Функції включають створення курсів, відеолекції, тести, відстеження прогресу та сертифікати. Створено на React, Node.js та MongoDB. Реалізовано розширену аналітичну панель для викладачів для відстеження прогресу та залученості студентів."
+      },
+      {
+        title: "AI-генератор контенту",
+        short: "Інструмент генерації контенту на основі AI для маркетологів",
+        full: "Інструмент генерації контенту на основі AI, який допомагає маркетологам створювати переконливі тексти для різних каналів. Система використовує передові NLP-моделі для генерації контекстуально релевантного контенту на основі мінімального введення. Функції включають налаштування тону, контроль довжини та шаблони типів контенту. Створено з OpenAI API, React та Node.js backend."
+      },
+      {
+        title: "Панель візуалізації даних",
+        short: "Панель моніторингу KPI та метрик в реальному часі",
+        full: "Комплексна панель візуалізації даних для бізнесу для моніторингу KPI та метрик в реальному часі. Функції включають налаштовувані віджети, інтеграцію кількох джерел даних, автоматизовану звітність та аналіз трендів. Створено з D3.js, React та Python/FastAPI backend, що підключається до різних джерел даних, включаючи SQL бази даних та API."
+      },
+      {
+        title: "IoT домашня автоматизація",
+        short: "Платформа розумного дому, що з'єднує різні IoT-пристрої",
+        full: "Платформа Інтернету речей (IoT) для домашньої автоматизації, яка підключає та контролює різні розумні пристрої через єдиний інтерфейс. Функції включають заплановані процедури, моніторинг використання енергії, інтеграцію голосового керування та віддалений доступ. Створено на React Native для мобільних пристроїв, з Node.js backend та MQTT протоколом для комунікації пристроїв."
+      },
+      {
+        title: "Blockchain-гаманець",
+        short: "Безпечний криптовалютний гаманець з підтримкою кількох блокчейнів",
+        full: "Безпечний додаток криптовалютного гаманця з підтримкою кількох блокчейн-мереж. Функції включають історію транзакцій, управління кількома гаманцями, сканування QR-кодів та відстеження цін в реальному часі. Реалізовано розширені функції безпеки, включаючи біометричну автентифікацію та опції холодного зберігання. Створено на React Native та блокчейн-специфічних бібліотеках."
+      },
+      {
+        title: "Турист-гід з доповненою реальністю",
+        short: "AR-додаток, що покращує відвідування історичних місць та музеїв",
+        full: "Додаток доповненої реальності, який покращує досвід відвідування історичних місць та музеїв. Користувачі можуть навести пристрій на пам'ятки, щоб побачити історичну інформацію, 3D-реконструкції минулого вигляду та інтерактивні елементи розповіді. Створено з Unity, ARKit/ARCore та системою управління контентом для кураторів для оновлення інформації."
+      }
+    ],
+
     services: "Послуги",
     services_title: "Послуги",
     services_content: "Я надаю комплексні рішення для електронної комерції та маркетингу, включаючи: Розробка стратегії електронної комерції, Налаштування магазинів на платформах як Amazon, Etsy та eBay, Управління брендом та просування через SMM, Консультування з питань маркетингових стратегій та аналітики, Налаштування таргетованої реклами. Моя мета - допомогти вашому бізнесу рости та досягати нових висот!",
@@ -125,6 +329,6 @@ export const translations = {
     email_invalid: "Невірна email адреса",
     message_required: "Повідомлення обов'язкове",
   },
-} as const;
+};
 
 export type TranslationKey = keyof typeof translations.en;
