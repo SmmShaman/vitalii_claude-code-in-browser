@@ -154,6 +154,7 @@ export const BentoGrid = () => {
                       <ProjectsCarousel
                         projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
                         onCardClick={handleProjectsCardClick}
+                        backgroundText={t('projects_title') as string}
                       />
                     </div>
                   ) : (

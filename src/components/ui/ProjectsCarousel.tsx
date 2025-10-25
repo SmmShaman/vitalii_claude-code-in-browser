@@ -9,13 +9,13 @@ interface Project {
 interface ProjectsCarouselProps {
   projects: Project[];
   onCardClick: (activeProjectIndex: number) => void;
+  backgroundText: string;
 }
 
-export const ProjectsCarousel = ({ projects, onCardClick }: ProjectsCarouselProps) => {
+export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: ProjectsCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0); // 0 to 100
   const [isPaused, setIsPaused] = useState(false);
-  const [isCentered, setIsCentered] = useState(false);
   const animationFrameRef = useRef<number | undefined>(undefined);
 
   const ANIMATION_DURATION = 5000; // 5 seconds
@@ -63,12 +63,10 @@ export const ProjectsCarousel = ({ projects, onCardClick }: ProjectsCarouselProp
 
   const handleMouseEnter = () => {
     setIsPaused(true);
-    setIsCentered(true);
   };
 
   const handleMouseLeave = () => {
     setIsPaused(false);
-    setIsCentered(false);
   };
 
   const handleClick = () => {
@@ -76,12 +74,27 @@ export const ProjectsCarousel = ({ projects, onCardClick }: ProjectsCarouselProp
   };
 
   const currentProject = projects[currentIndex];
+  const nextProject = projects[(currentIndex + 1) % projects.length];
 
-  // Calculate position: starts at 100% (bottom) and moves to -100% (top)
-  // progress 0% = bottom (translateY(100%))
-  // progress 50% = center (translateY(0%))
-  // progress 100% = top (translateY(-100%))
-  const translateY = isCentered ? 0 : 100 - progress * 2;
+  // Current project: moves from bottom (100%) to top (-100%)
+  // Progress 0% → translateY(100%)
+  // Progress 100% → translateY(-100%)
+  const currentTranslateY = 100 - (progress * 2);
+
+  // Current project opacity: fades out as it moves up
+  // Progress 0-50%: opacity 1
+  // Progress 50-100%: opacity 1 → 0
+  const currentOpacity = progress < 50 ? 1 : 1 - ((progress - 50) / 50);
+
+  // Next project: starts appearing when current is at 50%
+  // When progress = 50%, next starts at bottom (100%)
+  // When progress = 100%, next is at center (0%)
+  const nextTranslateY = progress < 50 ? 100 : 100 - ((progress - 50) * 2);
+
+  // Next project opacity: fades in
+  // Progress 0-50%: opacity 0
+  // Progress 50-100%: opacity 0 → 1
+  const nextOpacity = progress < 50 ? 0 : (progress - 50) / 50;
 
   return (
     <div
@@ -90,12 +103,21 @@ export const ProjectsCarousel = ({ projects, onCardClick }: ProjectsCarouselProp
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
     >
+      {/* Background text "Projects" */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <h2 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white/10 select-none">
+          {backgroundText}
+        </h2>
+      </div>
+
+      {/* Current Project */}
       <div
-        className="absolute w-full transition-all duration-300"
+        className="absolute w-full px-4"
         style={{
           top: '50%',
-          transform: `translateY(${isCentered ? '-50%' : `${translateY}%`})`,
-          transition: isCentered ? 'transform 0.3s ease-out' : 'none',
+          transform: `translateY(${currentTranslateY}%)`,
+          opacity: currentOpacity,
+          transition: isPaused ? 'opacity 0.3s' : 'none',
         }}
       >
         <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300">
@@ -107,6 +129,28 @@ export const ProjectsCarousel = ({ projects, onCardClick }: ProjectsCarouselProp
           </p>
         </div>
       </div>
+
+      {/* Next Project (appears when current is halfway up) */}
+      {progress >= 50 && (
+        <div
+          className="absolute w-full px-4"
+          style={{
+            top: '50%',
+            transform: `translateY(${nextTranslateY}%)`,
+            opacity: nextOpacity,
+            transition: isPaused ? 'opacity 0.3s' : 'none',
+          }}
+        >
+          <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300">
+            <h4 className="text-lg sm:text-xl font-bold text-white mb-2">
+              {nextProject?.title}
+            </h4>
+            <p className="text-sm sm:text-base text-white/80">
+              {nextProject?.short}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
