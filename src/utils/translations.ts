@@ -97,6 +97,33 @@ export const translations = {
     services_title: "Services",
     services_content: "I provide comprehensive e-commerce and marketing solutions including: E-commerce strategy development, Setting up stores on platforms like Amazon, Etsy, and eBay, Brand management and promotion via SMM, Consulting on marketing strategies and analytics, Targeted ad setup. My goal is to help your business grow and reach new heights!",
 
+    services_list: [
+      {
+        title: "AI Integration",
+        description: "from concept to production (OpenAI, LangChain)"
+      },
+      {
+        title: "Workshops & Training",
+        description: "hands-on sessions for teams"
+      },
+      {
+        title: "Data & BI Dashboards",
+        description: "Power BI, Supabase, SQL"
+      },
+      {
+        title: "Growth Marketing & Analytics",
+        description: "conversion optimization"
+      },
+      {
+        title: "Automation & Process Optimization",
+        description: "streamline workflows"
+      },
+      {
+        title: "Strategic Consulting",
+        description: "digital transformation"
+      }
+    ],
+
     skills: "Skills",
     skills_title: "Skills",
     skills_content: "Technologies and competencies I work with include e-commerce platforms (Amazon, Shopify, WooCommerce), digital marketing tools, analytics platforms, and project management methodologies.",
@@ -218,6 +245,33 @@ export const translations = {
     services_title: "Tjenester",
     services_content: "Jeg tilbyr omfattende e-handel og markedsføringsløsninger inkludert: E-handelsstrategi utvikling, Oppsett av butikker på plattformer som Amazon, Etsy og eBay, Merkevarehåndtering og promotering via SMM, Konsultasjon om markedsføringsstrategier og analyse, Oppsett av målrettede annonser. Mitt mål er å hjelpe din bedrift med å vokse og nå nye høyder!",
 
+    services_list: [
+      {
+        title: "AI-integrasjon",
+        description: "fra konsept til produksjon (OpenAI, LangChain)"
+      },
+      {
+        title: "Workshops & Opplæring",
+        description: "praktiske sesjoner for team"
+      },
+      {
+        title: "Data & BI Dashboards",
+        description: "Power BI, Supabase, SQL"
+      },
+      {
+        title: "Vekstmarkedsføring & Analyse",
+        description: "konverteringsoptimalisering"
+      },
+      {
+        title: "Automatisering & Prosessoptimalisering",
+        description: "strømlinjeforme arbeidsflyter"
+      },
+      {
+        title: "Strategisk Konsultasjon",
+        description: "digital transformasjon"
+      }
+    ],
+
     skills: "Ferdigheter",
     skills_title: "Ferdigheter",
     skills_content: "Teknologier og kompetanser jeg jobber med inkluderer e-handelsplattformer (Amazon, Shopify, WooCommerce), digitale markedsføringsverktøy, analyseplattformer og prosjektledelsesmetodikk.",
@@ -338,6 +392,33 @@ export const translations = {
     services: "Послуги",
     services_title: "Послуги",
     services_content: "Я надаю комплексні рішення для електронної комерції та маркетингу, включаючи: Розробка стратегії електронної комерції, Налаштування магазинів на платформах як Amazon, Etsy та eBay, Управління брендом та просування через SMM, Консультування з питань маркетингових стратегій та аналітики, Налаштування таргетованої реклами. Моя мета - допомогти вашому бізнесу рости та досягати нових висот!",
+
+    services_list: [
+      {
+        title: "AI-інтеграція",
+        description: "від концепції до продакшену (OpenAI, LangChain)"
+      },
+      {
+        title: "Воркшопи та тренінги",
+        description: "практичні сесії для команд"
+      },
+      {
+        title: "Дашборди даних та BI",
+        description: "Power BI, Supabase, SQL"
+      },
+      {
+        title: "Маркетинг зростання та аналітика",
+        description: "оптимізація конверсій"
+      },
+      {
+        title: "Автоматизація та оптимізація процесів",
+        description: "оптимізація робочих процесів"
+      },
+      {
+        title: "Стратегічний консалтинг",
+        description: "цифрова трансформація"
+      }
+    ],
 
     skills: "Навички",
     skills_title: "Навички",

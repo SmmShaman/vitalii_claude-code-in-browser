@@ -5,6 +5,7 @@ import { SectionDialog } from './SectionDialog';
 import { TypewriterText } from '../ui/TypewriterText';
 import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
+import { ServicesAnimation } from '../ui/ServicesAnimation';
 import { translations } from '../../utils/translations';
 
 interface Section {
@@ -65,8 +66,8 @@ export const BentoGrid = () => {
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
-    // Don't open dialog for projects section (projects handle their own clicks)
-    if (section.id === 'projects') return;
+    // Don't open dialog for projects and services sections (they handle their own clicks)
+    if (section.id === 'projects' || section.id === 'services') return;
 
     // Add snake animation class
     cardElement.classList.add('snake-animation');
@@ -129,7 +130,7 @@ export const BentoGrid = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                onClick={section.id === 'projects' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
+                onClick={section.id === 'projects' || section.id === 'services' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-250px)/2)]"
                 style={{
                   maxHeight: '400px',
@@ -166,6 +167,13 @@ export const BentoGrid = () => {
                         onCardClick={handleProjectsCardClick}
                         backgroundText={t('projects_title') as string}
                         onIndexChange={handleProjectIndexChange}
+                      />
+                    </div>
+                  ) : section.id === 'services' ? (
+                    <div className="w-full h-full overflow-hidden">
+                      <ServicesAnimation
+                        services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
+                        backgroundText={t('services_title') as string}
                       />
                     </div>
                   ) : (
