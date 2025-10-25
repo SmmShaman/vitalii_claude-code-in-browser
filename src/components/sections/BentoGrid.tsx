@@ -116,9 +116,9 @@ export const BentoGrid = () => {
 
   return (
     <>
-      <div className="h-full w-full overflow-hidden flex items-center justify-center px-1 sm:px-2">
-        <div className="w-full max-w-7xl h-full flex items-center py-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 w-full" style={{ height: 'calc(100% - 1rem)' }}>
+      <div className="h-full w-full overflow-y-auto overflow-x-hidden flex items-center justify-center px-1 sm:px-2">
+        <div className="w-full max-w-7xl flex items-center justify-center py-2">
+          <div className="flex flex-wrap gap-2 sm:gap-3 justify-center items-center w-full">
             {sections.map((section, index) => (
               <motion.div
                 key={section.id}
@@ -129,9 +129,10 @@ export const BentoGrid = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={section.id === 'projects' || section.id === 'services' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
-                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl flex-shrink-0"
                 style={{
-                  height: 'clamp(180px, calc((100% - 1rem) / 2), 350px)',
+                  width: 'clamp(280px, 30vw, 380px)',
+                  height: 'clamp(200px, 25vh, 280px)',
                 }}
               >
                 {/* Background - conditional based on section */}
