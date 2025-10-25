@@ -99,6 +99,7 @@ export const BentoGrid = () => {
   };
 
   const handleProjectsCardClick = (currentProjectIndex: number) => {
+    console.log('handleProjectsCardClick called with index:', currentProjectIndex);
     setActiveProjectIndex(currentProjectIndex);
     setIsProjectsModalOpen(true);
   };
@@ -119,7 +120,7 @@ export const BentoGrid = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                onClick={() => handleCardClick(section, cardRefs.current[section.id])}
+                onClick={section.id === 'projects' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-250px)/2)]"
                 style={{
                   maxHeight: '400px',

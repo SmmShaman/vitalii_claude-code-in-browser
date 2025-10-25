@@ -18,7 +18,8 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
   const [isPaused, setIsPaused] = useState(false);
   const animationFrameRef = useRef<number | undefined>(undefined);
 
-  const ANIMATION_DURATION = 5000; // 5 seconds
+  const ANIMATION_DURATION = 5000; // 5 seconds total
+  const MOVE_DURATION_PERCENT = 80; // 80% of time for movement (4 seconds), 20% for pause
 
   useEffect(() => {
     if (isPaused || projects.length === 0) return;
@@ -59,7 +60,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isPaused, projects.length, currentIndex]);
+  }, [isPaused, projects.length, currentIndex, progress]);
 
   const handleMouseEnter = () => {
     setIsPaused(true);
@@ -69,50 +70,31 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
     setIsPaused(false);
   };
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('Card clicked, currentIndex:', currentIndex);
     onCardClick(currentIndex);
   };
 
   const currentProject = projects[currentIndex];
-  const nextProject = projects[(currentIndex + 1) % projects.length];
 
-  // Animation timeline (5 seconds):
-  // 0-70%: Current project moves and is fully visible
-  // 70-80%: Current project fades out (0.5s)
-  // 80-90%: Pause - nothing visible (0.5s)
-  // 90-100%: Next project fades in (0.5s)
+  // Calculate position and opacity
+  // Progress 0-80%: Project moves from bottom (100%) to top (-100%)
+  // Progress 80-100%: Pause (project invisible, waiting for next)
 
-  // Current project: moves from bottom to top
-  // Progress 0-70%: moves from bottom (100%) to top (-40%)
-  const currentTranslateY = progress <= 70
-    ? 100 - (progress / 70) * 140  // Moves from 100% to -40%
-    : -40; // Stay at top
+  let translateY = 100;
+  let opacity = 0;
 
-  // Current project opacity
-  // Progress 0-70%: opacity 1 (fully visible)
-  // Progress 70-80%: opacity 1 → 0 (fade out)
-  // Progress 80-100%: opacity 0 (invisible)
-  const currentOpacity = progress <= 70
-    ? 1
-    : progress <= 80
-      ? 1 - ((progress - 70) / 10)
-      : 0;
-
-  // Next project position: starts from bottom
-  // Progress 90-100%: moves from bottom (100%) to center (0%)
-  const nextTranslateY = progress >= 90
-    ? 100 - ((progress - 90) / 10) * 100  // Moves from 100% to 0%
-    : 100; // Stay at bottom (not visible yet)
-
-  // Next project opacity
-  // Progress 0-90%: opacity 0 (invisible)
-  // Progress 90-100%: opacity 0 → 1 (fade in)
-  const nextOpacity = progress < 90
-    ? 0
-    : (progress - 90) / 10;
-
-  // Show next project only when it should start appearing
-  const showNextProject = progress >= 90;
+  if (progress <= MOVE_DURATION_PERCENT) {
+    // During movement phase (0-80%)
+    const moveProgress = progress / MOVE_DURATION_PERCENT; // 0 to 1
+    translateY = 100 - (moveProgress * 200); // 100% to -100%
+    opacity = 1; // Fully visible
+  } else {
+    // During pause phase (80-100%)
+    translateY = -100; // Stay at top
+    opacity = 0; // Invisible (preparing for next project)
+  }
 
   return (
     <div
@@ -120,25 +102,26 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
+      style={{ position: 'relative', zIndex: 1 }}
     >
       {/* Background text "Projects" */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
         <h2 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white/10 select-none">
           {backgroundText}
         </h2>
       </div>
 
-      {/* Current Project */}
+      {/* Current Project - ONLY ONE VISIBLE */}
       <div
-        className="absolute w-full px-4"
+        className="absolute w-full px-4 pointer-events-none z-10"
         style={{
           top: '50%',
-          transform: `translateY(${currentTranslateY}%)`,
-          opacity: currentOpacity,
-          transition: isPaused ? 'opacity 0.3s' : 'none',
+          transform: `translateY(${translateY}%)`,
+          opacity: opacity,
+          transition: isPaused ? 'none' : 'none',
         }}
       >
-        <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300">
+        <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg pointer-events-auto">
           <h4 className="text-lg sm:text-xl font-bold text-white mb-2">
             {currentProject?.title}
           </h4>
@@ -147,28 +130,6 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText }: Proj
           </p>
         </div>
       </div>
-
-      {/* Next Project (appears after 0.5s pause) */}
-      {showNextProject && (
-        <div
-          className="absolute w-full px-4"
-          style={{
-            top: '50%',
-            transform: `translateY(${nextTranslateY}%)`,
-            opacity: nextOpacity,
-            transition: isPaused ? 'opacity 0.3s' : 'none',
-          }}
-        >
-          <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300">
-            <h4 className="text-lg sm:text-xl font-bold text-white mb-2">
-              {nextProject?.title}
-            </h4>
-            <p className="text-sm sm:text-base text-white/80">
-              {nextProject?.short}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
