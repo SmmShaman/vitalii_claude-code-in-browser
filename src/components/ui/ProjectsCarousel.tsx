@@ -18,6 +18,9 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const projectRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
   // Notify parent when index changes
@@ -27,9 +30,9 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
     }
   }, [currentIndex, onIndexChange]);
 
-  // Create GSAP Timeline for project animation
+  // Create GSAP Timeline for project animation with all 5 improvements
   useEffect(() => {
-    if (!projectRef.current || projects.length === 0) return;
+    if (!projectRef.current || !titleRef.current || !descriptionRef.current || !progressRef.current || projects.length === 0) return;
 
     // Kill previous timeline
     if (timelineRef.current) {
@@ -37,58 +40,75 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
     }
 
     const element = projectRef.current;
+    const title = titleRef.current;
+    const description = descriptionRef.current;
+    const progress = progressRef.current;
+
+    // Reset progress bar
+    gsap.set(progress, { width: '0%' });
 
     // Create timeline
     const tl = gsap.timeline({
-      repeat: 0, // Don't repeat, we'll manually restart
+      repeat: 0,
       onComplete: () => {
-        // Move to next project after completion
         setCurrentIndex((prev) => (prev + 1) % projects.length);
       }
     });
 
-    // Phase 1: Fade in from bottom (0-10% of time = 0.5s)
+    // === IMPROVEMENT 1, 2, 3, 4: Fade in with scale, rotation, and back.out easing ===
     tl.fromTo(element,
       {
         yPercent: 100,
         opacity: 0,
+        scale: 0.85,        // Improvement 3: starts at 85% size
+        rotation: -3        // Improvement 4: tilted -3 degrees
       },
       {
         opacity: 1,
-        duration: 0.5,
-        ease: 'power2.out',
+        scale: 1,           // Improvement 3: grows to 100%
+        rotation: 0,        // Improvement 4: straightens to 0°
+        duration: 0.6,
+        ease: 'back.out(1.5)' // Improvement 2: back.out with overshoot
       },
       0 // Start at 0s
     );
 
-    // Phase 2: Move from bottom to top (10-85% of time = 3.75s)
-    tl.to(element,
-      {
-        yPercent: -100,
-        duration: 3.75,
-        ease: 'none', // Linear movement
-      },
-      0.5 // Start at 0.5s (after fade in)
-    );
+    // === IMPROVEMENT 1: Stagger animation for title and description ===
+    tl.from([title, description], {
+      opacity: 0,
+      y: 15,
+      stagger: 0.12,      // 0.12s delay between elements
+      duration: 0.4,
+      ease: 'power2.out'
+    }, 0.3);              // Start at 0.3s (after entrance begins)
 
-    // Phase 3: Fade out at top (85-95% of time = 0.5s)
-    tl.to(element,
-      {
-        opacity: 0,
-        duration: 0.5,
-        ease: 'power2.in',
-      },
-      4.25 // Start at 4.25s
-    );
+    // === IMPROVEMENT 5: Progress bar (runs parallel to entire animation) ===
+    tl.to(progress, {
+      width: '100%',
+      duration: 5,        // Full 5 second cycle
+      ease: 'none'        // Linear progress
+    }, 0);                // Start at 0s (parallel)
 
-    // Phase 4: Pause (95-100% of time = 0.25s)
-    tl.to(element,
-      {
-        // Just wait, no changes
-        duration: 0.25,
-      },
-      4.75 // Start at 4.75s
-    );
+    // Phase 2: Move from bottom to top
+    tl.to(element, {
+      yPercent: -100,
+      duration: 3.5,
+      ease: 'none'
+    }, 0.8);              // Start at 0.8s (after entrance)
+
+    // === IMPROVEMENT 3, 4: Fade out with scale and rotation ===
+    tl.to(element, {
+      opacity: 0,
+      scale: 0.95,        // Improvement 3: shrinks to 95%
+      rotation: 2,        // Improvement 4: tilts +2 degrees
+      duration: 0.5,
+      ease: 'power2.in'
+    }, 4.3);              // Start at 4.3s
+
+    // Phase 4: Pause
+    tl.to(element, {
+      duration: 0.2
+    }, 4.8);              // Start at 4.8s
 
     timelineRef.current = tl;
 
@@ -149,11 +169,26 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
           top: '50%',
         }}
       >
-        <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg pointer-events-auto">
-          <h4 className="text-lg sm:text-xl font-bold text-white mb-2">
+        <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg pointer-events-auto relative overflow-hidden">
+          {/* === IMPROVEMENT 5: Progress indicator bar === */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-white/10">
+            <div
+              ref={progressRef}
+              className="h-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full"
+              style={{ width: '0%' }}
+            />
+          </div>
+
+          <h4
+            ref={titleRef}
+            className="text-lg sm:text-xl font-bold text-white mb-2 mt-1"
+          >
             {currentProject?.title}
           </h4>
-          <p className="text-sm sm:text-base text-white/80">
+          <p
+            ref={descriptionRef}
+            className="text-sm sm:text-base text-white/80"
+          >
             {currentProject?.short}
           </p>
         </div>
