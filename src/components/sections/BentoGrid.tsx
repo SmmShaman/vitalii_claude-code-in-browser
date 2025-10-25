@@ -4,6 +4,7 @@ import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
 import { TypewriterText } from '../ui/TypewriterText';
 import { ProjectsCarousel } from '../ui/ProjectsCarousel';
+import { ProjectsModal } from '../ui/ProjectsModal';
 import { translations } from '../../utils/translations';
 
 interface Section {
@@ -56,8 +57,8 @@ export const BentoGrid = () => {
   const { t, currentLanguage } = useTranslations();
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<{ title: string; full: string } | null>(null);
-  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
+  const [activeProjectIndex, setActiveProjectIndex] = useState(0);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
@@ -97,9 +98,9 @@ export const BentoGrid = () => {
     }, 600);
   };
 
-  const handleProjectClick = (project: { title: string; short: string; full: string }) => {
-    setSelectedProject({ title: project.title, full: project.full });
-    setIsProjectDialogOpen(true);
+  const handleProjectsCardClick = (currentProjectIndex: number) => {
+    setActiveProjectIndex(currentProjectIndex);
+    setIsProjectsModalOpen(true);
   };
 
   return (
@@ -152,7 +153,7 @@ export const BentoGrid = () => {
                     <div className="w-full h-full overflow-hidden">
                       <ProjectsCarousel
                         projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
-                        onProjectClick={handleProjectClick}
+                        onCardClick={handleProjectsCardClick}
                       />
                     </div>
                   ) : (
@@ -182,17 +183,13 @@ export const BentoGrid = () => {
         />
       )}
 
-      {/* Project Dialog */}
-      {selectedProject && (
-        <SectionDialog
-          open={isProjectDialogOpen}
-          onOpenChange={setIsProjectDialogOpen}
-          title={selectedProject.title}
-          content={selectedProject.full}
-          image="https://images.unsplash.com/photo-1460925895917-afdab827c52f"
-          sectionId="project"
-        />
-      )}
+      {/* Projects Modal */}
+      <ProjectsModal
+        open={isProjectsModalOpen}
+        onOpenChange={setIsProjectsModalOpen}
+        projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
+        activeProjectIndex={activeProjectIndex}
+      />
     </>
   );
 };

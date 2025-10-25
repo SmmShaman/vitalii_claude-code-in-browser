@@ -8,100 +8,104 @@ interface Project {
 
 interface ProjectsCarouselProps {
   projects: Project[];
-  onProjectClick: (project: Project) => void;
+  onCardClick: (activeProjectIndex: number) => void;
 }
 
-export const ProjectsCarousel = ({ projects, onProjectClick }: ProjectsCarouselProps) => {
-  const [scrollPosition, setScrollPosition] = useState(0);
+export const ProjectsCarousel = ({ projects, onCardClick }: ProjectsCarouselProps) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [progress, setProgress] = useState(0); // 0 to 100
   const [isPaused, setIsPaused] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [isCentered, setIsCentered] = useState(false);
+  const animationFrameRef = useRef<number | undefined>(undefined);
+
+  const ANIMATION_DURATION = 5000; // 5 seconds
 
   useEffect(() => {
-    if (isPaused || !contentRef.current) return;
+    if (isPaused || projects.length === 0) return;
 
-    const contentHeight = contentRef.current.scrollHeight;
-    const containerHeight = containerRef.current?.clientHeight || 0;
-
-    // Scroll from bottom to top in 5 seconds
-    const duration = 5000; // 5 seconds
-    const distance = contentHeight + containerHeight;
-    const pixelsPerMs = distance / duration;
-
-    let startTime: number | null = null;
-    let animationFrame: number;
+    let lastTimestamp = 0;
+    let accumulatedTime = (progress / 100) * ANIMATION_DURATION;
 
     const animate = (timestamp: number) => {
-      if (startTime === null) startTime = timestamp;
-      const elapsed = timestamp - startTime;
+      if (lastTimestamp === 0) {
+        lastTimestamp = timestamp;
+      }
 
-      // Calculate new position (moving from bottom to top)
-      const newPosition = elapsed * pixelsPerMs;
+      const deltaTime = timestamp - lastTimestamp;
+      lastTimestamp = timestamp;
+      accumulatedTime += deltaTime;
 
-      if (newPosition >= distance) {
-        // Reset to start when reaching the end
-        startTime = null;
-        setScrollPosition(0);
+      const newProgress = (accumulatedTime / ANIMATION_DURATION) * 100;
+
+      if (newProgress >= 100) {
+        // Move to next project
+        setCurrentIndex((prev) => (prev + 1) % projects.length);
+        setProgress(0);
+        accumulatedTime = 0;
+        lastTimestamp = 0;
       } else {
-        setScrollPosition(newPosition);
+        setProgress(newProgress);
       }
 
       if (!isPaused) {
-        animationFrame = requestAnimationFrame(animate);
+        animationFrameRef.current = requestAnimationFrame(animate);
       }
     };
 
-    animationFrame = requestAnimationFrame(animate);
+    animationFrameRef.current = requestAnimationFrame(animate);
 
     return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isPaused, projects]);
+  }, [isPaused, projects.length, currentIndex]);
 
   const handleMouseEnter = () => {
     setIsPaused(true);
+    setIsCentered(true);
   };
 
   const handleMouseLeave = () => {
     setIsPaused(false);
+    setIsCentered(false);
   };
 
-  const handleProjectClick = (e: React.MouseEvent, project: Project) => {
-    e.stopPropagation();
-    onProjectClick(project);
+  const handleClick = () => {
+    onCardClick(currentIndex);
   };
+
+  const currentProject = projects[currentIndex];
+
+  // Calculate position: starts at 100% (bottom) and moves to -100% (top)
+  // progress 0% = bottom (translateY(100%))
+  // progress 50% = center (translateY(0%))
+  // progress 100% = top (translateY(-100%))
+  const translateY = isCentered ? 0 : 100 - progress * 2;
 
   return (
     <div
-      ref={containerRef}
-      className="h-full w-full overflow-hidden relative"
+      className="h-full w-full overflow-hidden relative cursor-pointer"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
     >
       <div
-        ref={contentRef}
-        className="absolute w-full"
+        className="absolute w-full transition-all duration-300"
         style={{
-          transform: `translateY(${100 - (scrollPosition % (contentRef.current?.scrollHeight || 1000))}%)`,
-          transition: isPaused ? 'none' : undefined,
+          top: '50%',
+          transform: `translateY(${isCentered ? '-50%' : `${translateY}%`})`,
+          transition: isCentered ? 'transform 0.3s ease-out' : 'none',
         }}
       >
-        {projects.map((project, index) => (
-          <div
-            key={index}
-            className="mb-4 p-4 bg-white/10 backdrop-blur-sm rounded-lg cursor-pointer hover:bg-white/20 transition-all duration-300"
-            onClick={(e) => handleProjectClick(e, project)}
-          >
-            <h4 className="text-lg sm:text-xl font-bold text-white mb-2">
-              {project.title}
-            </h4>
-            <p className="text-sm sm:text-base text-white/80 line-clamp-2">
-              {project.short}
-            </p>
-          </div>
-        ))}
+        <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300">
+          <h4 className="text-lg sm:text-xl font-bold text-white mb-2">
+            {currentProject?.title}
+          </h4>
+          <p className="text-sm sm:text-base text-white/80">
+            {currentProject?.short}
+          </p>
+        </div>
       </div>
     </div>
   );
