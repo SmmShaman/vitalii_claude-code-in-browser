@@ -140,6 +140,8 @@ export const BentoGrid = () => {
                 {/* Background - conditional based on section */}
                 {section.id === 'about' ? (
                   <div className="absolute inset-0 bg-white" />
+                ) : section.id === 'services' ? (
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" />
                 ) : (
                   <div
                     className="absolute inset-0 bg-cover bg-center transition-all duration-500"
