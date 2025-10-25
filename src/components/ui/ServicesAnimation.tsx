@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import gsap from 'gsap';
 
 interface Service {
   title: string;
@@ -21,81 +22,117 @@ const SERVICE_COLORS = [
 ];
 
 export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
-  const [positions, setPositions] = useState<number[]>(
-    services.map((_, index) => (index % 2 === 0 ? 0 : 100))
-  );
-  const [isHovered, setIsHovered] = useState(false);
-  const animationFrameRef = useRef<number | undefined>(undefined);
-
-  const MOVEMENT_SPEED = 0.02; // Speed of movement (% per ms)
+  const serviceRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const animationsRef = useRef<gsap.core.Tween[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isHovered) {
-      // Stop animation when hovered
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = undefined;
-      }
-      return;
-    }
+    // Clear previous animations
+    animationsRef.current.forEach(anim => anim.kill());
+    animationsRef.current = [];
 
-    let lastTimestamp = 0;
+    // Create continuous movement animations for each service
+    serviceRefs.current.forEach((element, index) => {
+      if (!element) return;
 
-    const animate = (timestamp: number) => {
-      if (lastTimestamp === 0) {
-        lastTimestamp = timestamp;
-      }
+      const isLeftToRight = index % 2 === 0;
+      const verticalSpacing = 100 / (services.length + 1);
+      const top = verticalSpacing * (index + 1);
 
-      const deltaTime = timestamp - lastTimestamp;
-      lastTimestamp = timestamp;
-
-      setPositions((prevPositions) => {
-        return prevPositions.map((pos, index) => {
-          const isLeftToRight = index % 2 === 0;
-          const movement = MOVEMENT_SPEED * deltaTime;
-
-          let newPos = pos;
-
-          if (isLeftToRight) {
-            // Move from left to right
-            newPos = pos + movement;
-            if (newPos > 100) {
-              newPos = 0; // Loop back to start
-            }
-          } else {
-            // Move from right to left
-            newPos = pos - movement;
-            if (newPos < 0) {
-              newPos = 100; // Loop back to start
-            }
-          }
-
-          return newPos;
-        });
+      // Set initial position
+      gsap.set(element, {
+        top: `${top}%`,
+        left: isLeftToRight ? '0%' : '100%',
+        xPercent: -50,
+        yPercent: -50,
       });
 
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
+      // Create continuous horizontal movement
+      const duration = 20; // 20 seconds to cross the screen
 
-    animationFrameRef.current = requestAnimationFrame(animate);
+      if (isLeftToRight) {
+        // Move from left (0%) to right (100%)
+        const tween = gsap.to(element, {
+          left: '100%',
+          duration: duration,
+          ease: 'none',
+          repeat: -1,
+          modifiers: {
+            left: (value) => {
+              // Loop back to 0% when reaching 100%
+              const numValue = parseFloat(value);
+              return `${numValue % 100}%`;
+            }
+          }
+        });
+        animationsRef.current.push(tween);
+      } else {
+        // Move from right (100%) to left (0%)
+        const tween = gsap.to(element, {
+          left: '0%',
+          duration: duration,
+          ease: 'none',
+          repeat: -1,
+          modifiers: {
+            left: (value) => {
+              // Loop back to 100% when reaching 0%
+              const numValue = parseFloat(value);
+              return numValue <= 0 ? '100%' : `${numValue}%`;
+            }
+          }
+        });
+        animationsRef.current.push(tween);
+      }
+    });
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      animationsRef.current.forEach(anim => anim.kill());
     };
-  }, [isHovered]);
+  }, [services.length]);
 
   const handleMouseEnter = () => {
-    setIsHovered(true);
+    // Pause all animations and distribute services evenly
+    animationsRef.current.forEach(anim => anim.pause());
+
+    serviceRefs.current.forEach((element, index) => {
+      if (!element) return;
+
+      const horizontalSpacing = 100 / (services.length + 1);
+      const verticalSpacing = 100 / (services.length + 1);
+
+      gsap.to(element, {
+        left: `${horizontalSpacing * (index + 1)}%`,
+        top: `${verticalSpacing * (index + 1)}%`,
+        duration: 0.6,
+        ease: 'power2.out',
+      });
+    });
   };
 
   const handleMouseLeave = () => {
-    setIsHovered(false);
+    // Resume animations
+    serviceRefs.current.forEach((element, index) => {
+      if (!element) return;
+
+      const verticalSpacing = 100 / (services.length + 1);
+      const top = verticalSpacing * (index + 1);
+
+      // Animate back to proper vertical position
+      gsap.to(element, {
+        top: `${top}%`,
+        duration: 0.6,
+        ease: 'power2.out',
+        onComplete: () => {
+          // Resume continuous movement after settling
+          animationsRef.current[index]?.resume();
+        }
+      });
+    });
   };
 
   return (
     <div
+      ref={containerRef}
       className="h-full w-full overflow-hidden relative"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -111,29 +148,16 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       <div className="relative h-full w-full z-10" style={{ padding: '5px' }}>
         <div className="relative w-full h-full">
           {services.map((service, index) => {
-            // Calculate vertical position to avoid overlapping
-            const verticalSpacing = 100 / (services.length + 1);
-            const top = verticalSpacing * (index + 1);
-
-            // Get horizontal position
-            let left = positions[index];
-
-            // When hovered, distribute evenly horizontally and vertically
-            if (isHovered) {
-              const horizontalSpacing = 100 / (services.length + 1);
-              left = horizontalSpacing * (index + 1);
-            }
-
             const backgroundColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
 
             return (
               <div
                 key={index}
-                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-3 transition-all duration-300 ease-in-out`}
+                ref={(el) => {
+                  serviceRefs.current[index] = el;
+                }}
+                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-3`}
                 style={{
-                  top: `${top}%`,
-                  left: `${left}%`,
-                  transform: 'translate(-50%, -50%)',
                   maxWidth: '280px',
                   minWidth: '200px',
                   zIndex: 10 + index,

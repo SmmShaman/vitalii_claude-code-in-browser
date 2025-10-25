@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 
 interface Project {
   title: string;
@@ -15,11 +16,9 @@ interface ProjectsCarouselProps {
 
 export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onIndexChange }: ProjectsCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [progress, setProgress] = useState(0); // 0 to 100
   const [isPaused, setIsPaused] = useState(false);
-  const animationFrameRef = useRef<number | undefined>(undefined);
-
-  const ANIMATION_DURATION = 5000; // 5 seconds total
+  const projectRef = useRef<HTMLDivElement>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
   // Notify parent when index changes
   useEffect(() => {
@@ -28,46 +27,88 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
     }
   }, [currentIndex, onIndexChange]);
 
+  // Create GSAP Timeline for project animation
   useEffect(() => {
-    if (isPaused || projects.length === 0) return;
+    if (!projectRef.current || projects.length === 0) return;
 
-    let lastTimestamp = 0;
-    let accumulatedTime = (progress / 100) * ANIMATION_DURATION;
+    // Kill previous timeline
+    if (timelineRef.current) {
+      timelineRef.current.kill();
+    }
 
-    const animate = (timestamp: number) => {
-      if (lastTimestamp === 0) {
-        lastTimestamp = timestamp;
-      }
+    const element = projectRef.current;
 
-      const deltaTime = timestamp - lastTimestamp;
-      lastTimestamp = timestamp;
-      accumulatedTime += deltaTime;
-
-      const newProgress = (accumulatedTime / ANIMATION_DURATION) * 100;
-
-      if (newProgress >= 100) {
-        // Move to next project
+    // Create timeline
+    const tl = gsap.timeline({
+      repeat: 0, // Don't repeat, we'll manually restart
+      onComplete: () => {
+        // Move to next project after completion
         setCurrentIndex((prev) => (prev + 1) % projects.length);
-        setProgress(0);
-        accumulatedTime = 0;
-        lastTimestamp = 0;
-      } else {
-        setProgress(newProgress);
       }
+    });
 
-      if (!isPaused) {
-        animationFrameRef.current = requestAnimationFrame(animate);
-      }
-    };
+    // Phase 1: Fade in from bottom (0-10% of time = 0.5s)
+    tl.fromTo(element,
+      {
+        yPercent: 100,
+        opacity: 0,
+      },
+      {
+        opacity: 1,
+        duration: 0.5,
+        ease: 'power2.out',
+      },
+      0 // Start at 0s
+    );
 
-    animationFrameRef.current = requestAnimationFrame(animate);
+    // Phase 2: Move from bottom to top (10-85% of time = 3.75s)
+    tl.to(element,
+      {
+        yPercent: -100,
+        duration: 3.75,
+        ease: 'none', // Linear movement
+      },
+      0.5 // Start at 0.5s (after fade in)
+    );
+
+    // Phase 3: Fade out at top (85-95% of time = 0.5s)
+    tl.to(element,
+      {
+        opacity: 0,
+        duration: 0.5,
+        ease: 'power2.in',
+      },
+      4.25 // Start at 4.25s
+    );
+
+    // Phase 4: Pause (95-100% of time = 0.25s)
+    tl.to(element,
+      {
+        // Just wait, no changes
+        duration: 0.25,
+      },
+      4.75 // Start at 4.75s
+    );
+
+    timelineRef.current = tl;
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (timelineRef.current) {
+        timelineRef.current.kill();
       }
     };
-  }, [isPaused, projects.length, currentIndex, progress]);
+  }, [currentIndex, projects.length]);
+
+  // Handle pause/resume on hover
+  useEffect(() => {
+    if (!timelineRef.current) return;
+
+    if (isPaused) {
+      timelineRef.current.pause();
+    } else {
+      timelineRef.current.resume();
+    }
+  }, [isPaused]);
 
   const handleMouseEnter = () => {
     setIsPaused(true);
@@ -84,34 +125,6 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
   };
 
   const currentProject = projects[currentIndex];
-
-  // Calculate position and opacity with smooth fade-in and fade-out
-  // Progress 0-10%: Fade in from bottom
-  // Progress 10-85%: Move from bottom to top (fully visible)
-  // Progress 85-95%: Fade out at top
-  // Progress 95-100%: Pause (invisible)
-
-  let translateY = 100;
-  let opacity = 0;
-
-  if (progress <= 10) {
-    // Fade in phase (0-10%)
-    translateY = 100; // Start at bottom
-    opacity = progress / 10; // 0 → 1
-  } else if (progress <= 85) {
-    // Move phase (10-85%)
-    const moveProgress = (progress - 10) / 75; // 0 to 1
-    translateY = 100 - (moveProgress * 200); // 100% to -100%
-    opacity = 1; // Fully visible
-  } else if (progress <= 95) {
-    // Fade out phase (85-95%)
-    translateY = -100; // At top
-    opacity = 1 - ((progress - 85) / 10); // 1 → 0
-  } else {
-    // Pause phase (95-100%)
-    translateY = -100; // Stay at top
-    opacity = 0; // Invisible
-  }
 
   return (
     <div
@@ -130,12 +143,10 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
 
       {/* Current Project - ONLY ONE VISIBLE */}
       <div
+        ref={projectRef}
         className="absolute w-full px-4 pointer-events-none z-10"
         style={{
           top: '50%',
-          transform: `translateY(${translateY}%)`,
-          opacity: opacity,
-          transition: isPaused ? 'none' : 'none',
         }}
       >
         <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg pointer-events-auto">
