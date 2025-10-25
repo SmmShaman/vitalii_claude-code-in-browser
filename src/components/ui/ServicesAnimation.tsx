@@ -10,19 +10,36 @@ interface ServicesAnimationProps {
   backgroundText: string;
 }
 
+// Different background colors for each service
+const SERVICE_COLORS = [
+  'bg-blue-500/20',
+  'bg-purple-500/20',
+  'bg-green-500/20',
+  'bg-orange-500/20',
+  'bg-pink-500/20',
+  'bg-teal-500/20',
+];
+
 export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
-  const [visibleServices, setVisibleServices] = useState<number[]>([]);
+  const [positions, setPositions] = useState<number[]>(
+    services.map((_, index) => (index % 2 === 0 ? 0 : 100))
+  );
   const [isHovered, setIsHovered] = useState(false);
   const animationFrameRef = useRef<number | undefined>(undefined);
-  const lastAddTimeRef = useRef<number>(0);
 
-  const SERVICE_DISPLAY_INTERVAL = 800; // 0.8 seconds between each service appearing
+  const MOVEMENT_SPEED = 0.02; // Speed of movement (% per ms)
 
   useEffect(() => {
-    if (visibleServices.length >= services.length) return;
+    if (isHovered) {
+      // Stop animation when hovered
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
+      }
+      return;
+    }
 
     let lastTimestamp = 0;
-    let accumulatedTime = 0;
 
     const animate = (timestamp: number) => {
       if (lastTimestamp === 0) {
@@ -31,22 +48,33 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
 
       const deltaTime = timestamp - lastTimestamp;
       lastTimestamp = timestamp;
-      accumulatedTime += deltaTime;
 
-      if (accumulatedTime >= SERVICE_DISPLAY_INTERVAL) {
-        setVisibleServices((prev) => {
-          if (prev.length < services.length) {
-            return [...prev, prev.length];
+      setPositions((prevPositions) => {
+        return prevPositions.map((pos, index) => {
+          const isLeftToRight = index % 2 === 0;
+          const movement = MOVEMENT_SPEED * deltaTime;
+
+          let newPos = pos;
+
+          if (isLeftToRight) {
+            // Move from left to right
+            newPos = pos + movement;
+            if (newPos > 100) {
+              newPos = 0; // Loop back to start
+            }
+          } else {
+            // Move from right to left
+            newPos = pos - movement;
+            if (newPos < 0) {
+              newPos = 100; // Loop back to start
+            }
           }
-          return prev;
-        });
-        accumulatedTime = 0;
-        lastAddTimeRef.current = timestamp;
-      }
 
-      if (visibleServices.length < services.length) {
-        animationFrameRef.current = requestAnimationFrame(animate);
-      }
+          return newPos;
+        });
+      });
+
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
 
     animationFrameRef.current = requestAnimationFrame(animate);
@@ -56,7 +84,7 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [visibleServices.length, services.length]);
+  }, [isHovered]);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
@@ -80,57 +108,35 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       </div>
 
       {/* Services */}
-      <div className="relative h-full w-full flex items-center justify-center p-4 z-10">
-        <div className="relative w-full h-full flex items-center justify-center">
+      <div className="relative h-full w-full z-10" style={{ padding: '5px' }}>
+        <div className="relative w-full h-full">
           {services.map((service, index) => {
-            const isVisible = visibleServices.includes(index);
-            const isFromLeft = index % 2 === 0;
+            // Calculate vertical position to avoid overlapping
+            const verticalSpacing = 100 / (services.length + 1);
+            const top = verticalSpacing * (index + 1);
 
-            // Calculate position when not hovered
-            const normalTop = 10 + (index * 14); // Distribute vertically
-            const normalLeft = isFromLeft ? -100 : 100; // Start from sides
+            // Get horizontal position
+            let left = positions[index];
 
-            // Calculate position when hovered (gathered in center)
-            const gatheredTop = 50 - (services.length * 5) + (index * 10); // Stack vertically in center
-            const gatheredLeft = 50; // Center horizontally
-
-            // Animation states
-            let opacity = 0;
-            let top = normalTop;
-            let left = normalLeft;
-            let translateX = 0;
-
-            if (!isVisible) {
-              // Not yet visible
-              opacity = 0;
-              top = normalTop;
-              left = normalLeft;
-              translateX = 0;
-            } else if (isHovered) {
-              // Hovered: gather in center
-              opacity = 1;
-              top = gatheredTop;
-              left = gatheredLeft;
-              translateX = -50; // Center the element
-            } else {
-              // Visible and not hovered: slide in from side
-              opacity = 1;
-              top = normalTop;
-              left = isFromLeft ? 5 : 95; // Stop near the edges
-              translateX = isFromLeft ? 0 : -100; // Align properly
+            // When hovered, distribute evenly horizontally and vertically
+            if (isHovered) {
+              const horizontalSpacing = 100 / (services.length + 1);
+              left = horizontalSpacing * (index + 1);
             }
+
+            const backgroundColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
 
             return (
               <div
                 key={index}
-                className="absolute bg-white/10 backdrop-blur-sm rounded-lg p-3 transition-all duration-700 ease-in-out"
+                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-3 transition-all duration-300 ease-in-out`}
                 style={{
                   top: `${top}%`,
                   left: `${left}%`,
-                  transform: `translateX(${translateX}%)`,
-                  opacity: opacity,
+                  transform: 'translate(-50%, -50%)',
                   maxWidth: '280px',
                   minWidth: '200px',
+                  zIndex: 10 + index,
                 }}
               >
                 <h4 className="text-sm sm:text-base font-bold text-white mb-1">
