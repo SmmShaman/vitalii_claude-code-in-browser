@@ -8,9 +8,9 @@ export const Header = () => {
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 px-4 py-3">
-      <div className="max-w-7xl mx-auto bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-md shadow-lg border-b border-white/10">
-        <div className="flex items-center justify-between px-6 py-4 gap-4">
+    <header className="w-full py-6 px-4 mb-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between gap-4">
           {/* Title Section */}
           <div className="flex-1">
             {isLoading ? (
