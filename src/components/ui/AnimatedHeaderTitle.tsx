@@ -50,11 +50,11 @@ export const AnimatedHeaderTitle = ({ text, namePattern }: AnimatedHeaderTitlePr
 
     console.log('AnimatedHeaderTitle: Split created:', splitRef.current);
 
-    // Add lines animation effect - exactly as in documentation
+    // Add lines animation effect - reduced amplitude
     splitRef.current.addEffect(({ lines }: any) => {
       console.log('AnimatedHeaderTitle: addEffect called with lines:', lines);
       return animate(lines, {
-        y: ['50%', '-50%'],
+        y: ['25%', '-25%'],
         loop: true,
         alternate: true,
         delay: stagger(400),
