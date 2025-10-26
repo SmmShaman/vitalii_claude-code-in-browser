@@ -124,8 +124,6 @@ export const BentoGrid = () => {
             className="grid gap-3 sm:gap-4 w-full"
             style={{
               gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
-              justifyItems: 'center',
-              maxWidth: '100%',
             }}
           >
             {sections.map((section, index) => (
@@ -140,7 +138,6 @@ export const BentoGrid = () => {
                 onClick={section.id === 'projects' || section.id === 'services' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
                 style={{
-                  maxWidth: '380px',
                   height: 'clamp(200px, 25vh, 280px)',
                 }}
               >

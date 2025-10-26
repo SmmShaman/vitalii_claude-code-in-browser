@@ -22,7 +22,8 @@ export const useScreenSize = (): ScreenSize => {
       isMedium: width >= 768 && width < 1024,
       isLarge: width >= 1024 && width < 1536,
       isXLarge: width >= 1536,
-      columnsCount: width < 768 ? 1 : width < 1024 ? 2 : width < 1536 ? 3 : width < 2048 ? 4 : 5,
+      // Mobile: 1 column, Tablet: 2 columns, Desktop: always 3 columns (3x2 layout)
+      columnsCount: width < 768 ? 1 : width < 1024 ? 2 : 3,
     };
   });
 
@@ -38,7 +39,8 @@ export const useScreenSize = (): ScreenSize => {
         isMedium: width >= 768 && width < 1024,
         isLarge: width >= 1024 && width < 1536,
         isXLarge: width >= 1536,
-        columnsCount: width < 768 ? 1 : width < 1024 ? 2 : width < 1536 ? 3 : width < 2048 ? 4 : 5,
+        // Mobile: 1 column, Tablet: 2 columns, Desktop: always 3 columns (3x2 layout)
+        columnsCount: width < 768 ? 1 : width < 1024 ? 2 : 3,
       });
     };
 
