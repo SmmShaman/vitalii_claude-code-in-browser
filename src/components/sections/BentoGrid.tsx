@@ -132,8 +132,8 @@ export const BentoGrid = () => {
             cardElement.style.removeProperty('width');
             cardElement.style.removeProperty('z-index');
 
-            // Reset height to ensure proper size
-            cardElement.style.height = 'clamp(200px, 25vh, 280px)';
+            // Reset height to ensure proper size based on screen size
+            cardElement.style.height = screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)';
           }
         });
       }, 50);
@@ -146,10 +146,10 @@ export const BentoGrid = () => {
 
   return (
     <>
-      <div className="h-full w-full overflow-y-auto overflow-x-hidden flex items-center justify-center px-2 sm:px-4 lg:px-6">
-        <div className="w-full flex items-center justify-center py-2">
+      <div className="h-full w-full overflow-y-auto overflow-x-hidden flex items-start justify-center px-2 sm:px-4 lg:px-6">
+        <div className="w-full flex items-start justify-center py-2 sm:py-3 md:py-4">
           <div
-            className="grid gap-3 sm:gap-4 w-full"
+            className="grid gap-2 sm:gap-3 md:gap-4 w-full"
             style={{
               gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
             }}
@@ -166,7 +166,7 @@ export const BentoGrid = () => {
                 onClick={section.id === 'projects' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
                 style={{
-                  height: 'clamp(200px, 25vh, 280px)',
+                  height: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
                 }}
               >
                 {/* Background - conditional based on section */}
@@ -186,7 +186,7 @@ export const BentoGrid = () => {
                 )}
 
                 {/* Content */}
-                <div className={`relative h-full max-h-full flex items-start justify-center ${section.id === 'about' ? 'p-2 sm:p-4 md:p-5' : 'p-4 sm:p-5 md:p-6'} overflow-hidden`}>
+                <div className={`relative h-full max-h-full flex items-start justify-center ${section.id === 'about' ? 'p-1.5 sm:p-3 md:p-4' : 'p-3 sm:p-4 md:p-5'} overflow-hidden`}>
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full flex flex-col">
                       <TypewriterText

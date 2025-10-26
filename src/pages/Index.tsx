@@ -10,7 +10,7 @@ export const Index = () => {
       <ParticlesBackground />
 
       {/* Compact Header - 12vh */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(80px, 12vh, 140px)' }}>
+      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(70px, 10vh, 120px)' }}>
         <Header />
       </div>
 
@@ -20,7 +20,7 @@ export const Index = () => {
       </main>
 
       {/* Compact Footer - 8vh */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(60px, 8vh, 100px)' }}>
+      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 7vh, 90px)' }}>
         <Footer />
       </div>
     </div>
