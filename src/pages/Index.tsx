@@ -19,8 +19,8 @@ export const Index = () => {
         <BentoGrid />
       </main>
 
-      {/* Compact Footer - 8vh */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 7vh, 90px)' }}>
+      {/* Interactive Footer - Auto height */}
+      <div className="flex-shrink-0 relative z-20" style={{ minHeight: 'clamp(60px, 8vh, 100px)', maxHeight: '40vh' }}>
         <Footer />
       </div>
     </div>
