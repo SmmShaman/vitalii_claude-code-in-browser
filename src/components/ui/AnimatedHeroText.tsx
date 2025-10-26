@@ -3,77 +3,71 @@ import { animate, stagger, splitText, utils } from 'animejs';
 
 interface AnimatedHeroTextProps {
   text: string;
+  namePattern: RegExp;
   className?: string;
 }
 
-export const AnimatedHeroText = ({ text, className = '' }: AnimatedHeroTextProps) => {
+export const AnimatedHeroText = ({ text, namePattern, className = '' }: AnimatedHeroTextProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const nameContainerRef = useRef<HTMLSpanElement>(null);
   const splitRef = useRef<any>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    // Find and wrap the name
+    const match = text.match(namePattern);
+    if (!match) {
+      containerRef.current.textContent = text;
+      return;
+    }
+
+    const name = match[0];
+    const beforeName = text.substring(0, match.index);
+    const afterName = text.substring((match.index || 0) + name.length);
+
+    // Create HTML structure with name in a span
+    containerRef.current.innerHTML = `${beforeName}<span class="animated-name" style="display: inline-block; font-weight: 800;">${name}</span>${afterName}`;
+
+    const nameSpan = containerRef.current.querySelector('.animated-name') as HTMLElement;
+    if (!nameSpan) return;
+
+    nameContainerRef.current = nameSpan as HTMLSpanElement;
 
     // Clean up previous split
     if (splitRef.current) {
       splitRef.current.revert();
     }
 
-    // Create split with lines and words
-    splitRef.current = splitText(containerRef.current, {
+    // Create split with lines and words on the name only
+    splitRef.current = splitText(nameSpan, {
       lines: true,
       words: true,
     });
 
-    // Add animation effect that updates on split changes
-    splitRef.current.addEffect(({ lines, words }: any) => {
-      // Animate lines sliding up with stagger
-      const linesAnimation = animate(lines, {
-        y: ['100%', '0%'],
-        opacity: { from: 0 },
-        duration: 800,
-        delay: stagger(100),
-        ease: 'out(expo)',
-      });
+    const colors: string[] = [];
 
-      // Animate words with color change and slight scale
-      const wordsAnimation = animate(words, {
-        opacity: { from: 0 },
-        scale: { from: 0.8, to: 1 },
-        duration: 600,
-        delay: stagger(30, { from: 'center' }),
-        ease: 'out(elastic)',
+    // Add lines animation effect
+    splitRef.current.addEffect(({ lines }: any) => {
+      return animate(lines, {
+        y: ['50%', '-50%'],
+        loop: true,
+        alternate: true,
+        delay: stagger(400),
+        ease: 'inOutQuad',
       });
-
-      return () => {
-        // Cleanup function called before each split recalculation
-        linesAnimation.pause();
-        wordsAnimation.pause();
-      };
     });
 
-    // Add interactive hover effect
+    // Add interactive hover effect on words
     splitRef.current.addEffect((split: any) => {
-      const colors: string[] = [];
-
       split.words.forEach(($el: HTMLElement, i: number) => {
         const color = colors[i];
         if (color) utils.set($el, { color });
 
         $el.addEventListener('pointerenter', () => {
           animate($el, {
-            color: utils.randomPick(['#FF4B4B', '#FFCC2A', '#B7FF54', '#57F695', '#667EEA', '#FF6B9D']),
-            scale: 1.15,
+            color: utils.randomPick(['#FF4B4B', '#FFCC2A', '#B7FF54', '#57F695']),
             duration: 250,
-            ease: 'out(back)',
-          });
-        });
-
-        $el.addEventListener('pointerleave', () => {
-          animate($el, {
-            color: '#1f2937',
-            scale: 1,
-            duration: 200,
-            ease: 'inOut(quad)',
           });
         });
       });
@@ -91,23 +85,7 @@ export const AnimatedHeroText = ({ text, className = '' }: AnimatedHeroTextProps
         splitRef.current.revert();
       }
     };
-  }, [text]);
-
-  // Format text to preserve markdown-like formatting
-  const formatText = (rawText: string) => {
-    return rawText.split('\n').map((line, index) => {
-      // Handle bold text **text**
-      const parts = line.split(/(\*\*.*?\*\*)/g);
-      const formattedLine = parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return `<strong key="${i}" class="font-bold">${part.slice(2, -2)}</strong>`;
-        }
-        return part;
-      });
-
-      return formattedLine.join('') + (index < rawText.split('\n').length - 1 ? '<br/>' : '');
-    }).join('');
-  };
+  }, [text, namePattern]);
 
   return (
     <div className="w-full h-full overflow-y-auto overflow-x-hidden">
@@ -119,8 +97,9 @@ export const AnimatedHeroText = ({ text, className = '' }: AnimatedHeroTextProps
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(0, 0, 0, 0.3) transparent',
         }}
-        dangerouslySetInnerHTML={{ __html: formatText(text) }}
-      />
+      >
+        {text}
+      </div>
     </div>
   );
 };
