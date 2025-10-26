@@ -109,16 +109,24 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       {/* Services in column */}
       <div
         ref={containerRef}
-        className="relative h-full w-full flex flex-col items-center justify-center gap-3 z-10 px-4"
+        className="relative h-full w-full flex flex-col items-center justify-center gap-1 z-10 px-4"
       >
         {services.map((service, index) => {
           return (
             <div
               key={index}
-              className="row relative px-4 py-3 w-full max-w-md"
+              className="row relative px-3 py-1.5 w-full max-w-md"
             >
-              {/* Squares overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
+              {/* Service title */}
+              <h4
+                className="font-bold text-white text-center relative"
+                style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
+              >
+                {service.title}
+              </h4>
+
+              {/* Squares overlay - on top of text */}
+              <div className="absolute inset-0 flex items-center justify-center z-20">
                 <div className="flex gap-1">
                   {Array.from({ length: SQUARES_COUNT }).map((_, squareIndex) => (
                     <div
@@ -133,14 +141,6 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                   ))}
                 </div>
               </div>
-
-              {/* Service title */}
-              <h4
-                className="font-bold text-white text-center relative z-10"
-                style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
-              >
-                {service.title}
-              </h4>
             </div>
           );
         })}
