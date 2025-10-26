@@ -8,14 +8,13 @@ interface AnimatedHeroTextProps {
 }
 
 export const AnimatedHeroText = ({ text, namePattern, className = '' }: AnimatedHeroTextProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const nameContainerRef = useRef<HTMLSpanElement>(null);
+  const containerRef = useRef<HTMLParagraphElement>(null);
   const splitRef = useRef<any>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Find and wrap the name
+    // Find the name in text
     const match = text.match(namePattern);
     if (!match) {
       containerRef.current.textContent = text;
@@ -26,29 +25,35 @@ export const AnimatedHeroText = ({ text, namePattern, className = '' }: Animated
     const beforeName = text.substring(0, match.index);
     const afterName = text.substring((match.index || 0) + name.length);
 
-    // Create HTML structure with name in a span
-    containerRef.current.innerHTML = `${beforeName}<span class="animated-name" style="display: inline-block; font-weight: 800;">${name}</span>${afterName}`;
+    // Set text with name wrapped in paragraph
+    containerRef.current.innerHTML = `${beforeName}<p class="name-paragraph" style="display: inline; font-weight: 800; color: #1f2937;">${name}</p>${afterName}`;
 
-    const nameSpan = containerRef.current.querySelector('.animated-name') as HTMLElement;
-    if (!nameSpan) return;
+    // Get the paragraph with the name
+    const nameParagraph = containerRef.current.querySelector('.name-paragraph');
+    if (!nameParagraph) {
+      console.error('Name paragraph not found');
+      return;
+    }
 
-    nameContainerRef.current = nameSpan as HTMLSpanElement;
+    console.log('Name paragraph found:', nameParagraph);
 
     // Clean up previous split
     if (splitRef.current) {
       splitRef.current.revert();
     }
 
-    // Create split with lines and words on the name only
-    splitRef.current = splitText(nameSpan, {
-      lines: true,
-      words: true,
-    });
-
     const colors: string[] = [];
 
-    // Add lines animation effect
+    // Split text on the name paragraph
+    splitRef.current = splitText(nameParagraph, {
+      lines: true,
+    });
+
+    console.log('Split created:', splitRef.current);
+
+    // Add lines animation effect - exactly as in documentation
     splitRef.current.addEffect(({ lines }: any) => {
+      console.log('addEffect called with lines:', lines);
       return animate(lines, {
         y: ['50%', '-50%'],
         loop: true,
@@ -58,8 +63,9 @@ export const AnimatedHeroText = ({ text, namePattern, className = '' }: Animated
       });
     });
 
-    // Add interactive hover effect on words
+    // Add hover effect on words
     splitRef.current.addEffect((split: any) => {
+      console.log('addEffect called with split:', split);
       split.words.forEach(($el: HTMLElement, i: number) => {
         const color = colors[i];
         if (color) utils.set($el, { color });
@@ -89,7 +95,7 @@ export const AnimatedHeroText = ({ text, namePattern, className = '' }: Animated
 
   return (
     <div className="w-full h-full overflow-y-auto overflow-x-hidden">
-      <div
+      <p
         ref={containerRef}
         className={`text-gray-800 leading-relaxed whitespace-pre-wrap break-words ${className}`}
         style={{
