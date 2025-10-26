@@ -27,13 +27,13 @@ export const AnimatedDescription = ({ text }: AnimatedDescriptionProps) => {
       return animate(lines, {
         y: [
           { to: ['100%', '0%'] },
-          { to: '-100%', delay: 750, ease: 'in(3)' }
+          { to: '-100%', delay: 2000, ease: 'in(3)' }  // Increased from 750 to 2000ms
         ],
         duration: 750,
         ease: 'out(3)',
         delay: stagger(200),
         loop: true,
-        loopDelay: 500,
+        loopDelay: 1500,  // Increased from 500 to 1500ms
       });
     });
 
