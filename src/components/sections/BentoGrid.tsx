@@ -9,6 +9,8 @@ import { ServicesAnimation } from '../ui/ServicesAnimation';
 import { SkillsAnimation } from '../ui/SkillsAnimation';
 import { AnimatedHeaderTitle } from '../ui/AnimatedHeaderTitle';
 import { AnimatedDescription } from '../ui/AnimatedDescription';
+import { NewsSection } from './NewsSection';
+import { BlogSection } from './BlogSection';
 import { translations } from '../../utils/translations';
 import { useScreenSize } from '../../hooks/useScreenSize';
 
@@ -45,16 +47,16 @@ const sections: Section[] = [
     image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3',
   },
   {
-    id: 'testimonials',
-    titleKey: 'testimonials_title',
-    contentKey: 'testimonials_content',
-    image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216',
+    id: 'news',
+    titleKey: 'news_title',
+    contentKey: 'news_description',
+    image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c',
   },
   {
-    id: 'contact',
-    titleKey: 'contact_title',
-    contentKey: 'contact_description',
-    image: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d',
+    id: 'blog',
+    titleKey: 'blog_title',
+    contentKey: 'blog_description',
+    image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643',
   },
 ];
 
@@ -71,8 +73,8 @@ export const BentoGrid = () => {
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
-    // Don't open dialog for projects section (it has its own modal)
-    if (section.id === 'projects') return;
+    // Don't open dialog for sections that have their own modals
+    if (section.id === 'projects' || section.id === 'news' || section.id === 'blog') return;
 
     // Add snake animation class
     cardElement.classList.add('snake-animation');
@@ -182,7 +184,7 @@ export const BentoGrid = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                onClick={section.id === 'projects' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
+                onClick={section.id === 'projects' || section.id === 'news' || section.id === 'blog' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
                 style={{
                   height: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
@@ -193,6 +195,8 @@ export const BentoGrid = () => {
                   <div className="absolute inset-0 bg-white" />
                 ) : section.id === 'services' || section.id === 'skills' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" />
+                ) : section.id === 'news' || section.id === 'blog' ? (
+                  <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
                 ) : (
                   <div
                     className="absolute inset-0 bg-cover bg-center transition-all duration-500"
@@ -235,6 +239,14 @@ export const BentoGrid = () => {
                         skills={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].skills_list}
                         backgroundText={t('skills_title') as string}
                       />
+                    </div>
+                  ) : section.id === 'news' ? (
+                    <div className="w-full h-full overflow-hidden">
+                      <NewsSection />
+                    </div>
+                  ) : section.id === 'blog' ? (
+                    <div className="w-full h-full overflow-hidden">
+                      <BlogSection />
                     </div>
                   ) : (
                     <h3
