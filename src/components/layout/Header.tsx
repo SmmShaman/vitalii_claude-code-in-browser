@@ -1,6 +1,6 @@
 import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '../../contexts/TranslationContext';
-import { AnimatedName } from '../ui/AnimatedName';
+import { AnimatedHeaderTitle } from '../ui/AnimatedHeaderTitle';
 
 export const Header = () => {
   const { t, currentLanguage, setCurrentLanguage, isLoading } = useTranslations();
@@ -20,11 +20,9 @@ export const Header = () => {
               </div>
             ) : (
               <>
-                <AnimatedName
-                  fullText={t('title') as string}
+                <AnimatedHeaderTitle
+                  text={t('title') as string}
                   namePattern={/Vitalii Berbeha|Віталій Бербега/}
-                  className="font-bold text-white/90 mb-0.5 leading-tight"
-                  style={{ fontSize: 'clamp(1.25rem, 2.5vw, 2rem)' }}
                 />
                 <h2
                   className="text-white/70 mb-0.5 leading-tight"

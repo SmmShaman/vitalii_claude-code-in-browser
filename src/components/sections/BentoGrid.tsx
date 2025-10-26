@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
-import { AnimatedHeroText } from '../ui/AnimatedHeroText';
+import { TypewriterText } from '../ui/TypewriterText';
 import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
@@ -161,9 +161,9 @@ export const BentoGrid = () => {
                 <div className="relative h-full max-h-full flex items-start justify-center p-4 sm:p-5 md:p-6 overflow-hidden">
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full overflow-hidden flex flex-col">
-                      <AnimatedHeroText
+                      <TypewriterText
                         text={t(section.contentKey as any)}
-                        namePattern={/Vitalii Berbeha|Віталій Бербега/}
+                        speed={30}
                       />
                     </div>
                   ) : section.id === 'projects' ? (
