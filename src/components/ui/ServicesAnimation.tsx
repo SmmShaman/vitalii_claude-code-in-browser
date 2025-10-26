@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
+import { createTimeline, stagger } from 'animejs';
 
 interface Service {
   title: string;
@@ -11,126 +11,70 @@ interface ServicesAnimationProps {
   backgroundText: string;
 }
 
-// Different background colors for each service
 const SERVICE_COLORS = [
-  'bg-blue-500/20',
-  'bg-purple-500/20',
-  'bg-green-500/20',
-  'bg-orange-500/20',
-  'bg-pink-500/20',
-  'bg-teal-500/20',
+  'bg-purple-500/80',
+  'bg-blue-500/80',
+  'bg-green-500/80',
+  'bg-yellow-500/80',
+  'bg-red-500/80',
+  'bg-pink-500/80',
 ];
 
 export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
-  const serviceRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const animationsRef = useRef<gsap.core.Tween[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const timelineRef = useRef<any>(null);
 
   useEffect(() => {
-    // Clear previous animations
-    animationsRef.current.forEach(anim => anim.kill());
-    animationsRef.current = [];
+    if (!containerRef.current) return;
 
-    // Create continuous movement animations for each service
-    serviceRefs.current.forEach((element, index) => {
-      if (!element) return;
+    // Clean up previous timeline
+    if (timelineRef.current) {
+      timelineRef.current.pause();
+    }
 
-      const isLeftToRight = index % 2 === 0;
-      const verticalSpacing = 100 / (services.length + 1);
-      const top = verticalSpacing * (index + 1);
-
-      // Set initial position
-      gsap.set(element, {
-        top: `${top}%`,
-        left: isLeftToRight ? '0%' : '100%',
-        xPercent: -50,
-        yPercent: -50,
-      });
-
-      // Create continuous horizontal movement
-      const duration = 20; // 20 seconds to cross the screen
-
-      if (isLeftToRight) {
-        // Move from left (0%) to right (100%) - continuous loop
-        const tween = gsap.to(element, {
-          left: '100%',
-          duration: duration,
-          ease: 'none',
-          repeat: -1,
-          repeatDelay: 0,
-          onRepeat: () => {
-            gsap.set(element, { left: '0%' }); // Reset to start
-          }
-        });
-        animationsRef.current.push(tween);
-      } else {
-        // Move from right (100%) to left (0%) - continuous loop
-        const tween = gsap.to(element, {
-          left: '0%',
-          duration: duration,
-          ease: 'none',
-          repeat: -1,
-          repeatDelay: 0,
-          onRepeat: () => {
-            gsap.set(element, { left: '100%' }); // Reset to start
-          }
-        });
-        animationsRef.current.push(tween);
-      }
+    // Create timeline animation
+    timelineRef.current = createTimeline({
+      loop: true,
+      defaults: { duration: 600 },
+      delay: 800,
+      loopDelay: 1000
+    })
+    // Animate each row appearing from left
+    .add('.service-row', {
+      opacity: { from: 0, to: 1 },
+      translateX: { from: -100, to: 0 },
+      delay: stagger(100, { from: 'first' }),
+    })
+    // Pause visible
+    .add({}, '+=800')
+    // Scale pulse from center
+    .add('.service-row', {
+      scale: { from: 1, to: 1.08 },
+      delay: stagger(80, { from: 'center' }),
+    })
+    // Return to normal
+    .add('.service-row', {
+      scale: 1,
+      delay: stagger(80, { from: 'center' }),
+    })
+    // Pause
+    .add({}, '+=600')
+    // Disappear animation to right
+    .add('.service-row', {
+      opacity: 0,
+      translateX: 100,
+      delay: stagger(100, { from: 'last' }),
     });
 
     return () => {
-      animationsRef.current.forEach(anim => anim.kill());
+      if (timelineRef.current) {
+        timelineRef.current.pause();
+      }
     };
-  }, [services.length]);
-
-  const handleMouseEnter = () => {
-    // Pause all animations and distribute services evenly
-    animationsRef.current.forEach(anim => anim.pause());
-
-    serviceRefs.current.forEach((element, index) => {
-      if (!element) return;
-
-      const horizontalSpacing = 100 / (services.length + 1);
-      const verticalSpacing = 100 / (services.length + 1);
-
-      gsap.to(element, {
-        left: `${horizontalSpacing * (index + 1)}%`,
-        top: `${verticalSpacing * (index + 1)}%`,
-        duration: 0.6,
-        ease: 'power2.out',
-      });
-    });
-  };
-
-  const handleMouseLeave = () => {
-    // Resume animations
-    serviceRefs.current.forEach((element, index) => {
-      if (!element) return;
-
-      const verticalSpacing = 100 / (services.length + 1);
-      const top = verticalSpacing * (index + 1);
-
-      // Animate back to proper vertical position
-      gsap.to(element, {
-        top: `${top}%`,
-        duration: 0.6,
-        ease: 'power2.out',
-        onComplete: () => {
-          // Resume continuous movement after settling
-          animationsRef.current[index]?.resume();
-        }
-      });
-    });
-  };
+  }, [services]);
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full overflow-hidden relative"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="h-full w-full overflow-hidden relative">
       {/* Background text */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
         <h2
@@ -141,35 +85,28 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
         </h2>
       </div>
 
-      {/* Services */}
-      <div className="relative h-full w-full z-10" style={{ padding: '5px' }}>
-        <div className="relative w-full h-full">
-          {services.map((service, index) => {
-            const backgroundColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
+      {/* Services in column */}
+      <div
+        ref={containerRef}
+        className="relative h-full w-full flex flex-col items-center justify-center gap-3 z-10 px-4"
+      >
+        {services.map((service, index) => {
+          const backgroundColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
 
-            return (
-              <div
-                key={index}
-                ref={(el) => {
-                  serviceRefs.current[index] = el;
-                }}
-                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-2 sm:p-3 flex items-center justify-center`}
-                style={{
-                  maxWidth: 'min(280px, 35vw)',
-                  minWidth: 'min(180px, 25vw)',
-                  zIndex: 10 + index,
-                }}
+          return (
+            <div
+              key={index}
+              className={`service-row ${backgroundColor} backdrop-blur-sm rounded-lg px-4 py-3 w-full max-w-md`}
+            >
+              <h4
+                className="font-bold text-white text-center"
+                style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
               >
-                <h4
-                  className="font-bold text-white text-center"
-                  style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
-                >
-                  {service.title}
-                </h4>
-              </div>
-            );
-          })}
-        </div>
+                {service.title}
+              </h4>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
