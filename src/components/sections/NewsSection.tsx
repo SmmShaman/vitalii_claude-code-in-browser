@@ -31,10 +31,11 @@ export const NewsSection = () => {
 
   const getTranslatedContent = (newsItem: LatestNews) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const description = newsItem[`description_${lang}`] || newsItem.description_en || '';
     return {
-      title: newsItem[`title_${lang}`] || newsItem.title_en,
-      content: newsItem[`content_${lang}`] || newsItem.content_en,
-      summary: newsItem[`summary_${lang}`] || newsItem.summary_en,
+      title: newsItem[`title_${lang}`] || newsItem.title_en || '',
+      content: description,
+      summary: description,
     };
   };
 
@@ -140,7 +141,7 @@ export const NewsSection = () => {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          <span>{formatDate(newsItem.published_at)}</span>
+                          <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
                         </div>
                         {newsItem.tags && newsItem.tags.length > 0 && (
                           <div className="flex items-center gap-1">

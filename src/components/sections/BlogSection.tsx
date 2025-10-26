@@ -31,10 +31,11 @@ export const BlogSection = () => {
 
   const getTranslatedContent = (post: LatestBlogPost) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const description = post[`description_${lang}`] || post.description_en || '';
     return {
-      title: post[`title_${lang}`] || post.title_en,
-      content: post[`content_${lang}`] || post.content_en,
-      excerpt: post[`excerpt_${lang}`] || post.excerpt_en,
+      title: post[`title_${lang}`] || post.title_en || '',
+      content: description,
+      excerpt: description,
       category: post.category || '',
     };
   };
@@ -121,10 +122,10 @@ export const BlogSection = () => {
                 >
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
                     {/* Featured Image */}
-                    {post.featured_image && (
+                    {post.image_url && (
                       <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden">
                         <img
-                          src={post.featured_image}
+                          src={post.image_url}
                           alt={content.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -156,7 +157,7 @@ export const BlogSection = () => {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          <span>{formatDate(post.published_at)}</span>
+                          <span>{post.published_at ? formatDate(post.published_at) : ''}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />

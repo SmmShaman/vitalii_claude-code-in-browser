@@ -68,9 +68,9 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
         page: currentPage,
         limit: itemsPerPage,
       };
-      const { data, total } = await getAllBlogPosts(filters);
+      const { data, count } = await getAllBlogPosts(filters);
       setPosts(data);
-      setTotalPages(Math.ceil(total / itemsPerPage));
+      setTotalPages(Math.ceil(count / itemsPerPage));
     } catch (error) {
       console.error('Failed to load blog posts:', error);
     } finally {
@@ -92,10 +92,12 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
 
   const getTranslatedContent = (post: LatestBlogPost | BlogPost) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const description = post[`description_${lang}` as keyof typeof post] || post.description_en || '';
+    const content = 'content_en' in post ? post[`content_${lang}` as keyof typeof post] || post.content_en : description;
     return {
-      title: post[`title_${lang}`] || post.title_en,
-      content: post[`content_${lang}`] || post.content_en,
-      excerpt: 'excerpt_en' in post ? post[`excerpt_${lang}`] || post.excerpt_en : '',
+      title: post[`title_${lang}` as keyof typeof post] || post.title_en || '',
+      content: content as string,
+      excerpt: description as string,
       category: post.category || '',
     };
   };
@@ -195,11 +197,11 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                 className="max-w-4xl mx-auto"
               >
                 {/* Featured Image */}
-                {selectedPost.featured_image && (
+                {selectedPost.image_url && (
                   <div className="w-full h-96 rounded-xl overflow-hidden mb-6">
                     <img
-                      src={selectedPost.featured_image}
-                      alt={getTranslatedContent(selectedPost).title}
+                      src={selectedPost.image_url as string}
+                      alt={String(getTranslatedContent(selectedPost).title)}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -221,7 +223,7 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6 pb-6 border-b border-border">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    <span>{formatDate(selectedPost.published_at)}</span>
+                    <span>{selectedPost.published_at ? formatDate(selectedPost.published_at) : ""}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
@@ -375,11 +377,11 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                           >
                             <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full flex flex-col">
                               {/* Featured Image */}
-                              {post.featured_image && (
+                              {post.image_url && (
                                 <div className="relative w-full h-48 overflow-hidden">
                                   <img
-                                    src={post.featured_image}
-                                    alt={content.title}
+                                    src={post.image_url as string}
+                                    alt={String(content.title)}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
                                   {content.category && (

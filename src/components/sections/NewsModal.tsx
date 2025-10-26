@@ -64,9 +64,9 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
         page: currentPage,
         limit: itemsPerPage,
       };
-      const { data, total } = await getAllNews(filters);
+      const { data, count } = await getAllNews(filters);
       setNews(data);
-      setTotalPages(Math.ceil(total / itemsPerPage));
+      setTotalPages(Math.ceil(count / itemsPerPage));
     } catch (error) {
       console.error('Failed to load news:', error);
     } finally {
@@ -88,10 +88,12 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
 
   const getTranslatedContent = (newsItem: LatestNews | NewsItem) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const description = newsItem[`description_${lang}` as keyof typeof newsItem] || newsItem.description_en || '';
+    const content = 'content_en' in newsItem ? newsItem[`content_${lang}` as keyof typeof newsItem] || newsItem.content_en : description;
     return {
-      title: newsItem[`title_${lang}`] || newsItem.title_en,
-      content: newsItem[`content_${lang}`] || newsItem.content_en,
-      summary: 'summary_en' in newsItem ? newsItem[`summary_${lang}`] || newsItem.summary_en : '',
+      title: newsItem[`title_${lang}` as keyof typeof newsItem] || newsItem.title_en || '',
+      content: content as string,
+      summary: description as string,
     };
   };
 
@@ -188,8 +190,8 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 {selectedNews.image_url && (
                   <div className="w-full h-96 rounded-xl overflow-hidden mb-6">
                     <img
-                      src={selectedNews.image_url}
-                      alt={getTranslatedContent(selectedNews).title}
+                      src={selectedNews.image_url as string}
+                      alt={String(getTranslatedContent(selectedNews).title)}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -204,7 +206,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    <span>{formatDate(selectedNews.published_at)}</span>
+                    <span>{selectedNews.published_at ? formatDate(selectedNews.published_at) : ''}</span>
                   </div>
                   {selectedNews.tags && selectedNews.tags.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
@@ -227,9 +229,9 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 </div>
 
                 {/* Source Link */}
-                {selectedNews.source_url && (
+                {selectedNews.original_url && (
                   <a
-                    href={selectedNews.source_url}
+                    href={selectedNews.original_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-primary hover:underline"
@@ -370,8 +372,8 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                               {newsItem.image_url && (
                                 <div className="relative w-full h-48 overflow-hidden">
                                   <img
-                                    src={newsItem.image_url}
-                                    alt={content.title}
+                                    src={newsItem.image_url as string}
+                                    alt={String(content.title)}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
                                 </div>
@@ -390,7 +392,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                                   <div className="flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
-                                    <span>{formatDate(newsItem.published_at)}</span>
+                                    <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
                                   </div>
                                   <motion.div
                                     className="text-primary"
