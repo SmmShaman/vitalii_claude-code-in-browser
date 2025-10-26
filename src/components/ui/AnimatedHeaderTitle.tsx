@@ -28,7 +28,7 @@ export const AnimatedHeaderTitle = ({ text, namePattern }: AnimatedHeaderTitlePr
     containerRef.current.innerHTML = `${beforeName}<p class="name-paragraph" style="display: inline; font-weight: 800; color: #fbbf24;">${name}</p>${afterName}`;
 
     // Get the paragraph with the name
-    const nameParagraph = containerRef.current.querySelector('.name-paragraph');
+    const nameParagraph = containerRef.current.querySelector('.name-paragraph') as HTMLElement;
     if (!nameParagraph) {
       console.error('AnimatedHeaderTitle: Name paragraph not found');
       return;
