@@ -146,8 +146,8 @@ export const BentoGrid = () => {
 
   return (
     <>
-      <div className="h-full w-full overflow-y-auto overflow-x-hidden flex items-start justify-center px-2 sm:px-4 lg:px-6">
-        <div className="w-full flex items-start justify-center py-2 sm:py-3 md:py-4">
+      <div className={`h-full w-full overflow-y-auto overflow-x-hidden flex ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center px-2 sm:px-4 lg:px-6`}>
+        <div className={`w-full flex ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center py-2 sm:py-3 md:py-4`}>
           <div
             className="grid gap-2 sm:gap-3 md:gap-4 w-full"
             style={{
