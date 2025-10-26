@@ -10,7 +10,45 @@ interface SkillsAnimationProps {
   backgroundText: string;
 }
 
+// Color mapping for skill categories
+const categoryColors: Record<string, { bg: string; text: string; hover: string }> = {
+  development: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    hover: 'hover:bg-green-200'
+  },
+  ui: {
+    bg: 'bg-purple-100',
+    text: 'text-purple-800',
+    hover: 'hover:bg-purple-200'
+  },
+  ai: {
+    bg: 'bg-orange-100',
+    text: 'text-orange-800',
+    hover: 'hover:bg-orange-200'
+  },
+  automation: {
+    bg: 'bg-blue-100',
+    text: 'text-blue-800',
+    hover: 'hover:bg-blue-200'
+  },
+  marketing: {
+    bg: 'bg-pink-100',
+    text: 'text-pink-800',
+    hover: 'hover:bg-pink-200'
+  },
+  integration: {
+    bg: 'bg-cyan-100',
+    text: 'text-cyan-800',
+    hover: 'hover:bg-cyan-200'
+  },
+};
+
 export const SkillsAnimation = ({ skills, backgroundText }: SkillsAnimationProps) => {
+  const getColorClasses = (category?: string) => {
+    return categoryColors[category || 'development'] || categoryColors.development;
+  };
+
   return (
     <div className="h-full w-full overflow-hidden relative">
       {/* Background text */}
@@ -24,32 +62,34 @@ export const SkillsAnimation = ({ skills, backgroundText }: SkillsAnimationProps
       </div>
 
       {/* Skills tags */}
-      <div className="relative h-full w-full flex flex-wrap items-center justify-center gap-2 sm:gap-3 md:gap-4 z-10 px-4 py-4 overflow-y-auto">
-        {skills.map((skill, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              duration: 0.3,
-              delay: index * 0.05,
-              ease: 'easeOut'
-            }}
-            whileHover={{
-              scale: 1.1,
-              boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
-              transition: { duration: 0.2 }
-            }}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/95 rounded-full shadow-md cursor-pointer"
-          >
-            <span
-              className="font-semibold text-gray-800 whitespace-nowrap"
-              style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
+      <div className="relative h-full w-full flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 z-10 px-2 sm:px-3 py-2 sm:py-3">
+        {skills.map((skill, index) => {
+          const colors = getColorClasses(skill.category);
+          return (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                duration: 0.3,
+                delay: index * 0.03,
+                ease: 'easeOut'
+              }}
+              whileHover={{
+                scale: 1.08,
+                transition: { duration: 0.2 }
+              }}
+              className={`px-2 sm:px-2.5 py-1 sm:py-1.5 ${colors.bg} ${colors.hover} rounded-full shadow-sm cursor-pointer transition-colors`}
             >
-              {skill.name}
-            </span>
-          </motion.div>
-        ))}
+              <span
+                className={`font-semibold ${colors.text} whitespace-nowrap`}
+                style={{ fontSize: 'clamp(0.6rem, 1vw, 0.75rem)' }}
+              >
+                {skill.name}
+              </span>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
