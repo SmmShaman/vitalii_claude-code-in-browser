@@ -117,25 +117,23 @@ export const BentoGrid = () => {
 
     // When closing dialog, ensure all cards are reset to normal state
     if (!open) {
-      Object.values(cardRefs.current).forEach(cardElement => {
-        if (cardElement) {
-          cardElement.classList.remove('snake-animation', 'snake-expanded');
-          cardElement.style.position = '';
-          cardElement.style.top = '';
-          cardElement.style.left = '';
-          cardElement.style.width = '';
-          cardElement.style.height = '';
-          cardElement.style.transform = '';
-          cardElement.style.zIndex = '';
-          cardElement.style.removeProperty('position');
-          cardElement.style.removeProperty('top');
-          cardElement.style.removeProperty('left');
-          cardElement.style.removeProperty('width');
-          cardElement.style.removeProperty('height');
-          cardElement.style.removeProperty('transform');
-          cardElement.style.removeProperty('z-index');
-        }
-      });
+      // Small delay to ensure dialog is fully closed
+      setTimeout(() => {
+        Object.values(cardRefs.current).forEach(cardElement => {
+          if (cardElement) {
+            // Remove all animation classes
+            cardElement.classList.remove('snake-animation', 'snake-expanded');
+
+            // Force remove all inline styles by clearing cssText
+            const heightStyle = cardElement.style.height;
+            cardElement.style.cssText = '';
+            cardElement.style.height = heightStyle || 'clamp(200px, 25vh, 280px)';
+
+            // Force reflow to ensure styles are applied
+            void cardElement.offsetHeight;
+          }
+        });
+      }, 50);
     }
   };
 
