@@ -96,7 +96,7 @@ export const AnimatedHeaderTitle = ({ text, namePattern }: AnimatedHeaderTitlePr
     <h1
       ref={containerRef}
       className="font-bold text-white/90 mb-0.5 leading-tight"
-      style={{ fontSize: 'clamp(1.25rem, 2.5vw, 2rem)' }}
+      style={{ fontSize: 'clamp(1.75rem, 3.5vw, 3rem)' }}
     />
   );
 };

@@ -9,8 +9,8 @@ export const Index = () => {
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Compact Header - 12vh */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(70px, 10vh, 120px)' }}>
+      {/* Compact Header - Language switcher only */}
+      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 6vh, 70px)' }}>
         <Header />
       </div>
 
