@@ -124,13 +124,16 @@ export const BentoGrid = () => {
             // Remove all animation classes
             cardElement.classList.remove('snake-animation', 'snake-expanded');
 
-            // Force remove all inline styles by clearing cssText
-            const heightStyle = cardElement.style.height;
-            cardElement.style.cssText = '';
-            cardElement.style.height = heightStyle || 'clamp(200px, 25vh, 280px)';
+            // Remove only the specific inline styles added by the snake animation
+            // Preserve Framer Motion styles (opacity, transform from initial animation)
+            cardElement.style.removeProperty('position');
+            cardElement.style.removeProperty('top');
+            cardElement.style.removeProperty('left');
+            cardElement.style.removeProperty('width');
+            cardElement.style.removeProperty('z-index');
 
-            // Force reflow to ensure styles are applied
-            void cardElement.offsetHeight;
+            // Reset height to ensure proper size
+            cardElement.style.height = 'clamp(200px, 25vh, 280px)';
           }
         });
       }, 50);
@@ -161,9 +164,13 @@ export const BentoGrid = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={section.id === 'projects' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
-                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
+                className={`relative ${section.id === 'about' ? 'overflow-auto' : 'overflow-hidden'} rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full`}
                 style={{
                   height: 'clamp(200px, 25vh, 280px)',
+                  ...(section.id === 'about' && {
+                    scrollbarWidth: 'thin' as const,
+                    scrollbarColor: 'rgba(0, 0, 0, 0.3) transparent',
+                  }),
                 }}
               >
                 {/* Background - conditional based on section */}
@@ -183,9 +190,9 @@ export const BentoGrid = () => {
                 )}
 
                 {/* Content */}
-                <div className="relative h-full max-h-full flex items-start justify-center p-4 sm:p-5 md:p-6 overflow-hidden">
+                <div className={`relative h-full max-h-full flex items-start justify-center p-4 sm:p-5 md:p-6 ${section.id === 'about' ? '' : 'overflow-hidden'}`}>
                   {section.id === 'about' ? (
-                    <div className="w-full h-full max-h-full overflow-hidden flex flex-col">
+                    <div className="w-full h-full max-h-full flex flex-col">
                       <TypewriterText
                         text={t(section.contentKey as any)}
                         speed={30}
