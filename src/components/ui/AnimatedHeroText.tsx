@@ -97,9 +97,7 @@ export const AnimatedHeroText = ({ text, namePattern, className = '' }: Animated
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(0, 0, 0, 0.3) transparent',
         }}
-      >
-        {text}
-      </div>
+      />
     </div>
   );
 };
