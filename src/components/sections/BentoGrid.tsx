@@ -112,6 +112,24 @@ export const BentoGrid = () => {
     setCurrentProjectIndex(index);
   };
 
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+
+    // When closing dialog, ensure all cards are reset to normal state
+    if (!open) {
+      Object.values(cardRefs.current).forEach(cardElement => {
+        if (cardElement) {
+          cardElement.classList.remove('snake-animation', 'snake-expanded');
+          cardElement.style.position = '';
+          cardElement.style.top = '';
+          cardElement.style.left = '';
+          cardElement.style.width = '';
+          cardElement.style.height = '';
+        }
+      });
+    }
+  };
+
   // Get current project image
   const currentProjects = translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list;
   const currentProjectImage = currentProjects[currentProjectIndex]?.image || sections.find(s => s.id === 'projects')?.image;
@@ -204,7 +222,7 @@ export const BentoGrid = () => {
       {selectedSection && (
         <SectionDialog
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={handleDialogClose}
           title={t(selectedSection.titleKey as any)}
           content={t(selectedSection.contentKey as any)}
           image={selectedSection.image}

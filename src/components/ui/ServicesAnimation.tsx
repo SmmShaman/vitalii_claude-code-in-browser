@@ -11,15 +11,6 @@ interface ServicesAnimationProps {
   backgroundText: string;
 }
 
-const SERVICE_COLORS = [
-  'bg-purple-500/80',
-  'bg-blue-500/80',
-  'bg-green-500/80',
-  'bg-yellow-500/80',
-  'bg-red-500/80',
-  'bg-pink-500/80',
-];
-
 export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<any>(null);
@@ -91,12 +82,10 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
         className="relative h-full w-full flex flex-col items-center justify-center gap-3 z-10 px-4"
       >
         {services.map((service, index) => {
-          const backgroundColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
-
           return (
             <div
               key={index}
-              className={`service-row ${backgroundColor} backdrop-blur-sm rounded-lg px-4 py-3 w-full max-w-md`}
+              className="service-row px-4 py-3 w-full max-w-md"
             >
               <h4
                 className="font-bold text-white text-center"
