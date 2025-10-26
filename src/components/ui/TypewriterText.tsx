@@ -129,7 +129,7 @@ export const TypewriterText = ({
     >
       <div
         className="text-gray-800 leading-relaxed whitespace-pre-wrap break-words"
-        style={{ fontSize: 'clamp(0.65rem, 1.2vw, 1rem)' }}
+        style={{ fontSize: 'clamp(0.75rem, 1.2vw, 1rem)' }}
       >
         {formatText(displayedText)}
         {showCursor && (
