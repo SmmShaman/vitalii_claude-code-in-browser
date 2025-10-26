@@ -181,6 +181,30 @@ export const translations = {
     email_required: "Email is required",
     email_invalid: "Invalid email address",
     message_required: "Message is required",
+
+    // Footer translations
+    footer_loading: "Loading...",
+    footer_error: "Could not retrieve location data",
+    footer_weather_in: "You have",
+    footer_distance_from_me: "km from me",
+    footer_author_location: "Lena, Norway",
+    map_marker_me: "Me",
+    map_marker_you: "You",
+
+    // Weather descriptions
+    weather_clear: "clear sky",
+    weather_mainly_clear: "mainly clear",
+    weather_partly_cloudy: "partly cloudy",
+    weather_overcast: "overcast",
+    weather_fog: "fog",
+    weather_drizzle: "drizzle",
+    weather_rain: "rain",
+    weather_heavy_rain: "heavy rain",
+    weather_light_snow: "light snow",
+    weather_snow: "snow",
+    weather_heavy_snow: "heavy snow",
+    weather_rain_showers: "rain showers",
+    weather_thunderstorm: "thunderstorm",
   },
   no: {
     title: "Vitalii Berbeha en ekspert innen e-handel og markedsføring",
@@ -362,6 +386,30 @@ export const translations = {
     email_required: "E-post er påkrevd",
     email_invalid: "Ugyldig e-postadresse",
     message_required: "Melding er påkrevd",
+
+    // Footer translations
+    footer_loading: "Laster...",
+    footer_error: "Kunne ikke hente stedsdata",
+    footer_weather_in: "Du har",
+    footer_distance_from_me: "km fra meg",
+    footer_author_location: "Lena, Norge",
+    map_marker_me: "Meg",
+    map_marker_you: "Deg",
+
+    // Weather descriptions
+    weather_clear: "klar himmel",
+    weather_mainly_clear: "hovedsakelig klart",
+    weather_partly_cloudy: "delvis skyet",
+    weather_overcast: "overskyet",
+    weather_fog: "tåke",
+    weather_drizzle: "yr",
+    weather_rain: "regn",
+    weather_heavy_rain: "kraftig regn",
+    weather_light_snow: "lett snø",
+    weather_snow: "snø",
+    weather_heavy_snow: "kraftig snø",
+    weather_rain_showers: "regnbyger",
+    weather_thunderstorm: "tordenvær",
   },
   ua: {
     title: "Віталій Бербега експерт з електронної комерції та маркетингу",
@@ -543,6 +591,30 @@ export const translations = {
     email_required: "Email обов'язковий",
     email_invalid: "Невірна email адреса",
     message_required: "Повідомлення обов'язкове",
+
+    // Footer translations
+    footer_loading: "Завантаження...",
+    footer_error: "Не вдалося отримати дані про локацію",
+    footer_weather_in: "У тебе в",
+    footer_distance_from_me: "км від мене",
+    footer_author_location: "Лена, Норвегія",
+    map_marker_me: "Я",
+    map_marker_you: "Ти",
+
+    // Weather descriptions
+    weather_clear: "ясно",
+    weather_mainly_clear: "переважно ясно",
+    weather_partly_cloudy: "хмарно",
+    weather_overcast: "похмуро",
+    weather_fog: "туман",
+    weather_drizzle: "мряка",
+    weather_rain: "дощ",
+    weather_heavy_rain: "сильний дощ",
+    weather_light_snow: "невеликий сніг",
+    weather_snow: "сніг",
+    weather_heavy_snow: "сильний сніг",
+    weather_rain_showers: "злива",
+    weather_thunderstorm: "гроза",
   },
 };
 

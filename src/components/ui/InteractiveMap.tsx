@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { AUTHOR_LOCATION } from '../../utils/footerApi';
 import type { UserLocation } from '../../utils/footerApi';
+import { useTranslations } from '../../contexts/TranslationContext';
 
 // Fix for default marker icons in Leaflet
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -22,6 +23,7 @@ interface InteractiveMapProps {
 }
 
 export const InteractiveMap = ({ userLocation, className = '' }: InteractiveMapProps) => {
+  const { t } = useTranslations();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -70,7 +72,7 @@ export const InteractiveMap = ({ userLocation, className = '' }: InteractiveMapP
           border: 2px solid white;
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         ">
-          Я
+          ${t('map_marker_me')}
         </div>
       `,
       iconSize: [32, 32],
@@ -94,7 +96,7 @@ export const InteractiveMap = ({ userLocation, className = '' }: InteractiveMapP
           border: 2px solid white;
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         ">
-          Ти
+          ${t('map_marker_you')}
         </div>
       `,
       iconSize: [32, 32],
@@ -105,7 +107,7 @@ export const InteractiveMap = ({ userLocation, className = '' }: InteractiveMapP
     const authorMarker = L.marker([AUTHOR_LOCATION.latitude, AUTHOR_LOCATION.longitude], {
       icon: authorIcon,
     }).addTo(map);
-    authorMarker.bindPopup(`<b>${AUTHOR_LOCATION.name}</b>`);
+    authorMarker.bindPopup(`<b>${t('footer_author_location')}</b>`);
 
     // Add user marker if location is available
     if (userLocation) {
@@ -132,7 +134,7 @@ export const InteractiveMap = ({ userLocation, className = '' }: InteractiveMapP
         mapInstanceRef.current = null;
       }
     };
-  }, [userLocation]);
+  }, [userLocation, t]);
 
   return (
     <div

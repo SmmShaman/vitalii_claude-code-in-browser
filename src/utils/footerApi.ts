@@ -20,7 +20,7 @@ export interface UserLocation {
 export interface WeatherData {
   temperature: number;
   weatherCode: number;
-  description: string;
+  translationKey: string;
   emoji: string;
 }
 
@@ -99,37 +99,37 @@ async function getUserLocation(): Promise<UserLocation> {
 }
 
 /**
- * Map weather codes to descriptions and emojis
+ * Map weather codes to translation keys and emojis
  * Based on WMO Weather interpretation codes
  */
-function getWeatherInfo(code: number): { description: string; emoji: string } {
-  const weatherMap: Record<number, { description: string; emoji: string }> = {
-    0: { description: 'ясно', emoji: '☀️' },
-    1: { description: 'переважно ясно', emoji: '🌤️' },
-    2: { description: 'хмарно', emoji: '⛅' },
-    3: { description: 'похмуро', emoji: '☁️' },
-    45: { description: 'туман', emoji: '🌫️' },
-    48: { description: 'туман', emoji: '🌫️' },
-    51: { description: 'мряка', emoji: '🌦️' },
-    53: { description: 'мряка', emoji: '🌦️' },
-    55: { description: 'дощ', emoji: '🌧️' },
-    61: { description: 'невеликий дощ', emoji: '🌦️' },
-    63: { description: 'дощ', emoji: '🌧️' },
-    65: { description: 'сильний дощ', emoji: '⛈️' },
-    71: { description: 'невеликий сніг', emoji: '🌨️' },
-    73: { description: 'сніг', emoji: '❄️' },
-    75: { description: 'сильний сніг', emoji: '❄️' },
-    80: { description: 'злива', emoji: '🌧️' },
-    81: { description: 'злива', emoji: '⛈️' },
-    82: { description: 'сильна злива', emoji: '⛈️' },
-    85: { description: 'сніг', emoji: '❄️' },
-    86: { description: 'сильний сніг', emoji: '❄️' },
-    95: { description: 'гроза', emoji: '⛈️' },
-    96: { description: 'гроза з градом', emoji: '⛈️' },
-    99: { description: 'гроза з градом', emoji: '⛈️' },
+export function getWeatherInfo(code: number): { translationKey: string; emoji: string } {
+  const weatherMap: Record<number, { translationKey: string; emoji: string }> = {
+    0: { translationKey: 'weather_clear', emoji: '☀️' },
+    1: { translationKey: 'weather_mainly_clear', emoji: '🌤️' },
+    2: { translationKey: 'weather_partly_cloudy', emoji: '⛅' },
+    3: { translationKey: 'weather_overcast', emoji: '☁️' },
+    45: { translationKey: 'weather_fog', emoji: '🌫️' },
+    48: { translationKey: 'weather_fog', emoji: '🌫️' },
+    51: { translationKey: 'weather_drizzle', emoji: '🌦️' },
+    53: { translationKey: 'weather_drizzle', emoji: '🌦️' },
+    55: { translationKey: 'weather_rain', emoji: '🌧️' },
+    61: { translationKey: 'weather_rain', emoji: '🌦️' },
+    63: { translationKey: 'weather_rain', emoji: '🌧️' },
+    65: { translationKey: 'weather_heavy_rain', emoji: '⛈️' },
+    71: { translationKey: 'weather_light_snow', emoji: '🌨️' },
+    73: { translationKey: 'weather_snow', emoji: '❄️' },
+    75: { translationKey: 'weather_heavy_snow', emoji: '❄️' },
+    80: { translationKey: 'weather_rain_showers', emoji: '🌧️' },
+    81: { translationKey: 'weather_rain_showers', emoji: '⛈️' },
+    82: { translationKey: 'weather_rain_showers', emoji: '⛈️' },
+    85: { translationKey: 'weather_snow', emoji: '❄️' },
+    86: { translationKey: 'weather_heavy_snow', emoji: '❄️' },
+    95: { translationKey: 'weather_thunderstorm', emoji: '⛈️' },
+    96: { translationKey: 'weather_thunderstorm', emoji: '⛈️' },
+    99: { translationKey: 'weather_thunderstorm', emoji: '⛈️' },
   };
 
-  return weatherMap[code] || { description: 'хмарно', emoji: '☁️' };
+  return weatherMap[code] || { translationKey: 'weather_partly_cloudy', emoji: '☁️' };
 }
 
 /**
@@ -146,12 +146,12 @@ async function getWeather(latitude: number, longitude: number): Promise<WeatherD
 
     const data = await response.json();
     const current = data.current_weather;
-    const { description, emoji } = getWeatherInfo(current.weathercode);
+    const { translationKey, emoji } = getWeatherInfo(current.weathercode);
 
     return {
       temperature: Math.round(current.temperature),
       weatherCode: current.weathercode,
-      description,
+      translationKey,
       emoji,
     };
   } catch (error) {

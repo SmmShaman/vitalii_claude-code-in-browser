@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Twitter, Facebook, Send, Instagram, Linkedin, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { fetchFooterData, AUTHOR_LOCATION } from '../../utils/footerApi';
+import { fetchFooterData } from '../../utils/footerApi';
 import type { FooterData } from '../../utils/footerApi';
 import { InteractiveMap } from '../ui/InteractiveMap';
 import { WeatherAvatar } from '../ui/WeatherAvatar';
+import { useTranslations } from '../../contexts/TranslationContext';
 
 export const Footer = () => {
+  const { t } = useTranslations();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [footerData, setFooterData] = useState<FooterData>({
     userLocation: null,
@@ -75,9 +77,9 @@ export const Footer = () => {
               transition={{ delay: 0.2 }}
             >
               {isLoading ? (
-                <div className="text-white/60 text-xs sm:text-sm">Завантаження...</div>
+                <div className="text-white/60 text-xs sm:text-sm">{t('footer_loading')}</div>
               ) : error ? (
-                <div className="text-white/60 text-xs sm:text-sm">{error}</div>
+                <div className="text-white/60 text-xs sm:text-sm">{t('footer_error')}</div>
               ) : (
                 <div className="flex items-center gap-3 flex-wrap justify-center">
                   {/* Weather text */}
@@ -86,9 +88,9 @@ export const Footer = () => {
                       className="text-white/90 text-center"
                       style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
                     >
-                      У тебе в <span className="font-semibold">{userLocation.city}</span>{' '}
+                      {t('footer_weather_in')} <span className="font-semibold">{userLocation.city}</span>{' '}
                       {weather.temperature > 0 ? '+' : ''}
-                      {weather.temperature}°C, {weather.description} {weather.emoji}
+                      {weather.temperature}°C, {t(weather.translationKey as any)} {weather.emoji}
                     </div>
                   )}
 
@@ -101,7 +103,7 @@ export const Footer = () => {
                     >
                       <MapPin className="w-3 h-3" />
                       <span>
-                        {distance.toLocaleString()} км від мене
+                        {distance.toLocaleString()} {t('footer_distance_from_me')}
                       </span>
                     </button>
                   )}
@@ -147,7 +149,7 @@ export const Footer = () => {
                   className="text-white/70 text-center"
                   style={{ fontSize: 'clamp(0.65rem, 1vw, 0.8rem)' }}
                 >
-                  📍 {AUTHOR_LOCATION.name}
+                  📍 {t('footer_author_location')}
                 </div>
               </div>
             </motion.div>
