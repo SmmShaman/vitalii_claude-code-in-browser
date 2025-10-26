@@ -7,6 +7,7 @@ import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
 import { AnimatedHeaderTitle } from '../ui/AnimatedHeaderTitle';
+import { AnimatedDescription } from '../ui/AnimatedDescription';
 import { translations } from '../../utils/translations';
 import { useScreenSize } from '../../hooks/useScreenSize';
 
@@ -150,24 +151,19 @@ export const BentoGrid = () => {
       <div className={`h-full w-full overflow-y-auto overflow-x-hidden flex ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center px-2 sm:px-4 lg:px-6`}>
         <div className={`w-full flex flex-col ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center py-2 sm:py-3 md:py-4`}>
 
-          {/* Title Section - moved from header */}
-          <div className="text-center mb-4 sm:mb-6 md:mb-8 w-full">
+          {/* Title Section - moved from header with white background */}
+          <div className="text-center mb-4 sm:mb-6 md:mb-8 w-full bg-white rounded-lg shadow-lg px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
             <AnimatedHeaderTitle
               text={t('title') as string}
               namePattern={/Vitalii Berbeha|Віталій Бербега/}
             />
             <h2
-              className="text-white/80 mt-2 leading-tight"
+              className="text-gray-700 mt-2 leading-tight"
               style={{ fontSize: 'clamp(1rem, 2vw, 1.5rem)' }}
             >
               {t('subtitle')}
             </h2>
-            <p
-              className="text-white/70 mt-1.5 leading-tight"
-              style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)' }}
-            >
-              {t('description')}
-            </p>
+            <AnimatedDescription text={t('description') as string} />
           </div>
 
           <div
