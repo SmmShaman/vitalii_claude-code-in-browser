@@ -68,8 +68,8 @@ export const BentoGrid = () => {
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
-    // Don't open dialog for projects and services sections (they handle their own clicks)
-    if (section.id === 'projects' || section.id === 'services') return;
+    // Don't open dialog for projects section (it has its own modal)
+    if (section.id === 'projects') return;
 
     // Add snake animation class
     cardElement.classList.add('snake-animation');
@@ -135,7 +135,7 @@ export const BentoGrid = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                onClick={section.id === 'projects' || section.id === 'services' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
+                onClick={section.id === 'projects' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
                 style={{
                   height: 'clamp(200px, 25vh, 280px)',

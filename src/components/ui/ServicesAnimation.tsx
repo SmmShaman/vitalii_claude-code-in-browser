@@ -153,7 +153,7 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                 ref={(el) => {
                   serviceRefs.current[index] = el;
                 }}
-                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-2 sm:p-3`}
+                className={`absolute ${backgroundColor} backdrop-blur-sm rounded-lg p-2 sm:p-3 flex items-center justify-center`}
                 style={{
                   maxWidth: 'min(280px, 35vw)',
                   minWidth: 'min(180px, 25vw)',
@@ -161,17 +161,11 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                 }}
               >
                 <h4
-                  className="font-bold text-white mb-1"
+                  className="font-bold text-white text-center"
                   style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
                 >
                   {service.title}
                 </h4>
-                <p
-                  className="text-white/80"
-                  style={{ fontSize: 'clamp(0.65rem, 1.2vw, 0.875rem)' }}
-                >
-                  {service.description}
-                </p>
               </div>
             );
           })}
