@@ -6,6 +6,7 @@ import { TypewriterText } from '../ui/TypewriterText';
 import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
+import { SkillsAnimation } from '../ui/SkillsAnimation';
 import { AnimatedHeaderTitle } from '../ui/AnimatedHeaderTitle';
 import { AnimatedDescription } from '../ui/AnimatedDescription';
 import { translations } from '../../utils/translations';
@@ -190,7 +191,7 @@ export const BentoGrid = () => {
                 {/* Background - conditional based on section */}
                 {section.id === 'about' ? (
                   <div className="absolute inset-0 bg-white" />
-                ) : section.id === 'services' ? (
+                ) : section.id === 'services' || section.id === 'skills' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" />
                 ) : (
                   <div
@@ -226,6 +227,13 @@ export const BentoGrid = () => {
                       <ServicesAnimation
                         services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
                         backgroundText={t('services_title') as string}
+                      />
+                    </div>
+                  ) : section.id === 'skills' ? (
+                    <div className="w-full h-full overflow-hidden">
+                      <SkillsAnimation
+                        skills={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].skills_list}
+                        backgroundText={t('skills_title') as string}
                       />
                     </div>
                   ) : (
