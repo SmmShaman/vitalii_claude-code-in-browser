@@ -12,7 +12,7 @@ export const Header = () => {
       <div className="max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Title Section */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0" style={{ marginTop: '6px' }}>
             {isLoading ? (
               <div className="space-y-1">
                 <div className="h-6 bg-white/10 rounded animate-pulse w-3/4" />
