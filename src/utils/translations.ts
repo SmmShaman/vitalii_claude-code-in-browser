@@ -1,6 +1,6 @@
 export const translations = {
   en: {
-    title: "Vitalii Berbeha, an expert in e-commerce and marketing",
+    title: "Vitalii Berbeha an expert in e-commerce and marketing",
     subtitle: "Professional in e-commerce, marketing, and project management",
     description: "Helping businesses grow, optimize processes, and achieve success",
 
@@ -150,7 +150,7 @@ export const translations = {
     message_required: "Message is required",
   },
   no: {
-    title: "Vitalii Berbeha, en ekspert innen e-handel og markedsføring",
+    title: "Vitalii Berbeha en ekspert innen e-handel og markedsføring",
     subtitle: "Profesjonell innen e-handel, markedsføring og prosjektledelse",
     description: "Hjelper bedrifter med å vokse, optimalisere prosesser og oppnå suksess",
 
@@ -298,7 +298,7 @@ export const translations = {
     message_required: "Melding er påkrevd",
   },
   ua: {
-    title: "Віталій Бербега, експерт з електронної комерції та маркетингу",
+    title: "Віталій Бербега експерт з електронної комерції та маркетингу",
     subtitle: "Професіонал у сфері електронної комерції, маркетингу та управління проєктами",
     description: "Допомагаю бізнесу рости, оптимізувати процеси та досягати успіху",
 
