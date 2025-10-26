@@ -109,32 +109,32 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       {/* Services in column */}
       <div
         ref={containerRef}
-        className="relative h-full w-full flex flex-col items-center justify-center gap-1 z-10 px-4"
+        className="relative h-full w-full flex flex-col items-center justify-center gap-0 z-10"
       >
         {services.map((service, index) => {
           return (
             <div
               key={index}
-              className="row relative px-3 py-1.5 w-full max-w-md"
+              className="row relative py-1 w-full"
             >
-              {/* Service title */}
+              {/* Service title - centered */}
               <h4
-                className="font-bold text-white text-center relative"
-                style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
+                className="font-bold text-white text-center relative px-4"
+                style={{ fontSize: 'clamp(0.7rem, 1.4vw, 0.95rem)' }}
               >
                 {service.title}
               </h4>
 
-              {/* Squares overlay - on top of text */}
+              {/* Squares overlay - full width */}
               <div className="absolute inset-0 flex items-center justify-center z-20">
-                <div className="flex gap-1">
+                <div className="flex gap-1 w-full justify-center px-2">
                   {Array.from({ length: SQUARES_COUNT }).map((_, squareIndex) => (
                     <div
                       key={squareIndex}
-                      className="square bg-orange-400"
+                      className="square bg-orange-400 flex-1"
                       style={{
-                        width: 'clamp(8px, 1.5vw, 16px)',
-                        height: 'clamp(8px, 1.5vw, 16px)',
+                        maxWidth: 'clamp(10px, 2.5vw, 30px)',
+                        height: 'clamp(8px, 1.5vh, 16px)',
                         borderRadius: '2px',
                       }}
                     />

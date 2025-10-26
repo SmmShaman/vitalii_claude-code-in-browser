@@ -125,6 +125,15 @@ export const BentoGrid = () => {
           cardElement.style.left = '';
           cardElement.style.width = '';
           cardElement.style.height = '';
+          cardElement.style.transform = '';
+          cardElement.style.zIndex = '';
+          cardElement.style.removeProperty('position');
+          cardElement.style.removeProperty('top');
+          cardElement.style.removeProperty('left');
+          cardElement.style.removeProperty('width');
+          cardElement.style.removeProperty('height');
+          cardElement.style.removeProperty('transform');
+          cardElement.style.removeProperty('z-index');
         }
       });
     }
