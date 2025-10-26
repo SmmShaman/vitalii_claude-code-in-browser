@@ -111,7 +111,7 @@ export const SkillsAnimation = ({ skills, backgroundText }: SkillsAnimationProps
             // Snake animation phase (4-23s)
             <motion.div
               key={`skills-${cycleKey}`}
-              className="h-full w-full flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 md:gap-3 px-3 sm:px-4 py-3 overflow-y-auto"
+              className="h-full w-full flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
@@ -146,18 +146,18 @@ export const SkillsAnimation = ({ skills, backgroundText }: SkillsAnimationProps
                       ease: [0.22, 1, 0.36, 1]
                     }}
                     whileHover={{
-                      scale: 1.12,
+                      scale: 1.08,
                       rotate: 5,
                       transition: { duration: 0.2 }
                     }}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 ${colors.bg} ${colors.hover} rounded-full shadow-md cursor-pointer transition-colors`}
+                    className={`px-2 sm:px-2.5 py-1 sm:py-1.5 ${colors.bg} ${colors.hover} rounded-full shadow-sm cursor-pointer transition-colors`}
                     style={{
                       willChange: 'transform, opacity',
                     }}
                   >
                     <span
                       className={`font-semibold ${colors.text} whitespace-nowrap`}
-                      style={{ fontSize: 'clamp(0.65rem, 1.1vw, 0.85rem)' }}
+                      style={{ fontSize: 'clamp(0.6rem, 1vw, 0.75rem)' }}
                     >
                       {skill.name}
                     </span>
