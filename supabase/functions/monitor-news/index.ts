@@ -100,8 +100,8 @@ async function fetchRSS(source: any) {
   const response = await fetch(source.rss_url)
   const xml = await response.text()
 
-  // Parse XML
-  const doc = new DOMParser().parseFromString(xml, 'text/xml')
+  // Parse XML as HTML (deno_dom doesn't support text/xml)
+  const doc = new DOMParser().parseFromString(xml, 'text/html')
 
   if (!doc) {
     throw new Error('Failed to parse RSS feed')
