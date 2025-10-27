@@ -123,14 +123,25 @@ async function fetchRSS(source: any) {
 
   for (const item of latestItems) {
     const title = item.querySelector('title')?.textContent || 'No title'
-    const link = item.querySelector('link')?.textContent || ''
+
+    // Try multiple ways to get the link
+    let link = item.querySelector('link')?.textContent?.trim() || ''
+    if (!link) {
+      link = item.querySelector('link')?.innerHTML?.trim() || ''
+    }
+    if (!link) {
+      link = item.querySelector('guid')?.textContent?.trim() || ''
+    }
+
     const description = item.querySelector('description')?.textContent || ''
     const pubDate = item.querySelector('pubDate')?.textContent || ''
 
     if (!link) {
-      console.log('Skipping article without link')
+      console.log(`Skipping article without link: ${title}`)
       continue
     }
+
+    console.log(`Processing article: ${title} - ${link}`)
 
     // Check if article already exists in news table
     const { data: existing, error: checkError } = await supabase
