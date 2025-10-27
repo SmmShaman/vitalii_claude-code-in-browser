@@ -186,9 +186,29 @@ async function sendToTelegram(article: any, sourceName: string) {
     return
   }
 
-  // Encode title and URL in base64 for callback data
-  const encodedTitle = btoa(article.title.substring(0, 100))
-  const encodedUrl = btoa(article.url)
+  // Store article in database temporarily with pending status
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  // Create pending news entry
+  const { data: newsEntry, error: insertError } = await supabase
+    .from('news')
+    .insert({
+      original_title: article.title,
+      original_content: article.description,
+      original_url: article.url,
+      is_published: false,
+      is_rewritten: false
+    })
+    .select('id')
+    .single()
+
+  if (insertError || !newsEntry) {
+    console.error('Failed to create news entry:', insertError)
+    return
+  }
 
   const message = `🆕 <b>New Article Found!</b>
 
@@ -196,7 +216,7 @@ async function sendToTelegram(article: any, sourceName: string) {
 <b>Title:</b> ${article.title}
 
 <b>Description:</b>
-${article.description}
+${article.description.substring(0, 300)}...
 
 <b>URL:</b> ${article.url}
 
@@ -204,8 +224,8 @@ ${article.description}
 
   const keyboard = {
     inline_keyboard: [[
-      { text: '✅ Publish', callback_data: `publish_${encodedTitle}_${encodedUrl}` },
-      { text: '❌ Reject', callback_data: `reject_${encodedTitle}_${encodedUrl}` }
+      { text: '✅ Publish', callback_data: `publish_${newsEntry.id}` },
+      { text: '❌ Reject', callback_data: `reject_${newsEntry.id}` }
     ]]
   }
 
