@@ -100,7 +100,7 @@ async function fetchRSS(source: any) {
   const response = await fetch(source.rss_url)
   const xml = await response.text()
 
-  // Parse XML as HTML (deno_dom doesn't support text/xml)
+  // Parse XML as HTML (deno_dom text/xml is not implemented)
   const doc = new DOMParser().parseFromString(xml, 'text/html')
 
   if (!doc) {
@@ -126,6 +126,11 @@ async function fetchRSS(source: any) {
     const link = item.querySelector('link')?.textContent || ''
     const description = item.querySelector('description')?.textContent || ''
     const pubDate = item.querySelector('pubDate')?.textContent || ''
+
+    if (!link) {
+      console.log('Skipping article without link')
+      continue
+    }
 
     // Check if article already exists in news table
     const { data: existing, error: checkError } = await supabase
