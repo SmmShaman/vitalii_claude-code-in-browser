@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Save, AlertCircle, CheckCircle } from 'lucide-react';
-import { supabase } from '../../integrations/supabase/client';
+import { Clock, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface CronSchedule {
   schedule: string;
@@ -20,69 +19,12 @@ const schedules: CronSchedule[] = [
 ];
 
 export const CronSettingsManager = () => {
-  const [currentSchedule, setCurrentSchedule] = useState<string>('0 * * * *');
-  const [selectedSchedule, setSelectedSchedule] = useState<string>('0 * * * *');
-  const [loading, setLoading] = useState(false);
+  const [currentSchedule] = useState<string>('0 * * * *'); // Default: hourly
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [manualTriggerLoading, setManualTriggerLoading] = useState(false);
 
-  useEffect(() => {
-    loadCurrentSchedule();
-  }, []);
-
-  const loadCurrentSchedule = async () => {
-    try {
-      // Query pg_cron to get current schedule
-      const { data, error } = await supabase.rpc('get_cron_schedule');
-
-      if (error) {
-        console.error('Failed to load schedule:', error);
-        // Default to hourly if can't load
-        setCurrentSchedule('0 * * * *');
-        setSelectedSchedule('0 * * * *');
-        return;
-      }
-
-      if (data && data.length > 0) {
-        setCurrentSchedule(data[0].schedule);
-        setSelectedSchedule(data[0].schedule);
-      }
-    } catch (error) {
-      console.error('Failed to load schedule:', error);
-    }
-  };
-
-  const handleUpdateSchedule = async () => {
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      // First, unschedule the old job
-      const { error: unscheduleError } = await supabase.rpc('unschedule_cron_job', {
-        job_name: 'monitor-news-sources'
-      });
-
-      if (unscheduleError) {
-        console.error('Failed to unschedule:', unscheduleError);
-      }
-
-      // Then, create new schedule
-      const { error: scheduleError } = await supabase.rpc('schedule_cron_job', {
-        job_name: 'monitor-news-sources',
-        schedule: selectedSchedule
-      });
-
-      if (scheduleError) throw scheduleError;
-
-      setCurrentSchedule(selectedSchedule);
-      setMessage({ type: 'success', text: 'Schedule updated successfully!' });
-    } catch (error) {
-      console.error('Failed to update schedule:', error);
-      setMessage({ type: 'error', text: 'Failed to update schedule. Check console for details.' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Note: CRON schedule updates require SQL execution in Supabase Dashboard
+  // This component provides manual trigger and schedule reference
 
   const handleManualTrigger = async () => {
     setManualTriggerLoading(true);
@@ -181,79 +123,57 @@ export const CronSettingsManager = () => {
         </p>
       </div>
 
-      {/* Schedule Options */}
+      {/* Available Schedules Reference */}
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-white">Select New Schedule:</h3>
-        {schedules.map((schedule) => (
-          <motion.div
-            key={schedule.schedule}
-            whileHover={{ scale: 1.01 }}
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedSchedule === schedule.schedule
-                ? 'bg-purple-500/20 border-purple-500'
-                : 'bg-white/5 border-white/10 hover:border-white/30'
-            }`}
-            onClick={() => setSelectedSchedule(schedule.schedule)}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h4 className="text-white font-medium">{schedule.label}</h4>
-                <p className="text-gray-400 text-sm">{schedule.description}</p>
-                <p className="text-gray-500 text-xs font-mono mt-1">{schedule.schedule}</p>
-              </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                selectedSchedule === schedule.schedule
-                  ? 'border-purple-500 bg-purple-500'
-                  : 'border-white/30'
-              }`}>
-                {selectedSchedule === schedule.schedule && (
-                  <div className="w-2 h-2 rounded-full bg-white"></div>
-                )}
+        <h3 className="text-lg font-semibold text-white">Available Schedule Options:</h3>
+        <div className="space-y-2">
+          {schedules.map((schedule) => (
+            <div
+              key={schedule.schedule}
+              className="p-3 rounded-lg bg-white/5 border border-white/10"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="text-white font-medium text-sm">{schedule.label}</h4>
+                  <p className="text-gray-400 text-xs">{schedule.description}</p>
+                </div>
+                <code className="text-gray-400 text-xs font-mono bg-black/30 px-2 py-1 rounded">
+                  {schedule.schedule}
+                </code>
               </div>
             </div>
-          </motion.div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleUpdateSchedule}
-          disabled={loading || currentSchedule === selectedSchedule}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-1"
-        >
-          <Save className="h-5 w-5" />
-          {loading ? 'Updating...' : 'Update Schedule'}
-        </motion.button>
+      {/* How to Change Schedule */}
+      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+        <h3 className="text-white font-semibold mb-2">How to Change Schedule:</h3>
+        <ol className="text-gray-300 text-sm space-y-2 ml-4 list-decimal">
+          <li>Open Supabase Dashboard → SQL Editor</li>
+          <li>Run: <code className="bg-black/30 px-2 py-0.5 rounded text-xs">SELECT cron.unschedule('monitor-news-sources');</code></li>
+          <li>Copy schedule code from "Available Options" above</li>
+          <li>Run: <code className="bg-black/30 px-2 py-0.5 rounded text-xs">SELECT cron.schedule('monitor-news-sources', 'SCHEDULE_HERE', $$...$$ );</code></li>
+          <li>Or use the manual trigger button below to check immediately</li>
+        </ol>
+      </div>
 
+      {/* Manual Trigger Button */}
+      <div>
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleManualTrigger}
           disabled={manualTriggerLoading}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-1"
+          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold shadow-lg"
         >
-          <Clock className="h-5 w-5" />
-          {manualTriggerLoading ? 'Checking...' : 'Check Now (Manual)'}
+          <Clock className="h-6 w-6" />
+          {manualTriggerLoading ? 'Checking Sources...' : 'Check for News Now'}
         </motion.button>
+        <p className="text-gray-400 text-xs text-center mt-2">
+          Click to manually check all news sources and send new articles to Telegram
+        </p>
       </div>
-
-      {/* Warning */}
-      {currentSchedule !== selectedSchedule && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5" />
-            <div>
-              <h4 className="text-yellow-300 font-semibold">Unsaved Changes</h4>
-              <p className="text-yellow-200/80 text-sm">
-                Click "Update Schedule" to apply the new monitoring frequency.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
