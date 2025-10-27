@@ -8,9 +8,10 @@ import { BlogManager } from '../components/admin/BlogManager';
 import { DashboardOverview } from '../components/admin/DashboardOverview';
 import { NewsSourcesManager } from '../components/admin/NewsSourcesManager';
 import { AIPromptsManager } from '../components/admin/AIPromptsManager';
+import { CronSettingsManager } from '../components/admin/CronSettingsManager';
 
 type TabType = 'overview' | 'news' | 'blog' | 'settings';
-type SettingsSubTab = 'sources' | 'prompts';
+type SettingsSubTab = 'sources' | 'prompts' | 'schedule';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -120,18 +121,29 @@ export const AdminDashboard = () => {
             >
               AI Prompts
             </button>
+            <button
+              onClick={() => setSettingsSubTab('schedule')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                settingsSubTab === 'schedule'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Schedule
+            </button>
           </div>
         </div>
       )}
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 max-h-[calc(100vh-180px)] overflow-y-auto">
         <motion.div
           key={activeTab + settingsSubTab}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
+          className="pb-8"
         >
           {activeTab === 'overview' && <DashboardOverview />}
           {activeTab === 'news' && <NewsManager />}
@@ -140,6 +152,7 @@ export const AdminDashboard = () => {
             <>
               {settingsSubTab === 'sources' && <NewsSourcesManager />}
               {settingsSubTab === 'prompts' && <AIPromptsManager />}
+              {settingsSubTab === 'schedule' && <CronSettingsManager />}
             </>
           )}
         </motion.div>
