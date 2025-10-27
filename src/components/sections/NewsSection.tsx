@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Newspaper, Calendar, Tag, ExternalLink } from 'lucide-react';
+import { Calendar, Newspaper } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { getLatestNews } from '../../integrations/supabase/client';
 import type { LatestNews } from '../../integrations/supabase/types';
