@@ -417,9 +417,8 @@ Return ONLY valid JSON in this exact format:
                   value={formData.prompt_text}
                   onChange={(e) => setFormData({ ...formData, prompt_text: e.target.value })}
                   required
-                  rows={15}
                   placeholder={defaultRewritePrompt}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full h-64 px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none overflow-y-auto"
                 />
                 <p className="text-gray-400 text-xs mt-1">
                   Use placeholders: {'{title}'}, {'{content}'}, {'{url}'}
