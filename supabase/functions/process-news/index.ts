@@ -21,12 +21,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get active AI prompt
+    // Get active AI prompt (sort by created_at to ensure consistency)
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
       .eq('is_active', true)
       .eq('prompt_type', 'rewrite')
+      .order('created_at', { ascending: false })
       .limit(1)
 
     if (promptError) throw promptError
