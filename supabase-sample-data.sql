@@ -1,6 +1,10 @@
 -- Sample data for News and Blog sections
 -- Run this in Supabase SQL Editor to populate the database with test data
 
+-- Clear existing sample data to avoid duplicate key errors
+DELETE FROM news;
+DELETE FROM blog_posts;
+
 -- Insert sample news items
 INSERT INTO news (
   title_en, title_no, title_ua,
