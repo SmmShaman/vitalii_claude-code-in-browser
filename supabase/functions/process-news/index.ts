@@ -97,10 +97,10 @@ serve(async (req) => {
 
     console.log('Saving to database...')
 
-    // Save to database
-    const { data: newsData, error: insertError } = await supabase
+    // Update existing news entry with translations
+    const { data: newsData, error: updateError } = await supabase
       .from('news')
-      .insert({
+      .update({
         title_en: result.en?.title || title,
         title_no: result.no?.title || title,
         title_ua: result.ua?.title || title,
@@ -110,21 +110,21 @@ serve(async (req) => {
         description_en: result.en?.description || result.en?.content?.substring(0, 150),
         description_no: result.no?.description || result.no?.content?.substring(0, 150),
         description_ua: result.ua?.description || result.ua?.content?.substring(0, 150),
-        original_url: url,
         image_url: null, // TODO: Extract image from article
         tags: ['automated', 'ai-generated'],
         is_published: true,
         is_rewritten: true,
         published_at: new Date().toISOString()
       })
+      .eq('id', newsId)
       .select()
 
-    if (insertError) {
-      console.error('Database insert error:', insertError)
-      throw insertError
+    if (updateError) {
+      console.error('Database update error:', updateError)
+      throw updateError
     }
 
-    console.log('News saved successfully:', newsData[0].id)
+    console.log('News updated successfully:', newsData[0].id)
 
     // Update usage count
     await supabase
