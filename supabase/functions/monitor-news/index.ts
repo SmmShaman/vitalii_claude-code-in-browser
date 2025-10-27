@@ -131,7 +131,7 @@ async function fetchRSS(source: any) {
     const { data: existing, error: checkError } = await supabase
       .from('news')
       .select('id')
-      .eq('source_url', link)
+      .eq('original_url', link)
       .limit(1)
 
     if (checkError) {
