@@ -45,10 +45,10 @@ serve(async (req) => {
     // Azure OpenAI configuration
     const azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT') ?? ''
     const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY') ?? ''
-    const deploymentName = 'gpt-4' // or your deployment name
+    const deploymentName = 'Jobbot-gpt-4.1-mini'
 
     // Call Azure OpenAI API
-    const azureUrl = `${azureEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`
+    const azureUrl = `${azureEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2025-01-01-preview`
 
     console.log('Calling Azure OpenAI...')
 
