@@ -187,7 +187,7 @@ export const BentoGrid = () => {
                 {...(section.id !== 'projects' && section.id !== 'news' && section.id !== 'blog' && {
                   onClick: () => handleCardClick(section, cardRefs.current[section.id])
                 })}
-                className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
+                className={`relative overflow-hidden rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full ${section.id === 'news' || section.id === 'blog' ? 'cursor-default' : 'cursor-pointer'}`}
                 style={{
                   height: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
                 }}
@@ -261,7 +261,7 @@ export const BentoGrid = () => {
                 </div>
 
                 {/* Hover Effect Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-purple-500/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-t from-purple-500/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </motion.div>
             ))}
           </div>
