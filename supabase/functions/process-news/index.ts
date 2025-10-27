@@ -110,7 +110,7 @@ serve(async (req) => {
         description_en: result.en?.description || result.en?.content?.substring(0, 150),
         description_no: result.no?.description || result.no?.content?.substring(0, 150),
         description_ua: result.ua?.description || result.ua?.content?.substring(0, 150),
-        image_url: null, // TODO: Extract image from article
+        // Keep existing image_url (already set by monitor-news)
         tags: ['automated', 'ai-generated'],
         is_published: true,
         is_rewritten: true,
