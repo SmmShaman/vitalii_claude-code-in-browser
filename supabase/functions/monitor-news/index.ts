@@ -34,6 +34,7 @@ serve(async (req) => {
     console.log(`Found ${sources?.length || 0} active sources`)
 
     const results = []
+    let totalProcessed = 0
 
     // Process each source
     for (const source of sources || []) {
@@ -42,16 +43,22 @@ serve(async (req) => {
       try {
         if (source.source_type === 'rss' && source.rss_url) {
           const articles = await fetchRSS(source)
-          results.push({
-            source: source.name,
-            articles: articles.length,
-            success: true
-          })
 
           // Send articles to Telegram
+          let sentCount = 0
           for (const article of articles) {
             await sendToTelegram(article, source.name)
+            sentCount++
           }
+
+          totalProcessed += sentCount
+
+          results.push({
+            source: source.name,
+            new_articles: articles.length,
+            sent_to_telegram: sentCount,
+            success: true
+          })
 
           // Update last_fetched_at
           await supabase
@@ -72,7 +79,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        sources_checked: sources?.length || 0,
+        checked: sources?.length || 0,
+        processed: totalProcessed,
         results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -104,14 +112,38 @@ async function fetchRSS(source: any) {
 
   console.log(`Found ${items.length} items in RSS feed`)
 
-  // Get only the latest 3 articles
-  const latestItems = Array.from(items).slice(0, 3)
+  // Get only the latest 5 articles
+  const latestItems = Array.from(items).slice(0, 5)
+
+  // Check which articles are already in database
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
 
   for (const item of latestItems) {
     const title = item.querySelector('title')?.textContent || 'No title'
     const link = item.querySelector('link')?.textContent || ''
     const description = item.querySelector('description')?.textContent || ''
     const pubDate = item.querySelector('pubDate')?.textContent || ''
+
+    // Check if article already exists in news table
+    const { data: existing, error: checkError } = await supabase
+      .from('news')
+      .select('id')
+      .eq('source_url', link)
+      .limit(1)
+
+    if (checkError) {
+      console.error('Error checking for existing article:', checkError)
+      continue
+    }
+
+    // Skip if article already exists
+    if (existing && existing.length > 0) {
+      console.log(`Article already exists: ${title}`)
+      continue
+    }
 
     // Clean HTML from description
     const cleanDescription = description.replace(/<[^>]*>/g, '').trim()
@@ -123,6 +155,8 @@ async function fetchRSS(source: any) {
       pubDate
     })
   }
+
+  console.log(`Found ${articles.length} NEW articles (not in database yet)`)
 
   return articles
 }
