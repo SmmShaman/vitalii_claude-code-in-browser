@@ -4,13 +4,32 @@
 -- Insert sample news items
 INSERT INTO news (
   title_en, title_no, title_ua,
+  content_en, content_no, content_ua,
   description_en, description_no, description_ua,
-  image_url, original_url, published_at, tags
+  image_url, original_url, published_at, tags, is_published
 ) VALUES
 (
   'AI Revolution in Web Development',
   'AI-revolusjon i webutvikling',
   'Революція AI у веб-розробці',
+
+  $$Artificial Intelligence is transforming how we build web applications. Modern AI assistants can now generate complete components, suggest optimal architectures, and even debug complex issues automatically.
+
+Tools like GitHub Copilot and ChatGPT have become essential parts of the modern developer's toolkit. They help with everything from writing boilerplate code to explaining complex algorithms.
+
+However, it's important to remember that AI is a tool to augment human developers, not replace them. Understanding the fundamentals of programming remains crucial for writing maintainable, secure, and efficient code.$$,
+
+  $$Kunstig intelligens transformerer hvordan vi bygger webapplikasjoner. Moderne AI-assistenter kan nå generere komplette komponenter, foreslå optimale arkitekturer og til og med feilsøke komplekse problemer automatisk.
+
+Verktøy som GitHub Copilot og ChatGPT har blitt essensielle deler av den moderne utviklerens verktøykasse. De hjelper med alt fra å skrive standardkode til å forklare komplekse algoritmer.
+
+Det er imidlertid viktig å huske at AI er et verktøy for å utvide menneskelige utviklere, ikke erstatte dem.$$,
+
+  $$Штучний інтелект змінює те як ми створюємо веб-додатки. Сучасні AI-асистенти тепер можуть генерувати повні компоненти, пропонувати оптимальні архітектури і навіть автоматично виправляти складні проблеми.
+
+Інструменти як GitHub Copilot та ChatGPT стали важливою частиною набору інструментів сучасного розробника. Вони допомагають у всьому від написання шаблонного коду до пояснення складних алгоритмів.
+
+Однак важливо пам'ятати що AI це інструмент для розширення можливостей розробників а не для їх заміни.$$,
 
   'AI tools are revolutionizing development workflows. Modern AI can generate code, design interfaces, and optimize performance automatically.',
   'AI-verktøy revolusjonerer utviklingsflyter. Moderne AI kan generere kode, designe grensesnitt og optimalisere ytelsen automatisk.',
@@ -19,12 +38,37 @@ INSERT INTO news (
   'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800',
   'https://example.com/ai-revolution',
   NOW() - INTERVAL '2 hours',
-  ARRAY['AI', 'technology', 'web development']
+  ARRAY['AI', 'technology', 'web development'],
+  true
 ),
 (
   'New React 19 Features Released',
   'Nye React 19-funksjoner utgitt',
   'Випущені нові функції React 19',
+
+  $$React 19 has been officially released with several groundbreaking features that will change how we build React applications.
+
+The new automatic batching feature improves performance by grouping multiple state updates into a single re-render. Server Components have been completely redesigned to provide better streaming and suspense support.
+
+The React team has also introduced improved TypeScript support, better error messages, and enhanced development tools. These updates make React faster, more intuitive, and easier to debug.
+
+Developers should note that while React 19 is backward compatible with most existing code, some deprecated features have been removed. Review the migration guide before upgrading production applications.$$,
+
+  $$React 19 er offisielt utgitt med flere banebrytende funksjoner som vil endre hvordan vi bygger React-applikasjoner.
+
+Den nye automatiske batchingfunksjonen forbedrer ytelsen ved å gruppere flere tilstandsoppdateringer til en enkelt gjengivelse. Serverkomponenter har blitt helt redesignet.
+
+React-teamet har også introdusert forbedret TypeScript-støtte, bedre feilmeldinger og forbedrede utviklerverktøy. Disse oppdateringene gjør React raskere og mer intuitiv.
+
+Utviklere bør merke seg at selv om React 19 er bakoverkompatibel, har noen utdaterte funksjoner blitt fjernet.$$,
+
+  $$React 19 офіційно випущено з декількома революційними функціями які змінять те як ми створюємо React додатки.
+
+Нова функція автоматичного групування покращує продуктивність шляхом об'єднання декількох оновлень стану в одне повторне відображення. Серверні компоненти були повністю перероблені.
+
+Команда React також представила покращену підтримку TypeScript, кращі повідомлення про помилки та покращені інструменти розробки. Ці оновлення роблять React швидшим та більш інтуїтивним.
+
+Розробники повинні зауважити що хоча React 19 зворотно сумісний деякі застарілі функції були видалені.$$,
 
   'React 19 brings groundbreaking features including automatic batching, improved server components, and enhanced performance optimizations.',
   'React 19 bringer banebrytende funksjoner inkludert automatisk gruppering, forbedrede serverkomponenter og forbedrede ytelsesoptimaliseringer.',
@@ -33,12 +77,43 @@ INSERT INTO news (
   'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800',
   'https://react.dev',
   NOW() - INTERVAL '5 hours',
-  ARRAY['React', 'JavaScript', 'frontend']
+  ARRAY['React', 'JavaScript', 'frontend'],
+  true
 ),
 (
   'TypeScript 5.5 Improves Developer Experience',
   'TypeScript 5.5 forbedrer utvikleropplevelsen',
   'TypeScript 5.5 покращує досвід розробника',
+
+  $$TypeScript 5.5 introduces significant improvements that enhance the developer experience across the board.
+
+The compiler now provides much more helpful error messages that clearly explain what went wrong and how to fix it. Compilation times have been reduced by up to 30 percent in large codebases through better caching and optimization.
+
+IDE support has been enhanced with smarter auto-completion, better refactoring tools, and more accurate type inference. The language server is now faster and uses less memory.
+
+New type system features include better handling of template literal types, improved narrowing, and more precise type checking. These changes help catch more bugs at compile time.
+
+The TypeScript team continues to focus on making the language more powerful while keeping it easy to use and understand.$$,
+
+  $$TypeScript 5.5 introduserer betydelige forbedringer som forbedrer utvikleropplevelsen over hele linjen.
+
+Kompilatoren gir nå mye mer nyttige feilmeldinger som tydelig forklarer hva som gikk galt. Kompileringstidene er redusert med opptil 30 prosent.
+
+IDE-støtten er forbedret med smartere autofullføring, bedre refaktoreringsverktøy og mer nøyaktig typeslutning. Språkserveren er nå raskere.
+
+Nye typesystemfunksjoner inkluderer bedre håndtering av malstrengtyper og mer presis typekontroll.
+
+TypeScript-teamet fortsetter å fokusere på å gjøre språket kraftigere samtidig som det er lett å bruke.$$,
+
+  $$TypeScript 5.5 представляє значні покращення які покращують досвід розробника.
+
+Компілятор тепер надає набагато корисніші повідомлення про помилки які чітко пояснюють що пішло не так. Час компіляції скорочено до 30 відсотків.
+
+Підтримка IDE покращена за допомогою розумнішого автозаповнення, кращих інструментів рефакторингу та точнішого виведення типів. Мовний сервер тепер швидший.
+
+Нові функції системи типів включають краще обробку типів літералів шаблонів та точнішу перевірку типів.
+
+Команда TypeScript продовжує зосереджуватися на тому щоб зробити мову потужнішою зберігаючи її простоту використання.$$,
 
   'TypeScript gets major upgrades with better error messages, faster compilation times, and improved IDE support.',
   'TypeScript får store oppgraderinger med bedre feilmeldinger, raskere kompileringstider og forbedret IDE-støtte.',
@@ -47,7 +122,8 @@ INSERT INTO news (
   'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800',
   'https://devblogs.microsoft.com/typescript',
   NOW() - INTERVAL '1 day',
-  ARRAY['TypeScript', 'JavaScript', 'programming']
+  ARRAY['TypeScript', 'JavaScript', 'programming'],
+  true
 );
 
 -- Insert sample blog posts

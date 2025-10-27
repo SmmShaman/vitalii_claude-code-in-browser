@@ -184,7 +184,9 @@ export const BentoGrid = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                onClick={section.id === 'projects' || section.id === 'news' || section.id === 'blog' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
+                {...(section.id !== 'projects' && section.id !== 'news' && section.id !== 'blog' && {
+                  onClick: () => handleCardClick(section, cardRefs.current[section.id])
+                })}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
                 style={{
                   height: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
