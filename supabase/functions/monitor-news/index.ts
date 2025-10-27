@@ -177,6 +177,114 @@ async function fetchRSS(source: any) {
   return articles
 }
 
+async function extractImageFromArticle(articleUrl: string): Promise<string | null> {
+  try {
+    console.log(`Extracting image from: ${articleUrl}`)
+
+    const response = await fetch(articleUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    })
+
+    if (!response.ok) {
+      console.log(`Failed to fetch article page: ${response.status}`)
+      return null
+    }
+
+    const html = await response.text()
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+
+    if (!doc) return null
+
+    // Try og:image meta tag first (most reliable)
+    const ogImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content')
+    if (ogImage) {
+      console.log(`Found og:image: ${ogImage}`)
+      return ogImage
+    }
+
+    // Try twitter:image
+    const twitterImage = doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content')
+    if (twitterImage) {
+      console.log(`Found twitter:image: ${twitterImage}`)
+      return twitterImage
+    }
+
+    // Try first large img tag
+    const images = doc.querySelectorAll('img')
+    for (const img of images) {
+      const src = img.getAttribute('src')
+      if (src && !src.includes('logo') && !src.includes('icon')) {
+        console.log(`Found img src: ${src}`)
+        return src
+      }
+    }
+
+    console.log('No image found in article')
+    return null
+  } catch (error) {
+    console.error('Error extracting image:', error)
+    return null
+  }
+}
+
+async function downloadAndUploadImage(imageUrl: string, newsId: string): Promise<string | null> {
+  try {
+    console.log(`Downloading image: ${imageUrl}`)
+
+    // Download image
+    const response = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    })
+
+    if (!response.ok) {
+      console.log(`Failed to download image: ${response.status}`)
+      return null
+    }
+
+    const imageBlob = await response.blob()
+    const arrayBuffer = await imageBlob.arrayBuffer()
+    const imageBuffer = new Uint8Array(arrayBuffer)
+
+    // Determine file extension from content type
+    const contentType = response.headers.get('content-type') || 'image/jpeg'
+    const ext = contentType.split('/')[1]?.split(';')[0] || 'jpg'
+
+    // Upload to Supabase Storage
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const fileName = `${newsId}.${ext}`
+    const { data, error } = await supabase.storage
+      .from('news-images')
+      .upload(fileName, imageBuffer, {
+        contentType,
+        upsert: true
+      })
+
+    if (error) {
+      console.error('Error uploading to storage:', error)
+      return null
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('news-images')
+      .getPublicUrl(fileName)
+
+    console.log(`Image uploaded successfully: ${publicUrlData.publicUrl}`)
+    return publicUrlData.publicUrl
+  } catch (error) {
+    console.error('Error downloading/uploading image:', error)
+    return null
+  }
+}
+
 async function sendToTelegram(article: any, sourceName: string) {
   const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
   const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
@@ -208,6 +316,21 @@ async function sendToTelegram(article: any, sourceName: string) {
   if (insertError || !newsEntry) {
     console.error('Failed to create news entry:', insertError)
     return
+  }
+
+  // Extract and upload image
+  const imageUrl = await extractImageFromArticle(article.url)
+  if (imageUrl) {
+    const uploadedImageUrl = await downloadAndUploadImage(imageUrl, newsEntry.id)
+    if (uploadedImageUrl) {
+      // Update news entry with image URL
+      await supabase
+        .from('news')
+        .update({ image_url: uploadedImageUrl })
+        .eq('id', newsEntry.id)
+
+      console.log(`Image saved for article: ${article.title}`)
+    }
   }
 
   const message = `🆕 <b>New Article Found!</b>
