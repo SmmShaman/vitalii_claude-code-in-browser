@@ -16,6 +16,9 @@ interface NewsItem {
   content_ua: string | null;
   image_url: string | null;
   original_url: string | null;
+  slug_en: string | null;
+  slug_no: string | null;
+  slug_ua: string | null;
   tags: string[] | null;
   is_published: boolean | null;
   published_at: string | null;
@@ -42,6 +45,9 @@ export const NewsManager = () => {
     content_ua: '',
     image_url: '',
     original_url: '',
+    slug_en: '',
+    slug_no: '',
+    slug_ua: '',
     tags: '',
     is_published: true,
   });
@@ -49,6 +55,17 @@ export const NewsManager = () => {
   useEffect(() => {
     loadNews();
   }, []);
+
+  // Generate slug from title
+  const generateSlug = (title: string): string => {
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove special chars
+      .replace(/\s+/g, '-') // Replace spaces with -
+      .replace(/-+/g, '-') // Replace multiple - with single -
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing -
+  };
 
   const loadNews = async () => {
     try {
@@ -81,6 +98,9 @@ export const NewsManager = () => {
       content_ua: '',
       image_url: '',
       original_url: '',
+      slug_en: '',
+      slug_no: '',
+      slug_ua: '',
       tags: '',
       is_published: true,
     });
@@ -101,6 +121,9 @@ export const NewsManager = () => {
       content_ua: newsItem.content_ua || '',
       image_url: newsItem.image_url || '',
       original_url: newsItem.original_url || '',
+      slug_en: newsItem.slug_en || '',
+      slug_no: newsItem.slug_no || '',
+      slug_ua: newsItem.slug_ua || '',
       tags: newsItem.tags?.join(', ') || '',
       is_published: newsItem.is_published ?? true,
     });
@@ -229,6 +252,20 @@ export const NewsManager = () => {
               className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20"
             >
               <div className="flex items-start justify-between gap-4">
+                {/* Image Preview */}
+                {newsItem.image_url && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={newsItem.image_url}
+                      alt={newsItem.title_en || 'News image'}
+                      className="w-24 h-24 object-cover rounded-lg border border-white/20"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="text-lg font-semibold text-white">
@@ -339,10 +376,32 @@ export const NewsManager = () => {
                   <input
                     type="text"
                     value={formData.title_en}
-                    onChange={(e) => setFormData({ ...formData, title_en: e.target.value })}
+                    onChange={(e) => {
+                      const newTitle = e.target.value;
+                      setFormData({
+                        ...formData,
+                        title_en: newTitle,
+                        slug_en: formData.slug_en || generateSlug(newTitle)
+                      });
+                    }}
                     required
                     className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    SEO URL Slug (EN)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.slug_en}
+                    onChange={(e) => setFormData({ ...formData, slug_en: e.target.value })}
+                    placeholder="auto-generated-from-title"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    URL: /news/{formData.slug_en || 'your-slug-here'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -378,9 +437,31 @@ export const NewsManager = () => {
                   <input
                     type="text"
                     value={formData.title_no}
-                    onChange={(e) => setFormData({ ...formData, title_no: e.target.value })}
+                    onChange={(e) => {
+                      const newTitle = e.target.value;
+                      setFormData({
+                        ...formData,
+                        title_no: newTitle,
+                        slug_no: formData.slug_no || generateSlug(newTitle)
+                      });
+                    }}
                     className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    SEO URL Slug (NO)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.slug_no}
+                    onChange={(e) => setFormData({ ...formData, slug_no: e.target.value })}
+                    placeholder="auto-generated-from-title"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    URL: /news/{formData.slug_no || 'your-slug-here'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -416,9 +497,31 @@ export const NewsManager = () => {
                   <input
                     type="text"
                     value={formData.title_ua}
-                    onChange={(e) => setFormData({ ...formData, title_ua: e.target.value })}
+                    onChange={(e) => {
+                      const newTitle = e.target.value;
+                      setFormData({
+                        ...formData,
+                        title_ua: newTitle,
+                        slug_ua: formData.slug_ua || generateSlug(newTitle)
+                      });
+                    }}
                     className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    SEO URL Slug (UA)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.slug_ua}
+                    onChange={(e) => setFormData({ ...formData, slug_ua: e.target.value })}
+                    placeholder="auto-generated-from-title"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    URL: /news/{formData.slug_ua || 'your-slug-here'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -456,6 +559,20 @@ export const NewsManager = () => {
                     onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                     className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
+                  {/* Image Preview */}
+                  {formData.image_url && (
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-400 mb-2">Preview:</p>
+                      <img
+                        src={formData.image_url}
+                        alt="Preview"
+                        className="max-w-xs h-32 object-cover rounded-lg border border-white/20"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Image+Not+Found';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
