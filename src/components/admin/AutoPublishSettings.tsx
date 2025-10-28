@@ -131,7 +131,7 @@ export const AutoPublishSettings = () => {
         // Reload sources to get updated last_fetched_at
         setTimeout(loadSources, 3000);
       } else {
-        const errorText = await response.text();
+        await response.text();
         setTestResult({
           success: false,
           message: `Edge Function не знайдено або не працює. Статус: ${response.status}`,
@@ -174,7 +174,7 @@ export const AutoPublishSettings = () => {
         // Reload sources to get updated last_fetched_at
         setTimeout(loadSources, 3000);
       } else {
-        const errorText = await response.text();
+        await response.text();
         setMonitorResult({
           success: false,
           message: `Telegram Scraper не працює. Статус: ${response.status}. Перевірте що function deployed.`,

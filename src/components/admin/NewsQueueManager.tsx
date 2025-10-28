@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  List, CheckCircle, XCircle, Calendar, Star, Filter,
-  Search, Eye, Edit, Trash2, ChevronUp, ChevronDown, Clock
+  List, CheckCircle, XCircle, Star,
+  Search, Trash2, ChevronUp, ChevronDown, Clock
 } from 'lucide-react';
 import { supabase } from '../../integrations/supabase/client';
 
@@ -29,7 +29,6 @@ export const NewsQueueManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('created_at');
   const [filterBy, setFilterBy] = useState<FilterBy>('all');
-  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     loadQueue();

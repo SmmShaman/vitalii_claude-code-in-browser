@@ -1,15 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Save, AlertCircle, CheckCircle, Info } from 'lucide-react';
-import { supabase } from '../../integrations/supabase/client';
-
-interface CronJob {
-  jobid: number;
-  jobname: string;
-  schedule: string;
-  active: boolean;
-  command: string;
-}
+import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw } from 'lucide-react';
 
 const CRON_PRESETS = [
   { value: '*/5 * * * *', label: 'Кожні 5 хвилин', seconds: 300 },
@@ -23,7 +14,6 @@ const CRON_PRESETS = [
 ];
 
 export const CronScheduleSettings = () => {
-  const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
