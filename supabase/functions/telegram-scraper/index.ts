@@ -38,6 +38,29 @@ serve(async (req) => {
   try {
     console.log('🕷️  Telegram Scraper started')
 
+    // Parse request body for optional parameters
+    let requestBody: any = {}
+    try {
+      const text = await req.text()
+      if (text) {
+        requestBody = JSON.parse(text)
+      }
+    } catch (e) {
+      console.log('No request body or invalid JSON, using defaults')
+    }
+
+    const {
+      source_id,  // Optional: target specific source
+      from_date,  // Optional: start date for historical load (ISO string)
+      to_date,    // Optional: end date for historical load (ISO string)
+    } = requestBody
+
+    console.log('Request parameters:', {
+      source_id: source_id || 'all',
+      from_date: from_date || 'auto',
+      to_date: to_date || 'now',
+    })
+
     // Log configuration status
     console.log('Config check:', {
       hasSupabaseUrl: !!SUPABASE_URL,
@@ -53,11 +76,18 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     // Get active Telegram sources from database
-    const { data: sources, error: sourcesError } = await supabase
+    let sourcesQuery = supabase
       .from('news_sources')
       .select('id, name, url, is_active, last_fetched_at')
       .eq('source_type', 'telegram')
       .eq('is_active', true)
+
+    // Filter by specific source if provided
+    if (source_id) {
+      sourcesQuery = sourcesQuery.eq('id', source_id)
+    }
+
+    const { data: sources, error: sourcesError } = await sourcesQuery
 
     if (sourcesError) {
       throw new Error(`Failed to fetch sources: ${sourcesError.message}`)
@@ -109,15 +139,34 @@ serve(async (req) => {
         const posts = await parseChannelPosts(html, channelUsername)
         console.log(`📨 Found ${posts.length} posts`)
 
-        // Get last_fetched_at to filter only new posts
-        const lastFetchedAt = source.last_fetched_at
-          ? new Date(source.last_fetched_at)
-          : new Date(Date.now() - 24 * 60 * 60 * 1000) // Default: last 24 hours
+        // Determine date filter based on parameters
+        let filterFromDate: Date
+        let filterToDate: Date | null = null
 
-        console.log(`🕒 Filtering posts since: ${lastFetchedAt.toISOString()}`)
+        if (from_date) {
+          // Use custom date range for historical load
+          filterFromDate = new Date(from_date)
+          filterToDate = to_date ? new Date(to_date) : new Date()
+          console.log(`🕒 Historical load: filtering posts from ${filterFromDate.toISOString()} to ${filterToDate.toISOString()}`)
+        } else {
+          // Use last_fetched_at for incremental scraping (default behavior)
+          filterFromDate = source.last_fetched_at
+            ? new Date(source.last_fetched_at)
+            : new Date(Date.now() - 24 * 60 * 60 * 1000) // Default: last 24 hours
+          console.log(`🕒 Incremental scraping: filtering posts since ${filterFromDate.toISOString()}`)
+        }
 
-        const newPosts = posts.filter(post => post.date > lastFetchedAt)
-        console.log(`✅ Found ${newPosts.length} new post(s)`)
+        // Filter posts by date range
+        const newPosts = posts.filter(post => {
+          if (filterToDate) {
+            // Historical load: posts within date range
+            return post.date >= filterFromDate && post.date <= filterToDate
+          } else {
+            // Incremental: posts newer than last fetch
+            return post.date > filterFromDate
+          }
+        })
+        console.log(`✅ Found ${newPosts.length} post(s) matching date filter`)
 
         // Process new posts
         let processedCount = 0
@@ -200,14 +249,20 @@ serve(async (req) => {
           }
         }
 
-        // Update last_fetched_at
-        const { error: updateError } = await supabase
-          .from('news_sources')
-          .update({ last_fetched_at: new Date().toISOString() })
-          .eq('id', source.id)
+        // Update last_fetched_at only for incremental scraping (not historical loads)
+        if (!from_date) {
+          const { error: updateError } = await supabase
+            .from('news_sources')
+            .update({ last_fetched_at: new Date().toISOString() })
+            .eq('id', source.id)
 
-        if (updateError) {
-          console.error(`❌ Failed to update last_fetched_at for ${source.name}:`, updateError)
+          if (updateError) {
+            console.error(`❌ Failed to update last_fetched_at for ${source.name}:`, updateError)
+          } else {
+            console.log(`✅ Updated last_fetched_at for ${source.name}`)
+          }
+        } else {
+          console.log(`ℹ️  Historical load - NOT updating last_fetched_at`)
         }
 
         results.push({ channel: channelUsername, processed: processedCount })

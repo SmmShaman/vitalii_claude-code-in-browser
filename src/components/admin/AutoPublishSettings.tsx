@@ -33,6 +33,13 @@ export const AutoPublishSettings = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [monitorResult, setMonitorResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
 
+  // Historical load state
+  const [selectedSourceId, setSelectedSourceId] = useState<string>('');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyResult, setHistoryResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
+
   useEffect(() => {
     loadSources();
   }, []);
@@ -190,6 +197,77 @@ export const AutoPublishSettings = () => {
     }
   };
 
+  const handleLoadHistoricalPosts = async () => {
+    // Validation
+    if (!selectedSourceId) {
+      setHistoryResult({
+        success: false,
+        message: 'Будь ласка, виберіть джерело',
+      });
+      return;
+    }
+
+    if (!fromDate) {
+      setHistoryResult({
+        success: false,
+        message: 'Будь ласка, вкажіть початкову дату',
+      });
+      return;
+    }
+
+    setIsLoadingHistory(true);
+    setHistoryResult(null);
+
+    try {
+      const requestBody: any = {
+        source_id: selectedSourceId,
+        from_date: fromDate,
+      };
+
+      // Add to_date if specified
+      if (toDate) {
+        requestBody.to_date = toDate;
+      }
+
+      // Call telegram-scraper with date range parameters
+      const response = await fetch(
+        'https://uchmopqiylywnemvjttl.supabase.co/functions/v1/telegram-scraper',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setHistoryResult({
+          success: true,
+          message: `Історичне завантаження завершено! Оброблено: ${data.totalProcessed} постів`,
+          details: data.results,
+        });
+        // Reload sources
+        setTimeout(loadSources, 3000);
+      } else {
+        await response.text();
+        setHistoryResult({
+          success: false,
+          message: `Помилка завантаження. Статус: ${response.status}`,
+        });
+      }
+    } catch (error) {
+      setHistoryResult({
+        success: false,
+        message: 'Помилка з\'єднання при завантаженні історичних постів',
+      });
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   const formatLastFetch = (timestamp: string | null) => {
     if (!timestamp) return 'Ніколи';
     const date = new Date(timestamp);
@@ -337,6 +415,131 @@ export const AutoPublishSettings = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Historical Load Section */}
+      <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-lg rounded-lg p-6 border border-amber-500/30">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <svg className="h-5 w-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Історичне Завантаження Постів
+        </h3>
+        <p className="text-sm text-gray-300 mb-4">
+          Завантажте старі пости з вказаного Telegram каналу за певний період. Ці пости стануть базовою точкою для майбутнього моніторингу.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Source Selector */}
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Виберіть джерело Telegram:</label>
+            <select
+              value={selectedSourceId}
+              onChange={(e) => setSelectedSourceId(e.target.value)}
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="" className="bg-gray-800">-- Оберіть канал --</option>
+              {sources
+                .filter(s => s.source_type === 'telegram')
+                .map(source => (
+                  <option key={source.id} value={source.id} className="bg-gray-800">
+                    {source.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Date Range Inputs */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Від дати (обов'язково):</label>
+              <input
+                type="datetime-local"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">До дати (опціонально):</label>
+              <input
+                type="datetime-local"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Load Button */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleLoadHistoricalPosts}
+          disabled={isLoadingHistory}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:from-gray-600 disabled:to-gray-700 text-white rounded-lg transition-all font-semibold"
+        >
+          {isLoadingHistory ? (
+            <>
+              <RefreshCw className="h-5 w-5 animate-spin" />
+              Завантаження історичних постів...
+            </>
+          ) : (
+            <>
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Завантажити Історичні Пости
+            </>
+          )}
+        </motion.button>
+
+        {/* Historical Load Result */}
+        {historyResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mt-4 p-4 rounded-lg border ${
+              historyResult.success
+                ? 'bg-green-500/10 border-green-500/50 text-green-300'
+                : 'bg-red-500/10 border-red-500/50 text-red-300'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {historyResult.success ? (
+                <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              ) : (
+                <XCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <p className="text-sm font-semibold mb-2">{historyResult.message}</p>
+                {historyResult.details && historyResult.details.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {historyResult.details.map((result: any, index: number) => (
+                      <div key={index} className="text-xs opacity-80 flex items-center gap-2">
+                        <span>📡 {result.channel}:</span>
+                        {result.error ? (
+                          <span className="text-red-300">❌ {result.error}</span>
+                        ) : (
+                          <span>✅ {result.processed} постів</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Info Note */}
+        <div className="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+          <p className="text-xs text-amber-200">
+            💡 <strong>Як це працює:</strong> Після завантаження історичних постів, вони будуть збережені в базі даних з оригінальними датами публікації.
+            Автоматичний моніторинг продовжить працювати і завантажувати лише нові пости, які з'явились після останнього автоматичного сканування.
+          </p>
+        </div>
+      </div>
 
       {/* Status Card */}
       <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
