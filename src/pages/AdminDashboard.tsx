@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings } from 'lucide-react';
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { NewsManager } from '../components/admin/NewsManager';
 import { BlogManager } from '../components/admin/BlogManager';
@@ -10,8 +10,9 @@ import { NewsSourcesManager } from '../components/admin/NewsSourcesManager';
 import { AIPromptsManager } from '../components/admin/AIPromptsManager';
 import { AutoPublishSettings } from '../components/admin/AutoPublishSettings';
 import { CronScheduleSettings } from '../components/admin/CronScheduleSettings';
+import { NewsQueueManager } from '../components/admin/NewsQueueManager';
 
-type TabType = 'overview' | 'news' | 'blog' | 'settings';
+type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'settings';
 type SettingsSubTab = 'sources' | 'prompts' | 'schedule' | 'automation';
 
 export const AdminDashboard = () => {
@@ -34,6 +35,7 @@ export const AdminDashboard = () => {
 
   const tabs = [
     { id: 'overview' as TabType, label: 'Overview', icon: BarChart3 },
+    { id: 'queue' as TabType, label: 'Queue', icon: List },
     { id: 'news' as TabType, label: 'News', icon: Newspaper },
     { id: 'blog' as TabType, label: 'Blog', icon: BookOpen },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
@@ -157,6 +159,7 @@ export const AdminDashboard = () => {
           className="pb-8"
         >
           {activeTab === 'overview' && <DashboardOverview />}
+          {activeTab === 'queue' && <NewsQueueManager />}
           {activeTab === 'news' && <NewsManager />}
           {activeTab === 'blog' && <BlogManager />}
           {activeTab === 'settings' && (
