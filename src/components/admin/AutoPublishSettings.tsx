@@ -152,9 +152,9 @@ export const AutoPublishSettings = () => {
     setMonitorResult(null);
 
     try {
-      // Call the telegram-monitor edge function
+      // Call the telegram-scraper edge function
       const response = await fetch(
-        'https://uchmopqiylywnemvjttl.supabase.co/functions/v1/telegram-monitor',
+        'https://uchmopqiylywnemvjttl.supabase.co/functions/v1/telegram-scraper',
         {
           method: 'POST',
           headers: {
@@ -177,13 +177,13 @@ export const AutoPublishSettings = () => {
         const errorText = await response.text();
         setMonitorResult({
           success: false,
-          message: `Telegram Monitor не працює. Перевірте: 1) Edge Function deployed 2) API credentials налаштовані. Статус: ${response.status}`,
+          message: `Telegram Scraper не працює. Статус: ${response.status}. Перевірте що function deployed.`,
         });
       }
     } catch (error) {
       setMonitorResult({
         success: false,
-        message: 'Помилка з\'єднання. Переконайтеся що telegram-monitor deployed.',
+        message: 'Помилка з\'єднання. Переконайтеся що telegram-scraper deployed.',
       });
     } finally {
       setIsMonitoring(false);
@@ -509,12 +509,12 @@ export const AutoPublishSettings = () => {
                 </ul>
               </div>
               <div>
-                <p className="font-medium text-blue-100 mb-1">📱 Telegram Monitor:</p>
+                <p className="font-medium text-blue-100 mb-1">📱 Telegram Monitor (Web Scraping):</p>
                 <ul className="list-disc list-inside space-y-1 text-blue-300 ml-2">
-                  <li>Використовує Telegram Client API для моніторингу публічних каналів</li>
+                  <li>Використовує веб-скрапінг публічних каналів через t.me/s/</li>
                   <li>Читає останні пости з каналів типу "telegram"</li>
-                  <li>Працює без доступу адміна до каналів</li>
-                  <li>Потрібні API credentials (TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION)</li>
+                  <li>Працює БЕЗ авторізації та API credentials</li>
+                  <li>Завантажує текст, фото, дату публікації</li>
                 </ul>
               </div>
               <div>
