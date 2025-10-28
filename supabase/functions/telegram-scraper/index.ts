@@ -28,6 +28,18 @@ serve(async (req) => {
   try {
     console.log('🕷️  Telegram Scraper started')
 
+    // Log configuration status
+    console.log('Config check:', {
+      hasSupabaseUrl: !!SUPABASE_URL,
+      hasSupabaseKey: !!SUPABASE_SERVICE_ROLE_KEY,
+      hasTelegramToken: !!TELEGRAM_BOT_TOKEN,
+      hasTelegramChatId: !!TELEGRAM_CHAT_ID
+    })
+
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+      console.warn('⚠️  Telegram bot credentials not configured. Posts will be saved to DB but NOT sent to Telegram bot for moderation.')
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     // Get active Telegram sources from database
@@ -158,16 +170,21 @@ serve(async (req) => {
 
             console.log(`💾 News entry created with ID: ${newsEntry.id}`)
 
-            // Send to Telegram bot for moderation
-            const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername)
-
-            if (sent) {
-              console.log(`✅ Post ${post.messageId} sent to Telegram bot`)
-              processedCount++
-              totalProcessed++
+            // Send to Telegram bot for moderation (optional)
+            if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+              const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername)
+              if (sent) {
+                console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
+              } else {
+                console.warn(`⚠️  Failed to send post ${post.messageId} to Telegram bot (saved in DB anyway)`)
+              }
             } else {
-              console.error(`❌ Failed to send post ${post.messageId} to Telegram bot`)
+              console.log(`ℹ️  Telegram bot not configured - post saved to DB without moderation`)
             }
+
+            // Count as processed (saved to DB)
+            processedCount++
+            totalProcessed++
           } catch (processError) {
             console.error(`❌ Error processing post ${post.messageId}:`, processError)
           }
