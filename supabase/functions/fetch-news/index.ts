@@ -18,6 +18,8 @@ interface RSSArticle {
   description: string
   pubDate: string
   imageUrl: string | null
+  videoUrl: string | null
+  videoType: string | null
 }
 
 serve(async (req) => {
@@ -125,9 +127,12 @@ serve(async (req) => {
                 original_content: article.description,
                 original_url: article.url,
                 image_url: article.imageUrl,
+                video_url: article.videoUrl,
+                video_type: article.videoType,
                 source_id: source.id,
                 is_published: false,
-                is_rewritten: false
+                is_rewritten: false,
+                pre_moderation_status: 'pending'
               })
               .select('id')
               .single()
@@ -139,16 +144,41 @@ serve(async (req) => {
 
             console.log(`💾 News entry created with ID: ${newsEntry.id}`)
 
-            // Send to Telegram bot for moderation (optional)
-            if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-              const sent = await sendToTelegramBot(newsEntry.id, article, source.name)
-              if (sent) {
-                console.log(`✅ Article sent to Telegram bot for moderation`)
+            // 🤖 AI PRE-MODERATION
+            console.log(`🤖 Running AI pre-moderation for article...`)
+
+            const moderationResult = await preModerate(
+              article.title,
+              article.description,
+              article.url
+            )
+
+            console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
+
+            // Update pre-moderation status in DB
+            await supabase
+              .from('news')
+              .update({
+                pre_moderation_status: moderationResult.approved ? 'approved' : 'rejected',
+                rejection_reason: moderationResult.approved ? null : moderationResult.reason,
+                moderation_checked_at: new Date().toISOString()
+              })
+              .eq('id', newsEntry.id)
+
+            // Send to Telegram bot ONLY if approved by AI
+            if (moderationResult.approved) {
+              if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                const sent = await sendToTelegramBot(newsEntry.id, article, source.name)
+                if (sent) {
+                  console.log(`✅ Article sent to Telegram bot for moderation`)
+                } else {
+                  console.warn(`⚠️  Failed to send article to Telegram bot (saved in DB anyway)`)
+                }
               } else {
-                console.warn(`⚠️  Failed to send article to Telegram bot (saved in DB anyway)`)
+                console.log(`ℹ️  Telegram bot not configured - article saved to DB without moderation`)
               }
             } else {
-              console.log(`ℹ️  Telegram bot not configured - article saved to DB without moderation`)
+              console.log(`🚫 Article rejected by AI: ${moderationResult.reason}`)
             }
 
             // Count as processed (saved to DB)
@@ -276,6 +306,38 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
           }
         }
 
+        // Extract video URL (try multiple common formats)
+        let videoUrl: string | null = null
+        let videoType: string | null = null
+
+        // Try enclosure with video type
+        const videoEnclosure = item.querySelector('enclosure')
+        if (videoEnclosure && videoEnclosure.getAttribute('type')?.startsWith('video/')) {
+          videoUrl = videoEnclosure.getAttribute('url')
+          videoType = 'direct_url'
+          console.log(`🎥 Found RSS video: ${videoUrl}`)
+        }
+
+        // Try media:content with video medium
+        if (!videoUrl) {
+          const videoContent = item.querySelector('content')
+          if (videoContent && videoContent.getAttribute('medium') === 'video') {
+            videoUrl = videoContent.getAttribute('url')
+            videoType = 'direct_url'
+            console.log(`🎥 Found media:content video: ${videoUrl}`)
+          }
+        }
+
+        // Try to detect YouTube links in description or content
+        if (!videoUrl) {
+          const youtubeMatch = (description + url).match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+          if (youtubeMatch) {
+            videoUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`
+            videoType = 'youtube'
+            console.log(`🎥 Found YouTube video: ${videoUrl}`)
+          }
+        }
+
         // Skip if no title or URL
         if (!title || !url) {
           continue
@@ -287,6 +349,8 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
           description: description.substring(0, 1000), // Limit length
           pubDate,
           imageUrl,
+          videoUrl,
+          videoType,
         })
       } catch (itemError) {
         console.error('Error parsing RSS item:', itemError)
@@ -359,5 +423,53 @@ ${article.description.substring(0, 500)}${article.description.length > 500 ? '..
   } catch (error) {
     console.error('❌ Error sending to Telegram bot:', error)
     return false
+  }
+}
+
+/**
+ * AI Pre-moderation: Check article quality before sending to Telegram bot
+ * Filters spam, advertisements, duplicates, and low-quality content
+ */
+async function preModerate(
+  title: string,
+  content: string,
+  url: string
+): Promise<{ approved: boolean; reason: string; is_advertisement: boolean; is_duplicate: boolean; quality_score: number }> {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/pre-moderate-news`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title, content, url })
+      }
+    )
+
+    if (!response.ok) {
+      console.warn('⚠️ Pre-moderation failed, approving by default')
+      return {
+        approved: true,
+        reason: 'Pre-moderation service unavailable',
+        is_advertisement: false,
+        is_duplicate: false,
+        quality_score: 5
+      }
+    }
+
+    const result = await response.json()
+    return result
+  } catch (error) {
+    console.error('Error in preModerate:', error)
+    // Fail-open: if error, approve by default
+    return {
+      approved: true,
+      reason: 'Pre-moderation error',
+      is_advertisement: false,
+      is_duplicate: false,
+      quality_score: 5
+    }
   }
 }

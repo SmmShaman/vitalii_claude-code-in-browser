@@ -139,6 +139,28 @@ export const AIPromptsManager = () => {
     alert('Prompt copied to clipboard!');
   };
 
+  const defaultPreModerationPrompt = `Analyze this post and determine if it should be published on a news website.
+
+Title: {title}
+Content: {content}
+URL: {url}
+
+Check for:
+1. Is this an ADVERTISEMENT? Look for: promo codes, discounts, "buy now", affiliate links, product sales
+2. Is this SPAM or LOW QUALITY? Check for: clickbait, poor grammar, irrelevant content
+3. Is this NEWS-WORTHY? Should be: factual, informative, relevant to audience
+
+Respond ONLY with valid JSON:
+{
+  "approved": true/false,
+  "reason": "brief explanation in 1-2 sentences",
+  "is_advertisement": true/false,
+  "is_duplicate": false,
+  "quality_score": 1-10
+}
+
+Be strict: reject ads, spam, and low-quality content. Approve only genuine news.`;
+
   const defaultRewritePrompt = `You are a professional content rewriter and translator. Rewrite the following news article to avoid plagiarism while preserving the meaning and key facts.
 
 Original Title: {title}
@@ -393,7 +415,14 @@ Return ONLY valid JSON in this exact format:
                   <option value="rewrite">Rewrite & Translate</option>
                   <option value="translate">Translate Only</option>
                   <option value="summarize">Summarize</option>
+                  <option value="pre_moderation">🤖 Pre-Moderation (AI Filter)</option>
                 </select>
+                <p className="text-gray-400 text-xs mt-1">
+                  {formData.prompt_type === 'pre_moderation' &&
+                    'Pre-moderation filters posts before sending to Telegram bot (checks spam, ads, duplicates)'}
+                  {formData.prompt_type === 'rewrite' &&
+                    'Rewrite articles to avoid plagiarism and translate to multiple languages'}
+                </p>
               </div>
 
               <div>
@@ -417,11 +446,16 @@ Return ONLY valid JSON in this exact format:
                   value={formData.prompt_text}
                   onChange={(e) => setFormData({ ...formData, prompt_text: e.target.value })}
                   required
-                  placeholder={defaultRewritePrompt}
+                  placeholder={
+                    formData.prompt_type === 'pre_moderation'
+                      ? defaultPreModerationPrompt
+                      : defaultRewritePrompt
+                  }
                   className="w-full h-64 px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none overflow-y-auto"
                 />
                 <p className="text-gray-400 text-xs mt-1">
                   Use placeholders: {'{title}'}, {'{content}'}, {'{url}'}
+                  {formData.prompt_type === 'pre_moderation' && ' | Must return valid JSON with approved, reason, is_advertisement, is_duplicate, quality_score'}
                 </p>
               </div>
 

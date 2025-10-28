@@ -25,6 +25,8 @@ interface ScrapedPost {
   messageId: string
   text: string
   photoUrl: string | null
+  videoUrl: string | null
+  videoType: string | null
   date: Date
   originalUrl: string
 }
@@ -208,16 +210,19 @@ serve(async (req) => {
             }
 
             // Save to database with pending status (waiting for moderation)
-            const { data: newsEntry, error: insertError } = await supabase
+            const { data: newsEntry, error: insertError} = await supabase
               .from('news')
               .insert({
                 original_title: post.text.substring(0, 200), // First 200 chars as title
                 original_content: post.text,
                 original_url: post.originalUrl,
                 image_url: photoUrl,
+                video_url: post.videoUrl,
+                video_type: post.videoType,
                 source_id: source.id,
                 is_published: false,
-                is_rewritten: false
+                is_rewritten: false,
+                pre_moderation_status: 'pending'
               })
               .select('id')
               .single()
@@ -229,16 +234,41 @@ serve(async (req) => {
 
             console.log(`💾 News entry created with ID: ${newsEntry.id}`)
 
-            // Send to Telegram bot for moderation (optional)
-            if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-              const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername)
-              if (sent) {
-                console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
+            // 🤖 AI PRE-MODERATION
+            console.log(`🤖 Running AI pre-moderation for post ${post.messageId}...`)
+
+            const moderationResult = await preModerate(
+              post.text.substring(0, 200),
+              post.text,
+              post.originalUrl
+            )
+
+            console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
+
+            // Update pre-moderation status in DB
+            await supabase
+              .from('news')
+              .update({
+                pre_moderation_status: moderationResult.approved ? 'approved' : 'rejected',
+                rejection_reason: moderationResult.approved ? null : moderationResult.reason,
+                moderation_checked_at: new Date().toISOString()
+              })
+              .eq('id', newsEntry.id)
+
+            // Send to Telegram bot ONLY if approved by AI
+            if (moderationResult.approved) {
+              if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername)
+                if (sent) {
+                  console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
+                } else {
+                  console.warn(`⚠️  Failed to send post ${post.messageId} to Telegram bot (saved in DB anyway)`)
+                }
               } else {
-                console.warn(`⚠️  Failed to send post ${post.messageId} to Telegram bot (saved in DB anyway)`)
+                console.log(`ℹ️  Telegram bot not configured - post saved to DB without moderation`)
               }
             } else {
-              console.log(`ℹ️  Telegram bot not configured - post saved to DB without moderation`)
+              console.log(`🚫 Post ${post.messageId} rejected by AI: ${moderationResult.reason}`)
             }
 
             // Count as processed (saved to DB)
@@ -350,13 +380,40 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
           }
         }
 
+        // Extract video URL and type
+        let videoUrl: string | null = null
+        let videoType: string | null = null
+
+        // Try to find video element
+        const videoElement = message.querySelector('video')
+        if (videoElement) {
+          const videoSrc = videoElement.getAttribute('src')
+          if (videoSrc) {
+            videoUrl = videoSrc
+            videoType = 'direct_url'
+            console.log(`🎥 Found direct video: ${videoUrl}`)
+          }
+        }
+
+        // If no direct video, try to get Telegram embed URL
+        if (!videoUrl) {
+          const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player')
+          if (videoWrap) {
+            // Use Telegram embed as video URL
+            const messageId = dataPost.split('/')[1]
+            videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+            videoType = 'telegram_embed'
+            console.log(`🎥 Found Telegram video embed: ${videoUrl}`)
+          }
+        }
+
         // Extract date
         const dateElement = message.querySelector('.tgme_widget_message_date time')
         const datetime = dateElement?.getAttribute('datetime')
         const date = datetime ? new Date(datetime) : new Date()
 
         // Skip if no content
-        if (!text && !photoUrl) {
+        if (!text && !photoUrl && !videoUrl) {
           continue
         }
 
@@ -365,6 +422,8 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
           messageId,
           text,
           photoUrl,
+          videoUrl,
+          videoType,
           date,
           originalUrl: `https://t.me/${channelUsername}/${messageId}`,
         })
@@ -453,5 +512,53 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
   } catch (error) {
     console.error('❌ Error sending to Telegram bot:', error)
     return false
+  }
+}
+
+/**
+ * AI Pre-moderation: Check post quality before sending to Telegram bot
+ * Filters spam, advertisements, duplicates, and low-quality content
+ */
+async function preModerate(
+  title: string,
+  content: string,
+  url: string
+): Promise<{ approved: boolean; reason: string; is_advertisement: boolean; is_duplicate: boolean; quality_score: number }> {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/pre-moderate-news`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title, content, url })
+      }
+    )
+
+    if (!response.ok) {
+      console.warn('⚠️ Pre-moderation failed, approving by default')
+      return {
+        approved: true,
+        reason: 'Pre-moderation service unavailable',
+        is_advertisement: false,
+        is_duplicate: false,
+        quality_score: 5
+      }
+    }
+
+    const result = await response.json()
+    return result
+  } catch (error) {
+    console.error('Error in preModerate:', error)
+    // Fail-open: if error, approve by default
+    return {
+      approved: true,
+      reason: 'Pre-moderation error',
+      is_advertisement: false,
+      is_duplicate: false,
+      quality_score: 5
+    }
   }
 }

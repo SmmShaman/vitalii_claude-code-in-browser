@@ -96,6 +96,11 @@ export interface Database {
           is_rewritten: boolean;
           is_published: boolean;
           views_count: number;
+          pre_moderation_status: string;
+          rejection_reason: string | null;
+          moderation_checked_at: string | null;
+          video_url: string | null;
+          video_type: string | null;
         };
         Insert: {
           id?: string;
@@ -123,6 +128,11 @@ export interface Database {
           is_rewritten?: boolean;
           is_published?: boolean;
           views_count?: number;
+          pre_moderation_status?: string;
+          rejection_reason?: string | null;
+          moderation_checked_at?: string | null;
+          video_url?: string | null;
+          video_type?: string | null;
         };
         Update: {
           id?: string;
@@ -149,6 +159,11 @@ export interface Database {
           is_rewritten?: boolean;
           is_published?: boolean;
           views_count?: number;
+          pre_moderation_status?: string;
+          rejection_reason?: string | null;
+          moderation_checked_at?: string | null;
+          video_url?: string | null;
+          video_type?: string | null;
         };
       };
       blog_posts: {

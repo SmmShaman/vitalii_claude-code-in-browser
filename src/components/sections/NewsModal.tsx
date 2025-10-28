@@ -188,8 +188,45 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 animate={{ opacity: 1, x: 0 }}
                 className="max-w-4xl mx-auto"
               >
-                {/* Image */}
-                {selectedNews.image_url && (
+                {/* Video Player (if video exists) */}
+                {(selectedNews as any).video_url && (
+                  <div className="w-full mb-6 rounded-xl overflow-hidden bg-black">
+                    {(selectedNews as any).video_type === 'youtube' ? (
+                      // YouTube embed
+                      <iframe
+                        src={(selectedNews as any).video_url}
+                        className="w-full aspect-video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title="Video"
+                      />
+                    ) : (selectedNews as any).video_type === 'telegram_embed' ? (
+                      // Telegram embed
+                      <iframe
+                        src={(selectedNews as any).video_url}
+                        className="w-full aspect-video"
+                        frameBorder="0"
+                        scrolling="no"
+                        title="Telegram Video"
+                      />
+                    ) : (
+                      // Direct video URL (HTML5)
+                      <video
+                        src={(selectedNews as any).video_url}
+                        controls
+                        className="w-full aspect-video"
+                        playsInline
+                        preload="metadata"
+                      >
+                        <source src={(selectedNews as any).video_url} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
+                  </div>
+                )}
+
+                {/* Image (only if no video) */}
+                {!((selectedNews as any).video_url) && selectedNews.image_url && (
                   <div className="w-full h-96 rounded-xl overflow-hidden mb-6">
                     <img
                       src={selectedNews.image_url as string}
