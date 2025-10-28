@@ -331,17 +331,29 @@ serve(async (req) => {
           })
         }
 
-        // Update news to published
-        const { error: updateError } = await supabase
-          .from('news')
-          .update({
-            is_published: true,
-            published_at: new Date().toISOString()
-          })
-          .eq('id', newsId)
+        // Call process-news to translate, rewrite with AI, and publish
+        console.log('Calling process-news for AI rewriting...')
 
-        if (updateError) {
-          console.error('Failed to update news:', updateError)
+        const processResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/process-news`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId: newsId,
+              title: news.original_title || '',
+              content: news.original_content || '',
+              url: news.original_url || ''
+            })
+          }
+        )
+
+        if (!processResponse.ok) {
+          const errorText = await processResponse.text()
+          console.error('Failed to process news:', errorText)
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
             {
@@ -349,7 +361,7 @@ serve(async (req) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 callback_query_id: callbackId,
-                text: `❌ Error: ${updateError.message}`,
+                text: `❌ AI processing error`,
                 show_alert: true
               })
             }
@@ -358,6 +370,8 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' }
           })
         }
+
+        console.log('✅ News processed successfully with AI')
 
         // Success
         await fetch(

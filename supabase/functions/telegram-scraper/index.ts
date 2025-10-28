@@ -4,6 +4,8 @@ import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
+const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
 interface TelegramSource {
   id: string
@@ -134,29 +136,37 @@ serve(async (req) => {
               }
             }
 
-            // Send to process-news
-            const processResponse = await fetch(`${SUPABASE_URL}/functions/v1/process-news`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-              },
-              body: JSON.stringify({
-                content: post.text,
-                imageUrl: photoUrl,
-                sourceType: 'telegram_scraper',
-                channelUsername: post.channelUsername,
-                originalUrl: post.originalUrl,
-              }),
-            })
+            // Save to database with pending status (waiting for moderation)
+            const { data: newsEntry, error: insertError } = await supabase
+              .from('news')
+              .insert({
+                original_title: post.text.substring(0, 200), // First 200 chars as title
+                original_content: post.text,
+                original_url: post.originalUrl,
+                image_url: photoUrl,
+                source_id: source.id,
+                is_published: false,
+                is_rewritten: false
+              })
+              .select('id')
+              .single()
 
-            if (processResponse.ok) {
-              console.log(`✅ Post ${post.messageId} processed successfully`)
+            if (insertError || !newsEntry) {
+              console.error(`❌ Failed to create news entry: ${insertError}`)
+              continue
+            }
+
+            console.log(`💾 News entry created with ID: ${newsEntry.id}`)
+
+            // Send to Telegram bot for moderation
+            const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername)
+
+            if (sent) {
+              console.log(`✅ Post ${post.messageId} sent to Telegram bot`)
               processedCount++
               totalProcessed++
             } else {
-              const errorText = await processResponse.text()
-              console.error(`❌ Failed to process post ${post.messageId}: ${errorText}`)
+              console.error(`❌ Failed to send post ${post.messageId} to Telegram bot`)
             }
           } catch (processError) {
             console.error(`❌ Error processing post ${post.messageId}:`, processError)
@@ -300,4 +310,66 @@ function extractUsername(url: string): string | null {
     return url.substring(1)
   }
   return url
+}
+
+/**
+ * Send post to Telegram bot for moderation
+ */
+async function sendToTelegramBot(
+  newsId: string,
+  post: ScrapedPost,
+  channelUsername: string
+): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.error('❌ Telegram bot credentials not configured')
+    return false
+  }
+
+  try {
+    const message = `🆕 <b>New Post from Telegram Channel</b>
+
+<b>Channel:</b> @${channelUsername}
+<b>Message ID:</b> ${post.messageId}
+
+<b>Content:</b>
+${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
+
+<b>Original URL:</b> ${post.originalUrl}
+
+<i>Posted:</i> ${post.date.toISOString()}
+
+⏳ <i>Waiting for moderation...</i>`
+
+    const keyboard = {
+      inline_keyboard: [[
+        { text: '✅ Publish', callback_data: `publish_${newsId}` },
+        { text: '❌ Reject', callback_data: `reject_${newsId}` }
+      ]]
+    }
+
+    const response = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: message,
+          reply_markup: keyboard,
+          parse_mode: 'HTML'
+        })
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`❌ Telegram API error: ${errorText}`)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('❌ Error sending to Telegram bot:', error)
+    return false
+  }
 }
