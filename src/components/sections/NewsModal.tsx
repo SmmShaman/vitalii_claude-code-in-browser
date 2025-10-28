@@ -104,6 +104,8 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     }).format(date);
   };
 
