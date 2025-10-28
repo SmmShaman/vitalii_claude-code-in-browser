@@ -449,42 +449,52 @@ export const AutoPublishSettings = () => {
                     {source.rss_url && (
                       <p className="text-xs text-gray-500">RSS: {source.rss_url}</p>
                     )}
-                    <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">
-                      <span>
+                    <div className="flex items-center gap-4 mt-3 text-sm">
+                      <span className="text-gray-400">
                         Останній fetch: {formatLastFetch(source.last_fetched_at)}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={source.fetch_interval}
-                      onChange={(e) => handleUpdateInterval(source.id, Number(e.target.value))}
-                      disabled={!source.is_active}
-                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
-                    >
-                      {INTERVAL_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value} className="bg-gray-800">
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleToggleSource(source.id, source.is_active)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        source.is_active
-                          ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300'
-                          : 'bg-gray-500/20 hover:bg-gray-500/30 text-gray-300'
-                      }`}
-                      title={source.is_active ? 'Вимкнути' : 'Увімкнути'}
-                    >
-                      {source.is_active ? (
-                        <CheckCircle className="h-5 w-5" />
-                      ) : (
-                        <XCircle className="h-5 w-5" />
-                      )}
-                    </motion.button>
+                  <div className="flex flex-col gap-3 items-end">
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <div className="text-xs text-gray-400 mb-1">Інтервал скрапінгу:</div>
+                        <select
+                          value={source.fetch_interval}
+                          onChange={(e) => handleUpdateInterval(source.id, Number(e.target.value))}
+                          disabled={!source.is_active}
+                          className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 min-w-[140px]"
+                        >
+                          {INTERVAL_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value} className="bg-gray-800">
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleToggleSource(source.id, source.is_active)}
+                        className={`p-3 rounded-lg transition-colors ${
+                          source.is_active
+                            ? 'bg-green-500/20 hover:bg-green-500/30 text-green-300'
+                            : 'bg-gray-500/20 hover:bg-gray-500/30 text-gray-300'
+                        }`}
+                        title={source.is_active ? 'Вимкнути' : 'Увімкнути'}
+                      >
+                        {source.is_active ? (
+                          <CheckCircle className="h-5 w-5" />
+                        ) : (
+                          <XCircle className="h-5 w-5" />
+                        )}
+                      </motion.button>
+                    </div>
+                    {source.is_active && (
+                      <div className="text-xs text-gray-400 italic">
+                        Наступний fetch: ~{Math.floor(source.fetch_interval / 60)} хв
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
