@@ -53,7 +53,7 @@ export const ActivityMonitor = () => {
     // Refresh based on user-selected interval
     // refreshInterval is in seconds, convert to milliseconds
     // If interval is 0, don't auto-refresh
-    let interval: NodeJS.Timeout | null = null;
+    let interval: number | null = null;
 
     if (refreshInterval > 0) {
       interval = setInterval(() => {
@@ -79,6 +79,10 @@ export const ActivityMonitor = () => {
     try {
       setLoading(true);
 
+      // Get today's start (used for filtering news from today)
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
       // Load all sources
       const { data: sources, error: sourcesError } = await supabase
         .from('news_sources')
@@ -86,10 +90,6 @@ export const ActivityMonitor = () => {
         .order('name');
 
       if (sourcesError) throw sourcesError;
-
-      // Get today's start
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
 
       // Calculate stats for each source
       const stats: SourceStats[] = await Promise.all(
@@ -239,11 +239,7 @@ export const ActivityMonitor = () => {
 
       setBotQueue(formattedQueue);
 
-      // Get today's start for rejected news
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      // Load rejected news (today only)
+      // Load rejected news (today only, using todayStart from above)
       const { data: rejected, error: rejectedError } = await supabase
         .from('news')
         .select(`
