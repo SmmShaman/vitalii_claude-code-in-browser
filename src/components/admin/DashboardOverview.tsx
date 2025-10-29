@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Newspaper, BookOpen, Eye, TrendingUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Newspaper, BookOpen, Eye, TrendingUp, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../integrations/supabase/client';
 
 interface Stats {
@@ -8,6 +8,15 @@ interface Stats {
   totalBlogPosts: number;
   publishedNews: number;
   publishedBlogPosts: number;
+}
+
+type WorkflowStatus = 'idle' | 'fetching_rss' | 'fetching_telegram' | 'complete' | 'error';
+
+interface WorkflowLog {
+  step: string;
+  status: 'pending' | 'running' | 'success' | 'error';
+  message: string;
+  details?: any;
 }
 
 export const DashboardOverview = () => {
@@ -18,6 +27,9 @@ export const DashboardOverview = () => {
     publishedBlogPosts: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus>('idle');
+  const [workflowLogs, setWorkflowLogs] = useState<WorkflowLog[]>([]);
+  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -58,6 +70,105 @@ export const DashboardOverview = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const addLog = (step: string, status: WorkflowLog['status'], message: string, details?: any) => {
+    setWorkflowLogs(prev => [...prev, { step, status, message, details }]);
+  };
+
+  const updateLog = (step: string, status: WorkflowLog['status'], message: string, details?: any) => {
+    setWorkflowLogs(prev =>
+      prev.map(log =>
+        log.step === step ? { ...log, status, message, details } : log
+      )
+    );
+  };
+
+  const startWork = async () => {
+    if (isRunning) return;
+
+    setIsRunning(true);
+    setWorkflowStatus('fetching_rss');
+    setWorkflowLogs([]);
+
+    try {
+      // Step 1: RSS Fetch
+      addLog('rss', 'running', 'Перевірка RSS джерел...');
+      setWorkflowStatus('fetching_rss');
+
+      const rssResponse = await fetch(
+        'https://uchmopqiylywnemvjttl.supabase.co/functions/v1/fetch-news',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (rssResponse.ok) {
+        const rssData = await rssResponse.json();
+        updateLog(
+          'rss',
+          'success',
+          `✅ RSS завершено! Знайдено ${rssData.totalProcessed || 0} нових постів`,
+          rssData.results
+        );
+      } else {
+        updateLog('rss', 'error', `❌ Помилка RSS: ${rssResponse.status}`);
+      }
+
+      // Wait 2 seconds between requests
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Step 2: Telegram Fetch
+      addLog('telegram', 'running', 'Перевірка Telegram каналів...');
+      setWorkflowStatus('fetching_telegram');
+
+      const telegramResponse = await fetch(
+        'https://uchmopqiylywnemvjttl.supabase.co/functions/v1/telegram-scraper',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (telegramResponse.ok) {
+        const telegramData = await telegramResponse.json();
+        updateLog(
+          'telegram',
+          'success',
+          `✅ Telegram завершено! Знайдено ${telegramData.totalProcessed || 0} нових постів`,
+          telegramData.results
+        );
+      } else {
+        updateLog('telegram', 'error', `❌ Помилка Telegram: ${telegramResponse.status}`);
+      }
+
+      // Complete
+      setWorkflowStatus('complete');
+      addLog('complete', 'success', '🎉 Робота завершена! Перевірте Telegram бот для модерації.');
+
+      // Reload stats
+      setTimeout(() => {
+        loadStats();
+      }, 3000);
+
+    } catch (error: any) {
+      setWorkflowStatus('error');
+      addLog('error', 'error', `❌ Помилка: ${error.message}`);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const resetWorkflow = () => {
+    setWorkflowStatus('idle');
+    setWorkflowLogs([]);
   };
 
   const statCards = [
@@ -132,6 +243,142 @@ export const DashboardOverview = () => {
             </motion.div>
           );
         })}
+      </div>
+
+      {/* Start Work Section */}
+      <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 backdrop-blur-lg rounded-xl p-8 border border-green-500/30">
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="w-20 h-20 rounded-full bg-green-500/30 flex items-center justify-center mb-4">
+            <Play className="h-10 w-10 text-green-400" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-2">Почати роботу</h2>
+          <p className="text-gray-300 max-w-2xl">
+            Натисніть кнопку щоб автоматично перевірити всі налаштовані джерела новин (RSS та Telegram),
+            запустити AI премодерацію та відправити схвалені пости в Telegram бот для вашого підтвердження.
+          </p>
+        </div>
+
+        {/* Workflow Button */}
+        {workflowStatus === 'idle' && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={startWork}
+            disabled={isRunning}
+            className="w-full max-w-md mx-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white rounded-xl transition-all font-bold text-lg shadow-lg"
+          >
+            <Play className="h-6 w-6" />
+            Почати роботу
+          </motion.button>
+        )}
+
+        {/* Workflow Progress */}
+        {workflowStatus !== 'idle' && (
+          <div className="space-y-4 mt-6">
+            {/* Progress Steps */}
+            <div className="bg-black/20 rounded-lg p-6 space-y-3">
+              <AnimatePresence>
+                {workflowLogs.map((log, index) => (
+                  <motion.div
+                    key={`${log.step}-${index}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="flex items-start gap-3 p-3 bg-white/5 rounded-lg"
+                  >
+                    {/* Status Icon */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      {log.status === 'running' && (
+                        <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+                      )}
+                      {log.status === 'success' && (
+                        <CheckCircle className="h-5 w-5 text-green-400" />
+                      )}
+                      {log.status === 'error' && (
+                        <XCircle className="h-5 w-5 text-red-400" />
+                      )}
+                      {log.status === 'pending' && (
+                        <div className="h-5 w-5 rounded-full border-2 border-gray-500" />
+                      )}
+                    </div>
+
+                    {/* Message */}
+                    <div className="flex-1">
+                      <p className={`text-sm font-medium ${
+                        log.status === 'success' ? 'text-green-300' :
+                        log.status === 'error' ? 'text-red-300' :
+                        log.status === 'running' ? 'text-blue-300' :
+                        'text-gray-400'
+                      }`}>
+                        {log.message}
+                      </p>
+
+                      {/* Details */}
+                      {log.details && Array.isArray(log.details) && log.details.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {log.details.map((detail: any, i: number) => (
+                            <div key={i} className="text-xs text-gray-400 flex items-center gap-2">
+                              <span>•</span>
+                              <span>{detail.source || detail.channel}:</span>
+                              {detail.error ? (
+                                <span className="text-red-400">{detail.error}</span>
+                              ) : (
+                                <span className="text-green-400">{detail.processed} постів</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Complete/Error Actions */}
+            {(workflowStatus === 'complete' || workflowStatus === 'error') && (
+              <div className="flex justify-center gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={resetWorkflow}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors font-medium"
+                >
+                  Закрити
+                </motion.button>
+                {workflowStatus === 'complete' && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      resetWorkflow();
+                      startWork();
+                    }}
+                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all font-medium"
+                  >
+                    Запустити знову
+                  </motion.button>
+                )}
+              </div>
+            )}
+
+            {/* Running indicator */}
+            {isRunning && (
+              <div className="flex items-center justify-center gap-2 text-blue-300 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Виконується...</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Info Note */}
+        <div className="mt-6 p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+          <p className="text-sm text-green-200">
+            💡 <strong>Як це працює:</strong> Система послідовно перевірить RSS та Telegram джерела →
+            AI відфільтрує спам та рекламу → Якісні пости надійдуть в ваш Telegram бот для фінального підтвердження.
+          </p>
+        </div>
       </div>
 
       {/* Quick Actions */}
