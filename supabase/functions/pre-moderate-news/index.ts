@@ -224,13 +224,15 @@ async function checkDuplicates(supabase: any, title: string): Promise<boolean> {
     if (keywords.length === 0) return false
 
     // Search for posts with similar titles in last 30 days
+    // Only check non-rejected posts (ignore previously rejected duplicates)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     const { data, error } = await supabase
       .from('news')
-      .select('id, title_en, original_title')
+      .select('id, title_en, original_title, pre_moderation_status')
       .gte('created_at', thirtyDaysAgo.toISOString())
+      .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
       .limit(100)
 
     if (error) {
