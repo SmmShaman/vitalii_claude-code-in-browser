@@ -18,6 +18,7 @@ interface TelegramSource {
   url: string
   is_active: boolean
   last_fetched_at: string | null
+  fetch_interval: number // in seconds
 }
 
 interface ScrapedPost {
@@ -80,7 +81,7 @@ serve(async (req) => {
     // Get active Telegram sources from database
     let sourcesQuery = supabase
       .from('news_sources')
-      .select('id, name, url, is_active, last_fetched_at')
+      .select('id, name, url, is_active, last_fetched_at, fetch_interval')
       .eq('source_type', 'telegram')
       .eq('is_active', true)
 
@@ -105,14 +106,63 @@ serve(async (req) => {
 
     console.log(`📋 Found ${sources.length} active Telegram source(s)`)
 
+    // Filter sources based on their individual fetch_interval
+    // Only process sources where it's time to fetch according to their schedule
+    const now = Date.now()
+    const sourcesToProcess = sources.filter(source => {
+      // If source_id is specified, always process (manual trigger)
+      if (source_id) {
+        console.log(`✅ Processing ${source.name} (manual trigger)`)
+        return true
+      }
+
+      // If never fetched, process it
+      if (!source.last_fetched_at) {
+        console.log(`✅ Processing ${source.name} (never fetched before)`)
+        return true
+      }
+
+      // Check if enough time has passed based on fetch_interval
+      const lastFetchTime = new Date(source.last_fetched_at).getTime()
+      const intervalMs = source.fetch_interval * 1000
+      const nextFetchTime = lastFetchTime + intervalMs
+      const shouldFetch = now >= nextFetchTime
+
+      if (shouldFetch) {
+        const minutesSinceLastFetch = Math.floor((now - lastFetchTime) / 60000)
+        console.log(`✅ Processing ${source.name} (last fetched ${minutesSinceLastFetch} minutes ago, interval: ${source.fetch_interval / 60} minutes)`)
+        return true
+      } else {
+        const minutesUntilNextFetch = Math.ceil((nextFetchTime - now) / 60000)
+        console.log(`⏭️  Skipping ${source.name} (next fetch in ${minutesUntilNextFetch} minutes)`)
+        return false
+      }
+    })
+
+    if (sourcesToProcess.length === 0) {
+      console.log('ℹ️  No sources ready to fetch at this time')
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          message: 'No sources ready to fetch',
+          totalSources: sources.length,
+          sourcesProcessed: 0,
+          sourcesSkipped: sources.length
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log(`🎯 Processing ${sourcesToProcess.length} / ${sources.length} source(s)`)
+
     let totalProcessed = 0
     let totalApproved = 0
     let totalRejected = 0
     let totalSentToBot = 0
     const results: { channel: string; processed: number; approved?: number; rejected?: number; sentToBot?: number; error?: string }[] = []
 
-    // Process each channel
-    for (const source of sources) {
+    // Process each channel (only those ready to fetch)
+    for (const source of sourcesToProcess) {
       try {
         const channelUsername = extractUsername(source.url)
         if (!channelUsername) {
@@ -330,7 +380,7 @@ serve(async (req) => {
         })
 
         // Rate limiting: wait 3 seconds between channels
-        if (sources.indexOf(source) < sources.length - 1) {
+        if (sourcesToProcess.indexOf(source) < sourcesToProcess.length - 1) {
           console.log('⏳ Waiting 3s before next channel...')
           await new Promise((resolve) => setTimeout(resolve, 3000))
         }
