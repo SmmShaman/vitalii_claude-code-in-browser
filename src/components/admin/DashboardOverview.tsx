@@ -107,8 +107,9 @@ export const DashboardOverview = () => {
         }
       );
 
+      let rssData: any = null;
       if (rssResponse.ok) {
-        const rssData = await rssResponse.json();
+        rssData = await rssResponse.json();
         updateLog(
           'rss',
           'success',
@@ -137,8 +138,9 @@ export const DashboardOverview = () => {
         }
       );
 
+      let telegramData: any = null;
       if (telegramResponse.ok) {
-        const telegramData = await telegramResponse.json();
+        telegramData = await telegramResponse.json();
         updateLog(
           'telegram',
           'success',
@@ -151,12 +153,20 @@ export const DashboardOverview = () => {
 
       // Complete
       setWorkflowStatus('complete');
-      addLog('complete', 'success', '🎉 Робота завершена! Перевірте Telegram бот для модерації.');
 
-      // Reload stats
+      // Calculate total new posts from both sources
+      const totalRssProcessed = rssData?.totalProcessed || 0;
+      const totalTelegramProcessed = telegramData?.totalProcessed || 0;
+      const totalNewPosts = totalRssProcessed + totalTelegramProcessed;
+
+      addLog('complete', 'success', `🎉 Робота завершена! Знайдено ${totalNewPosts} нових постів. Схвалені AI пости відправлено в Telegram бот для модерації.`);
+
+      // Reload stats and notify other components
       setTimeout(() => {
         loadStats();
-      }, 3000);
+        // Dispatch custom event to notify NewsQueueManager to reload
+        window.dispatchEvent(new CustomEvent('news-queue-updated'));
+      }, 2000);
 
     } catch (error: any) {
       setWorkflowStatus('error');

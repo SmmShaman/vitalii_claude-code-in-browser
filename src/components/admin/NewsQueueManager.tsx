@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   List, CheckCircle, XCircle, Star,
-  Search, Trash2, ChevronUp, ChevronDown, Clock
+  Search, Trash2, ChevronUp, ChevronDown, Clock, RefreshCw
 } from 'lucide-react';
 import { supabase } from '../../integrations/supabase/client';
 
@@ -17,6 +17,8 @@ interface QueuedNews {
   is_rewritten: boolean;
   priority: 'high' | 'medium' | 'low' | null;
   scheduled_publish_at: string | null;
+  pre_moderation_status: string | null;
+  rejection_reason: string | null;
 }
 
 type SortBy = 'created_at' | 'priority' | 'title';
@@ -32,6 +34,18 @@ export const NewsQueueManager = () => {
 
   useEffect(() => {
     loadQueue();
+
+    // Listen for updates from DashboardOverview workflow
+    const handleQueueUpdate = () => {
+      console.log('📢 News queue update event received, reloading...');
+      loadQueue();
+    };
+
+    window.addEventListener('news-queue-updated', handleQueueUpdate);
+
+    return () => {
+      window.removeEventListener('news-queue-updated', handleQueueUpdate);
+    };
   }, []);
 
   const loadQueue = async () => {
@@ -39,7 +53,7 @@ export const NewsQueueManager = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('news')
-        .select('id, title, content, image_url, source_url, created_at, is_published, is_rewritten, priority, scheduled_publish_at')
+        .select('id, title, content, image_url, source_url, created_at, is_published, is_rewritten, priority, scheduled_publish_at, pre_moderation_status, rejection_reason')
         .eq('is_published', false)
         .order('created_at', { ascending: false });
 
@@ -206,6 +220,16 @@ export const NewsQueueManager = () => {
             {queue.length} новин чекають публікації
           </p>
         </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={loadQueue}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors font-medium"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Оновити
+        </motion.button>
       </div>
 
       {/* Filters and Search */}
@@ -356,11 +380,35 @@ export const NewsQueueManager = () => {
                         <p className="text-sm text-gray-400 line-clamp-2">{news.content}</p>
                       </div>
 
-                      {/* Priority Badge */}
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getPriorityColor(news.priority)}`}>
-                        {getPriorityLabel(news.priority)}
+                      <div className="flex flex-col gap-2">
+                        {/* AI Moderation Status Badge */}
+                        {news.pre_moderation_status && (
+                          <div className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                            news.pre_moderation_status === 'approved'
+                              ? 'text-green-400 bg-green-500/20 border-green-500/50'
+                              : news.pre_moderation_status === 'rejected'
+                              ? 'text-red-400 bg-red-500/20 border-red-500/50'
+                              : 'text-yellow-400 bg-yellow-500/20 border-yellow-500/50'
+                          }`}>
+                            {news.pre_moderation_status === 'approved' && '🤖 AI: Схвалено'}
+                            {news.pre_moderation_status === 'rejected' && '🤖 AI: Відхилено'}
+                            {news.pre_moderation_status === 'pending' && '🤖 AI: Очікує'}
+                          </div>
+                        )}
+
+                        {/* Priority Badge */}
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getPriorityColor(news.priority)}`}>
+                          {getPriorityLabel(news.priority)}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Rejection Reason */}
+                    {news.pre_moderation_status === 'rejected' && news.rejection_reason && (
+                      <div className="mb-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-300">
+                        <strong>Причина відхилення:</strong> {news.rejection_reason}
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-4 text-xs text-gray-400">
                       <span className="flex items-center gap-1">
