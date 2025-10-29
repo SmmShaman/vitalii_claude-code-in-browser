@@ -31,12 +31,14 @@ interface RecentNews {
   pre_moderation_status: 'pending' | 'approved' | 'rejected';
   rejection_reason: string | null;
   is_published: boolean;
+  original_url: string;
 }
 
 export const ActivityMonitor = () => {
   const [sourceStats, setSourceStats] = useState<SourceStats[]>([]);
   const [recentNews, setRecentNews] = useState<RecentNews[]>([]);
   const [botQueue, setBotQueue] = useState<RecentNews[]>([]);
+  const [rejectedNews, setRejectedNews] = useState<RecentNews[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -155,6 +157,7 @@ export const ActivityMonitor = () => {
         .select(`
           id,
           original_title,
+          original_url,
           created_at,
           pre_moderation_status,
           rejection_reason,
@@ -172,6 +175,7 @@ export const ActivityMonitor = () => {
       const formattedRecent = (recent || []).map((item: any) => ({
         id: item.id,
         original_title: item.original_title,
+        original_url: item.original_url,
         source_name: item.news_sources?.name || 'Unknown',
         source_type: item.news_sources?.source_type || 'unknown',
         created_at: item.created_at,
@@ -188,6 +192,7 @@ export const ActivityMonitor = () => {
         .select(`
           id,
           original_title,
+          original_url,
           created_at,
           pre_moderation_status,
           rejection_reason,
@@ -207,6 +212,7 @@ export const ActivityMonitor = () => {
       const formattedQueue = (queue || []).map((item: any) => ({
         id: item.id,
         original_title: item.original_title,
+        original_url: item.original_url,
         source_name: item.news_sources?.name || 'Unknown',
         source_type: item.news_sources?.source_type || 'unknown',
         created_at: item.created_at,
@@ -216,6 +222,47 @@ export const ActivityMonitor = () => {
       }));
 
       setBotQueue(formattedQueue);
+
+      // Get today's start for rejected news
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      // Load rejected news (today only)
+      const { data: rejected, error: rejectedError } = await supabase
+        .from('news')
+        .select(`
+          id,
+          original_title,
+          original_url,
+          created_at,
+          pre_moderation_status,
+          rejection_reason,
+          is_published,
+          news_sources (
+            name,
+            source_type
+          )
+        `)
+        .eq('pre_moderation_status', 'rejected')
+        .gte('created_at', todayStart.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (rejectedError) throw rejectedError;
+
+      const formattedRejected = (rejected || []).map((item: any) => ({
+        id: item.id,
+        original_title: item.original_title,
+        original_url: item.original_url,
+        source_name: item.news_sources?.name || 'Unknown',
+        source_type: item.news_sources?.source_type || 'unknown',
+        created_at: item.created_at,
+        pre_moderation_status: item.pre_moderation_status,
+        rejection_reason: item.rejection_reason,
+        is_published: item.is_published,
+      }));
+
+      setRejectedNews(formattedRejected);
 
     } catch (error) {
       console.error('Failed to load activity data:', error);
@@ -277,6 +324,29 @@ export const ActivityMonitor = () => {
 
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays} дн тому`;
+  };
+
+  const extractMessageId = (url: string): string => {
+    // Extract message ID from Telegram URL (e.g., t.me/channel/123 -> 123)
+    const match = url.match(/\/(\d+)$/);
+    return match ? match[1] : '';
+  };
+
+  const shortenUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      // For Telegram: show t.me/channel/id
+      if (urlObj.hostname.includes('t.me')) {
+        const pathParts = urlObj.pathname.split('/').filter(p => p);
+        if (pathParts.length >= 2) {
+          return `t.me/${pathParts[0]}/${pathParts[1]}`;
+        }
+      }
+      // For other URLs: show domain + path
+      return urlObj.hostname + (urlObj.pathname.length > 20 ? urlObj.pathname.substring(0, 20) + '...' : urlObj.pathname);
+    } catch {
+      return url.length > 40 ? url.substring(0, 40) + '...' : url;
+    }
   };
 
   if (loading) {
@@ -465,6 +535,86 @@ export const ActivityMonitor = () => {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Rejected by AI Section */}
+      <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <XCircle className="h-5 w-5 text-red-400" />
+          Відхилено AI Модерацією (Сьогодні)
+          <span className="text-sm font-normal text-gray-400">({rejectedNews.length})</span>
+        </h3>
+        <div className="space-y-3 max-h-[600px] overflow-y-auto">
+          {rejectedNews.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">Сьогодні немає відхилених новин</p>
+          ) : (
+            rejectedNews.map((news) => {
+              const messageId = extractMessageId(news.original_url);
+              const shortUrl = shortenUrl(news.original_url);
+
+              return (
+                <motion.div
+                  key={news.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-red-500/5 rounded-lg p-4 border border-red-500/30"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl flex-shrink-0">{getSourceTypeIcon(news.source_type)}</span>
+                    <div className="flex-1 min-w-0">
+                      {/* Title */}
+                      <h4 className="text-white font-medium mb-2">
+                        {news.original_title}
+                      </h4>
+
+                      {/* Source and Time */}
+                      <div className="flex items-center gap-2 mb-3 flex-wrap text-sm">
+                        <span className="text-gray-300">{news.source_name}</span>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-gray-400">{formatTime(news.created_at)}</span>
+                      </div>
+
+                      {/* URL and Message ID */}
+                      <div className="bg-black/30 rounded p-2 mb-3">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-gray-400">URL:</span>
+                          <a
+                            href={news.original_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 underline"
+                          >
+                            {shortUrl}
+                          </a>
+                          {messageId && (
+                            <>
+                              <span className="text-gray-500">|</span>
+                              <span className="text-gray-400">ID:</span>
+                              <span className="text-gray-300 font-mono">{messageId}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Rejection Reason */}
+                      {news.rejection_reason && (
+                        <div className="bg-red-500/10 rounded-lg p-3 border border-red-500/30">
+                          <div className="flex items-start gap-2">
+                            <XCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs text-gray-400 mb-1">Причина відхилення:</p>
+                              <p className="text-sm text-red-300">{news.rejection_reason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
