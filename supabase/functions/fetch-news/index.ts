@@ -170,14 +170,15 @@ serve(async (req) => {
             console.log(`🔄 Processing article: ${article.title.substring(0, 50)}...`)
 
             // Check for duplicate by URL
+            // Note: RSS URLs are usually stable, but we log the check for debugging
             const { data: existingArticle } = await supabase
               .from('news')
-              .select('id')
+              .select('id, original_url, created_at')
               .eq('original_url', article.url)
               .maybeSingle()
 
             if (existingArticle) {
-              console.log(`⏭️  Skipping duplicate article: ${article.url}`)
+              console.log(`⏭️  Skipping duplicate article: ${article.url} (found in DB from ${existingArticle.created_at})`)
               continue
             }
 

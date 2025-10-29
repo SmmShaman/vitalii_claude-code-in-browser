@@ -233,15 +233,19 @@ serve(async (req) => {
           try {
             console.log(`🔄 Processing post ${post.messageId}...`)
 
-            // Check for duplicate by URL
+            // Check for duplicate by URL (both with and without /s/ prefix)
+            // This prevents false duplicates when URL format varies
+            const urlVariant1 = `https://t.me/${channelUsername}/${post.messageId}`;
+            const urlVariant2 = `https://t.me/s/${channelUsername}/${post.messageId}`;
+
             const { data: existingPost } = await supabase
               .from('news')
-              .select('id')
-              .eq('original_url', post.originalUrl)
+              .select('id, original_url')
+              .in('original_url', [urlVariant1, urlVariant2])
               .maybeSingle()
 
             if (existingPost) {
-              console.log(`⏭️  Skipping duplicate post: ${post.originalUrl}`)
+              console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (found in DB as ${existingPost.original_url})`)
               continue
             }
 

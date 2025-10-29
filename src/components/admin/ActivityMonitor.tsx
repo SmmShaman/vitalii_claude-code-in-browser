@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, CheckCircle, XCircle, Clock, Send, Newspaper, Radio } from 'lucide-react';
+import { Activity, CheckCircle, XCircle, Clock, Send, Newspaper, Radio, RefreshCw } from 'lucide-react';
 import { supabase } from '../../integrations/supabase/client';
 
 interface NewsSource {
@@ -40,24 +40,40 @@ export const ActivityMonitor = () => {
   const [botQueue, setBotQueue] = useState<RecentNews[]>([]);
   const [rejectedNews, setRejectedNews] = useState<RecentNews[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState<number>(() => {
+    // Load from localStorage or default to 30 seconds
+    const saved = localStorage.getItem('activityMonitorRefreshInterval');
+    return saved ? parseInt(saved) : 30;
+  });
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   useEffect(() => {
     loadActivityData();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(loadActivityData, 30000);
+    // Refresh based on user-selected interval
+    // refreshInterval is in seconds, convert to milliseconds
+    // If interval is 0, don't auto-refresh
+    let interval: NodeJS.Timeout | null = null;
+
+    if (refreshInterval > 0) {
+      interval = setInterval(() => {
+        loadActivityData();
+        setLastRefresh(new Date());
+      }, refreshInterval * 1000);
+    }
 
     // Listen for news queue updates (when "Почати роботу" completes)
     const handleNewsUpdate = () => {
       loadActivityData();
+      setLastRefresh(new Date());
     };
     window.addEventListener('news-queue-updated', handleNewsUpdate);
 
     return () => {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       window.removeEventListener('news-queue-updated', handleNewsUpdate);
     };
-  }, []);
+  }, [refreshInterval]);
 
   const loadActivityData = async () => {
     try {
@@ -264,6 +280,9 @@ export const ActivityMonitor = () => {
 
       setRejectedNews(formattedRejected);
 
+      // Update last refresh time on successful load
+      setLastRefresh(new Date());
+
     } catch (error) {
       console.error('Failed to load activity data:', error);
     } finally {
@@ -349,6 +368,29 @@ export const ActivityMonitor = () => {
     }
   };
 
+  const handleIntervalChange = (newInterval: number) => {
+    setRefreshInterval(newInterval);
+    localStorage.setItem('activityMonitorRefreshInterval', newInterval.toString());
+    setLastRefresh(new Date());
+  };
+
+  const handleManualRefresh = () => {
+    loadActivityData();
+    setLastRefresh(new Date());
+  };
+
+  const formatLastRefresh = (): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - lastRefresh.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+
+    if (diffSec < 5) return 'Щойно';
+    if (diffSec < 60) return `${diffSec} сек тому`;
+
+    const diffMin = Math.floor(diffSec / 60);
+    return `${diffMin} хв тому`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -364,13 +406,48 @@ export const ActivityMonitor = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-lg rounded-xl p-6 border border-blue-500/30">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-500/30 rounded-lg">
-            <Activity className="h-6 w-6 text-blue-300" />
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-500/30 rounded-lg">
+              <Activity className="h-6 w-6 text-blue-300" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Моніторинг Активності</h2>
+              <p className="text-gray-300 text-sm">Відстежуйте роботу джерел в реальному часі</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">Моніторинг Активності</h2>
-            <p className="text-gray-300 text-sm">Відстежуйте роботу джерел в реальному часі</p>
+
+          {/* Refresh Controls */}
+          <div className="flex items-center gap-3">
+            {/* Last Refresh */}
+            <div className="text-sm text-gray-400">
+              <span className="text-gray-500">Оновлено:</span> {formatLastRefresh()}
+            </div>
+
+            {/* Refresh Interval Selector */}
+            <select
+              value={refreshInterval}
+              onChange={(e) => handleIntervalChange(Number(e.target.value))}
+              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-blue-400 transition-colors"
+            >
+              <option value="0" className="bg-gray-800">Вимкнено</option>
+              <option value="10" className="bg-gray-800">Кожні 10 сек</option>
+              <option value="30" className="bg-gray-800">Кожні 30 сек</option>
+              <option value="60" className="bg-gray-800">Кожну хвилину</option>
+              <option value="120" className="bg-gray-800">Кожні 2 хв</option>
+              <option value="300" className="bg-gray-800">Кожні 5 хв</option>
+            </select>
+
+            {/* Manual Refresh Button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleManualRefresh}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Оновити
+            </motion.button>
           </div>
         </div>
       </div>
