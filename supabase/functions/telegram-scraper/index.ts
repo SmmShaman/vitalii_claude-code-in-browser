@@ -106,7 +106,10 @@ serve(async (req) => {
     console.log(`📋 Found ${sources.length} active Telegram source(s)`)
 
     let totalProcessed = 0
-    const results: { channel: string; processed: number; error?: string }[] = []
+    let totalApproved = 0
+    let totalRejected = 0
+    let totalSentToBot = 0
+    const results: { channel: string; processed: number; approved?: number; rejected?: number; sentToBot?: number; error?: string }[] = []
 
     // Process each channel
     for (const source of sources) {
@@ -172,6 +175,10 @@ serve(async (req) => {
 
         // Process new posts
         let processedCount = 0
+        let approvedCount = 0
+        let rejectedCount = 0
+        let sentToBotCount = 0
+
         for (const post of newPosts) {
           try {
             console.log(`🔄 Processing post ${post.messageId}...`)
@@ -269,9 +276,14 @@ serve(async (req) => {
 
             // Send to Telegram bot ONLY if approved by AI
             if (moderationResult.approved) {
+              approvedCount++
+              totalApproved++
+
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
                 const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername)
                 if (sent) {
+                  sentToBotCount++
+                  totalSentToBot++
                   console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
                 } else {
                   console.warn(`⚠️  Failed to send post ${post.messageId} to Telegram bot (saved in DB anyway)`)
@@ -280,6 +292,8 @@ serve(async (req) => {
                 console.log(`ℹ️  Telegram bot not configured - post saved to DB without moderation`)
               }
             } else {
+              rejectedCount++
+              totalRejected++
               console.log(`🚫 Post ${post.messageId} rejected by AI: ${moderationResult.reason}`)
             }
 
@@ -307,7 +321,13 @@ serve(async (req) => {
           console.log(`ℹ️  Historical load - NOT updating last_fetched_at`)
         }
 
-        results.push({ channel: channelUsername, processed: processedCount })
+        results.push({
+          channel: channelUsername,
+          processed: processedCount,
+          approved: approvedCount,
+          rejected: rejectedCount,
+          sentToBot: sentToBotCount
+        })
 
         // Rate limiting: wait 3 seconds between channels
         if (sources.indexOf(source) < sources.length - 1) {
@@ -325,12 +345,17 @@ serve(async (req) => {
     }
 
     console.log(`\n🎉 Scraping complete! Total processed: ${totalProcessed}`)
+    console.log(`🤖 AI Moderation: ${totalApproved} approved, ${totalRejected} rejected`)
+    console.log(`📤 Sent to Telegram bot: ${totalSentToBot}`)
 
     return new Response(
       JSON.stringify({
         ok: true,
         message: 'Scraping complete',
         totalProcessed,
+        totalApproved,
+        totalRejected,
+        totalSentToBot,
         results,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

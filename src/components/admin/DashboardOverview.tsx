@@ -159,7 +159,18 @@ export const DashboardOverview = () => {
       const totalTelegramProcessed = telegramData?.totalProcessed || 0;
       const totalNewPosts = totalRssProcessed + totalTelegramProcessed;
 
-      addLog('complete', 'success', `🎉 Робота завершена! Знайдено ${totalNewPosts} нових постів. Схвалені AI пости відправлено в Telegram бот для модерації.`);
+      // Calculate AI moderation stats
+      const totalApproved = (rssData?.totalApproved || 0) + (telegramData?.totalApproved || 0);
+      const totalRejected = (rssData?.totalRejected || 0) + (telegramData?.totalRejected || 0);
+      const totalSentToBot = (rssData?.totalSentToBot || 0) + (telegramData?.totalSentToBot || 0);
+
+      let message = `🎉 Робота завершена! Знайдено ${totalNewPosts} нових постів.`;
+      if (totalNewPosts > 0) {
+        message += `\n🤖 AI Премодерація: ✅ ${totalApproved} схвалено, ❌ ${totalRejected} відхилено`;
+        message += `\n📤 Відправлено в Telegram бот: ${totalSentToBot} ${totalSentToBot === 1 ? 'пост' : totalSentToBot < 5 ? 'пости' : 'постів'}`;
+      }
+
+      addLog('complete', 'success', message);
 
       // Reload stats and notify other components
       setTimeout(() => {
@@ -327,13 +338,37 @@ export const DashboardOverview = () => {
                       {log.details && Array.isArray(log.details) && log.details.length > 0 && (
                         <div className="mt-2 space-y-1">
                           {log.details.map((detail: any, i: number) => (
-                            <div key={i} className="text-xs text-gray-400 flex items-center gap-2">
-                              <span>•</span>
-                              <span>{detail.source || detail.channel}:</span>
-                              {detail.error ? (
-                                <span className="text-red-400">{detail.error}</span>
-                              ) : (
-                                <span className="text-green-400">{detail.processed} постів</span>
+                            <div key={i} className="text-xs">
+                              <div className="flex items-center gap-2 text-gray-400">
+                                <span>•</span>
+                                <span className="font-medium">{detail.source || detail.channel}:</span>
+                                {detail.error ? (
+                                  <span className="text-red-400">{detail.error}</span>
+                                ) : (
+                                  <span className="text-green-400">{detail.processed} постів</span>
+                                )}
+                              </div>
+                              {!detail.error && detail.processed > 0 && (detail.approved !== undefined || detail.rejected !== undefined) && (
+                                <div className="ml-4 mt-1 flex items-center gap-3 text-gray-500">
+                                  {detail.approved !== undefined && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-green-400">✅</span>
+                                      <span>{detail.approved} схвалено</span>
+                                    </span>
+                                  )}
+                                  {detail.rejected !== undefined && detail.rejected > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-red-400">❌</span>
+                                      <span>{detail.rejected} відхилено</span>
+                                    </span>
+                                  )}
+                                  {detail.sentToBot !== undefined && detail.sentToBot > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-blue-400">📤</span>
+                                      <span>{detail.sentToBot} в бот</span>
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           ))}

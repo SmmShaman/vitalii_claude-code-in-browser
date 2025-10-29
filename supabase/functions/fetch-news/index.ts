@@ -67,7 +67,10 @@ serve(async (req) => {
     console.log(`📋 Found ${sources.length} active RSS source(s)`)
 
     let totalProcessed = 0
-    const results: { source: string; processed: number; error?: string }[] = []
+    let totalApproved = 0
+    let totalRejected = 0
+    let totalSentToBot = 0
+    const results: { source: string; processed: number; approved?: number; rejected?: number; sentToBot?: number; error?: string }[] = []
 
     // Process each RSS source
     for (const source of sources) {
@@ -115,6 +118,10 @@ serve(async (req) => {
 
         // Process new articles
         let processedCount = 0
+        let approvedCount = 0
+        let rejectedCount = 0
+        let sentToBotCount = 0
+
         for (const article of newArticles) {
           try {
             console.log(`🔄 Processing article: ${article.title.substring(0, 50)}...`)
@@ -179,9 +186,14 @@ serve(async (req) => {
 
             // Send to Telegram bot ONLY if approved by AI
             if (moderationResult.approved) {
+              approvedCount++
+              totalApproved++
+
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
                 const sent = await sendToTelegramBot(newsEntry.id, article, source.name)
                 if (sent) {
+                  sentToBotCount++
+                  totalSentToBot++
                   console.log(`✅ Article sent to Telegram bot for moderation`)
                 } else {
                   console.warn(`⚠️  Failed to send article to Telegram bot (saved in DB anyway)`)
@@ -190,6 +202,8 @@ serve(async (req) => {
                 console.log(`ℹ️  Telegram bot not configured - article saved to DB without moderation`)
               }
             } else {
+              rejectedCount++
+              totalRejected++
               console.log(`🚫 Article rejected by AI: ${moderationResult.reason}`)
             }
 
@@ -211,7 +225,13 @@ serve(async (req) => {
           console.error(`❌ Failed to update last_fetched_at for ${source.name}:`, updateError)
         }
 
-        results.push({ source: source.name, processed: processedCount })
+        results.push({
+          source: source.name,
+          processed: processedCount,
+          approved: approvedCount,
+          rejected: rejectedCount,
+          sentToBot: sentToBotCount
+        })
 
         // Rate limiting: wait 2 seconds between sources
         if (sources.indexOf(source) < sources.length - 1) {
@@ -229,12 +249,17 @@ serve(async (req) => {
     }
 
     console.log(`\n🎉 RSS Fetch complete! Total processed: ${totalProcessed}`)
+    console.log(`🤖 AI Moderation: ${totalApproved} approved, ${totalRejected} rejected`)
+    console.log(`📤 Sent to Telegram bot: ${totalSentToBot}`)
 
     return new Response(
       JSON.stringify({
         ok: true,
         message: 'RSS fetch complete',
         totalProcessed,
+        totalApproved,
+        totalRejected,
+        totalSentToBot,
         results,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
