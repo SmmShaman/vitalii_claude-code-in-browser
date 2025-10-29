@@ -119,6 +119,18 @@ serve(async (req) => {
           try {
             console.log(`🔄 Processing article: ${article.title.substring(0, 50)}...`)
 
+            // Check for duplicate by URL
+            const { data: existingArticle } = await supabase
+              .from('news')
+              .select('id')
+              .eq('original_url', article.url)
+              .maybeSingle()
+
+            if (existingArticle) {
+              console.log(`⏭️  Skipping duplicate article: ${article.url}`)
+              continue
+            }
+
             // Save to database with pending status (waiting for moderation)
             const { data: newsEntry, error: insertError } = await supabase
               .from('news')

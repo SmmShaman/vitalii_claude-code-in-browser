@@ -176,6 +176,18 @@ serve(async (req) => {
           try {
             console.log(`🔄 Processing post ${post.messageId}...`)
 
+            // Check for duplicate by URL
+            const { data: existingPost } = await supabase
+              .from('news')
+              .select('id')
+              .eq('original_url', post.originalUrl)
+              .maybeSingle()
+
+            if (existingPost) {
+              console.log(`⏭️  Skipping duplicate post: ${post.originalUrl}`)
+              continue
+            }
+
             // Download and upload photo if exists
             let photoUrl = post.photoUrl
             if (photoUrl) {
