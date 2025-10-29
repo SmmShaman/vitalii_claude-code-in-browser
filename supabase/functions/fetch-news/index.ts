@@ -171,14 +171,16 @@ serve(async (req) => {
 
             // Check for duplicate by URL
             // Note: RSS URLs are usually stable, but we log the check for debugging
+            // Only check non-rejected articles (allow re-scanning of previously rejected articles)
             const { data: existingArticle } = await supabase
               .from('news')
-              .select('id, original_url, created_at')
+              .select('id, original_url, created_at, pre_moderation_status')
               .eq('original_url', article.url)
+              .neq('pre_moderation_status', 'rejected')  // Ignore rejected articles
               .maybeSingle()
 
             if (existingArticle) {
-              console.log(`⏭️  Skipping duplicate article: ${article.url} (found in DB from ${existingArticle.created_at})`)
+              console.log(`⏭️  Skipping duplicate article: ${article.url} (found in DB from ${existingArticle.created_at}, status: ${existingArticle.pre_moderation_status})`)
               continue
             }
 

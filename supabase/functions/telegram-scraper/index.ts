@@ -235,17 +235,19 @@ serve(async (req) => {
 
             // Check for duplicate by URL (both with and without /s/ prefix)
             // This prevents false duplicates when URL format varies
+            // Only check non-rejected posts (allow re-scanning of previously rejected posts)
             const urlVariant1 = `https://t.me/${channelUsername}/${post.messageId}`;
             const urlVariant2 = `https://t.me/s/${channelUsername}/${post.messageId}`;
 
             const { data: existingPost } = await supabase
               .from('news')
-              .select('id, original_url')
+              .select('id, original_url, pre_moderation_status')
               .in('original_url', [urlVariant1, urlVariant2])
+              .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
               .maybeSingle()
 
             if (existingPost) {
-              console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (found in DB as ${existingPost.original_url})`)
+              console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (found in DB as ${existingPost.original_url}, status: ${existingPost.pre_moderation_status})`)
               continue
             }
 
