@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Newspaper, BookOpen, Eye, TrendingUp, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../integrations/supabase/client';
+import { ActivityMonitor } from './ActivityMonitor';
 
 interface Stats {
   totalNews: number;
@@ -440,6 +441,9 @@ export const DashboardOverview = () => {
           </div>
         </div>
       </div>
+
+      {/* Activity Monitor */}
+      <ActivityMonitor />
     </div>
   );
 };
