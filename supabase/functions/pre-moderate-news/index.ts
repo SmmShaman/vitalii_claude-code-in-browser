@@ -249,8 +249,8 @@ async function checkDuplicates(supabase: any, title: string): Promise<boolean> {
       // Count matching keywords
       const matchCount = keywords.filter(keyword => existingTitle.includes(keyword)).length
 
-      // If 2 or more keywords match, consider it a duplicate
-      if (matchCount >= 2) {
+      // If 3 or more keywords match, consider it a duplicate
+      if (matchCount >= 3) {
         console.log(`Duplicate found: "${title}" similar to "${post.title_en || post.original_title}"`)
         return true
       }
