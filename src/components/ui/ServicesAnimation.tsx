@@ -137,8 +137,8 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                 className="service-band relative m-0 font-bold"
                 style={{
                   height: '80px',
-                  fontSize: 'clamp(2rem, 5vw, 4rem)',
-                  lineHeight: '0.8',
+                  fontSize: 'clamp(1.2rem, 2.5vw, 2rem)',
+                  lineHeight: '1',
                   letterSpacing: '0px',
                 }}
               >
@@ -153,7 +153,9 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                     className={`name name--red ${index === services.length - 1 ? 'name__end name__end--red' : ''} block absolute top-0 left-0 text-red-600`}
                     style={{
                       mixBlendMode: 'multiply',
-                      whiteSpace: 'nowrap',
+                      maxWidth: '90%',
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
                     }}
                   >
                     {service.title}
@@ -165,7 +167,9 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                     style={{
                       top: '8px',
                       mixBlendMode: 'multiply',
-                      whiteSpace: 'nowrap',
+                      maxWidth: '90%',
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
                     }}
                   >
                     {service.title}
@@ -182,10 +186,11 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
         <h2
           className="font-bold text-white text-center select-none"
           style={{
-            fontSize: 'clamp(2.5rem, 6vw, 5rem)',
-            letterSpacing: '0.15em',
+            fontSize: 'clamp(1.2rem, 2.5vw, 2rem)',
+            letterSpacing: '0.05em',
             textShadow: '0 0 40px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.8)',
             mixBlendMode: 'screen',
+            transform: 'rotate(-15deg)',
           }}
         >
           {backgroundText}
