@@ -74,6 +74,8 @@ export const BentoGrid = () => {
   const [isProjectsHiding, setIsProjectsHiding] = useState(false);
   const [servicesHeight, setServicesHeight] = useState<number>(0);
   const [projectsHeight, setProjectsHeight] = useState<number>(0);
+  const [newsHeight, setNewsHeight] = useState<number>(0);
+  const [blogHeight, setBlogHeight] = useState<number>(0);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
@@ -81,13 +83,16 @@ export const BentoGrid = () => {
   const handleNewsClick = () => {
     console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded);
     if (!isNewsExpanded) {
-      // Get Services height before animation
+      // Get both News and Services heights before animation
+      const newsEl = cardRefs.current['news'];
       const servicesEl = cardRefs.current['services'];
 
-      if (servicesEl) {
-        const height = servicesEl.offsetHeight;
-        console.log('📏 Services height:', height);
-        setServicesHeight(height);
+      if (newsEl && servicesEl) {
+        const newsH = newsEl.offsetHeight;
+        const servicesH = servicesEl.offsetHeight;
+        console.log('📏 News height:', newsH, 'Services height:', servicesH);
+        setNewsHeight(newsH);
+        setServicesHeight(servicesH);
       }
 
       // Start hiding Services first
@@ -104,18 +109,22 @@ export const BentoGrid = () => {
       console.log('🔵 Collapsing News');
       setIsNewsExpanded(false);
       setServicesHeight(0);
+      setNewsHeight(0);
     }
   };
 
   const handleBlogClick = () => {
     if (!isBlogExpanded) {
-      // Get Projects height before animation
+      // Get both Blog and Projects heights before animation
+      const blogEl = cardRefs.current['blog'];
       const projectsEl = cardRefs.current['projects'];
 
-      if (projectsEl) {
-        const height = projectsEl.offsetHeight;
-        console.log('📏 Projects height:', height);
-        setProjectsHeight(height);
+      if (blogEl && projectsEl) {
+        const blogH = blogEl.offsetHeight;
+        const projectsH = projectsEl.offsetHeight;
+        console.log('📏 Blog height:', blogH, 'Projects height:', projectsH);
+        setBlogHeight(blogH);
+        setProjectsHeight(projectsH);
       }
 
       // Start hiding Projects first
@@ -128,6 +137,7 @@ export const BentoGrid = () => {
     } else {
       setIsBlogExpanded(false);
       setProjectsHeight(0);
+      setBlogHeight(0);
     }
   };
 
@@ -257,12 +267,35 @@ export const BentoGrid = () => {
                   (section.id === 'news' && isNewsExpanded) ||
                   (section.id === 'blog' && isBlogExpanded);
 
+                // Calculate expanded height: original + target + gap
+                const getExpandedHeight = () => {
+                  // Gap depends on screen size: gap-2 (8px) / gap-3 (12px) / gap-4 (16px)
+                  const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+
+                  if (section.id === 'news' && isNewsExpanded && newsHeight > 0 && servicesHeight > 0) {
+                    const totalHeight = newsHeight + servicesHeight + gapSize;
+                    console.log('📐 News expanded height:', totalHeight, '=', newsHeight, '+', servicesHeight, '+', gapSize);
+                    return `${totalHeight}px`;
+                  }
+
+                  if (section.id === 'blog' && isBlogExpanded && blogHeight > 0 && projectsHeight > 0) {
+                    const totalHeight = blogHeight + projectsHeight + gapSize;
+                    console.log('📐 Blog expanded height:', totalHeight, '=', blogHeight, '+', projectsHeight, '+', gapSize);
+                    return `${totalHeight}px`;
+                  }
+
+                  return screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)';
+                };
+
                 if (section.id === 'news') {
                   console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, isNewsExpanded: ${isNewsExpanded}, width: SAME (1 column), height: ${isExpanded ? 'EXPANDED' : 'normal'}`);
                 }
 
                 // Get animated properties for each section
                 const getAnimatedProps = () => {
+                  // Gap depends on screen size: gap-2 (8px) / gap-3 (12px) / gap-4 (16px)
+                  const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+
                   // Services: scale to 0 height when hiding (0fr grid trick)
                   if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
                     console.log('🎬 Animating Services scaleY to 0');
@@ -285,7 +318,6 @@ export const BentoGrid = () => {
 
                   // News: move upward by Services height when expanded
                   if (section.id === 'news' && isNewsExpanded && servicesHeight > 0) {
-                    const gapSize = 16; // gap-4 = 1rem = 16px
                     const moveDistance = -(servicesHeight + gapSize);
                     console.log('🎬 Animating News translateY to', moveDistance);
                     return {
@@ -296,7 +328,6 @@ export const BentoGrid = () => {
 
                   // Blog: move upward by Projects height when expanded
                   if (section.id === 'blog' && isBlogExpanded && projectsHeight > 0) {
-                    const gapSize = 16; // gap-4 = 1rem = 16px
                     const moveDistance = -(projectsHeight + gapSize);
                     console.log('🎬 Animating Blog translateY to', moveDistance);
                     return {
@@ -354,7 +385,7 @@ export const BentoGrid = () => {
                       (section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105' : ''
                     }`}
                     style={{
-                      height: isExpanded ? 'clamp(450px, 60vh, 650px)' : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
+                      height: getExpandedHeight(),
                     }}
                   >
                 {/* Background - conditional based on section */}
