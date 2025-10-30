@@ -1,5 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { createTimeline } from 'animejs';
+import gsap from 'gsap';
+import { SplitText } from 'gsap/SplitText';
+
+// Register GSAP plugins
+gsap.registerPlugin(SplitText);
 
 interface Service {
   title: string;
@@ -13,214 +17,179 @@ interface ServicesAnimationProps {
 
 export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const timelineRef = useRef<any>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     // Clean up previous timeline
     if (timelineRef.current) {
-      timelineRef.current.pause();
+      timelineRef.current.kill();
     }
 
-    // Create timeline animation with 3D rotation effect (slower)
-    timelineRef.current = createTimeline({
-      loop: true,
-      defaults: { duration: 2000, ease: 'easeInOutQuad' },
-      delay: 1000,
+    // Split text into characters for animation
+    const redTexts = containerRef.current.querySelectorAll('.name--red');
+    const blueTexts = containerRef.current.querySelectorAll('.name--blue');
+
+    redTexts.forEach(el => {
+      new SplitText(el, { type: 'chars', charsClass: 'serviceChar' });
     });
 
-    // Calculate middle index to insert SERVICES text
-    const middleIndex = Math.floor(services.length / 2);
+    blueTexts.forEach(el => {
+      new SplitText(el, { type: 'chars', charsClass: 'serviceChar' });
+    });
 
-    // Animate first half of services
-    for (let i = 0; i < middleIndex; i++) {
-      const lineClass = `.service-line-${i}`;
+    // Create master timeline
+    const masterTl = gsap.timeline({ delay: 0.5 });
 
-      timelineRef.current.add(lineClass, {
-        opacity: [0, 1],
-        rotateX: [-90, 0],
-        translateZ: [-100, 0],
-      }, i * 300);
+    // Intro animation
+    const introTl = gsap.timeline({
+      defaults: {
+        duration: 2,
+        ease: 'power4.out'
+      }
+    });
 
-      timelineRef.current.add(lineClass, {
-        opacity: 1,
-        duration: 1500,
-      });
+    introTl.from('.service-names', {
+      x: (i) => {
+        if (i % 2 === 0) {
+          return 1000;
+        }
+        return -1000;
+      },
+      stagger: 0.15
+    });
+
+    // Loop animation
+    const loopTl = gsap.timeline({
+      repeat: -1,
+      repeatDelay: 0
+    });
+
+    // Calculate height for scrolling
+    const serviceHeight = 80; // approximate height of each service
+    const totalHeight = services.length * serviceHeight;
+
+    loopTl.to('.service-names', {
+      y: -totalHeight,
+      duration: services.length * 3,
+      ease: 'none'
+    });
+
+    // Add character animations for last few services
+    const lastIndex = services.length - 1;
+    const secondLastIndex = services.length - 2;
+
+    if (lastIndex >= 0) {
+      loopTl.from(`.service-band:nth-child(${lastIndex + 1}) .name--red .serviceChar`, {
+        y: 120,
+        duration: 2,
+        ease: 'power4.out',
+        stagger: 0.03
+      }, 1);
+
+      loopTl.from(`.service-band:nth-child(${lastIndex + 1}) .name--blue .serviceChar`, {
+        y: 120,
+        duration: 2,
+        ease: 'power4.out',
+        stagger: 0.03
+      }, 1.2);
     }
 
-    // Animate central SERVICES text
-    timelineRef.current.add('.central-title', {
-      opacity: [0, 1],
-      rotateX: [-90, 0],
-      translateZ: [-100, 0],
-      scale: [0.8, 1],
-    }, middleIndex * 300);
-
-    timelineRef.current.add('.central-title', {
-      opacity: 1,
-      duration: 2000,
-    });
-
-    // Animate second half of services
-    for (let i = middleIndex; i < services.length; i++) {
-      const lineClass = `.service-line-${i}`;
-
-      timelineRef.current.add(lineClass, {
-        opacity: [0, 1],
-        rotateX: [-90, 0],
-        translateZ: [-100, 0],
-      }, (i + 1) * 300);
-
-      timelineRef.current.add(lineClass, {
-        opacity: 1,
-        duration: 1500,
-      });
+    if (secondLastIndex >= 0) {
+      loopTl.from(`.service-band:nth-child(${secondLastIndex + 1}) .name--blue .serviceChar`, {
+        y: -120,
+        duration: 1.5,
+        ease: 'power4.inOut',
+        stagger: -0.03
+      }, 0);
     }
 
-    // Hold all visible
-    timelineRef.current.add('.service-line, .central-title', {
-      opacity: 1,
-      duration: 2500,
-    });
+    masterTl.add(introTl);
+    masterTl.add(loopTl, 0);
 
-    // Disappear central text first
-    timelineRef.current.add('.central-title', {
-      opacity: [1, 0],
-      rotateX: [0, 90],
-      translateZ: [0, 100],
-      scale: [1, 0.8],
-    });
-
-    // Disappear all service lines
-    services.forEach((_, index) => {
-      const lineClass = `.service-line-${index}`;
-
-      timelineRef.current.add(lineClass, {
-        opacity: [1, 0],
-        rotateX: [0, 90],
-        translateZ: [0, 100],
-      }, index * 200);
-    });
+    timelineRef.current = masterTl;
 
     return () => {
       if (timelineRef.current) {
-        timelineRef.current.pause();
+        timelineRef.current.kill();
       }
     };
-  }, [services, backgroundText]);
+  }, [services]);
 
   return (
     <div className="h-full w-full overflow-hidden relative">
-      {/* Rotating service lines and central title */}
       <div
         ref={containerRef}
-        className="relative h-full w-full flex flex-col items-center justify-center gap-2 z-20"
+        className="absolute w-[120%] h-[120%] overflow-hidden"
         style={{
-          perspective: '1000px',
-          perspectiveOrigin: 'center center',
+          top: '-10%',
+          left: '5%',
+          transform: 'rotate(-15deg)',
         }}
       >
-        {services.map((service, index) => {
-          const middleIndex = Math.floor(services.length / 2);
-
-          return (
-            <div key={index}>
-              {/* First half of services */}
-              {index < middleIndex && (
-                <div
-                  className={`service-line service-line-${index} relative w-full`}
+        {/* Duplicate services multiple times for continuous scroll */}
+        {[...Array(3)].map((_, setIndex) => (
+          <div key={setIndex}>
+            {services.map((service, index) => (
+              <h1
+                key={`${setIndex}-${index}`}
+                className="service-band relative m-0 font-bold"
+                style={{
+                  height: '80px',
+                  fontSize: 'clamp(2rem, 5vw, 4rem)',
+                  lineHeight: '0.8',
+                  letterSpacing: '0px',
+                }}
+              >
+                <span
+                  className="service-names block relative w-full overflow-hidden"
                   style={{
-                    transformStyle: 'preserve-3d',
-                    backfaceVisibility: 'hidden',
-                    opacity: 0,
+                    height: '90px',
                   }}
                 >
-                  <h4
-                    className="font-bold text-red-600 text-center relative px-4"
+                  {/* Red version */}
+                  <span
+                    className={`name name--red ${index === services.length - 1 ? 'name__end name__end--red' : ''} block absolute top-0 left-0 text-red-600`}
                     style={{
-                      fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)',
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
+                      mixBlendMode: 'multiply',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {service.title}
-                  </h4>
-                </div>
-              )}
+                  </span>
 
-              {/* Central SERVICES text in the middle */}
-              {index === middleIndex && (
-                <>
-                  <div
-                    className="central-title relative w-full my-2"
+                  {/* Blue version (offset) */}
+                  <span
+                    className={`name name--blue ${index === services.length - 1 ? 'name__end name__end--blue' : ''} block absolute left-0 text-blue-500`}
                     style={{
-                      transformStyle: 'preserve-3d',
-                      backfaceVisibility: 'hidden',
-                      opacity: 0,
-                    }}
-                  >
-                    <h2
-                      className="font-bold text-white text-center select-none"
-                      style={{
-                        fontSize: 'clamp(2.5rem, 6vw, 5rem)',
-                        letterSpacing: '0.1em',
-                        textShadow: '0 0 30px rgba(255, 255, 255, 0.4)',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {backgroundText}
-                    </h2>
-                  </div>
-
-                  {/* Current service from second half */}
-                  <div
-                    className={`service-line service-line-${index} relative w-full`}
-                    style={{
-                      transformStyle: 'preserve-3d',
-                      backfaceVisibility: 'hidden',
-                      opacity: 0,
-                    }}
-                  >
-                    <h4
-                      className="font-bold text-red-600 text-center relative px-4"
-                      style={{
-                        fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)',
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {service.title}
-                    </h4>
-                  </div>
-                </>
-              )}
-
-              {/* Second half of services (except middle one already rendered) */}
-              {index > middleIndex && (
-                <div
-                  className={`service-line service-line-${index} relative w-full`}
-                  style={{
-                    transformStyle: 'preserve-3d',
-                    backfaceVisibility: 'hidden',
-                    opacity: 0,
-                  }}
-                >
-                  <h4
-                    className="font-bold text-red-600 text-center relative px-4"
-                    style={{
-                      fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)',
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
+                      top: '8px',
+                      mixBlendMode: 'multiply',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {service.title}
-                  </h4>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                  </span>
+                </span>
+              </h1>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Central SERVICES text overlay */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <h2
+          className="font-bold text-white text-center select-none"
+          style={{
+            fontSize: 'clamp(2.5rem, 6vw, 5rem)',
+            letterSpacing: '0.15em',
+            textShadow: '0 0 40px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.8)',
+            mixBlendMode: 'screen',
+          }}
+        >
+          {backgroundText}
+        </h2>
       </div>
     </div>
   );
