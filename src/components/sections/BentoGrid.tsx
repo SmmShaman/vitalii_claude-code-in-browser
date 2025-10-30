@@ -7,8 +7,6 @@ import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
 import { SkillsAnimation } from '../ui/SkillsAnimation';
-import { AnimatedHeaderTitle } from '../ui/AnimatedHeaderTitle';
-import { AnimatedDescription } from '../ui/AnimatedDescription';
 import { NewsSection } from './NewsSection';
 import { BlogSection } from './BlogSection';
 import { translations } from '../../utils/translations';
@@ -60,7 +58,11 @@ const sections: Section[] = [
   },
 ];
 
-export const BentoGrid = () => {
+interface BentoGridProps {
+  onFullscreenChange?: (fullscreen: boolean) => void;
+}
+
+export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const { t, currentLanguage } = useTranslations();
   const screenSize = useScreenSize();
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
@@ -125,6 +127,7 @@ export const BentoGrid = () => {
       setSelectedNewsId(null); // Reset selected news when collapsing
       setIsHidingAllForNews(false);
       setTotalGridHeight(0);
+      onFullscreenChange?.(false); // ← Notify parent about exit fullscreen
     }
   };
 
@@ -196,6 +199,7 @@ export const BentoGrid = () => {
       console.log('🟢 Step 2: Expanding News to fullscreen');
       setSelectedNewsId(newsId);
       setIsHidingAllForNews(false);
+      onFullscreenChange?.(true); // ← Notify parent about fullscreen
     }, 500);
   };
 
@@ -204,6 +208,7 @@ export const BentoGrid = () => {
     setSelectedNewsId(null);
     setTotalGridHeight(0);
     setIsHidingAllForNews(false);
+    onFullscreenChange?.(false); // ← Notify parent about exit fullscreen
     // Keep isNewsExpanded = true so user returns to expanded News list
   };
 
@@ -275,6 +280,7 @@ export const BentoGrid = () => {
       console.log('🟢 Step 2: Expanding Blog to fullscreen');
       setSelectedBlogId(blogId);
       setIsHidingAllForBlog(false);
+      onFullscreenChange?.(true); // ← Notify parent about fullscreen
     }, 500);
   };
 
@@ -283,6 +289,7 @@ export const BentoGrid = () => {
     setSelectedBlogId(null);
     setTotalGridHeight(0);
     setIsHidingAllForBlog(false);
+    onFullscreenChange?.(false); // ← Notify parent about exit fullscreen
     // Keep isBlogExpanded = true so user returns to expanded Blog list
   };
 
@@ -322,6 +329,7 @@ export const BentoGrid = () => {
       setSelectedBlogId(null);
       setIsHidingAllForBlog(false);
       setTotalGridHeight(0);
+      onFullscreenChange?.(false); // ← Notify parent about exit fullscreen
     }
   };
 
@@ -428,22 +436,6 @@ export const BentoGrid = () => {
     <>
       <div className={`h-full w-full ${selectedNewsId || selectedBlogId ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'} flex ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center px-2 sm:px-4 lg:px-6`}>
         <div className={`w-full flex flex-col ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center py-2 sm:py-3 md:py-4`}>
-
-          {/* Title Section - moved from header with white background */}
-          <div className="text-center mb-4 sm:mb-6 md:mb-8 w-full bg-white rounded-lg shadow-lg px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
-            <AnimatedHeaderTitle
-              text={t('title') as string}
-              namePattern={/Vitalii Berbeha|Віталій Бербега/}
-            />
-            <h2
-              className="text-gray-700 mt-2 leading-tight"
-              style={{ fontSize: 'clamp(1rem, 2vw, 1.5rem)' }}
-            >
-              {t('subtitle')}
-            </h2>
-            <AnimatedDescription text={t('description') as string} />
-          </div>
-
           <LayoutGroup>
             <div
               ref={gridContainerRef}
