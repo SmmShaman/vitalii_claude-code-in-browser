@@ -15,9 +15,6 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<any>(null);
 
-  // Number of squares per row
-  const SQUARES_COUNT = 12;
-
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -26,65 +23,41 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       timelineRef.current.pause();
     }
 
-    // Create timeline animation with square reveal effect
+    // Create timeline animation with letter reveal effect
     timelineRef.current = createTimeline({
       loop: true,
-      defaults: { duration: 500 },
+      defaults: { duration: 800 },
       delay: 500,
-      loopDelay: 500
+      loopDelay: 1000
     });
 
-    // Animate each row with different stagger patterns
-    const staggerPatterns = [
-      { from: 7 },           // Row 1: from index 7
-      { from: 'first' },     // Row 2: from first
-      { from: 'center' },    // Row 3: from center
-      { from: 'last' },      // Row 4: from last
-      { from: 0 },           // Row 5: from index 0
-      { from: 'random' },    // Row 6: from random
-    ];
-
+    // Animate each service row
     services.forEach((_, index) => {
       const rowIndex = index + 1;
-      const pattern = staggerPatterns[index] || { from: 'center' };
 
-      // Highlight one square
-      if (typeof pattern.from === 'number') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:nth-child(${pattern.from + 1})`, {
-          color: '#FFF',
-          scale: 1.2
-        });
-      } else if (pattern.from === 'first') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:first-child`, {
-          color: '#FFF',
-          scale: 1.2
-        });
-      } else if (pattern.from === 'last') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:last-child`, {
-          color: '#FFF',
-          scale: 1.2
-        });
-      } else if (pattern.from === 'center') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:nth-child(${Math.floor(SQUARES_COUNT / 2)})`, {
-          color: '#FFF',
-          scale: 1.2
-        });
-      }
-
-      // Make squares disappear to reveal text
-      timelineRef.current.add(`.row:nth-child(${rowIndex}) .square`, {
-        scale: 0,
-        delay: stagger(25, pattern as any),
-      }, '<');
+      // Make letters appear one by one
+      timelineRef.current.add(`.row:nth-child(${rowIndex}) .letter`, {
+        opacity: [0, 1],
+        translateY: [20, 0],
+        delay: stagger(50),
+      }, index === 0 ? 0 : '-=400');
     });
 
-    // Reset colors
-    timelineRef.current.set('.row .square', { color: 'currentColor' });
+    // Hold visible state
+    timelineRef.current.add('.letter', {
+      opacity: 1,
+      duration: 1500,
+    });
 
-    // Bring squares back
-    timelineRef.current.add('.row .square', {
-      scale: 1,
-      delay: stagger(25, { from: 'random' }),
+    // Make letters disappear one by one
+    services.forEach((_, index) => {
+      const rowIndex = index + 1;
+
+      timelineRef.current.add(`.row:nth-child(${rowIndex}) .letter`, {
+        opacity: [1, 0],
+        translateY: [0, -20],
+        delay: stagger(30, { from: 'random' }),
+      }, index === 0 ? '-=400' : '-=600');
     });
 
     return () => {
@@ -109,7 +82,7 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       {/* Services in column */}
       <div
         ref={containerRef}
-        className="relative h-full w-full flex flex-col items-center justify-center gap-0 z-10"
+        className="relative h-full w-full flex flex-col items-center justify-center gap-1 z-10"
       >
         {services.map((service, index) => {
           return (
@@ -117,30 +90,24 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
               key={index}
               className="row relative py-1 w-full"
             >
-              {/* Service title - centered */}
+              {/* Service title with animated letters */}
               <h4
-                className="font-bold text-white text-center relative px-4"
+                className="font-bold text-white text-center relative px-4 flex items-center justify-center flex-wrap gap-x-1"
                 style={{ fontSize: 'clamp(0.7rem, 1.4vw, 0.95rem)' }}
               >
-                {service.title}
+                {service.title.split('').map((char, charIndex) => (
+                  <span
+                    key={charIndex}
+                    className="letter inline-block"
+                    style={{
+                      opacity: 0,
+                      whiteSpace: char === ' ' ? 'pre' : 'normal'
+                    }}
+                  >
+                    {char === ' ' ? '\u00A0' : char}
+                  </span>
+                ))}
               </h4>
-
-              {/* Squares overlay - full width */}
-              <div className="absolute inset-0 flex items-center justify-center z-20">
-                <div className="flex gap-1 w-full justify-center px-2">
-                  {Array.from({ length: SQUARES_COUNT }).map((_, squareIndex) => (
-                    <div
-                      key={squareIndex}
-                      className="square bg-orange-400 flex-1"
-                      style={{
-                        maxWidth: 'clamp(10px, 2.5vw, 30px)',
-                        height: 'clamp(8px, 1.5vh, 16px)',
-                        borderRadius: '2px',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
             </div>
           );
         })}
