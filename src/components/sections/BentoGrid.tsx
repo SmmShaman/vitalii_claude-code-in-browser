@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
 import { TypewriterText } from '../ui/TypewriterText';
@@ -219,35 +219,17 @@ export const BentoGrid = () => {
             <AnimatedDescription text={t('description') as string} />
           </div>
 
-          <div
-            ref={gridContainerRef}
-            className="grid gap-2 sm:gap-3 md:gap-4 w-full relative"
-            style={{
-              gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
-              gridAutoRows: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
-            }}
-          >
-            <AnimatePresence mode="sync">
-              {(() => {
-                // Reorder sections when News or Blog is expanded
-                let orderedSections = [...sections];
-
-                if (isNewsExpanded) {
-                  console.log('📰 isNewsExpanded = true, reordering sections');
-                  // Move News to position 1 (after About)
-                  orderedSections = orderedSections.filter(s => s.id !== 'news');
-                  orderedSections.splice(1, 0, sections.find(s => s.id === 'news')!);
-                  console.log('📋 New order:', orderedSections.map(s => s.id).join(' → '));
-                }
-
-                if (isBlogExpanded) {
-                  // Move Blog to position 1 (after About)
-                  orderedSections = orderedSections.filter(s => s.id !== 'blog');
-                  orderedSections.splice(1, 0, sections.find(s => s.id === 'blog')!);
-                }
-
-                return orderedSections;
-              })().map((section) => {
+          <LayoutGroup>
+            <div
+              ref={gridContainerRef}
+              className="grid gap-2 sm:gap-3 md:gap-4 w-full relative"
+              style={{
+                gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
+                gridAutoRows: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
+              }}
+            >
+              <AnimatePresence mode="sync">
+                {sections.map((section) => {
                 // Check if section should be visible
                 const isHidden =
                   (section.id === 'services' && (isServicesHiding || isNewsExpanded)) ||
@@ -291,6 +273,7 @@ export const BentoGrid = () => {
                 return (
                   <motion.div
                     key={section.id}
+                    layout // Enable automatic layout animations
                     ref={(el) => {
                       cardRefs.current[section.id] = el;
                     }}
@@ -302,7 +285,8 @@ export const BentoGrid = () => {
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{
                       duration: section.id === 'services' || section.id === 'projects' ? 0.5 : 0.4,
-                      ease: "easeInOut"
+                      ease: "easeInOut",
+                      layout: { duration: 0.5, ease: "easeInOut" } // Layout animation config
                     }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseEnter={() => {
@@ -413,6 +397,7 @@ export const BentoGrid = () => {
               })}
             </AnimatePresence>
           </div>
+        </LayoutGroup>
         </div>
       </div>
 
