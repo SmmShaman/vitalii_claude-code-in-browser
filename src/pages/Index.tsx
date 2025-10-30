@@ -36,12 +36,12 @@ export const Index = () => {
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Fixed Language Switcher Header */}
+      {/* Fixed Language Switcher Header - Shows compact title when fullscreen */}
       <div
-        className="fixed top-0 left-0 right-0 z-50"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-md"
         style={{ height: 'clamp(50px, 6vh, 70px)' }}
       >
-        <Header />
+        <Header isCompact={isFullscreen} />
       </div>
 
       {/* Title Section - Collapsible */}
@@ -58,7 +58,7 @@ export const Index = () => {
         }}
       >
         {!isFullscreen && (
-          <div className="text-center w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 py-4">
+          <div className="text-center w-full max-w-7xl mx-auto h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 py-4">
             <AnimatedHeaderTitle
               text={t('title') as string}
               namePattern={/Vitalii Berbeha|Віталій Бербега/}

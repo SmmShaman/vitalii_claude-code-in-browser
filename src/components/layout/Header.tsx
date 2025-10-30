@@ -1,14 +1,42 @@
+import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '../../contexts/TranslationContext';
 
-export const Header = () => {
-  const { currentLanguage, setCurrentLanguage } = useTranslations();
+interface HeaderProps {
+  isCompact?: boolean;
+}
+
+export const Header = ({ isCompact = false }: HeaderProps) => {
+  const { t, currentLanguage, setCurrentLanguage } = useTranslations();
 
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
   return (
-    <header className="w-full h-full flex items-center justify-end px-2 sm:px-4">
-      <div className="max-w-7xl mx-auto w-full flex justify-end">
+    <header className="w-full h-full flex items-center px-2 sm:px-4">
+      {/* Container wrapper for consistent width with BentoGrid */}
+      <motion.div
+        className="max-w-7xl mx-auto w-full flex items-center"
+        animate={{
+          justifyContent: isCompact ? 'space-between' : 'flex-end',
+        }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Compact title - shown when fullscreen */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{
+            opacity: isCompact ? 1 : 0,
+            x: isCompact ? 0 : -20,
+            display: isCompact ? 'block' : 'none',
+          }}
+          transition={{ duration: 0.3 }}
+          className="text-gray-800 font-semibold"
+          style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)' }}
+        >
+          <span className="font-bold text-amber-400">Vitalii Berbeha</span>
+          <span className="hidden sm:inline"> - {t('subtitle')}</span>
+        </motion.div>
+
         {/* Language Switcher */}
         <div className="flex gap-1 sm:gap-2 flex-shrink-0">
           {languages.map((lang) => (
@@ -27,7 +55,7 @@ export const Header = () => {
             </button>
           ))}
         </div>
-      </div>
+      </motion.div>
     </header>
   );
 };
