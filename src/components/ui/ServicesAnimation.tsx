@@ -29,7 +29,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     }
 
     // Get computed font size
-    const fontSize = 50; // Base font size in px
+    const fontSize = 80; // Increased from 50 to 80 for better spacing between lines
     const txtElements = wheelRef.current.querySelectorAll('.txt');
     const numLines = txtElements.length;
 
@@ -62,7 +62,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     const gtl = gsap.timeline({
       defaults: {
         ease: 'power2.inOut',
-        duration: 3
+        duration: 5 // Increased from 3 to 5 for slower rotation
       },
       repeat: -1
     });
@@ -128,7 +128,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       immediateRender: false
     });
 
-    gtl.timeScale(2.5);
+    gtl.timeScale(1.2); // Reduced from 2.5 to 1.2 for slower animation
 
     timelineRef.current = gtl;
 
