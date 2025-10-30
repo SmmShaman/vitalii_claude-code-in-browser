@@ -162,22 +162,13 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   return (
     <div
       ref={containerRef}
-      className="h-full w-full flex items-center justify-center relative overflow-hidden rounded-lg"
+      className="h-full w-full flex items-center justify-center relative overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, #1a2332 0%, #0f1419 100%)',
         perspective: '800px',
         visibility: 'hidden',
         opacity: 0,
       }}
     >
-      {/* Radial gradient overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 70%)',
-        }}
-      />
-
       <div
         ref={wheelRef}
         className="relative w-full h-full"
