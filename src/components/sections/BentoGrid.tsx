@@ -76,6 +76,7 @@ export const BentoGrid = () => {
   const [projectsHeight, setProjectsHeight] = useState<number>(0);
   const [newsHeight, setNewsHeight] = useState<number>(0);
   const [blogHeight, setBlogHeight] = useState<number>(0);
+  const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
@@ -110,7 +111,18 @@ export const BentoGrid = () => {
       setIsNewsExpanded(false);
       setServicesHeight(0);
       setNewsHeight(0);
+      setSelectedNewsId(null); // Reset selected news when collapsing
     }
+  };
+
+  const handleNewsItemSelect = (newsId: string) => {
+    console.log('📰 News item selected:', newsId);
+    setSelectedNewsId(newsId);
+  };
+
+  const handleNewsItemBack = () => {
+    console.log('🔙 Back to news list');
+    setSelectedNewsId(null);
   };
 
   const handleBlogClick = () => {
@@ -366,7 +378,8 @@ export const BentoGrid = () => {
                     }}
                     onMouseLeave={() => {
                       // Delay collapse by 300ms to avoid accidental triggers
-                      if (section.id === 'news' && isNewsExpanded && !isServicesHiding) {
+                      // Don't collapse if a news item is selected
+                      if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
                         console.log('🖱️ Mouse left News, will collapse in 300ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
                           console.log('⏰ Collapsing News now');
@@ -386,6 +399,8 @@ export const BentoGrid = () => {
                     }`}
                     style={{
                       height: getExpandedHeight(),
+                      // Expand to full width when news item is selected
+                      ...(section.id === 'news' && selectedNewsId ? { gridColumn: '1 / -1' } : {}),
                     }}
                   >
                 {/* Background - conditional based on section */}
@@ -440,7 +455,12 @@ export const BentoGrid = () => {
                     </div>
                   ) : section.id === 'news' ? (
                     <div className="w-full h-full overflow-hidden">
-                      <NewsSection isExpanded={isNewsExpanded} />
+                      <NewsSection
+                        isExpanded={isNewsExpanded}
+                        selectedNewsId={selectedNewsId}
+                        onNewsSelect={handleNewsItemSelect}
+                        onBack={handleNewsItemBack}
+                      />
                     </div>
                   ) : section.id === 'blog' ? (
                     <div className="w-full h-full overflow-hidden">

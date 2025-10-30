@@ -1,25 +1,52 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Newspaper } from 'lucide-react';
+import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
-import { getLatestNews } from '../../integrations/supabase/client';
-import type { LatestNews } from '../../integrations/supabase/types';
-import { NewsModal } from './NewsModal';
+import { getLatestNews, getNewsById } from '../../integrations/supabase/client';
+import type { LatestNews, NewsItem } from '../../integrations/supabase/types';
 
 interface NewsSectionProps {
   isExpanded?: boolean;
+  selectedNewsId?: string | null;
+  onNewsSelect?: (newsId: string) => void;
+  onBack?: () => void;
 }
 
-export const NewsSection = ({ isExpanded = false }: NewsSectionProps) => {
+export const NewsSection = ({
+  isExpanded = false,
+  selectedNewsId = null,
+  onNewsSelect,
+  onBack
+}: NewsSectionProps) => {
   const { t, currentLanguage } = useTranslations();
   const [news, setNews] = useState<LatestNews[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedNews, setSelectedNews] = useState<LatestNews | null>(null);
+  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     loadNews();
   }, []);
+
+  useEffect(() => {
+    if (selectedNewsId) {
+      loadNewsDetail(selectedNewsId);
+    } else {
+      setSelectedNews(null);
+    }
+  }, [selectedNewsId]);
+
+  const loadNewsDetail = async (id: string) => {
+    try {
+      setLoadingDetail(true);
+      const newsDetail = await getNewsById(id);
+      setSelectedNews(newsDetail);
+    } catch (error) {
+      console.error('Failed to load news detail:', error);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
 
   const loadNews = async () => {
     try {
@@ -33,22 +60,25 @@ export const NewsSection = ({ isExpanded = false }: NewsSectionProps) => {
     }
   };
 
-  const getTranslatedContent = (newsItem: LatestNews) => {
+  const getTranslatedContent = (newsItem: LatestNews | NewsItem) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
-    const description = newsItem[`description_${lang}`] || newsItem.description_en || '';
+    const description = newsItem[`description_${lang}` as keyof typeof newsItem] || newsItem.description_en || '';
+    const content = 'content_en' in newsItem ? newsItem[`content_${lang}` as keyof typeof newsItem] || newsItem.content_en : description;
     return {
-      title: newsItem[`title_${lang}`] || newsItem.title_en || '',
-      content: description,
-      summary: description,
+      title: newsItem[`title_${lang}` as keyof typeof newsItem] || newsItem.title_en || '',
+      content: content as string,
+      summary: description as string,
     };
   };
 
   const handleNewsClick = (newsItem: LatestNews) => {
-    // Only open modal if section is expanded
+    // Only allow click if section is expanded
     if (!isExpanded) return;
 
-    setSelectedNews(newsItem);
-    setShowModal(true);
+    // Call the callback to notify parent
+    if (onNewsSelect) {
+      onNewsSelect(newsItem.id);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -85,25 +115,149 @@ export const NewsSection = ({ isExpanded = false }: NewsSectionProps) => {
     );
   }
 
-  return (
-    <>
-      <div className="h-full flex gap-3">
-        {/* Vertical Section Title */}
-        <div className="flex items-center">
-          <div className="relative flex flex-col items-center">
-            {t('news').split('').map((letter: string, i: number) => (
-              <span
-                key={i}
-                className="text-xl font-bold text-primary/60 uppercase leading-tight"
-              >
-                {letter}
-              </span>
-            ))}
-          </div>
+  // Show full news detail if selected
+  if (selectedNews) {
+    const content = getTranslatedContent(selectedNews);
+    return (
+      <div className="h-full flex flex-col overflow-y-auto">
+        {/* Back Button */}
+        <div className="flex-shrink-0 mb-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span className="font-medium">Back to news</span>
+          </motion.button>
         </div>
 
-        {/* News List */}
-        <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-2">
+        {loadingDetail ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1"
+          >
+            {/* Video Player (if video exists) */}
+            {(selectedNews as any).video_url && (
+              <div className="w-full mb-6 rounded-xl overflow-hidden bg-black">
+                {(selectedNews as any).video_type === 'youtube' ? (
+                  // YouTube embed
+                  <iframe
+                    src={(selectedNews as any).video_url}
+                    className="w-full aspect-video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title="Video"
+                  />
+                ) : (selectedNews as any).video_type === 'telegram_embed' ? (
+                  // Telegram embed
+                  <iframe
+                    src={(selectedNews as any).video_url}
+                    className="w-full aspect-video"
+                    frameBorder="0"
+                    scrolling="no"
+                    title="Telegram Video"
+                  />
+                ) : (
+                  // Direct video URL (HTML5)
+                  <video
+                    src={(selectedNews as any).video_url}
+                    controls
+                    className="w-full aspect-video"
+                    playsInline
+                    preload="metadata"
+                  >
+                    <source src={(selectedNews as any).video_url} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                )}
+              </div>
+            )}
+
+            {/* Image (only if no video) */}
+            {!((selectedNews as any).video_url) && selectedNews.image_url && (
+              <div className="w-full h-64 rounded-xl overflow-hidden mb-6">
+                <img
+                  src={selectedNews.image_url as string}
+                  alt={String(content.title)}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+
+            {/* Title */}
+            <h1 className="text-3xl font-bold mb-4 text-foreground">
+              {content.title}
+            </h1>
+
+            {/* Meta */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>{selectedNews.published_at ? formatDate(selectedNews.published_at) : ''}</span>
+              </div>
+              {selectedNews.tags && selectedNews.tags.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Tag className="h-4 w-4" />
+                  {selectedNews.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="prose prose-lg dark:prose-invert max-w-none mb-6 text-foreground">
+              <p className="whitespace-pre-wrap">{content.content}</p>
+            </div>
+
+            {/* Source Link */}
+            {selectedNews.original_url && (
+              <a
+                href={selectedNews.original_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-primary hover:underline"
+              >
+                {t('news_read_more')}
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+          </motion.div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex gap-3">
+      {/* Vertical Section Title */}
+      <div className="flex items-center">
+        <div className="relative flex flex-col items-center">
+          {t('news').split('').map((letter: string, i: number) => (
+            <span
+              key={i}
+              className="text-xl font-bold text-primary/60 uppercase leading-tight"
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* News List */}
+      <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-2">
           <AnimatePresence mode="popLayout">
             {news.map((newsItem, index) => {
               const content = getTranslatedContent(newsItem);
@@ -162,7 +316,7 @@ export const NewsSection = ({ isExpanded = false }: NewsSectionProps) => {
                         <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
                           <img
                             src={newsItem.image_url || 'https://via.placeholder.com/96x96?text=Video'}
-                            alt={content.title}
+                            alt={String(content.title)}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />
                           {(newsItem as any).video_url && (
@@ -185,16 +339,5 @@ export const NewsSection = ({ isExpanded = false }: NewsSectionProps) => {
           </AnimatePresence>
         </div>
       </div>
-
-      {/* News Modal */}
-      <NewsModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setSelectedNews(null);
-        }}
-        selectedNewsId={selectedNews?.id}
-      />
-    </>
   );
 };
