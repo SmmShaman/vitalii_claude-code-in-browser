@@ -72,7 +72,8 @@ export const BentoGrid = () => {
   const [isBlogExpanded, setIsBlogExpanded] = useState(false);
   const [isServicesHiding, setIsServicesHiding] = useState(false);
   const [isProjectsHiding, setIsProjectsHiding] = useState(false);
-  const [servicesPosition, setServicesPosition] = useState<{ top: number; left: number } | null>(null);
+  const [servicesHeight, setServicesHeight] = useState<number>(0);
+  const [projectsHeight, setProjectsHeight] = useState<number>(0);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
@@ -80,15 +81,13 @@ export const BentoGrid = () => {
   const handleNewsClick = () => {
     console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded);
     if (!isNewsExpanded) {
-      // Get Services position before animation
+      // Get Services height before animation
       const servicesEl = cardRefs.current['services'];
 
       if (servicesEl) {
-        const servicesRect = servicesEl.getBoundingClientRect();
-
-        console.log('📍 Services target position:', { top: servicesRect.top, left: servicesRect.left });
-
-        setServicesPosition({ top: servicesRect.top, left: servicesRect.left });
+        const height = servicesEl.offsetHeight;
+        console.log('📏 Services height:', height);
+        setServicesHeight(height);
       }
 
       // Start hiding Services first
@@ -104,12 +103,21 @@ export const BentoGrid = () => {
     } else {
       console.log('🔵 Collapsing News');
       setIsNewsExpanded(false);
-      setServicesPosition(null);
+      setServicesHeight(0);
     }
   };
 
   const handleBlogClick = () => {
     if (!isBlogExpanded) {
+      // Get Projects height before animation
+      const projectsEl = cardRefs.current['projects'];
+
+      if (projectsEl) {
+        const height = projectsEl.offsetHeight;
+        console.log('📏 Projects height:', height);
+        setProjectsHeight(height);
+      }
+
       // Start hiding Projects first
       setIsProjectsHiding(true);
       // After 0.5s, expand Blog
@@ -119,6 +127,7 @@ export const BentoGrid = () => {
       }, 500);
     } else {
       setIsBlogExpanded(false);
+      setProjectsHeight(0);
     }
   };
 
@@ -244,16 +253,6 @@ export const BentoGrid = () => {
             >
               <AnimatePresence mode="sync">
                 {sections.map((section) => {
-                // Check if section should be invisible (but remain in DOM to keep grid structure)
-                const shouldBeInvisible =
-                  (section.id === 'services' && (isServicesHiding || isNewsExpanded)) ||
-                  (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) ||
-                  (section.id === 'skills' && (isNewsExpanded || isBlogExpanded));
-
-                if (shouldBeInvisible) {
-                  console.log(`👻 ${section.id} is INVISIBLE (but keeps grid space)`);
-                }
-
                 const isExpanded =
                   (section.id === 'news' && isNewsExpanded) ||
                   (section.id === 'blog' && isBlogExpanded);
@@ -262,34 +261,54 @@ export const BentoGrid = () => {
                   console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, isNewsExpanded: ${isNewsExpanded}, width: SAME (1 column), height: ${isExpanded ? 'EXPANDED' : 'normal'}`);
                 }
 
-                // Get static style (position type)
-                const getStaticStyle = () => {
-                  if (section.id === 'news' && isNewsExpanded) {
-                    return {
-                      position: 'fixed' as const,
-                      width: cardRefs.current['services']?.offsetWidth || 'auto',
-                      zIndex: 50,
-                    };
-                  }
-                  if (section.id === 'blog' && isBlogExpanded) {
-                    return {
-                      position: 'relative' as const,
-                      zIndex: 50,
-                    };
-                  }
-                  return {};
-                };
-
-                // Get animated properties (top, left for News)
+                // Get animated properties for each section
                 const getAnimatedProps = () => {
-                  if (section.id === 'news' && isNewsExpanded && servicesPosition) {
-                    console.log('🎬 Animating News to Services position:', servicesPosition);
+                  // Services: scale to 0 height when hiding (0fr grid trick)
+                  if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
+                    console.log('🎬 Animating Services scaleY to 0');
                     return {
-                      top: servicesPosition.top,
-                      left: servicesPosition.left,
+                      opacity: 0,
+                      scaleY: 0,
+                      transformOrigin: 'top',
                     };
                   }
-                  return {};
+
+                  // Projects: scale to 0 height when hiding
+                  if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
+                    console.log('🎬 Animating Projects scaleY to 0');
+                    return {
+                      opacity: 0,
+                      scaleY: 0,
+                      transformOrigin: 'top',
+                    };
+                  }
+
+                  // News: move upward by Services height when expanded
+                  if (section.id === 'news' && isNewsExpanded && servicesHeight > 0) {
+                    const gapSize = 16; // gap-4 = 1rem = 16px
+                    const moveDistance = -(servicesHeight + gapSize);
+                    console.log('🎬 Animating News translateY to', moveDistance);
+                    return {
+                      opacity: 1,
+                      y: moveDistance,
+                    };
+                  }
+
+                  // Blog: move upward by Projects height when expanded
+                  if (section.id === 'blog' && isBlogExpanded && projectsHeight > 0) {
+                    const gapSize = 16; // gap-4 = 1rem = 16px
+                    const moveDistance = -(projectsHeight + gapSize);
+                    console.log('🎬 Animating Blog translateY to', moveDistance);
+                    return {
+                      opacity: 1,
+                      y: moveDistance,
+                    };
+                  }
+
+                  return {
+                    opacity: 1,
+                    y: 0,
+                  };
                 };
 
                 return (
@@ -299,11 +318,7 @@ export const BentoGrid = () => {
                       cardRefs.current[section.id] = el;
                     }}
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{
-                      opacity: shouldBeInvisible ? 0 : 1,
-                      y: 0,
-                      ...getAnimatedProps(), // Animate position for News
-                    }}
+                    animate={getAnimatedProps()}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{
                       duration: 0.5,
@@ -340,7 +355,6 @@ export const BentoGrid = () => {
                     }`}
                     style={{
                       height: isExpanded ? 'clamp(450px, 60vh, 650px)' : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
-                      ...getStaticStyle(),
                     }}
                   >
                 {/* Background - conditional based on section */}
