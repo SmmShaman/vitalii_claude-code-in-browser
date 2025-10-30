@@ -47,7 +47,7 @@ export const AnimatedDescription = ({ text }: AnimatedDescriptionProps) => {
   return (
     <p
       ref={containerRef}
-      className="text-gray-800 mt-1.5 leading-tight"
+      className="text-white mt-1.5 leading-tight"
       style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)' }}
     >
       {text}

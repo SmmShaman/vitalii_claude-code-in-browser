@@ -36,17 +36,17 @@ export const Index = () => {
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Fixed Language Switcher Header - Shows compact title when fullscreen */}
+      {/* Fixed Language Switcher Header - Transparent, floating above background */}
       <div
-        className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-md"
+        className="fixed top-0 left-0 right-0 z-50"
         style={{ height: 'clamp(50px, 6vh, 70px)' }}
       >
         <Header isCompact={isFullscreen} />
       </div>
 
-      {/* Title Section - Collapsible */}
+      {/* Title Section - Floating text on background, no white box */}
       <motion.div
-        className="fixed left-0 right-0 z-40 bg-white/95 backdrop-blur-sm shadow-md overflow-hidden"
+        className="fixed left-0 right-0 z-40 overflow-hidden"
         animate={{
           top: 'clamp(50px, 6vh, 70px)',
           height: isFullscreen ? '0px' : `${headerHeight}px`,
@@ -58,13 +58,18 @@ export const Index = () => {
         }}
       >
         {!isFullscreen && (
-          <div className="text-center w-full max-w-7xl mx-auto h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 py-4">
+          <div
+            className="text-center w-full max-w-7xl mx-auto h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 py-4"
+            style={{
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.5)'
+            }}
+          >
             <AnimatedHeaderTitle
               text={t('title') as string}
               namePattern={/Vitalii Berbeha|Віталій Бербега/}
             />
             <h2
-              className="text-gray-700 mt-2 leading-tight"
+              className="text-white mt-2 leading-tight"
               style={{ fontSize: 'clamp(1rem, 2vw, 1.5rem)' }}
             >
               {t('subtitle')}

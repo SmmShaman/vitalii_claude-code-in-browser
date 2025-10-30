@@ -30,8 +30,11 @@ export const Header = ({ isCompact = false }: HeaderProps) => {
             display: isCompact ? 'block' : 'none',
           }}
           transition={{ duration: 0.3 }}
-          className="text-gray-800 font-semibold"
-          style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)' }}
+          className="text-white font-semibold"
+          style={{
+            fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)',
+            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
+          }}
         >
           <span className="font-bold text-amber-400">Vitalii Berbeha</span>
           <span className="hidden sm:inline"> - {t('subtitle')}</span>
