@@ -217,6 +217,7 @@ export const BentoGrid = () => {
             className="grid gap-2 sm:gap-3 md:gap-4 w-full relative"
             style={{
               gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
+              gridAutoRows: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
             }}
           >
             <AnimatePresence mode="sync">
@@ -233,57 +234,23 @@ export const BentoGrid = () => {
                   (section.id === 'news' && isNewsExpanded) ||
                   (section.id === 'blog' && isBlogExpanded);
 
-                // Calculate ordering for sections
-                const getOrder = () => {
-                  // Default orders
-                  const defaultOrder: { [key: string]: number } = {
-                    'about': 0,
-                    'services': 1,
-                    'projects': 2,
-                    'skills': 3,
-                    'news': 4,
-                    'blog': 5,
-                  };
-
-                  // When News expanded, News takes Services position (order 1)
-                  if (isNewsExpanded) {
-                    if (section.id === 'news') return 1; // Take Services position
-                    if (section.id === 'about') return 0;
-                    if (section.id === 'projects') return 2;
-                    if (section.id === 'skills') return 3;
-                    if (section.id === 'blog') return 4;
-                  }
-
-                  // When Blog expanded, Blog takes Projects position (order 2)
-                  if (isBlogExpanded) {
-                    if (section.id === 'blog') return 1; // Take Services position
-                    if (section.id === 'about') return 0;
-                    if (section.id === 'skills') return 2;
-                    if (section.id === 'news') return 3;
-                  }
-
-                  return defaultOrder[section.id] ?? 0;
-                };
-
                 // Calculate grid position for upward expansion (full width)
                 const getGridStyle = () => {
-                  const baseStyle: any = {
-                    order: getOrder(),
-                  };
-
                   if (section.id === 'news' && isNewsExpanded) {
+                    // News jumps to row 1 (where Services was) and spans 2 rows, full width
                     return {
-                      ...baseStyle,
-                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1', // Full width
+                      gridRow: '1 / 3', // Start at row line 1, end at row line 3 (covers rows 1-2)
+                      gridColumn: screenSize.columnsCount === 2 ? '1 / 3' : '1', // Full width (columns 1-2)
                     };
                   }
                   if (section.id === 'blog' && isBlogExpanded) {
+                    // Blog jumps to row 1 and spans 2 rows, full width
                     return {
-                      ...baseStyle,
-                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1', // Full width
+                      gridRow: '1 / 3', // Start at row line 1, end at row line 3 (covers rows 1-2)
+                      gridColumn: screenSize.columnsCount === 2 ? '1 / 3' : '1', // Full width
                     };
                   }
-                  return baseStyle;
+                  return {};
                 };
 
                 return (
