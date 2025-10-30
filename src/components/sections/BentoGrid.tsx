@@ -263,14 +263,14 @@ export const BentoGrid = () => {
                   (section.id === 'blog' && isBlogExpanded);
 
                 if (section.id === 'news') {
-                  console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, gridColumn will be:`, screenSize.columnsCount === 2 ? '1 / span 2' : '1');
+                  console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, isNewsExpanded: ${isNewsExpanded}, gridColumn will be: '1 / -1'`);
                 }
 
                 // Calculate grid style for expanded sections
                 const getExpandedStyle = () => {
                   if (section.id === 'news' && isNewsExpanded) {
                     const style = {
-                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1',
+                      gridColumn: '1 / -1', // Full width (from column 1 to last column)
                       zIndex: 50,
                     };
                     console.log('📐 NEWS expanded style:', style);
@@ -279,7 +279,7 @@ export const BentoGrid = () => {
                   if (section.id === 'blog' && isBlogExpanded) {
                     // Expand to full width
                     return {
-                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1',
+                      gridColumn: '1 / -1', // Full width
                       zIndex: 50,
                     };
                   }
@@ -304,10 +304,12 @@ export const BentoGrid = () => {
                     }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseLeave={() => {
-                      if (section.id === 'news' && isNewsExpanded) {
+                      // Only collapse if actually expanded (not during animation)
+                      if (section.id === 'news' && isNewsExpanded && !isServicesHiding) {
+                        console.log('🖱️ Mouse left News, collapsing');
                         setIsNewsExpanded(false);
                       }
-                      if (section.id === 'blog' && isBlogExpanded) {
+                      if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding) {
                         setIsBlogExpanded(false);
                       }
                     }}
