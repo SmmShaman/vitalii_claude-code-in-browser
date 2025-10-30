@@ -271,15 +271,17 @@ export const BentoGrid = () => {
                 const getExpandedStyle = () => {
                   if (section.id === 'news' && isNewsExpanded) {
                     const style = {
-                      // Keep same width, don't change gridColumn
+                      gridRow: '1 / span 2', // Jump to row 1, span 2 rows downward
+                      gridColumn: screenSize.columnsCount === 2 ? '2' : '1', // Column 2 (where Services was)
                       zIndex: 50,
                     };
-                    console.log('📐 NEWS expanded style:', style);
+                    console.log('📐 NEWS expanded style:', style, '→ Jump to Services position (row 1, col 2)');
                     return style;
                   }
                   if (section.id === 'blog' && isBlogExpanded) {
                     return {
-                      // Keep same width
+                      gridRow: '1 / span 2', // Jump to row 1
+                      gridColumn: screenSize.columnsCount === 2 ? '1' : '1', // Column 1 (where Projects was)
                       zIndex: 50,
                     };
                   }
