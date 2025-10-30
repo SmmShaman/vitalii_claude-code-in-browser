@@ -72,6 +72,7 @@ export const BentoGrid = () => {
   const [isBlogExpanded, setIsBlogExpanded] = useState(false);
   const [isServicesHiding, setIsServicesHiding] = useState(false);
   const [isProjectsHiding, setIsProjectsHiding] = useState(false);
+  const [servicesPosition, setServicesPosition] = useState<{ top: number; left: number } | null>(null);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
@@ -79,9 +80,21 @@ export const BentoGrid = () => {
   const handleNewsClick = () => {
     console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded);
     if (!isNewsExpanded) {
+      // Get Services position before animation
+      const servicesEl = cardRefs.current['services'];
+
+      if (servicesEl) {
+        const servicesRect = servicesEl.getBoundingClientRect();
+
+        console.log('📍 Services target position:', { top: servicesRect.top, left: servicesRect.left });
+
+        setServicesPosition({ top: servicesRect.top, left: servicesRect.left });
+      }
+
       // Start hiding Services first
       console.log('🟡 Starting Services hide animation');
       setIsServicesHiding(true);
+
       // After 0.5s, expand News
       setTimeout(() => {
         console.log('🟢 Expanding News now');
@@ -91,6 +104,7 @@ export const BentoGrid = () => {
     } else {
       console.log('🔵 Collapsing News');
       setIsNewsExpanded(false);
+      setServicesPosition(null);
     }
   };
 
@@ -230,15 +244,14 @@ export const BentoGrid = () => {
             >
               <AnimatePresence mode="sync">
                 {sections.map((section) => {
-                // Check if section should be visible
-                const isHidden =
+                // Check if section should be invisible (but remain in DOM to keep grid structure)
+                const shouldBeInvisible =
                   (section.id === 'services' && (isServicesHiding || isNewsExpanded)) ||
-                  (section.id === 'projects' && (isProjectsHiding || isBlogExpanded || isNewsExpanded)) ||
+                  (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) ||
                   (section.id === 'skills' && (isNewsExpanded || isBlogExpanded));
 
-                if (isHidden) {
-                  console.log(`👻 ${section.id} is HIDDEN`);
-                  return null;
+                if (shouldBeInvisible) {
+                  console.log(`👻 ${section.id} is INVISIBLE (but keeps grid space)`);
                 }
 
                 const isExpanded =
@@ -249,22 +262,31 @@ export const BentoGrid = () => {
                   console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, isNewsExpanded: ${isNewsExpanded}, width: SAME (1 column), height: ${isExpanded ? 'EXPANDED' : 'normal'}`);
                 }
 
-                // Calculate grid style for expanded sections
-                const getExpandedStyle = () => {
+                // Get static style (position type)
+                const getStaticStyle = () => {
                   if (section.id === 'news' && isNewsExpanded) {
-                    const style = {
-                      gridRow: '1 / span 2', // Jump to row 1, span 2 rows downward
-                      gridColumn: screenSize.columnsCount === 2 ? '2' : '1', // Column 2 (where Services was)
+                    return {
+                      position: 'fixed' as const,
+                      width: cardRefs.current['services']?.offsetWidth || 'auto',
                       zIndex: 50,
                     };
-                    console.log('📐 NEWS expanded style:', style, '→ Jump to Services position (row 1, col 2)');
-                    return style;
                   }
                   if (section.id === 'blog' && isBlogExpanded) {
                     return {
-                      gridRow: '1 / span 2', // Jump to row 1
-                      gridColumn: screenSize.columnsCount === 2 ? '1' : '1', // Column 1 (where Projects was)
+                      position: 'relative' as const,
                       zIndex: 50,
+                    };
+                  }
+                  return {};
+                };
+
+                // Get animated properties (top, left for News)
+                const getAnimatedProps = () => {
+                  if (section.id === 'news' && isNewsExpanded && servicesPosition) {
+                    console.log('🎬 Animating News to Services position:', servicesPosition);
+                    return {
+                      top: servicesPosition.top,
+                      left: servicesPosition.left,
                     };
                   }
                   return {};
@@ -273,20 +295,19 @@ export const BentoGrid = () => {
                 return (
                   <motion.div
                     key={section.id}
-                    layout // Enable automatic layout animations
                     ref={(el) => {
                       cardRefs.current[section.id] = el;
                     }}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{
-                      opacity: 1,
+                      opacity: shouldBeInvisible ? 0 : 1,
                       y: 0,
+                      ...getAnimatedProps(), // Animate position for News
                     }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{
-                      duration: section.id === 'services' || section.id === 'projects' ? 0.5 : 0.4,
+                      duration: 0.5,
                       ease: "easeInOut",
-                      layout: { duration: 0.5, ease: "easeInOut" } // Layout animation config
                     }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseEnter={() => {
@@ -319,7 +340,7 @@ export const BentoGrid = () => {
                     }`}
                     style={{
                       height: isExpanded ? 'clamp(450px, 60vh, 650px)' : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
-                      ...getExpandedStyle(),
+                      ...getStaticStyle(),
                     }}
                   >
                 {/* Background - conditional based on section */}
