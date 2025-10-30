@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
 import { TypewriterText } from '../ui/TypewriterText';
@@ -69,21 +69,32 @@ export const BentoGrid = () => {
   const [activeProjectIndex, setActiveProjectIndex] = useState(0);
   const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
   const [isNewsExpanded, setIsNewsExpanded] = useState(false);
+  const [isBlogExpanded, setIsBlogExpanded] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const handleNewsClick = () => {
     setIsNewsExpanded(!isNewsExpanded);
   };
 
+  const handleBlogClick = () => {
+    setIsBlogExpanded(!isBlogExpanded);
+  };
+
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
     // Don't open dialog for sections that have their own modals
-    if (section.id === 'projects' || section.id === 'blog') return;
+    if (section.id === 'projects') return;
 
     // Handle news expansion separately
     if (section.id === 'news') {
       handleNewsClick();
+      return;
+    }
+
+    // Handle blog expansion separately
+    if (section.id === 'blog') {
+      handleBlogClick();
       return;
     }
 
@@ -184,29 +195,63 @@ export const BentoGrid = () => {
             className="grid gap-2 sm:gap-3 md:gap-4 w-full"
             style={{
               gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
+              gridAutoRows: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
             }}
           >
-            {sections.map((section, index) => (
-              <motion.div
-                key={section.id}
-                ref={(el) => {
-                  cardRefs.current[section.id] = el;
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                {...(section.id !== 'projects' && section.id !== 'blog' && {
-                  onClick: () => handleCardClick(section, cardRefs.current[section.id])
-                })}
-                className={`relative overflow-hidden rounded-lg transition-all duration-300 hover:shadow-2xl w-full ${section.id === 'blog' ? 'cursor-default' : 'cursor-pointer'} ${section.id === 'news' && !isNewsExpanded ? 'hover:scale-105' : ''}`}
-                style={{
-                  height: section.id === 'news' && isNewsExpanded
-                    ? 'clamp(450px, 60vh, 650px)'
-                    : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
-                  gridRow: section.id === 'news' && isNewsExpanded ? 'span 2' : 'auto',
-                  zIndex: section.id === 'news' && isNewsExpanded ? 10 : 'auto',
-                }}
-              >
+            <AnimatePresence mode="sync">
+              {sections.map((section, index) => {
+                // Hide Services when News is expanded
+                if (section.id === 'services' && isNewsExpanded) return null;
+
+                // Hide Projects when Blog is expanded
+                if (section.id === 'projects' && isBlogExpanded) return null;
+
+                // Calculate grid row for expanded sections
+                const getGridRow = () => {
+                  if (section.id === 'news' && isNewsExpanded) {
+                    // News expands upward to cover Services row
+                    return screenSize.columnsCount === 2 ? '1 / 3' : '1 / 3';
+                  }
+                  if (section.id === 'blog' && isBlogExpanded) {
+                    // Blog expands upward to cover Projects row
+                    return screenSize.columnsCount === 2 ? '2 / 4' : '1 / 3';
+                  }
+                  return 'auto';
+                };
+
+                return (
+                  <motion.div
+                    key={section.id}
+                    ref={(el) => {
+                      cardRefs.current[section.id] = el;
+                    }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    {...(section.id !== 'projects' && {
+                      onClick: () => handleCardClick(section, cardRefs.current[section.id])
+                    })}
+                    onMouseLeave={() => {
+                      if (section.id === 'news' && isNewsExpanded) {
+                        setIsNewsExpanded(false);
+                      }
+                      if (section.id === 'blog' && isBlogExpanded) {
+                        setIsBlogExpanded(false);
+                      }
+                    }}
+                    className={`relative overflow-hidden rounded-lg transition-all duration-300 hover:shadow-2xl w-full cursor-pointer ${
+                      (section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105' : ''
+                    }`}
+                    style={{
+                      height:
+                        (section.id === 'news' && isNewsExpanded) || (section.id === 'blog' && isBlogExpanded)
+                          ? 'clamp(450px, 60vh, 650px)'
+                          : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
+                      gridRow: getGridRow(),
+                      zIndex: (section.id === 'news' && isNewsExpanded) || (section.id === 'blog' && isBlogExpanded) ? 10 : 'auto',
+                    }}
+                  >
                 {/* Background - conditional based on section */}
                 {section.id === 'about' ? (
                   <div className="absolute inset-0 bg-white" />
@@ -278,7 +323,9 @@ export const BentoGrid = () => {
                 {/* Hover Effect Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-purple-500/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </motion.div>
-            ))}
+                );
+              })}
+            </AnimatePresence>
           </div>
         </div>
       </div>
