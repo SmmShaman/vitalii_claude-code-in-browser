@@ -76,15 +76,19 @@ export const BentoGrid = () => {
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
 
   const handleNewsClick = () => {
+    console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded);
     if (!isNewsExpanded) {
       // Start hiding Services first
+      console.log('🟡 Starting Services hide animation');
       setIsServicesHiding(true);
       // After 0.5s, expand News
       setTimeout(() => {
+        console.log('🟢 Expanding News now');
         setIsNewsExpanded(true);
         setIsServicesHiding(false);
       }, 500);
     } else {
+      console.log('🔵 Collapsing News');
       setIsNewsExpanded(false);
     }
   };
@@ -228,9 +232,11 @@ export const BentoGrid = () => {
                 let orderedSections = [...sections];
 
                 if (isNewsExpanded) {
+                  console.log('📰 isNewsExpanded = true, reordering sections');
                   // Move News to position 1 (after About)
                   orderedSections = orderedSections.filter(s => s.id !== 'news');
                   orderedSections.splice(1, 0, sections.find(s => s.id === 'news')!);
+                  console.log('📋 New order:', orderedSections.map(s => s.id).join(' → '));
                 }
 
                 if (isBlogExpanded) {
@@ -247,20 +253,28 @@ export const BentoGrid = () => {
                   (section.id === 'projects' && (isProjectsHiding || isBlogExpanded || isNewsExpanded)) ||
                   (section.id === 'skills' && (isNewsExpanded || isBlogExpanded));
 
-                if (isHidden) return null;
+                if (isHidden) {
+                  console.log(`👻 ${section.id} is HIDDEN`);
+                  return null;
+                }
 
                 const isExpanded =
                   (section.id === 'news' && isNewsExpanded) ||
                   (section.id === 'blog' && isBlogExpanded);
 
+                if (section.id === 'news') {
+                  console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, gridColumn will be:`, screenSize.columnsCount === 2 ? '1 / span 2' : '1');
+                }
+
                 // Calculate grid style for expanded sections
                 const getExpandedStyle = () => {
                   if (section.id === 'news' && isNewsExpanded) {
-                    // Expand to full width
-                    return {
+                    const style = {
                       gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1',
                       zIndex: 50,
                     };
+                    console.log('📐 NEWS expanded style:', style);
+                    return style;
                   }
                   if (section.id === 'blog' && isBlogExpanded) {
                     // Expand to full width
