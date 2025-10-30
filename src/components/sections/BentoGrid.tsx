@@ -82,7 +82,14 @@ export const BentoGrid = () => {
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
 
   const handleNewsClick = () => {
-    console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded);
+    console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded, 'selectedNewsId:', selectedNewsId);
+
+    // Don't toggle if a news item is currently selected
+    if (selectedNewsId) {
+      console.log('⚠️ News item is selected, ignoring card click');
+      return;
+    }
+
     if (!isNewsExpanded) {
       // Get both News and Services heights before animation
       const newsEl = cardRefs.current['news'];
@@ -161,7 +168,11 @@ export const BentoGrid = () => {
 
     // Handle news expansion separately
     if (section.id === 'news') {
-      handleNewsClick();
+      // Only toggle if not expanded or if no news item is selected
+      // If news is expanded and showing a news item, don't toggle
+      if (!isNewsExpanded || !selectedNewsId) {
+        handleNewsClick();
+      }
       return;
     }
 
