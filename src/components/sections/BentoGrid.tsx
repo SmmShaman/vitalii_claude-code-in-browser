@@ -703,7 +703,9 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 {/* Background - conditional based on section */}
                 {section.id === 'about' ? (
                   <div className="absolute inset-0 bg-white" />
-                ) : section.id === 'services' || section.id === 'skills' ? (
+                ) : section.id === 'services' ? (
+                  null
+                ) : section.id === 'skills' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" />
                 ) : section.id === 'news' || section.id === 'blog' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
