@@ -74,6 +74,7 @@ export const BentoGrid = () => {
   const [isProjectsHiding, setIsProjectsHiding] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const mouseLeaveTimeoutRef = useRef<number | null>(null);
 
   const handleNewsClick = () => {
     console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded);
@@ -263,23 +264,22 @@ export const BentoGrid = () => {
                   (section.id === 'blog' && isBlogExpanded);
 
                 if (section.id === 'news') {
-                  console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, isNewsExpanded: ${isNewsExpanded}, gridColumn will be: '1 / -1'`);
+                  console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, isNewsExpanded: ${isNewsExpanded}, width: SAME (1 column), height: ${isExpanded ? 'EXPANDED' : 'normal'}`);
                 }
 
                 // Calculate grid style for expanded sections
                 const getExpandedStyle = () => {
                   if (section.id === 'news' && isNewsExpanded) {
                     const style = {
-                      gridColumn: '1 / -1', // Full width (from column 1 to last column)
+                      // Keep same width, don't change gridColumn
                       zIndex: 50,
                     };
                     console.log('📐 NEWS expanded style:', style);
                     return style;
                   }
                   if (section.id === 'blog' && isBlogExpanded) {
-                    // Expand to full width
                     return {
-                      gridColumn: '1 / -1', // Full width
+                      // Keep same width
                       zIndex: 50,
                     };
                   }
@@ -303,14 +303,29 @@ export const BentoGrid = () => {
                       ease: "easeInOut"
                     }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
+                    onMouseEnter={() => {
+                      // Cancel collapse timeout if mouse returns
+                      if (mouseLeaveTimeoutRef.current) {
+                        clearTimeout(mouseLeaveTimeoutRef.current);
+                        mouseLeaveTimeoutRef.current = null;
+                        console.log('🐭 Mouse returned, cancel collapse');
+                      }
+                    }}
                     onMouseLeave={() => {
-                      // Only collapse if actually expanded (not during animation)
+                      // Delay collapse by 300ms to avoid accidental triggers
                       if (section.id === 'news' && isNewsExpanded && !isServicesHiding) {
-                        console.log('🖱️ Mouse left News, collapsing');
-                        setIsNewsExpanded(false);
+                        console.log('🖱️ Mouse left News, will collapse in 300ms');
+                        mouseLeaveTimeoutRef.current = window.setTimeout(() => {
+                          console.log('⏰ Collapsing News now');
+                          setIsNewsExpanded(false);
+                          mouseLeaveTimeoutRef.current = null;
+                        }, 300);
                       }
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding) {
-                        setIsBlogExpanded(false);
+                        mouseLeaveTimeoutRef.current = window.setTimeout(() => {
+                          setIsBlogExpanded(false);
+                          mouseLeaveTimeoutRef.current = null;
+                        }, 300);
                       }
                     }}
                     className={`relative overflow-hidden rounded-lg transition-all duration-300 hover:shadow-2xl w-full cursor-pointer ${
