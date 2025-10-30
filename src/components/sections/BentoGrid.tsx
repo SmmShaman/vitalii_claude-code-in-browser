@@ -70,14 +70,36 @@ export const BentoGrid = () => {
   const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
   const [isNewsExpanded, setIsNewsExpanded] = useState(false);
   const [isBlogExpanded, setIsBlogExpanded] = useState(false);
+  const [isServicesHiding, setIsServicesHiding] = useState(false);
+  const [isProjectsHiding, setIsProjectsHiding] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const handleNewsClick = () => {
-    setIsNewsExpanded(!isNewsExpanded);
+    if (!isNewsExpanded) {
+      // Start hiding Services first
+      setIsServicesHiding(true);
+      // After 0.5s, expand News
+      setTimeout(() => {
+        setIsNewsExpanded(true);
+        setIsServicesHiding(false);
+      }, 500);
+    } else {
+      setIsNewsExpanded(false);
+    }
   };
 
   const handleBlogClick = () => {
-    setIsBlogExpanded(!isBlogExpanded);
+    if (!isBlogExpanded) {
+      // Start hiding Projects first
+      setIsProjectsHiding(true);
+      // After 0.5s, expand Blog
+      setTimeout(() => {
+        setIsBlogExpanded(true);
+        setIsProjectsHiding(false);
+      }, 500);
+    } else {
+      setIsBlogExpanded(false);
+    }
   };
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
@@ -201,8 +223,9 @@ export const BentoGrid = () => {
               {sections.map((section) => {
                 // Check if section should be visible
                 const isHidden =
-                  // Hide Projects and Skills when News or Blog expands
-                  ((section.id === 'projects' || section.id === 'skills') && (isNewsExpanded || isBlogExpanded));
+                  (section.id === 'services' && (isServicesHiding || isNewsExpanded)) ||
+                  (section.id === 'projects' && (isProjectsHiding || isBlogExpanded || isNewsExpanded)) ||
+                  (section.id === 'skills' && (isNewsExpanded || isBlogExpanded));
 
                 if (isHidden) return null;
 
@@ -240,8 +263,11 @@ export const BentoGrid = () => {
                       opacity: 1,
                       y: 0,
                     }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{
+                      duration: section.id === 'services' || section.id === 'projects' ? 0.5 : 0.4,
+                      ease: "easeInOut"
+                    }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseLeave={() => {
                       if (section.id === 'news' && isNewsExpanded) {
@@ -312,11 +338,11 @@ export const BentoGrid = () => {
                     </div>
                   ) : section.id === 'news' ? (
                     <div className="w-full h-full overflow-hidden">
-                      <NewsSection />
+                      <NewsSection isExpanded={isNewsExpanded} />
                     </div>
                   ) : section.id === 'blog' ? (
                     <div className="w-full h-full overflow-hidden">
-                      <BlogSection />
+                      <BlogSection isExpanded={isBlogExpanded} />
                     </div>
                   ) : (
                     <h3

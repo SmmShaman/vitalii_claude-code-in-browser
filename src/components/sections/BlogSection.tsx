@@ -6,7 +6,11 @@ import { getLatestBlogPosts } from '../../integrations/supabase/client';
 import type { LatestBlogPost } from '../../integrations/supabase/types';
 import { BlogModal } from './BlogModal';
 
-export const BlogSection = () => {
+interface BlogSectionProps {
+  isExpanded?: boolean;
+}
+
+export const BlogSection = ({ isExpanded = false }: BlogSectionProps) => {
   const { t, currentLanguage } = useTranslations();
   const [posts, setPosts] = useState<LatestBlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +45,9 @@ export const BlogSection = () => {
   };
 
   const handlePostClick = (post: LatestBlogPost) => {
+    // Only open modal if section is expanded
+    if (!isExpanded) return;
+
     setSelectedPost(post);
     setShowModal(true);
   };

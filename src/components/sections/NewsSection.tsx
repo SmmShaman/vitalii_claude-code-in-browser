@@ -6,7 +6,11 @@ import { getLatestNews } from '../../integrations/supabase/client';
 import type { LatestNews } from '../../integrations/supabase/types';
 import { NewsModal } from './NewsModal';
 
-export const NewsSection = () => {
+interface NewsSectionProps {
+  isExpanded?: boolean;
+}
+
+export const NewsSection = ({ isExpanded = false }: NewsSectionProps) => {
   const { t, currentLanguage } = useTranslations();
   const [news, setNews] = useState<LatestNews[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +44,9 @@ export const NewsSection = () => {
   };
 
   const handleNewsClick = (newsItem: LatestNews) => {
+    // Only open modal if section is expanded
+    if (!isExpanded) return;
+
     setSelectedNews(newsItem);
     setShowModal(true);
   };
