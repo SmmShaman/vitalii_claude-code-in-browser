@@ -29,12 +29,12 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     }
 
     // Get computed font size
-    const fontSize = 80; // Increased from 50 to 80 for better spacing between lines
+    const fontSize = 32; // Reduced for more compact display
     const txtElements = wheelRef.current.querySelectorAll('.txt');
     const numLines = txtElements.length;
 
-    // Calculate radius and angle (multiply by 2.5 for thicker cylinder)
-    const radius = ((fontSize / 2) / Math.sin((180 / numLines) * (Math.PI / 180))) * 2.5;
+    // Calculate radius with larger multiplier for better spacing
+    const radius = (fontSize * 1.5) / Math.sin((180 / numLines) * (Math.PI / 180));
     const angle = 360 / numLines;
     const origin = `50% 50% -${radius}px`;
 
@@ -60,70 +60,87 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     // Make container visible
     gsap.set(containerRef.current, { autoAlpha: 1 });
 
-    // Create main timeline
-    const charEase = 'power4.inOut';
+    // Create main timeline with enhanced effects
+    const charEase = 'elastic.inOut(1, 0.5)';
     const gtl = gsap.timeline({
       defaults: {
-        ease: 'power2.inOut',
-        duration: 5 // Increased from 3 to 5 for slower rotation
+        ease: 'power3.inOut',
+        duration: 2.5
       },
       repeat: -1
     });
 
     gtl.to(wheelRef.current, {
-      rotationX: -60,
-      transformOrigin: '50% 50%'
+      rotationX: -90,
+      transformOrigin: '50% 50%',
+      ease: 'power2.inOut'
     })
     .to('.char:nth-child(even)', {
-      rotationX: 60,
+      rotationY: 25,
+      z: 80,
       transformOrigin: origin,
-      duration: 2
-    }, '-=1')
+      duration: 2,
+      ease: 'back.out(1.5)'
+    }, '-=1.5')
     .to('.char:nth-child(odd)', {
-      fontWeight: 300,
-      ease: charEase
-    }, '-=2')
-    .to(wheelRef.current, {
-      rotationX: -120,
-      transformOrigin: '50% 50%'
-    }, '-=0.5')
-    .to('.char:nth-child(odd)', {
-      rotationX: 120,
-      transformOrigin: origin,
-      duration: 2
-    }, '-=1')
-    .to('.char:nth-child(even)', {
-      fontWeight: 300,
+      fontWeight: 100,
+      scale: 0.8,
       ease: charEase
     }, '-=2')
     .to(wheelRef.current, {
       rotationX: -180,
       transformOrigin: '50% 50%'
-    }, '-=0.5')
-    .to('.char:nth-child(even)', {
-      rotationX: 180,
-      transformOrigin: origin,
-      duration: 2
-    }, '-=1')
+    }, '-=0.3')
     .to('.char:nth-child(odd)', {
-      fontWeight: 900,
+      rotationY: -25,
+      z: 80,
+      transformOrigin: origin,
+      duration: 2,
+      ease: 'back.out(1.5)'
+    }, '-=1.5')
+    .to('.char:nth-child(even)', {
+      fontWeight: 100,
+      scale: 0.8,
       ease: charEase
     }, '-=2')
     .to(wheelRef.current, {
-      rotationX: -240,
+      rotationX: -270,
       transformOrigin: '50% 50%'
-    }, '-=0.5')
+    }, '-=0.3')
+    .to('.char:nth-child(even)', {
+      rotationY: 25,
+      z: 80,
+      transformOrigin: origin,
+      duration: 2,
+      ease: 'back.out(1.5)'
+    }, '-=1.5')
     .to('.char:nth-child(odd)', {
-      rotationX: 240,
+      fontWeight: 900,
+      scale: 1.2,
+      ease: charEase
+    }, '-=2')
+    .to(wheelRef.current, {
+      rotationX: -360,
+      transformOrigin: '50% 50%'
+    }, '-=0.3')
+    .to('.char:nth-child(odd)', {
+      rotationY: 0,
+      z: 0,
       transformOrigin: origin,
       duration: 2
-    }, '-=1')
+    }, '-=1.5')
     .to('.char:nth-child(even)', {
       fontWeight: 900,
+      scale: 1,
+      rotationY: 0,
+      z: 0,
       ease: charEase
     }, '-=2')
     .set('.char', {
       rotationX: 0,
+      rotationY: 0,
+      z: 0,
+      scale: 1,
       immediateRender: false
     })
     .set(wheelRef.current, {
@@ -131,7 +148,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       immediateRender: false
     });
 
-    gtl.timeScale(1.2); // Reduced from 2.5 to 1.2 for slower animation
+    gtl.timeScale(3);
 
     timelineRef.current = gtl;
 
@@ -145,18 +162,26 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   return (
     <div
       ref={containerRef}
-      className="h-full w-full flex items-center justify-center"
+      className="h-full w-full flex items-center justify-center relative overflow-hidden rounded-lg"
       style={{
-        perspective: '1200px',
+        background: 'linear-gradient(135deg, #1a2332 0%, #0f1419 100%)',
+        perspective: '800px',
         visibility: 'hidden',
         opacity: 0,
       }}
     >
+      {/* Radial gradient overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 70%)',
+        }}
+      />
+
       <div
         ref={wheelRef}
         className="relative w-full h-full"
         style={{
-          minWidth: '900px',
           transformStyle: 'preserve-3d',
         }}
       >
@@ -190,13 +215,19 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                fontSize: 'clamp(1.2rem, 2.5vw, 2.5rem)',
+                fontSize: 'clamp(1rem, 2vw, 2rem)',
                 fontWeight: 900,
                 textTransform: 'uppercase',
                 backfaceVisibility: 'hidden',
                 transformStyle: 'preserve-3d',
                 lineHeight: 1.2,
                 textAlign: 'center',
+                background: 'linear-gradient(45deg, #00d4ff, #7c3aed, #00d4ff)',
+                backgroundSize: '200% 200%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                filter: 'drop-shadow(0 0 15px rgba(0, 212, 255, 0.6))',
               }}
             >
               {lines.map((line, lineIndex) => (
