@@ -542,7 +542,16 @@ export const BentoGrid = () => {
                     };
                   }
 
-                  // News: move upward by Services height when expanded
+                  // News: fullscreen mode - reset transform when news item is selected
+                  if (section.id === 'news' && selectedNewsId) {
+                    console.log('🎬 Animating News to FULLSCREEN - translateY to 0');
+                    return {
+                      opacity: 1,
+                      y: 0,
+                    };
+                  }
+
+                  // News: move upward by Services height when expanded (but not in fullscreen)
                   if (section.id === 'news' && isNewsExpanded && servicesHeight > 0) {
                     const moveDistance = -(servicesHeight + gapSize);
                     console.log('🎬 Animating News translateY to', moveDistance);
@@ -552,7 +561,16 @@ export const BentoGrid = () => {
                     };
                   }
 
-                  // Blog: move upward by Projects height when expanded
+                  // Blog: fullscreen mode - reset transform when blog item is selected
+                  if (section.id === 'blog' && selectedBlogId) {
+                    console.log('🎬 Animating Blog to FULLSCREEN - translateY to 0');
+                    return {
+                      opacity: 1,
+                      y: 0,
+                    };
+                  }
+
+                  // Blog: move upward by Projects height when expanded (but not in fullscreen)
                   if (section.id === 'blog' && isBlogExpanded && projectsHeight > 0) {
                     const moveDistance = -(projectsHeight + gapSize);
                     console.log('🎬 Animating Blog translateY to', moveDistance);
