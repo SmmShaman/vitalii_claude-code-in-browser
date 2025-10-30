@@ -73,6 +73,7 @@ export const BentoGrid = () => {
   const [isServicesHiding, setIsServicesHiding] = useState(false);
   const [isProjectsHiding, setIsProjectsHiding] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
 
   const handleNewsClick = () => {
     if (!isNewsExpanded) {
@@ -214,6 +215,7 @@ export const BentoGrid = () => {
           </div>
 
           <div
+            ref={gridContainerRef}
             className="grid gap-2 sm:gap-3 md:gap-4 w-full relative"
             style={{
               gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
@@ -221,7 +223,24 @@ export const BentoGrid = () => {
             }}
           >
             <AnimatePresence mode="sync">
-              {sections.map((section) => {
+              {(() => {
+                // Reorder sections when News or Blog is expanded
+                let orderedSections = [...sections];
+
+                if (isNewsExpanded) {
+                  // Move News to position 1 (after About)
+                  orderedSections = orderedSections.filter(s => s.id !== 'news');
+                  orderedSections.splice(1, 0, sections.find(s => s.id === 'news')!);
+                }
+
+                if (isBlogExpanded) {
+                  // Move Blog to position 1 (after About)
+                  orderedSections = orderedSections.filter(s => s.id !== 'blog');
+                  orderedSections.splice(1, 0, sections.find(s => s.id === 'blog')!);
+                }
+
+                return orderedSections;
+              })().map((section) => {
                 // Check if section should be visible
                 const isHidden =
                   (section.id === 'services' && (isServicesHiding || isNewsExpanded)) ||
@@ -234,20 +253,20 @@ export const BentoGrid = () => {
                   (section.id === 'news' && isNewsExpanded) ||
                   (section.id === 'blog' && isBlogExpanded);
 
-                // Calculate grid position for upward expansion (full width)
-                const getGridStyle = () => {
+                // Calculate grid style for expanded sections
+                const getExpandedStyle = () => {
                   if (section.id === 'news' && isNewsExpanded) {
-                    // News jumps to row 1 (where Services was) and spans 2 rows, full width
+                    // Expand to full width
                     return {
-                      gridRow: '1 / 3', // Start at row line 1, end at row line 3 (covers rows 1-2)
-                      gridColumn: screenSize.columnsCount === 2 ? '1 / 3' : '1', // Full width (columns 1-2)
+                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1',
+                      zIndex: 50,
                     };
                   }
                   if (section.id === 'blog' && isBlogExpanded) {
-                    // Blog jumps to row 1 and spans 2 rows, full width
+                    // Expand to full width
                     return {
-                      gridRow: '1 / 3', // Start at row line 1, end at row line 3 (covers rows 1-2)
-                      gridColumn: screenSize.columnsCount === 2 ? '1 / 3' : '1', // Full width
+                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1',
+                      zIndex: 50,
                     };
                   }
                   return {};
@@ -283,8 +302,7 @@ export const BentoGrid = () => {
                     }`}
                     style={{
                       height: isExpanded ? 'clamp(450px, 60vh, 650px)' : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
-                      zIndex: isExpanded ? 20 : 'auto',
-                      ...getGridStyle(),
+                      ...getExpandedStyle(),
                     }}
                   >
                 {/* Background - conditional based on section */}
