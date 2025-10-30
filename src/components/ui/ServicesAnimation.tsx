@@ -38,12 +38,15 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     const angle = 360 / numLines;
     const origin = `50% 50% -${radius}px`;
 
-    // Split text into characters
+    // Split text into characters (split by lines first to preserve word structure)
     txtElements.forEach((txt) => {
-      new SplitText(txt, {
-        type: 'chars',
-        charsClass: 'char',
-        position: 'absolute'
+      const lines = txt.querySelectorAll('.service-line');
+      lines.forEach((line) => {
+        new SplitText(line, {
+          type: 'chars',
+          charsClass: 'char',
+          position: 'absolute'
+        });
       });
     });
 
@@ -157,26 +160,59 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
           transformStyle: 'preserve-3d',
         }}
       >
-        {services.map((service, index) => (
-          <p
-            key={index}
-            className="txt absolute m-0 font-bold uppercase"
-            style={{
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: 'clamp(1.5rem, 3vw, 3rem)',
-              fontWeight: 900,
-              textTransform: 'uppercase',
-              backfaceVisibility: 'hidden',
-              transformStyle: 'preserve-3d',
-              lineHeight: 1,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {service.title}
-          </p>
-        ))}
+        {services.map((service, index) => {
+          // Split service title into lines if it's too long or has multiple words
+          const words = service.title.split(/\s+/);
+          const lines: string[] = [];
+
+          // Group words into lines (max 3 words per line or if "&" present, split there)
+          if (words.length <= 2) {
+            lines.push(service.title);
+          } else {
+            // Find natural break points like "&", "and", "та"
+            const breakIndex = words.findIndex(w => w === '&' || w.toLowerCase() === 'and' || w === 'та');
+            if (breakIndex > 0) {
+              lines.push(words.slice(0, breakIndex + 1).join(' '));
+              lines.push(words.slice(breakIndex + 1).join(' '));
+            } else {
+              // Split roughly in half
+              const mid = Math.ceil(words.length / 2);
+              lines.push(words.slice(0, mid).join(' '));
+              lines.push(words.slice(mid).join(' '));
+            }
+          }
+
+          return (
+            <div
+              key={index}
+              className="txt absolute m-0 font-bold uppercase"
+              style={{
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: 'clamp(1.2rem, 2.5vw, 2.5rem)',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                backfaceVisibility: 'hidden',
+                transformStyle: 'preserve-3d',
+                lineHeight: 1.2,
+                textAlign: 'center',
+              }}
+            >
+              {lines.map((line, lineIndex) => (
+                <div
+                  key={lineIndex}
+                  className="service-line"
+                  style={{
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {line}
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
