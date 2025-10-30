@@ -318,6 +318,26 @@ export const BentoGrid = () => {
                     };
                   }
 
+                  // Skills: scale to 0 when news item is selected (dissolve to free space)
+                  if (section.id === 'skills' && selectedNewsId) {
+                    console.log('🎬 Animating Skills scaleY to 0 (news item selected)');
+                    return {
+                      opacity: 0,
+                      scaleY: 0,
+                      transformOrigin: 'top',
+                    };
+                  }
+
+                  // Blog: scale to 0 when news item is selected (dissolve to free space)
+                  if (section.id === 'blog' && selectedNewsId) {
+                    console.log('🎬 Animating Blog scaleY to 0 (news item selected)');
+                    return {
+                      opacity: 0,
+                      scaleY: 0,
+                      transformOrigin: 'top',
+                    };
+                  }
+
                   // Projects: scale to 0 height when hiding
                   if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
                     console.log('🎬 Animating Projects scaleY to 0');
