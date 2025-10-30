@@ -131,6 +131,42 @@ export const BentoGrid = () => {
   const handleNewsItemSelect = (newsId: string) => {
     console.log('📰 News item selected:', newsId);
 
+    // If News is not expanded yet, expand it first, then select the item
+    if (!isNewsExpanded) {
+      console.log('⚠️ News not expanded yet, expanding first...');
+      // First expand News (Services will hide)
+      const newsEl = cardRefs.current['news'];
+      const servicesEl = cardRefs.current['services'];
+
+      if (newsEl && servicesEl) {
+        const newsH = newsEl.offsetHeight;
+        const servicesH = servicesEl.offsetHeight;
+        console.log('📏 News height:', newsH, 'Services height:', servicesH);
+        setNewsHeight(newsH);
+        setServicesHeight(servicesH);
+      }
+
+      setIsServicesHiding(true);
+
+      // After 0.5s, News is expanded, now we can select the item
+      setTimeout(() => {
+        setIsNewsExpanded(true);
+        setIsServicesHiding(false);
+
+        // Now select the news item after another 0.5s
+        setTimeout(() => {
+          selectNewsItem(newsId);
+        }, 500);
+      }, 500);
+    } else {
+      // News already expanded, select item immediately
+      selectNewsItem(newsId);
+    }
+  };
+
+  const selectNewsItem = (newsId: string) => {
+    console.log('🎯 Selecting news item:', newsId);
+
     // Calculate heights of all windows for expansion
     const aboutEl = cardRefs.current['about'];
     const servicesEl = cardRefs.current['services'];
@@ -143,7 +179,6 @@ export const BentoGrid = () => {
       const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
 
       // Calculate total height: all 6 windows + 5 gaps (between rows)
-      // Assuming 2 rows with 3 windows each on desktop
       const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
       const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
       const total = row1Height + row2Height + gapSize;
@@ -156,9 +191,9 @@ export const BentoGrid = () => {
     console.log('🟡 Step 1: Hiding all windows except News');
     setIsHidingAllForNews(true);
 
-    // Step 2: After 0.5s, show the selected news (News will expand)
+    // Step 2: After 0.5s, show the selected news (News will expand to fullscreen)
     setTimeout(() => {
-      console.log('🟢 Step 2: Expanding News to full size');
+      console.log('🟢 Step 2: Expanding News to fullscreen');
       setSelectedNewsId(newsId);
       setIsHidingAllForNews(false);
     }, 500);
@@ -168,10 +203,48 @@ export const BentoGrid = () => {
     console.log('🔙 Back to news list');
     setSelectedNewsId(null);
     setTotalGridHeight(0);
+    setIsHidingAllForNews(false);
+    // Keep isNewsExpanded = true so user returns to expanded News list
   };
 
   const handleBlogItemSelect = (blogId: string) => {
     console.log('📝 Blog item selected:', blogId);
+
+    // If Blog is not expanded yet, expand it first, then select the item
+    if (!isBlogExpanded) {
+      console.log('⚠️ Blog not expanded yet, expanding first...');
+      // First expand Blog (Projects will hide)
+      const blogEl = cardRefs.current['blog'];
+      const projectsEl = cardRefs.current['projects'];
+
+      if (blogEl && projectsEl) {
+        const blogH = blogEl.offsetHeight;
+        const projectsH = projectsEl.offsetHeight;
+        console.log('📏 Blog height:', blogH, 'Projects height:', projectsH);
+        setBlogHeight(blogH);
+        setProjectsHeight(projectsH);
+      }
+
+      setIsProjectsHiding(true);
+
+      // After 0.5s, Blog is expanded, now we can select the item
+      setTimeout(() => {
+        setIsBlogExpanded(true);
+        setIsProjectsHiding(false);
+
+        // Now select the blog item after another 0.5s
+        setTimeout(() => {
+          selectBlogItem(blogId);
+        }, 500);
+      }, 500);
+    } else {
+      // Blog already expanded, select item immediately
+      selectBlogItem(blogId);
+    }
+  };
+
+  const selectBlogItem = (blogId: string) => {
+    console.log('🎯 Selecting blog item:', blogId);
 
     // Calculate heights of all windows for expansion
     const aboutEl = cardRefs.current['about'];
@@ -197,9 +270,9 @@ export const BentoGrid = () => {
     console.log('🟡 Step 1: Hiding all windows except Blog');
     setIsHidingAllForBlog(true);
 
-    // Step 2: After 0.5s, show the selected blog (Blog will expand)
+    // Step 2: After 0.5s, show the selected blog (Blog will expand to fullscreen)
     setTimeout(() => {
-      console.log('🟢 Step 2: Expanding Blog to full size');
+      console.log('🟢 Step 2: Expanding Blog to fullscreen');
       setSelectedBlogId(blogId);
       setIsHidingAllForBlog(false);
     }, 500);
@@ -209,6 +282,8 @@ export const BentoGrid = () => {
     console.log('🔙 Back to blog list');
     setSelectedBlogId(null);
     setTotalGridHeight(0);
+    setIsHidingAllForBlog(false);
+    // Keep isBlogExpanded = true so user returns to expanded Blog list
   };
 
   const handleBlogClick = () => {
