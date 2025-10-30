@@ -62,24 +62,6 @@ serve(async (req) => {
       )
     }
 
-    // Check for duplicates in database
-    const isDuplicate = await checkDuplicates(supabase, title)
-
-    // If it's a duplicate, reject immediately without calling AI
-    if (isDuplicate) {
-      console.log('❌ Duplicate detected, rejecting without AI call')
-      return new Response(
-        JSON.stringify({
-          approved: false,
-          reason: 'Duplicate content detected in database',
-          is_advertisement: false,
-          is_duplicate: true,
-          quality_score: 0
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Prepare AI prompt
     const prompt = prompts[0].prompt_text
       .replace('{title}', title || '')
@@ -206,59 +188,3 @@ serve(async (req) => {
     )
   }
 })
-
-/**
- * Check if similar content exists in database
- */
-async function checkDuplicates(supabase: any, title: string): Promise<boolean> {
-  if (!title || title.length < 10) return false
-
-  try {
-    // Extract key words from title (words longer than 3 characters)
-    const keywords = title
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(word => word.length > 3 && /^[a-zA-Zа-яА-ЯіїєґІЇЄҐ]+$/.test(word))
-      .slice(0, 3) // Take first 3 significant words
-
-    if (keywords.length === 0) return false
-
-    // Search for posts with similar titles in last 30 days
-    // Only check non-rejected posts (ignore previously rejected duplicates)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    const { data, error } = await supabase
-      .from('news')
-      .select('id, title_en, original_title, pre_moderation_status')
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
-      .limit(100)
-
-    if (error) {
-      console.error('Error checking duplicates:', error)
-      return false
-    }
-
-    if (!data || data.length === 0) return false
-
-    // Check if any existing post has similar keywords
-    for (const post of data) {
-      const existingTitle = (post.title_en || post.original_title || '').toLowerCase()
-
-      // Count matching keywords
-      const matchCount = keywords.filter(keyword => existingTitle.includes(keyword)).length
-
-      // If 3 or more keywords match, consider it a duplicate
-      if (matchCount >= 3) {
-        console.log(`Duplicate found: "${title}" similar to "${post.title_en || post.original_title}"`)
-        return true
-      }
-    }
-
-    return false
-  } catch (error) {
-    console.error('Error in checkDuplicates:', error)
-    return false
-  }
-}
