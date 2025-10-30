@@ -50,7 +50,7 @@ export const Footer = () => {
 
             {/* Social Icons */}
             <div className="flex items-center gap-1 sm:gap-2">
-              {socialLinks.map(({ icon: Icon, href, label }) => (
+              {socialLinks.map(({ icon: Icon, label }) => (
                 <motion.button
                   key={label}
                   onClick={() => setSelectedSocial(selectedSocial === label ? null : label)}
