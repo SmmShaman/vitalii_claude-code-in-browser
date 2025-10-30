@@ -1,25 +1,52 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Calendar, Tag, ExternalLink, Clock } from 'lucide-react';
+import { BookOpen, Calendar, Tag, ExternalLink, Clock, ChevronLeft } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
-import { getLatestBlogPosts } from '../../integrations/supabase/client';
-import type { LatestBlogPost } from '../../integrations/supabase/types';
-import { BlogModal } from './BlogModal';
+import { getLatestBlogPosts, getBlogPostById } from '../../integrations/supabase/client';
+import type { LatestBlogPost, BlogPost } from '../../integrations/supabase/types';
 
 interface BlogSectionProps {
   isExpanded?: boolean;
+  selectedBlogId?: string | null;
+  onBlogSelect?: (blogId: string) => void;
+  onBack?: () => void;
 }
 
-export const BlogSection = ({ isExpanded = false }: BlogSectionProps) => {
+export const BlogSection = ({
+  isExpanded = false,
+  selectedBlogId = null,
+  onBlogSelect,
+  onBack
+}: BlogSectionProps) => {
   const { t, currentLanguage } = useTranslations();
   const [posts, setPosts] = useState<LatestBlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<LatestBlogPost | null>(null);
+  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     loadPosts();
   }, []);
+
+  useEffect(() => {
+    if (selectedBlogId) {
+      loadBlogDetail(selectedBlogId);
+    } else {
+      setSelectedPost(null);
+    }
+  }, [selectedBlogId]);
+
+  const loadBlogDetail = async (id: string) => {
+    try {
+      setLoadingDetail(true);
+      const blogDetail = await getBlogPostById(id);
+      setSelectedPost(blogDetail);
+    } catch (error) {
+      console.error('Failed to load blog detail:', error);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
 
   const loadPosts = async () => {
     try {
@@ -33,23 +60,26 @@ export const BlogSection = ({ isExpanded = false }: BlogSectionProps) => {
     }
   };
 
-  const getTranslatedContent = (post: LatestBlogPost) => {
+  const getTranslatedContent = (post: LatestBlogPost | BlogPost) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
-    const description = post[`description_${lang}`] || post.description_en || '';
+    const description = post[`description_${lang}` as keyof typeof post] || post.description_en || '';
+    const content = 'content_en' in post ? post[`content_${lang}` as keyof typeof post] || post.content_en : description;
     return {
-      title: post[`title_${lang}`] || post.title_en || '',
-      content: description,
-      excerpt: description,
+      title: post[`title_${lang}` as keyof typeof post] || post.title_en || '',
+      content: content as string,
+      excerpt: description as string,
       category: post.category || '',
     };
   };
 
   const handlePostClick = (post: LatestBlogPost) => {
-    // Only open modal if section is expanded
+    // Only allow click if section is expanded
     if (!isExpanded) return;
 
-    setSelectedPost(post);
-    setShowModal(true);
+    // Call the callback to notify parent
+    if (onBlogSelect) {
+      onBlogSelect(post.id);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -92,8 +122,97 @@ export const BlogSection = ({ isExpanded = false }: BlogSectionProps) => {
     );
   }
 
+  // Show full blog detail if selected
+  if (selectedPost) {
+    const content = getTranslatedContent(selectedPost);
+    return (
+      <div className="h-full flex flex-col overflow-y-auto p-6">
+        {/* Back Button */}
+        <div className="flex-shrink-0 mb-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span className="font-medium">Back to blog</span>
+          </motion.button>
+        </div>
+
+        {loadingDetail ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1"
+          >
+            {/* Category Badge */}
+            {content.category && (
+              <div className="mb-4">
+                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                  {content.category}
+                </span>
+              </div>
+            )}
+
+            {/* Title */}
+            <h1 className="text-4xl font-bold mb-4 text-foreground">
+              {content.title}
+            </h1>
+
+            {/* Meta */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6 pb-6 border-b">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>{selectedPost.published_at ? formatDate(selectedPost.published_at) : ''}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>{calculateReadingTime(content.content)} min read</span>
+              </div>
+              {selectedPost.tags && selectedPost.tags.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Tag className="h-4 w-4" />
+                  {selectedPost.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="prose prose-lg dark:prose-invert max-w-none mb-6 text-foreground">
+              <p className="whitespace-pre-wrap leading-relaxed">{content.content}</p>
+            </div>
+
+            {/* Source Link */}
+            {(selectedPost as any).original_url && (
+              <a
+                href={(selectedPost as any).original_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-primary hover:underline font-medium"
+              >
+                Read original article
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+          </motion.div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <>
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -101,15 +220,6 @@ export const BlogSection = ({ isExpanded = false }: BlogSectionProps) => {
             <BookOpen className="h-5 w-5 text-primary" />
             <h3 className="text-xl font-bold">{t('blog')}</h3>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
-            className="text-sm text-primary hover:underline flex items-center gap-1"
-          >
-            {t('blog_view_all')}
-            <ExternalLink className="h-3 w-3" />
-          </motion.button>
         </div>
 
         {/* Blog Posts Grid */}
@@ -135,7 +245,7 @@ export const BlogSection = ({ isExpanded = false }: BlogSectionProps) => {
                       <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden">
                         <img
                           src={post.image_url}
-                          alt={content.title}
+                          alt={String(content.title)}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -193,16 +303,5 @@ export const BlogSection = ({ isExpanded = false }: BlogSectionProps) => {
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Blog Modal */}
-      <BlogModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setSelectedPost(null);
-        }}
-        selectedPostId={selectedPost?.id}
-      />
-    </>
   );
 };

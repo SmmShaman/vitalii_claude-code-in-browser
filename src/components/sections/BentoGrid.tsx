@@ -77,7 +77,9 @@ export const BentoGrid = () => {
   const [newsHeight, setNewsHeight] = useState<number>(0);
   const [blogHeight, setBlogHeight] = useState<number>(0);
   const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
+  const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [isHidingAllForNews, setIsHidingAllForNews] = useState(false);
+  const [isHidingAllForBlog, setIsHidingAllForBlog] = useState(false);
   const [totalGridHeight, setTotalGridHeight] = useState<number>(0);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
@@ -168,7 +170,56 @@ export const BentoGrid = () => {
     setTotalGridHeight(0);
   };
 
+  const handleBlogItemSelect = (blogId: string) => {
+    console.log('📝 Blog item selected:', blogId);
+
+    // Calculate heights of all windows for expansion
+    const aboutEl = cardRefs.current['about'];
+    const servicesEl = cardRefs.current['services'];
+    const projectsEl = cardRefs.current['projects'];
+    const skillsEl = cardRefs.current['skills'];
+    const newsEl = cardRefs.current['news'];
+    const blogEl = cardRefs.current['blog'];
+
+    if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
+      const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+
+      // Calculate total height: all 6 windows + 5 gaps (between rows)
+      const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
+      const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
+      const total = row1Height + row2Height + gapSize;
+
+      console.log('📐 Total grid height for Blog:', total, '= row1:', row1Height, '+ row2:', row2Height, '+ gap:', gapSize);
+      setTotalGridHeight(total);
+    }
+
+    // Step 1: Hide all other windows
+    console.log('🟡 Step 1: Hiding all windows except Blog');
+    setIsHidingAllForBlog(true);
+
+    // Step 2: After 0.5s, show the selected blog (Blog will expand)
+    setTimeout(() => {
+      console.log('🟢 Step 2: Expanding Blog to full size');
+      setSelectedBlogId(blogId);
+      setIsHidingAllForBlog(false);
+    }, 500);
+  };
+
+  const handleBlogItemBack = () => {
+    console.log('🔙 Back to blog list');
+    setSelectedBlogId(null);
+    setTotalGridHeight(0);
+  };
+
   const handleBlogClick = () => {
+    console.log('🔴 handleBlogClick called, current isBlogExpanded:', isBlogExpanded, 'selectedBlogId:', selectedBlogId);
+
+    // Don't toggle if a blog item is currently selected
+    if (selectedBlogId) {
+      console.log('⚠️ Blog item is selected, ignoring card click');
+      return;
+    }
+
     if (!isBlogExpanded) {
       // Get both Blog and Projects heights before animation
       const blogEl = cardRefs.current['blog'];
@@ -193,6 +244,9 @@ export const BentoGrid = () => {
       setIsBlogExpanded(false);
       setProjectsHeight(0);
       setBlogHeight(0);
+      setSelectedBlogId(null);
+      setIsHidingAllForBlog(false);
+      setTotalGridHeight(0);
     }
   };
 
@@ -214,7 +268,11 @@ export const BentoGrid = () => {
 
     // Handle blog expansion separately
     if (section.id === 'blog') {
-      handleBlogClick();
+      // Only toggle if not expanded or if no blog item is selected
+      // If blog is expanded and showing a blog item, don't toggle
+      if (!isBlogExpanded || !selectedBlogId) {
+        handleBlogClick();
+      }
       return;
     }
 
@@ -337,6 +395,12 @@ export const BentoGrid = () => {
                     return `${totalGridHeight}px`;
                   }
 
+                  // Blog: full grid height when blog item selected
+                  if (section.id === 'blog' && selectedBlogId && totalGridHeight > 0) {
+                    console.log('📐 Blog FULL height:', totalGridHeight, '(all 6 windows)');
+                    return `${totalGridHeight}px`;
+                  }
+
                   // News: expanded height when just News section expanded
                   if (section.id === 'news' && isNewsExpanded && newsHeight > 0 && servicesHeight > 0) {
                     const totalHeight = newsHeight + servicesHeight + gapSize;
@@ -344,6 +408,7 @@ export const BentoGrid = () => {
                     return `${totalHeight}px`;
                   }
 
+                  // Blog: expanded height when just Blog section expanded
                   if (section.id === 'blog' && isBlogExpanded && blogHeight > 0 && projectsHeight > 0) {
                     const totalHeight = blogHeight + projectsHeight + gapSize;
                     console.log('📐 Blog expanded height:', totalHeight, '=', blogHeight, '+', projectsHeight, '+', gapSize);
@@ -365,6 +430,16 @@ export const BentoGrid = () => {
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
                     console.log('🎬 Animating', section.id, 'scaleY to 0 (hiding for news)');
+                    return {
+                      opacity: 0,
+                      scaleY: 0,
+                      transformOrigin: 'top',
+                    };
+                  }
+
+                  // Hide all windows except Blog when blog item is being selected
+                  if (section.id !== 'blog' && (isHidingAllForBlog || selectedBlogId)) {
+                    console.log('🎬 Animating', section.id, 'scaleY to 0 (hiding for blog)');
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -451,20 +526,34 @@ export const BentoGrid = () => {
                           mouseLeaveTimeoutRef.current = null;
                         }, 300);
                       }
-                      if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding) {
+                      if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
+                        console.log('🖱️ Mouse left Blog, will collapse in 300ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
+                          console.log('⏰ Collapsing Blog now');
                           setIsBlogExpanded(false);
                           mouseLeaveTimeoutRef.current = null;
                         }, 300);
                       }
                     }}
-                    className={`relative overflow-hidden rounded-lg transition-all duration-300 hover:shadow-2xl w-full cursor-pointer ${
+                    className={`relative rounded-lg transition-all duration-300 hover:shadow-2xl w-full cursor-pointer ${
                       (section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105' : ''
+                    } ${
+                      // Allow scroll when news/blog item is selected, otherwise hide overflow
+                      (section.id === 'news' && selectedNewsId) || (section.id === 'blog' && selectedBlogId)
+                        ? 'overflow-y-auto overflow-x-hidden'
+                        : 'overflow-hidden'
                     }`}
                     style={{
                       height: getExpandedHeight(),
-                      // Expand to full width when news item is selected
-                      ...(section.id === 'news' && selectedNewsId ? { gridColumn: '1 / -1' } : {}),
+                      // Expand to full grid when news/blog item is selected
+                      ...(section.id === 'news' && selectedNewsId ? {
+                        gridColumn: '1 / -1',
+                        gridRow: '1 / -1'
+                      } : {}),
+                      ...(section.id === 'blog' && selectedBlogId ? {
+                        gridColumn: '1 / -1',
+                        gridRow: '1 / -1'
+                      } : {}),
                     }}
                   >
                 {/* Background - conditional based on section */}
@@ -528,7 +617,12 @@ export const BentoGrid = () => {
                     </div>
                   ) : section.id === 'blog' ? (
                     <div className="w-full h-full overflow-hidden">
-                      <BlogSection isExpanded={isBlogExpanded} />
+                      <BlogSection
+                        isExpanded={isBlogExpanded}
+                        selectedBlogId={selectedBlogId}
+                        onBlogSelect={handleBlogItemSelect}
+                        onBack={handleBlogItemBack}
+                      />
                     </div>
                   ) : (
                     <h3
