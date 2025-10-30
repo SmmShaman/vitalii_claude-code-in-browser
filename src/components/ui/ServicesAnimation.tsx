@@ -33,8 +33,8 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     const txtElements = wheelRef.current.querySelectorAll('.txt');
     const numLines = txtElements.length;
 
-    // Calculate radius and angle
-    const radius = (fontSize / 2) / Math.sin((180 / numLines) * (Math.PI / 180));
+    // Calculate radius and angle (multiply by 2.5 for thicker cylinder)
+    const radius = ((fontSize / 2) / Math.sin((180 / numLines) * (Math.PI / 180))) * 2.5;
     const angle = 360 / numLines;
     const origin = `50% 50% -${radius}px`;
 
@@ -172,7 +172,6 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
               transformStyle: 'preserve-3d',
               lineHeight: 1,
               whiteSpace: 'nowrap',
-              textShadow: '0 0 20px rgba(255,255,255,0.5)',
             }}
           >
             {service.title}
