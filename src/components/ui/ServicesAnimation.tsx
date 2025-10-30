@@ -15,100 +15,122 @@ interface ServicesAnimationProps {
   backgroundText: string;
 }
 
-export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
+export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wheelRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !wheelRef.current) return;
 
     // Clean up previous timeline
     if (timelineRef.current) {
       timelineRef.current.kill();
     }
 
-    // Split text into characters for animation
-    const redTexts = containerRef.current.querySelectorAll('.name--red');
-    const blueTexts = containerRef.current.querySelectorAll('.name--blue');
+    // Get computed font size
+    const fontSize = 50; // Base font size in px
+    const txtElements = wheelRef.current.querySelectorAll('.txt');
+    const numLines = txtElements.length;
 
-    redTexts.forEach(el => {
-      new SplitText(el, { type: 'chars', charsClass: 'serviceChar' });
+    // Calculate radius and angle
+    const radius = (fontSize / 2) / Math.sin((180 / numLines) * (Math.PI / 180));
+    const angle = 360 / numLines;
+    const origin = `50% 50% -${radius}px`;
+
+    // Split text into characters
+    txtElements.forEach((txt) => {
+      new SplitText(txt, {
+        type: 'chars',
+        charsClass: 'char',
+        position: 'absolute'
+      });
     });
 
-    blueTexts.forEach(el => {
-      new SplitText(el, { type: 'chars', charsClass: 'serviceChar' });
+    // Position text elements around the wheel
+    gsap.set('.txt', {
+      rotationX: (index) => angle * index,
+      z: radius,
+      transformOrigin: origin
     });
 
-    // Create master timeline
-    const masterTl = gsap.timeline({ delay: 0.5 });
+    // Make container visible
+    gsap.set(containerRef.current, { autoAlpha: 1 });
 
-    // Intro animation
-    const introTl = gsap.timeline({
+    // Create main timeline
+    const charEase = 'power4.inOut';
+    const gtl = gsap.timeline({
       defaults: {
-        duration: 2,
-        ease: 'power4.out'
-      }
-    });
-
-    introTl.from('.service-names', {
-      x: (i) => {
-        if (i % 2 === 0) {
-          return 1000;
-        }
-        return -1000;
+        ease: 'power2.inOut',
+        duration: 3
       },
-      stagger: 0.15
+      repeat: -1
     });
 
-    // Loop animation
-    const loopTl = gsap.timeline({
-      repeat: -1,
-      repeatDelay: 0
+    gtl.to(wheelRef.current, {
+      rotationX: -60,
+      transformOrigin: '50% 50%'
+    })
+    .to('.char:nth-child(even)', {
+      rotationX: 60,
+      transformOrigin: origin,
+      duration: 2
+    }, '-=1')
+    .to('.char:nth-child(odd)', {
+      fontWeight: 300,
+      ease: charEase
+    }, '-=2')
+    .to(wheelRef.current, {
+      rotationX: -120,
+      transformOrigin: '50% 50%'
+    }, '-=0.5')
+    .to('.char:nth-child(odd)', {
+      rotationX: 120,
+      transformOrigin: origin,
+      duration: 2
+    }, '-=1')
+    .to('.char:nth-child(even)', {
+      fontWeight: 300,
+      ease: charEase
+    }, '-=2')
+    .to(wheelRef.current, {
+      rotationX: -180,
+      transformOrigin: '50% 50%'
+    }, '-=0.5')
+    .to('.char:nth-child(even)', {
+      rotationX: 180,
+      transformOrigin: origin,
+      duration: 2
+    }, '-=1')
+    .to('.char:nth-child(odd)', {
+      fontWeight: 900,
+      ease: charEase
+    }, '-=2')
+    .to(wheelRef.current, {
+      rotationX: -240,
+      transformOrigin: '50% 50%'
+    }, '-=0.5')
+    .to('.char:nth-child(odd)', {
+      rotationX: 240,
+      transformOrigin: origin,
+      duration: 2
+    }, '-=1')
+    .to('.char:nth-child(even)', {
+      fontWeight: 900,
+      ease: charEase
+    }, '-=2')
+    .set('.char', {
+      rotationX: 0,
+      immediateRender: false
+    })
+    .set(wheelRef.current, {
+      rotationX: 0,
+      immediateRender: false
     });
 
-    // Calculate height for scrolling
-    const serviceHeight = 80; // approximate height of each service
-    const totalHeight = services.length * serviceHeight;
+    gtl.timeScale(2.5);
 
-    loopTl.to('.service-names', {
-      y: -totalHeight,
-      duration: services.length * 3,
-      ease: 'none'
-    });
-
-    // Add character animations for last few services
-    const lastIndex = services.length - 1;
-    const secondLastIndex = services.length - 2;
-
-    if (lastIndex >= 0) {
-      loopTl.from(`.service-band:nth-child(${lastIndex + 1}) .name--red .serviceChar`, {
-        y: 120,
-        duration: 2,
-        ease: 'power4.out',
-        stagger: 0.03
-      }, 1);
-
-      loopTl.from(`.service-band:nth-child(${lastIndex + 1}) .name--blue .serviceChar`, {
-        y: 120,
-        duration: 2,
-        ease: 'power4.out',
-        stagger: 0.03
-      }, 1.2);
-    }
-
-    if (secondLastIndex >= 0) {
-      loopTl.from(`.service-band:nth-child(${secondLastIndex + 1}) .name--blue .serviceChar`, {
-        y: -120,
-        duration: 1.5,
-        ease: 'power4.inOut',
-        stagger: -0.03
-      }, 0);
-    }
-
-    masterTl.add(introTl);
-    masterTl.add(loopTl, 0);
-
-    timelineRef.current = masterTl;
+    timelineRef.current = gtl;
 
     return () => {
       if (timelineRef.current) {
@@ -118,83 +140,44 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
   }, [services]);
 
   return (
-    <div className="h-full w-full overflow-hidden relative">
+    <div
+      ref={containerRef}
+      className="h-full w-full flex items-center justify-center"
+      style={{
+        perspective: '1200px',
+        visibility: 'hidden',
+        opacity: 0,
+      }}
+    >
       <div
-        ref={containerRef}
-        className="absolute w-[120%] h-[120%] overflow-hidden"
+        ref={wheelRef}
+        className="relative w-full h-full"
         style={{
-          top: '-10%',
-          left: '5%',
-          transform: 'rotate(-15deg)',
+          minWidth: '900px',
+          transformStyle: 'preserve-3d',
         }}
       >
-        {/* Duplicate services multiple times for continuous scroll */}
-        {[...Array(3)].map((_, setIndex) => (
-          <div key={setIndex}>
-            {services.map((service, index) => (
-              <h1
-                key={`${setIndex}-${index}`}
-                className="service-band relative m-0 font-bold"
-                style={{
-                  height: '80px',
-                  fontSize: 'clamp(1.2rem, 2.5vw, 2rem)',
-                  lineHeight: '1',
-                  letterSpacing: '0px',
-                }}
-              >
-                <span
-                  className="service-names block relative w-full overflow-hidden"
-                  style={{
-                    height: '90px',
-                  }}
-                >
-                  {/* Red version */}
-                  <span
-                    className={`name name--red ${index === services.length - 1 ? 'name__end name__end--red' : ''} block absolute top-0 left-0 text-red-600`}
-                    style={{
-                      mixBlendMode: 'multiply',
-                      maxWidth: '90%',
-                      wordWrap: 'break-word',
-                      overflowWrap: 'break-word',
-                    }}
-                  >
-                    {service.title}
-                  </span>
-
-                  {/* Blue version (offset) */}
-                  <span
-                    className={`name name--blue ${index === services.length - 1 ? 'name__end name__end--blue' : ''} block absolute left-0 text-blue-500`}
-                    style={{
-                      top: '8px',
-                      mixBlendMode: 'multiply',
-                      maxWidth: '90%',
-                      wordWrap: 'break-word',
-                      overflowWrap: 'break-word',
-                    }}
-                  >
-                    {service.title}
-                  </span>
-                </span>
-              </h1>
-            ))}
-          </div>
+        {services.map((service, index) => (
+          <p
+            key={index}
+            className="txt absolute m-0 font-bold uppercase"
+            style={{
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: 'clamp(1.5rem, 3vw, 3rem)',
+              fontWeight: 900,
+              textTransform: 'uppercase',
+              backfaceVisibility: 'hidden',
+              transformStyle: 'preserve-3d',
+              lineHeight: 1,
+              whiteSpace: 'nowrap',
+              textShadow: '0 0 20px rgba(255,255,255,0.5)',
+            }}
+          >
+            {service.title}
+          </p>
         ))}
-      </div>
-
-      {/* Central SERVICES text overlay */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-        <h2
-          className="font-bold text-white text-center select-none"
-          style={{
-            fontSize: 'clamp(1.2rem, 2.5vw, 2rem)',
-            letterSpacing: '0.05em',
-            textShadow: '0 0 40px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.8)',
-            mixBlendMode: 'screen',
-            transform: 'rotate(-15deg)',
-          }}
-        >
-          {backgroundText}
-        </h2>
       </div>
     </div>
   );
