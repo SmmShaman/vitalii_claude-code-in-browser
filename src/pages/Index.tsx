@@ -9,18 +9,31 @@ export const Index = () => {
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Compact Header - Language switcher only */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 6vh, 70px)' }}>
+      {/* Fixed Header - Language switcher only */}
+      <div
+        className="fixed top-0 left-0 right-0 z-50"
+        style={{ height: 'clamp(50px, 6vh, 70px)' }}
+      >
         <Header />
       </div>
 
-      {/* Main Content - Takes remaining space */}
-      <main className="flex-1 relative z-10 overflow-hidden">
+      {/* Main Content - Takes remaining space with padding for fixed header/footer */}
+      <main
+        className="relative z-10 overflow-hidden"
+        style={{
+          paddingTop: 'clamp(50px, 6vh, 70px)',
+          paddingBottom: 'clamp(50px, 7vh, 90px)',
+          height: '100vh'
+        }}
+      >
         <BentoGrid />
       </main>
 
-      {/* Compact Footer - 8vh */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 7vh, 90px)' }}>
+      {/* Fixed Footer */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50"
+        style={{ height: 'clamp(50px, 7vh, 90px)' }}
+      >
         <Footer />
       </div>
     </div>
