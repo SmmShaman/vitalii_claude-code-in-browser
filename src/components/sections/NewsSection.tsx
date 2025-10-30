@@ -71,7 +71,10 @@ export const NewsSection = ({
     };
   };
 
-  const handleNewsClick = (newsItem: LatestNews) => {
+  const handleNewsClick = (newsItem: LatestNews, e: React.MouseEvent) => {
+    // Stop event from bubbling to parent card
+    e.stopPropagation();
+
     // Only allow click if section is expanded
     if (!isExpanded) return;
 
@@ -268,7 +271,7 @@ export const NewsSection = ({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.1 }}
-                  onClick={() => handleNewsClick(newsItem)}
+                  onClick={(e) => handleNewsClick(newsItem, e)}
                   className="group cursor-pointer"
                 >
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg p-3 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">

@@ -72,7 +72,10 @@ export const BlogSection = ({
     };
   };
 
-  const handlePostClick = (post: LatestBlogPost) => {
+  const handlePostClick = (post: LatestBlogPost, e: React.MouseEvent) => {
+    // Stop event from bubbling to parent card
+    e.stopPropagation();
+
     // Only allow click if section is expanded
     if (!isExpanded) return;
 
@@ -236,7 +239,7 @@ export const BlogSection = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.1 }}
-                  onClick={() => handlePostClick(post)}
+                  onClick={(e) => handlePostClick(post, e)}
                   className="group cursor-pointer"
                 >
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
