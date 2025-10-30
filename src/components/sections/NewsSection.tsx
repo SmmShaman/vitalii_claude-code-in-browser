@@ -72,11 +72,14 @@ export const NewsSection = ({
   };
 
   const handleNewsClick = (newsItem: LatestNews, e: React.MouseEvent) => {
-    // Stop event from bubbling to parent card
-    e.stopPropagation();
+    // If section is not expanded, let the event bubble to card to expand it first
+    if (!isExpanded) {
+      // Don't stop propagation - allow card onClick to expand News
+      return;
+    }
 
-    // Only allow click if section is expanded
-    if (!isExpanded) return;
+    // Section is expanded, stop bubbling and open fullscreen
+    e.stopPropagation();
 
     // Call the callback to notify parent
     if (onNewsSelect) {
