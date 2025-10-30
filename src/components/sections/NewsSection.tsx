@@ -20,7 +20,7 @@ export const NewsSection = () => {
   const loadNews = async () => {
     try {
       setLoading(true);
-      const data = await getLatestNews(3);
+      const data = await getLatestNews(8); // Increased from 3 to 8
       setNews(data);
     } catch (error) {
       console.error('Failed to load news:', error);

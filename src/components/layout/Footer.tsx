@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Twitter, Facebook, Send, Instagram, Linkedin } from 'lucide-react';
+import { Twitter, Facebook, Send, Instagram, Linkedin, Github, Video, Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const Footer = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedSocial, setSelectedSocial] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -13,47 +15,111 @@ export const Footer = () => {
   }, []);
 
   const socialLinks = [
-    { icon: Twitter, href: 'https://twitter.com', label: 'Twitter' },
-    { icon: Facebook, href: 'https://facebook.com', label: 'Facebook' },
-    { icon: Send, href: 'https://t.me', label: 'Telegram' },
-    { icon: Instagram, href: 'https://instagram.com', label: 'Instagram' },
-    { icon: Linkedin, href: 'https://linkedin.com', label: 'LinkedIn' },
+    { icon: Send, href: 'https://t.me/smmshaman', label: 'Telegram', username: '@smmshaman' },
+    { icon: Instagram, href: 'https://instagram.com/smmshaman', label: 'Instagram', username: '@smmshaman' },
+    { icon: Globe, href: 'https://vitalii.no', label: 'Website', username: 'vitalii.no' },
+    { icon: Facebook, href: 'https://facebook.com/SMM.shaman', label: 'Facebook', username: 'SMM.shaman' },
+    { icon: Linkedin, href: 'https://linkedin.com/in/smmshaman', label: 'LinkedIn', username: 'smmshaman' },
+    { icon: Github, href: 'https://github.com/SmmShaman', label: 'GitHub', username: 'SmmShaman' },
+    { icon: Twitter, href: 'https://twitter.com/SmmShaman', label: 'Twitter', username: 'SmmShaman' },
+    { icon: Video, href: 'https://tiktok.com/@stuardbmw', label: 'TikTok', username: '@stuardbmw' },
+    { icon: Video, href: 'https://youtube.com/@SMMShaman', label: 'YouTube', username: 'SMMShaman' },
   ];
 
-  return (
-    <footer className="h-full w-full px-2 sm:px-4 flex items-center">
-      <div className="max-w-6xl mx-auto rounded-xl sm:rounded-2xl shadow-2xl border border-black/20 h-full w-full"
-        style={{
-          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
-          backdropFilter: 'blur(2px)',
-        }}
-      >
-        <div className="h-full flex flex-row items-center justify-between px-3 sm:px-4 md:px-6">
-          {/* Clock */}
-          <div
-            className="text-white/80 font-mono"
-            style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1.125rem)' }}
-          >
-            {currentTime.toLocaleTimeString()}
-          </div>
+  const generateQRCodeUrl = (url: string) => {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+  };
 
-          {/* Social Icons */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {socialLinks.map(({ icon: Icon, href, label }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/80 hover:text-white transition-colors duration-300"
-                aria-label={label}
-              >
-                <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
-              </a>
-            ))}
+  return (
+    <>
+      <footer className="h-full w-full px-2 sm:px-4 flex items-center relative">
+        <div className="max-w-6xl mx-auto rounded-xl sm:rounded-2xl shadow-2xl border border-black/20 h-full w-full"
+          style={{
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <div className="h-full flex flex-row items-center justify-between px-3 sm:px-4 md:px-6">
+            {/* Clock */}
+            <div
+              className="text-white/80 font-mono"
+              style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1.125rem)' }}
+            >
+              {currentTime.toLocaleTimeString()}
+            </div>
+
+            {/* Social Icons */}
+            <div className="flex items-center gap-1 sm:gap-2">
+              {socialLinks.map(({ icon: Icon, href, label }) => (
+                <motion.button
+                  key={label}
+                  onClick={() => setSelectedSocial(selectedSocial === label ? null : label)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="text-white/80 hover:text-white transition-colors duration-300 p-1"
+                  aria-label={label}
+                >
+                  <Icon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                </motion.button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </footer>
+      </footer>
+
+      {/* QR Code Modal */}
+      <AnimatePresence>
+        {selectedSocial && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedSocial(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full"
+            >
+              {(() => {
+                const social = socialLinks.find(s => s.label === selectedSocial);
+                if (!social) return null;
+                const Icon = social.icon;
+                return (
+                  <>
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                      <Icon className="w-8 h-8 text-primary" />
+                      <h3 className="text-2xl font-bold text-gray-900">{social.label}</h3>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border-2 border-gray-200 mb-4">
+                      <img
+                        src={generateQRCodeUrl(social.href)}
+                        alt={`${social.label} QR Code`}
+                        className="w-full h-auto"
+                      />
+                    </div>
+                    <div className="text-center mb-4">
+                      <p className="text-gray-600 text-sm mb-2">Scan QR code to visit profile</p>
+                      <p className="text-lg font-semibold text-gray-900">{social.username}</p>
+                    </div>
+                    <a
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full py-3 px-4 bg-primary text-white rounded-lg text-center font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      Open Link
+                    </a>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };

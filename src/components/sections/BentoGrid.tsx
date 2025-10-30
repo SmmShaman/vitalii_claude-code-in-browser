@@ -29,16 +29,16 @@ const sections: Section[] = [
     image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158',
   },
   {
-    id: 'projects',
-    titleKey: 'projects_title',
-    contentKey: 'projects_content',
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
-  },
-  {
     id: 'services',
     titleKey: 'services_title',
     contentKey: 'services_content',
     image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40',
+  },
+  {
+    id: 'projects',
+    titleKey: 'projects_title',
+    contentKey: 'projects_content',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
   },
   {
     id: 'skills',
@@ -68,13 +68,24 @@ export const BentoGrid = () => {
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [activeProjectIndex, setActiveProjectIndex] = useState(0);
   const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
+  const [isNewsExpanded, setIsNewsExpanded] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  const handleNewsClick = () => {
+    setIsNewsExpanded(!isNewsExpanded);
+  };
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
     // Don't open dialog for sections that have their own modals
-    if (section.id === 'projects' || section.id === 'news' || section.id === 'blog') return;
+    if (section.id === 'projects' || section.id === 'blog') return;
+
+    // Handle news expansion separately
+    if (section.id === 'news') {
+      handleNewsClick();
+      return;
+    }
 
     // Add snake animation class
     cardElement.classList.add('snake-animation');
@@ -184,12 +195,16 @@ export const BentoGrid = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                {...(section.id !== 'projects' && section.id !== 'news' && section.id !== 'blog' && {
+                {...(section.id !== 'projects' && section.id !== 'blog' && {
                   onClick: () => handleCardClick(section, cardRefs.current[section.id])
                 })}
-                className={`relative overflow-hidden rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full ${section.id === 'news' || section.id === 'blog' ? 'cursor-default' : 'cursor-pointer'}`}
+                className={`relative overflow-hidden rounded-lg transition-all duration-300 hover:shadow-2xl w-full ${section.id === 'blog' ? 'cursor-default' : 'cursor-pointer'} ${section.id === 'news' && !isNewsExpanded ? 'hover:scale-105' : ''}`}
                 style={{
-                  height: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
+                  height: section.id === 'news' && isNewsExpanded
+                    ? 'clamp(450px, 60vh, 650px)'
+                    : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
+                  gridRow: section.id === 'news' && isNewsExpanded ? 'span 2' : 'auto',
+                  zIndex: section.id === 'news' && isNewsExpanded ? 10 : 'auto',
                 }}
               >
                 {/* Background - conditional based on section */}
