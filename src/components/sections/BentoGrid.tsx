@@ -77,6 +77,8 @@ export const BentoGrid = () => {
   const [newsHeight, setNewsHeight] = useState<number>(0);
   const [blogHeight, setBlogHeight] = useState<number>(0);
   const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
+  const [isHidingAllForNews, setIsHidingAllForNews] = useState(false);
+  const [totalGridHeight, setTotalGridHeight] = useState<number>(0);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
@@ -119,17 +121,51 @@ export const BentoGrid = () => {
       setServicesHeight(0);
       setNewsHeight(0);
       setSelectedNewsId(null); // Reset selected news when collapsing
+      setIsHidingAllForNews(false);
+      setTotalGridHeight(0);
     }
   };
 
   const handleNewsItemSelect = (newsId: string) => {
     console.log('📰 News item selected:', newsId);
-    setSelectedNewsId(newsId);
+
+    // Calculate heights of all windows for expansion
+    const aboutEl = cardRefs.current['about'];
+    const servicesEl = cardRefs.current['services'];
+    const projectsEl = cardRefs.current['projects'];
+    const skillsEl = cardRefs.current['skills'];
+    const newsEl = cardRefs.current['news'];
+    const blogEl = cardRefs.current['blog'];
+
+    if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
+      const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+
+      // Calculate total height: all 6 windows + 5 gaps (between rows)
+      // Assuming 2 rows with 3 windows each on desktop
+      const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
+      const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
+      const total = row1Height + row2Height + gapSize;
+
+      console.log('📐 Total grid height:', total, '= row1:', row1Height, '+ row2:', row2Height, '+ gap:', gapSize);
+      setTotalGridHeight(total);
+    }
+
+    // Step 1: Hide all other windows
+    console.log('🟡 Step 1: Hiding all windows except News');
+    setIsHidingAllForNews(true);
+
+    // Step 2: After 0.5s, show the selected news (News will expand)
+    setTimeout(() => {
+      console.log('🟢 Step 2: Expanding News to full size');
+      setSelectedNewsId(newsId);
+      setIsHidingAllForNews(false);
+    }, 500);
   };
 
   const handleNewsItemBack = () => {
     console.log('🔙 Back to news list');
     setSelectedNewsId(null);
+    setTotalGridHeight(0);
   };
 
   const handleBlogClick = () => {
@@ -295,6 +331,13 @@ export const BentoGrid = () => {
                   // Gap depends on screen size: gap-2 (8px) / gap-3 (12px) / gap-4 (16px)
                   const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
 
+                  // News: full grid height when news item selected
+                  if (section.id === 'news' && selectedNewsId && totalGridHeight > 0) {
+                    console.log('📐 News FULL height:', totalGridHeight, '(all 6 windows)');
+                    return `${totalGridHeight}px`;
+                  }
+
+                  // News: expanded height when just News section expanded
                   if (section.id === 'news' && isNewsExpanded && newsHeight > 0 && servicesHeight > 0) {
                     const totalHeight = newsHeight + servicesHeight + gapSize;
                     console.log('📐 News expanded height:', totalHeight, '=', newsHeight, '+', servicesHeight, '+', gapSize);
@@ -319,29 +362,19 @@ export const BentoGrid = () => {
                   // Gap depends on screen size: gap-2 (8px) / gap-3 (12px) / gap-4 (16px)
                   const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
 
+                  // Hide all windows except News when news item is being selected
+                  if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
+                    console.log('🎬 Animating', section.id, 'scaleY to 0 (hiding for news)');
+                    return {
+                      opacity: 0,
+                      scaleY: 0,
+                      transformOrigin: 'top',
+                    };
+                  }
+
                   // Services: scale to 0 height when hiding (0fr grid trick)
                   if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
                     console.log('🎬 Animating Services scaleY to 0');
-                    return {
-                      opacity: 0,
-                      scaleY: 0,
-                      transformOrigin: 'top',
-                    };
-                  }
-
-                  // Skills: scale to 0 when news item is selected (dissolve to free space)
-                  if (section.id === 'skills' && selectedNewsId) {
-                    console.log('🎬 Animating Skills scaleY to 0 (news item selected)');
-                    return {
-                      opacity: 0,
-                      scaleY: 0,
-                      transformOrigin: 'top',
-                    };
-                  }
-
-                  // Blog: scale to 0 when news item is selected (dissolve to free space)
-                  if (section.id === 'blog' && selectedNewsId) {
-                    console.log('🎬 Animating Blog scaleY to 0 (news item selected)');
                     return {
                       opacity: 0,
                       scaleY: 0,
