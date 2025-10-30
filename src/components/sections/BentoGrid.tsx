@@ -435,7 +435,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   return (
     <>
       <div className={`h-full w-full ${selectedNewsId || selectedBlogId ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'} flex ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center px-2 sm:px-4 lg:px-6`}>
-        <div className={`w-full max-w-7xl flex flex-col ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center py-2 sm:py-3 md:py-4`}>
+        <div className={`w-full flex flex-col ${screenSize.isSmall ? 'items-start' : 'items-center'} justify-center py-2 sm:py-3 md:py-4`}>
           <LayoutGroup>
             <div
               ref={gridContainerRef}
