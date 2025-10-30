@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Header } from '../components/layout/Header';
 import { Footer } from '../components/layout/Footer';
@@ -17,8 +17,19 @@ export const Index = () => {
   const footerHeight = 80;
 
   const handleFullscreenChange = (fullscreen: boolean) => {
+    console.log('🎬 Header state changing:', fullscreen ? 'FULLSCREEN (collapse)' : 'NORMAL (expand)');
     setIsFullscreen(fullscreen);
   };
+
+  useEffect(() => {
+    console.log('📏 Header state changed:', {
+      isFullscreen,
+      titleHeight: isFullscreen ? '0px (collapsed)' : '180px (expanded)',
+      mainPaddingTop: `calc(60px + ${isFullscreen ? 0 : 180}px)`,
+      availableSpace: isFullscreen ? 'calc(100vh - 60px - 80px) = ~760px' : 'calc(100vh - 60px - 180px - 80px) = ~580px',
+      gain: isFullscreen ? '+180px more space!' : 'normal'
+    });
+  }, [isFullscreen]);
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col relative">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
@@ -12,7 +12,7 @@ interface NewsSectionProps {
   onBack?: () => void;
 }
 
-export const NewsSection = ({
+const NewsSectionComponent = ({
   isExpanded = false,
   selectedNewsId = null,
   onNewsSelect,
@@ -347,3 +347,12 @@ export const NewsSection = ({
       </div>
   );
 };
+
+// Optimize re-renders by only updating when key props change
+export const NewsSection = memo(NewsSectionComponent, (prevProps, nextProps) => {
+  // Only re-render if these props actually changed
+  return (
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.selectedNewsId === nextProps.selectedNewsId
+  );
+});

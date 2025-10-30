@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Calendar, Tag, ExternalLink, Clock, ChevronLeft } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
@@ -12,7 +12,7 @@ interface BlogSectionProps {
   onBack?: () => void;
 }
 
-export const BlogSection = ({
+const BlogSectionComponent = ({
   isExpanded = false,
   selectedBlogId = null,
   onBlogSelect,
@@ -311,3 +311,12 @@ export const BlogSection = ({
       </div>
   );
 };
+
+// Optimize re-renders by only updating when key props change
+export const BlogSection = memo(BlogSectionComponent, (prevProps, nextProps) => {
+  // Only re-render if these props actually changed
+  return (
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.selectedBlogId === nextProps.selectedBlogId
+  );
+});
