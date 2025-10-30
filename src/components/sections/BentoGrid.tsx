@@ -192,31 +192,41 @@ export const BentoGrid = () => {
           </div>
 
           <div
-            className="grid gap-2 sm:gap-3 md:gap-4 w-full"
+            className="grid gap-2 sm:gap-3 md:gap-4 w-full relative"
             style={{
               gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
-              gridAutoRows: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
             }}
           >
             <AnimatePresence mode="sync">
-              {sections.map((section, index) => {
-                // Hide Services when News is expanded
-                if (section.id === 'services' && isNewsExpanded) return null;
+              {sections.map((section) => {
+                // Check if section should be visible
+                const isHidden =
+                  // Hide Projects and Skills when News or Blog expands
+                  ((section.id === 'projects' || section.id === 'skills') && (isNewsExpanded || isBlogExpanded));
 
-                // Hide Projects when Blog is expanded
-                if (section.id === 'projects' && isBlogExpanded) return null;
+                if (isHidden) return null;
 
-                // Calculate grid row for expanded sections
-                const getGridRow = () => {
+                const isExpanded =
+                  (section.id === 'news' && isNewsExpanded) ||
+                  (section.id === 'blog' && isBlogExpanded);
+
+                // Calculate grid position for upward expansion (full width)
+                const getGridStyle = () => {
                   if (section.id === 'news' && isNewsExpanded) {
-                    // News expands upward to cover Services row
-                    return screenSize.columnsCount === 2 ? '1 / 3' : '1 / 3';
+                    // News expands to cover Services and Projects rows (rows 1-2), full width
+                    return {
+                      gridRow: '2 / span 2', // Cover rows 2 and 3
+                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1' // Full width
+                    };
                   }
                   if (section.id === 'blog' && isBlogExpanded) {
-                    // Blog expands upward to cover Projects row
-                    return screenSize.columnsCount === 2 ? '2 / 4' : '1 / 3';
+                    // Blog expands to cover Projects row, full width
+                    return {
+                      gridRow: '2 / span 2', // Cover rows 2 and 3
+                      gridColumn: screenSize.columnsCount === 2 ? '1 / span 2' : '1' // Full width
+                    };
                   }
-                  return 'auto';
+                  return {};
                 };
 
                 return (
@@ -226,12 +236,13 @@ export const BentoGrid = () => {
                       cardRefs.current[section.id] = el;
                     }}
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                    }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                    {...(section.id !== 'projects' && {
-                      onClick: () => handleCardClick(section, cardRefs.current[section.id])
-                    })}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseLeave={() => {
                       if (section.id === 'news' && isNewsExpanded) {
                         setIsNewsExpanded(false);
@@ -244,12 +255,9 @@ export const BentoGrid = () => {
                       (section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105' : ''
                     }`}
                     style={{
-                      height:
-                        (section.id === 'news' && isNewsExpanded) || (section.id === 'blog' && isBlogExpanded)
-                          ? 'clamp(450px, 60vh, 650px)'
-                          : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
-                      gridRow: getGridRow(),
-                      zIndex: (section.id === 'news' && isNewsExpanded) || (section.id === 'blog' && isBlogExpanded) ? 10 : 'auto',
+                      height: isExpanded ? 'clamp(450px, 60vh, 650px)' : screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
+                      zIndex: isExpanded ? 20 : 'auto',
+                      ...getGridStyle(),
                     }}
                   >
                 {/* Background - conditional based on section */}
