@@ -103,27 +103,20 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     }
 
     if (!isNewsExpanded) {
-      // Get heights of all windows to calculate full grid height
-      const aboutEl = cardRefs.current['about'];
+      // Get heights of all windows
       const servicesEl = cardRefs.current['services'];
-      const projectsEl = cardRefs.current['projects'];
       const skillsEl = cardRefs.current['skills'];
       const newsEl = cardRefs.current['news'];
       const blogEl = cardRefs.current['blog'];
 
-      if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
-        const gapSize = GAP_SIZE;
+      if (servicesEl && skillsEl && newsEl && blogEl) {
+        // News expands to: its own height + Services height (takes Services space)
+        // News becomes 2x bigger (doubles in height)
+        const newsExpandedHeight = servicesEl.offsetHeight + newsEl.offsetHeight;
 
-        // Calculate row heights
-        const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
-        const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
+        console.log('📏 News expanded height:', newsExpandedHeight, '= Services:', servicesEl.offsetHeight, '+ News normal:', newsEl.offsetHeight);
 
-        // News will span from top of row1 to bottom of row2
-        const newsFullHeight = row1Height + row2Height + gapSize;
-
-        console.log('📏 Full grid height for News:', newsFullHeight, '= row1:', row1Height, '+ row2:', row2Height, '+ gap:', gapSize);
-
-        setNewsHeight(newsFullHeight);
+        setNewsHeight(newsExpandedHeight);
         setServicesHeight(servicesEl.offsetHeight);
 
         // Save normal heights of Skills and Blog so they don't stretch when News expands
@@ -509,10 +502,10 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   }
 
                   // News: expanded height when just News section expanded
-                  if (section.id === 'news' && isNewsExpanded && newsHeight > 0 && servicesHeight > 0) {
-                    const totalHeight = newsHeight + servicesHeight + gapSize;
-                    console.log('📐 News expanded height:', totalHeight, '=', newsHeight, '+', servicesHeight, '+', gapSize);
-                    return `${totalHeight}px`;
+                  // newsHeight already contains: Services height + News normal height
+                  if (section.id === 'news' && isNewsExpanded && newsHeight > 0) {
+                    console.log('📐 News expanded height:', newsHeight, '(already includes Services + News)');
+                    return `${newsHeight}px`;
                   }
 
                   // Blog: expanded height when just Blog section expanded
