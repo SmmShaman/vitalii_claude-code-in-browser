@@ -11,10 +11,9 @@ import { NewsSection } from './NewsSection';
 import { BlogSection } from './BlogSection';
 import { translations } from '../../utils/translations';
 
-// Fixed layout constants
-const WINDOW_SIZE = 240; // Fixed window size in pixels
+// Grid layout constants
 const GAP_SIZE = 16; // Fixed gap between windows in pixels
-const COLUMNS_COUNT = 3; // Always 3 columns
+const COLUMNS_COUNT = 3; // Always 3 columns (fluid width with 1fr)
 
 interface Section {
   id: string;
@@ -422,9 +421,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
             cardElement.style.removeProperty('left');
             cardElement.style.removeProperty('width');
             cardElement.style.removeProperty('z-index');
-
-            // Reset height to fixed window size
-            cardElement.style.height = `${WINDOW_SIZE}px`;
+            cardElement.style.removeProperty('height');
           }
         });
       }, 50);
@@ -437,15 +434,15 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
   return (
     <>
-      <div className={`h-full w-full ${selectedNewsId || selectedBlogId ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'} flex items-start justify-center`}>
-        <div className="flex flex-col items-center justify-start py-4">
+      <div className={`h-full w-full ${selectedNewsId || selectedBlogId ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'} flex items-start justify-start`}>
+        <div className="flex flex-col w-full h-full p-4">
           <LayoutGroup>
             <div
               ref={gridContainerRef}
-              className="grid relative"
+              className="grid relative w-full h-full"
               style={{
-                gridTemplateColumns: `repeat(${COLUMNS_COUNT}, ${WINDOW_SIZE}px)`,
-                gridTemplateRows: `repeat(2, ${WINDOW_SIZE}px)`,
+                gridTemplateColumns: `repeat(${COLUMNS_COUNT}, 1fr)`,
+                gridTemplateRows: `repeat(2, 1fr)`,
                 gap: `${GAP_SIZE}px`,
               }}
             >
@@ -486,7 +483,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     return `${totalHeight}px`;
                   }
 
-                  return `${WINDOW_SIZE}px`;
+                  return '100%';
                 };
 
                 if (section.id === 'news') {
