@@ -1,7 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import gsap from 'gsap';
-import { InertiaPlugin } from 'gsap/InertiaPlugin';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
 import { TypewriterText } from '../ui/TypewriterText';
@@ -91,56 +89,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
-  const deltaRef = useRef({ x: 0, y: 0, oldX: 0, oldY: 0 });
-
-  // Track mouse movement for inertia effect
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      deltaRef.current.x = e.clientX - deltaRef.current.oldX;
-      deltaRef.current.y = e.clientY - deltaRef.current.oldY;
-      deltaRef.current.oldX = e.clientX;
-      deltaRef.current.oldY = e.clientY;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  const handleCardHover = (cardElement: HTMLDivElement | null) => {
-    if (!cardElement) return;
-
-    const tl = gsap.timeline({
-      onComplete: () => {
-        tl.kill();
-      }
-    });
-    tl.timeScale(1.2);
-
-    // Apply inertia effect based on mouse movement
-    tl.to(cardElement, {
-      inertia: {
-        x: {
-          velocity: deltaRef.current.x * 40,
-          end: 0
-        },
-        y: {
-          velocity: deltaRef.current.y * 40,
-          end: 0
-        },
-      },
-    });
-
-    // Add rotation for more life
-    tl.fromTo(cardElement, {
-      rotate: 0
-    }, {
-      duration: 0.4,
-      rotate: (Math.random() - 0.5) * 30,
-      yoyo: true,
-      repeat: 1,
-      ease: 'power1.inOut'
-    }, '<');
-  };
 
   const handleNewsClick = () => {
     console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded, 'selectedNewsId:', selectedNewsId);
@@ -648,9 +596,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseEnter={() => {
-                      // Apply GSAP Inertia hover effect
-                      handleCardHover(cardRefs.current[section.id]);
-
                       // Cancel collapse timeout if mouse returns
                       if (mouseLeaveTimeoutRef.current) {
                         clearTimeout(mouseLeaveTimeoutRef.current);
@@ -701,9 +646,9 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     }}
                   >
                 {/* Background - conditional based on section */}
-                {section.id === 'about' ? (
+                {section.id === 'about' || section.id === 'services' ? (
                   <div className="absolute inset-0 bg-white" />
-                ) : section.id === 'services' || section.id === 'skills' ? (
+                ) : section.id === 'skills' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" />
                 ) : section.id === 'news' || section.id === 'blog' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />

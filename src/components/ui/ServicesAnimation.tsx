@@ -213,12 +213,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
                 transformStyle: 'preserve-3d',
                 lineHeight: 1.2,
                 textAlign: 'center',
-                background: 'linear-gradient(45deg, #00d4ff, #7c3aed, #00d4ff)',
-                backgroundSize: '200% 200%',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                filter: 'drop-shadow(0 0 15px rgba(0, 212, 255, 0.6))',
+                color: '#1a1a1a',
               }}
             >
               {lines.map((line, lineIndex) => (
