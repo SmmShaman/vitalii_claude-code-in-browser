@@ -681,6 +681,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       <ServicesAnimation
                         services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
                         backgroundText={t('services_title') as string}
+                        servicesLabel={t('services_label' as any)}
                       />
                     </div>
                   ) : section.id === 'skills' ? (

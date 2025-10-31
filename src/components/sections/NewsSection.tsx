@@ -303,7 +303,7 @@ const NewsSectionComponent = ({
                               <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
                             </div>
                             {/* Video or Image icon indicator */}
-                            {(newsItem as any).video_url ? (
+                            {newsItem.video_url ? (
                               <div className="flex items-center gap-1 text-primary">
                                 <Video className="h-3 w-3 flex-shrink-0" />
                                 <span className="text-xs">Video</span>
@@ -331,14 +331,14 @@ const NewsSectionComponent = ({
                       </div>
 
                       {/* Square Image/Video Thumbnail - Right Side */}
-                      {(newsItem.image_url || (newsItem as any).video_url) && (
+                      {(newsItem.image_url || newsItem.video_url) && (
                         <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
                           <img
                             src={newsItem.image_url || 'https://via.placeholder.com/96x96?text=Video'}
                             alt={String(content.title)}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />
-                          {(newsItem as any).video_url && (
+                          {newsItem.video_url && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                               <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
                                 <svg className="w-5 h-5 text-black ml-0.5" fill="currentColor" viewBox="0 0 16 16">

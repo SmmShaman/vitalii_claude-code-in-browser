@@ -362,6 +362,8 @@ export interface Database {
           views_count: number;
           source_name: string | null;
           source_category: string | null;
+          video_url: string | null;
+          video_type: string | null;
         };
       };
       latest_blog_posts: {

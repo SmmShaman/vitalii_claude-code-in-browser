@@ -123,6 +123,7 @@ export const translations = {
         description: "digital transformation"
       }
     ],
+    services_label: "my services",
 
     skills: "Skills",
     skills_title: "Skills",
@@ -347,6 +348,7 @@ export const translations = {
         description: "digital transformasjon"
       }
     ],
+    services_label: "mine tjenester",
 
     skills: "Ferdigheter",
     skills_title: "Ferdigheter",
@@ -571,6 +573,7 @@ export const translations = {
         description: "цифрова трансформація"
       }
     ],
+    services_label: "мої послуги",
 
     skills: "Навички",
     skills_title: "Навички",

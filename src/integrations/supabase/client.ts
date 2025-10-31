@@ -75,8 +75,26 @@ export const getLatestNews = async (limit: number = 3) => {
   }
 
   const { data, error } = await supabase
-    .from('latest_news')
-    .select('*')
+    .from('news')
+    .select(`
+      id,
+      title_en,
+      title_no,
+      title_ua,
+      description_en,
+      description_no,
+      description_ua,
+      image_url,
+      original_url,
+      tags,
+      published_at,
+      views_count,
+      video_url,
+      video_type,
+      source_id,
+      news_sources!inner(name, category)
+    `)
+    .eq('is_published', true)
     .order('published_at', { ascending: false })
     .limit(limit);
 
@@ -85,7 +103,27 @@ export const getLatestNews = async (limit: number = 3) => {
     return [];
   }
 
-  return data || [];
+  // Transform data to match LatestNews type structure
+  const transformedData = data?.map(item => ({
+    id: item.id,
+    title_en: item.title_en,
+    title_no: item.title_no,
+    title_ua: item.title_ua,
+    description_en: item.description_en,
+    description_no: item.description_no,
+    description_ua: item.description_ua,
+    image_url: item.image_url,
+    original_url: item.original_url,
+    tags: item.tags,
+    published_at: item.published_at,
+    views_count: item.views_count,
+    video_url: item.video_url,
+    video_type: item.video_type,
+    source_name: (item as any).news_sources?.name || null,
+    source_category: (item as any).news_sources?.category || null,
+  })) || [];
+
+  return transformedData;
 };
 
 /**
