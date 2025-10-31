@@ -570,12 +570,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     };
                   }
 
-                  // News: stays at same level when expanded - no upward movement
-                  // It expands downward taking Services space
-                  if (section.id === 'news' && isNewsExpanded) {
+                  // News: moves UP to Services position when expanded
+                  // Takes Services place in the grid
+                  if (section.id === 'news' && isNewsExpanded && servicesHeight > 0) {
+                    const moveDistance = -(servicesHeight + gapSize);
                     return {
                       opacity: 1,
-                      y: 0,  // No vertical movement - stays aligned with Skills and Blog
+                      y: moveDistance,  // Move up by Services height + gap
                     };
                   }
 
