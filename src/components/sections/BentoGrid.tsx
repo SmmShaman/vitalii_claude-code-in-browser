@@ -703,6 +703,14 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     style={{
                       height: getExpandedHeight(),
                       willChange: 'transform',
+                      // Skills: ЗАВЖДИ alignSelf start - не розтягується по grid row
+                      ...(section.id === 'skills' ? {
+                        alignSelf: 'start'
+                      } : {}),
+                      // Blog: ЗАВЖДИ alignSelf start - не розтягується по grid row
+                      ...(section.id === 'blog' ? {
+                        alignSelf: 'start'
+                      } : {}),
                       // Expand to full grid when news/blog item is selected
                       ...(section.id === 'news' && selectedNewsId ? {
                         gridColumn: '1 / -1',
