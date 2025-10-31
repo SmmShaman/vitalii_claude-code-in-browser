@@ -54,119 +54,173 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   }, [isHovered, services]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const container = containerRef.current;
-    const serviceElements = container.querySelectorAll('.service-item');
-
-    // Clean up previous animations
-    if (timelineRef.current) {
-      timelineRef.current.kill();
-    }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    // If hovered, show all services
-    if (isHovered) {
-      gsap.set(serviceElements, { autoAlpha: 1, scale: 1, y: 0 });
-
-      // Animate chars for all services
-      serviceElements.forEach((element) => {
-        const chars = element.querySelectorAll('.char');
-        gsap.fromTo(
-          chars,
-          {
-            opacity: 0,
-            x: () => Math.random() * 200 - 100,
-            y: () => Math.random() * 200 - 100,
-            rotation: () => Math.random() * 720 - 360,
-            scale: 0,
-          },
-          {
-            duration: 0.8,
-            opacity: 1,
-            x: 0,
-            y: 0,
-            rotation: 0,
-            scale: 1,
-            ease: 'back.out(1.7)',
-            stagger: {
-              amount: 0.5,
-              from: 'random',
-            },
-          }
-        );
-      });
+    // Guard: Check if container exists
+    if (!containerRef.current) {
+      console.warn('ServicesAnimation: Container not ready');
       return;
     }
 
-    // Animation for single service rotation
-    const animateService = (index: number) => {
-      // Hide all services
-      gsap.set(serviceElements, { autoAlpha: 0 });
+    const container = containerRef.current;
 
-      const currentElement = serviceElements[index] as HTMLElement;
-      if (!currentElement) return;
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      const serviceElements = container.querySelectorAll('.service-item');
 
-      // Show current service
-      gsap.set(currentElement, { autoAlpha: 1 });
+      // Guard: Check if service elements exist
+      if (!serviceElements || serviceElements.length === 0) {
+        console.warn('ServicesAnimation: No service elements found');
+        return;
+      }
 
-      // Split text into characters
-      const text = currentElement.querySelector('.service-text');
-      if (!text) return;
+      // Clean up previous animations
+      if (timelineRef.current) {
+        timelineRef.current.kill();
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
 
-      // Clean up old split
-      const oldChars = text.querySelectorAll('.char');
-      oldChars.forEach((char) => char.remove());
+      // If hovered, show all services
+      if (isHovered) {
+        gsap.set(serviceElements, { autoAlpha: 1, scale: 1, y: 0 });
 
-      const split = new SplitText(text, {
-        type: 'chars',
-        charsClass: 'char',
-      });
+        // Animate chars for all services
+        serviceElements.forEach((element) => {
+          const chars = element.querySelectorAll('.char');
 
-      const chars = split.chars;
+          // Guard: Only animate if chars exist
+          if (!chars || chars.length === 0) {
+            return;
+          }
 
-      // Animate chars gathering
-      const tl = gsap.timeline();
+          gsap.fromTo(
+            chars,
+            {
+              opacity: 0,
+              x: () => Math.random() * 200 - 100,
+              y: () => Math.random() * 200 - 100,
+              rotation: () => Math.random() * 720 - 360,
+              scale: 0,
+            },
+            {
+              duration: 0.8,
+              opacity: 1,
+              x: 0,
+              y: 0,
+              rotation: 0,
+              scale: 1,
+              ease: 'back.out(1.7)',
+              stagger: {
+                amount: 0.5,
+                from: 'random',
+              },
+            }
+          );
+        });
+        return;
+      }
 
-      tl.fromTo(
-        chars,
-        {
-          opacity: 0,
-          x: () => (Math.random() - 0.5) * 400,
-          y: () => (Math.random() - 0.5) * 400,
-          rotation: () => (Math.random() - 0.5) * 720,
-          scale: 0,
-        },
-        {
-          duration: 2,
-          opacity: 1,
-          x: 0,
-          y: 0,
-          rotation: 0,
-          scale: 1,
-          ease: 'elastic.out(1, 0.5)',
-          stagger: {
-            amount: 0.8,
-            from: 'random',
-          },
+      // Animation for single service rotation
+      const animateService = (index: number) => {
+        // Guard: Check if serviceElements still exist
+        if (!serviceElements || serviceElements.length === 0) {
+          console.warn('ServicesAnimation: Service elements disappeared');
+          return;
         }
-      );
 
-      // Hold for 1 second
-      tl.to({}, { duration: 1 });
+        // Hide all services
+        gsap.set(serviceElements, { autoAlpha: 0 });
 
-      timelineRef.current = tl;
-    };
+        const currentElement = serviceElements[index] as HTMLElement;
+        if (!currentElement) {
+          console.warn(`ServicesAnimation: Element at index ${index} not found`);
+          return;
+        }
 
-    // Start animation with first service
-    animateService(currentIndex);
+        // Show current service
+        gsap.set(currentElement, { autoAlpha: 1 });
 
-    // Set interval to rotate services (2s animation + 1s hold = 3s total)
-    intervalRef.current = window.setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % services.length);
-    }, 3000);
+        // Split text into characters
+        const text = currentElement.querySelector('.service-text');
+        if (!text) {
+          console.warn('ServicesAnimation: .service-text not found');
+          return;
+        }
+
+        // Guard: Check if text has content
+        if (!text.textContent || text.textContent.trim() === '') {
+          console.warn('ServicesAnimation: Text element is empty');
+          return;
+        }
+
+        // Clean up old split
+        const oldChars = text.querySelectorAll('.char');
+        oldChars.forEach((char) => char.remove());
+
+        try {
+          // Guard: Check if SplitText is available
+          if (typeof SplitText === 'undefined') {
+            console.error('ServicesAnimation: SplitText plugin not loaded');
+            return;
+          }
+
+          const split = new SplitText(text, {
+            type: 'chars',
+            charsClass: 'char',
+          });
+
+          const chars = split.chars;
+
+          // Guard: Check if split created chars
+          if (!chars || chars.length === 0) {
+            console.warn('ServicesAnimation: SplitText created no characters');
+            return;
+          }
+
+          // Animate chars gathering
+          const tl = gsap.timeline();
+
+          tl.fromTo(
+            chars,
+            {
+              opacity: 0,
+              x: () => (Math.random() - 0.5) * 400,
+              y: () => (Math.random() - 0.5) * 400,
+              rotation: () => (Math.random() - 0.5) * 720,
+              scale: 0,
+            },
+            {
+              duration: 2,
+              opacity: 1,
+              x: 0,
+              y: 0,
+              rotation: 0,
+              scale: 1,
+              ease: 'elastic.out(1, 0.5)',
+              stagger: {
+                amount: 0.8,
+                from: 'random',
+              },
+            }
+          );
+
+          // Hold for 1 second
+          tl.to({}, { duration: 1 });
+
+          timelineRef.current = tl;
+        } catch (error) {
+          console.error('ServicesAnimation: Error in SplitText:', error);
+        }
+      };
+
+      // Start animation with first service
+      animateService(currentIndex);
+
+      // Set interval to rotate services (2s animation + 1s hold = 3s total)
+      intervalRef.current = window.setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % services.length);
+      }, 3000);
+    });
 
     return () => {
       if (timelineRef.current) {
