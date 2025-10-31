@@ -478,6 +478,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Fixed gap for uniform spacing on all screen sizes
                   const gapSize = GAP_SIZE;
 
+                  // Skills: always normal height - never expands with News/Blog
+                  // Skills only uses explosion animation, not height expansion
+                  if (section.id === 'skills') {
+                    return 'clamp(200px, 25vh, 280px)';
+                  }
+
                   // News: full grid height when news item selected
                   if (section.id === 'news' && selectedNewsId && totalGridHeight > 0) {
                     console.log('📐 News FULL height:', totalGridHeight, '(all 6 windows)');
@@ -623,8 +629,17 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       }
                     }}
                     onMouseLeave={() => {
-                      // News stays open when expanded - no auto-collapse
-                      // Blog collapses on mouse leave if expanded and no blog selected
+                      // Auto-collapse News and Blog when mouse leaves
+                      if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
+                        console.log('🖱️ Mouse left News, will collapse in 300ms');
+                        mouseLeaveTimeoutRef.current = window.setTimeout(() => {
+                          console.log('⏰ Collapsing News now');
+                          setIsNewsExpanded(false);
+                          setServicesHeight(0);
+                          setNewsHeight(0);
+                          mouseLeaveTimeoutRef.current = null;
+                        }, 300);
+                      }
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
                         console.log('🖱️ Mouse left Blog, will collapse in 300ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
