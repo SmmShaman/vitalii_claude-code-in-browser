@@ -12,9 +12,6 @@ import { BlogSection } from './BlogSection';
 import { translations } from '../../utils/translations';
 import { useScreenSize } from '../../hooks/useScreenSize';
 
-// Register GSAP plugins
-gsap.registerPlugin(InertiaPlugin);
-
 interface Section {
   id: string;
   titleKey: string;
