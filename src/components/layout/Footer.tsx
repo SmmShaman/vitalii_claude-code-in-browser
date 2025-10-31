@@ -3,6 +3,7 @@ import { Twitter, Facebook, Send, Instagram, Linkedin, Github } from 'lucide-rea
 import { motion } from 'framer-motion';
 import { fetchFooterData } from '../../utils/footerApi';
 import type { FooterData } from '../../utils/footerApi';
+import { useTranslations } from '../../contexts/TranslationContext';
 
 // TikTok icon component
 const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
@@ -25,6 +26,7 @@ export const Footer = () => {
     distance: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const { t, currentLanguage } = useTranslations();
 
   // Update clock
   useEffect(() => {
@@ -39,13 +41,13 @@ export const Footer = () => {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      const data = await fetchFooterData();
+      const data = await fetchFooterData(currentLanguage.toLowerCase() as 'en' | 'no' | 'ua');
       setFooterData(data);
       setIsLoading(false);
     };
 
     loadData();
-  }, []);
+  }, [currentLanguage]);
 
   const socialLinks = [
     { icon: Instagram, href: 'https://instagram.com/smmshaman', label: 'Instagram', username: '@smmshaman' },
@@ -87,7 +89,7 @@ export const Footer = () => {
               transition={{ delay: 0.2 }}
             >
               {isLoading ? (
-                <div className="text-white/60 text-xs sm:text-sm">Завантаження...</div>
+                <div className="text-white/60 text-xs sm:text-sm">{t('footer_loading' as any)}</div>
               ) : error ? (
                 <div className="text-white/60 text-xs sm:text-sm">{error}</div>
               ) : (
@@ -98,7 +100,7 @@ export const Footer = () => {
                       className="text-white/90 text-center"
                       style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
                     >
-                      У тебе в <span className="font-semibold">{userLocation.city}</span>{' '}
+                      {t('footer_weather_in' as any)} <span className="font-semibold">{userLocation.city}</span>{' '}
                       {weather.temperature > 0 ? '+' : ''}
                       {weather.temperature}°C, {weather.description} {weather.emoji}
                     </div>
@@ -110,7 +112,7 @@ export const Footer = () => {
                       className="text-white/90"
                       style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
                     >
-                      Від мене ти на відстані {distance.toLocaleString()} км
+                      {distance.toLocaleString()} {t('footer_distance_from_me' as any)}
                     </div>
                   )}
                 </div>

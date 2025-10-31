@@ -19,8 +19,39 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [hoverFontSize, setHoverFontSize] = useState('2rem');
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const intervalRef = useRef<number | null>(null);
+
+  // Calculate optimal font size for all services to fit
+  useEffect(() => {
+    if (!containerRef.current || !isHovered) return;
+
+    const container = containerRef.current;
+    const containerHeight = container.clientHeight;
+
+    // Estimate total height needed for all services
+    const numServices = services.length;
+    const lineHeight = 1.3;
+    const gapBetweenLines = 10; // pixels
+
+    // Calculate max font size that fits all services
+    let fontSize = 48; // Start with large font
+    const minFontSize = 12;
+
+    while (fontSize > minFontSize) {
+      const estimatedLineHeight = fontSize * lineHeight;
+      const totalHeight = (estimatedLineHeight * numServices) + (gapBetweenLines * (numServices - 1));
+
+      // Check if it fits with some padding
+      if (totalHeight < containerHeight * 0.9) {
+        break;
+      }
+      fontSize -= 2;
+    }
+
+    setHoverFontSize(`${fontSize}px`);
+  }, [isHovered, services]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -154,11 +185,18 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative w-full h-full flex flex-col items-center justify-center gap-4">
+      <div
+        className={`relative w-full h-full flex items-center justify-center ${
+          isHovered ? 'flex-col gap-2' : ''
+        }`}
+        style={{
+          padding: isHovered ? '1rem' : '0',
+        }}
+      >
         {services.map((service, index) => (
           <div
             key={index}
-            className="service-item absolute inset-0 flex items-center justify-center"
+            className={`service-item ${isHovered ? 'relative' : 'absolute inset-0'} flex items-center justify-center`}
             style={{
               visibility: 'hidden',
               opacity: 0,
@@ -167,10 +205,10 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
             <div
               className="service-text font-bold uppercase text-center px-4"
               style={{
-                fontSize: 'clamp(1.5rem, 4vw, 3rem)',
+                fontSize: isHovered ? hoverFontSize : 'clamp(1.5rem, 4vw, 3rem)',
                 fontWeight: 900,
                 color: '#1a1a1a',
-                lineHeight: 1.2,
+                lineHeight: 1.3,
               }}
             >
               {service.title}

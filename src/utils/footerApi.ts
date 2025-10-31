@@ -75,12 +75,62 @@ function cacheData(location: UserLocation, weather: WeatherData): void {
 }
 
 /**
- * Get user's location from IP address using ipapi.co
+ * Get user's location using browser Geolocation API first, fallback to IP-based
  */
 async function getUserLocation(): Promise<UserLocation> {
   const cached = getCachedLocation();
   if (cached) return cached;
 
+  // Try browser geolocation first for accuracy
+  if ('geolocation' in navigator) {
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 5000,
+          maximumAge: 0,
+        });
+      });
+
+      // Get city name from reverse geocoding using OpenStreetMap Nominatim
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      try {
+        const geoResponse = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+          {
+            headers: {
+              'User-Agent': 'Portfolio-Website',
+            },
+          }
+        );
+
+        if (geoResponse.ok) {
+          const geoData = await geoResponse.json();
+          return {
+            city: geoData.address?.city || geoData.address?.town || geoData.address?.village || 'Unknown',
+            country: geoData.address?.country || 'Unknown',
+            latitude: lat,
+            longitude: lon,
+          };
+        }
+      } catch (error) {
+        console.log('Reverse geocoding failed, using browser coordinates with fallback city name');
+      }
+
+      // If reverse geocoding fails, return coordinates with generic city name
+      return {
+        city: 'Your location',
+        country: 'Unknown',
+        latitude: lat,
+        longitude: lon,
+      };
+    } catch (error) {
+      console.log('Browser geolocation failed, falling back to IP-based location');
+    }
+  }
+
+  // Fallback to IP-based location
   try {
     const response = await fetch('https://ipapi.co/json/');
     if (!response.ok) throw new Error('Failed to fetch location');
@@ -99,43 +149,124 @@ async function getUserLocation(): Promise<UserLocation> {
 }
 
 /**
- * Map weather codes to descriptions and emojis
+ * Map weather codes to translation keys and emojis
  * Based on WMO Weather interpretation codes
  */
-function getWeatherInfo(code: number): { description: string; emoji: string } {
-  const weatherMap: Record<number, { description: string; emoji: string }> = {
-    0: { description: 'ясно', emoji: '☀️' },
-    1: { description: 'переважно ясно', emoji: '🌤️' },
-    2: { description: 'хмарно', emoji: '⛅' },
-    3: { description: 'похмуро', emoji: '☁️' },
-    45: { description: 'туман', emoji: '🌫️' },
-    48: { description: 'туман', emoji: '🌫️' },
-    51: { description: 'мряка', emoji: '🌦️' },
-    53: { description: 'мряка', emoji: '🌦️' },
-    55: { description: 'дощ', emoji: '🌧️' },
-    61: { description: 'невеликий дощ', emoji: '🌦️' },
-    63: { description: 'дощ', emoji: '🌧️' },
-    65: { description: 'сильний дощ', emoji: '⛈️' },
-    71: { description: 'невеликий сніг', emoji: '🌨️' },
-    73: { description: 'сніг', emoji: '❄️' },
-    75: { description: 'сильний сніг', emoji: '❄️' },
-    80: { description: 'злива', emoji: '🌧️' },
-    81: { description: 'злива', emoji: '⛈️' },
-    82: { description: 'сильна злива', emoji: '⛈️' },
-    85: { description: 'сніг', emoji: '❄️' },
-    86: { description: 'сильний сніг', emoji: '❄️' },
-    95: { description: 'гроза', emoji: '⛈️' },
-    96: { description: 'гроза з градом', emoji: '⛈️' },
-    99: { description: 'гроза з градом', emoji: '⛈️' },
+function getWeatherInfo(code: number, language: 'en' | 'no' | 'ua'): { description: string; emoji: string } {
+  const weatherKeyMap: Record<number, string> = {
+    0: 'weather_clear',
+    1: 'weather_mainly_clear',
+    2: 'weather_partly_cloudy',
+    3: 'weather_overcast',
+    45: 'weather_fog',
+    48: 'weather_fog',
+    51: 'weather_drizzle',
+    53: 'weather_drizzle',
+    55: 'weather_rain',
+    61: 'weather_rain',
+    63: 'weather_rain',
+    65: 'weather_heavy_rain',
+    71: 'weather_light_snow',
+    73: 'weather_snow',
+    75: 'weather_heavy_snow',
+    80: 'weather_rain_showers',
+    81: 'weather_rain_showers',
+    82: 'weather_rain_showers',
+    85: 'weather_snow',
+    86: 'weather_heavy_snow',
+    95: 'weather_thunderstorm',
+    96: 'weather_thunderstorm',
+    99: 'weather_thunderstorm',
   };
 
-  return weatherMap[code] || { description: 'хмарно', emoji: '☁️' };
+  const emojiMap: Record<number, string> = {
+    0: '☀️',
+    1: '🌤️',
+    2: '⛅',
+    3: '☁️',
+    45: '🌫️',
+    48: '🌫️',
+    51: '🌦️',
+    53: '🌦️',
+    55: '🌧️',
+    61: '🌦️',
+    63: '🌧️',
+    65: '⛈️',
+    71: '🌨️',
+    73: '❄️',
+    75: '❄️',
+    80: '🌧️',
+    81: '⛈️',
+    82: '⛈️',
+    85: '❄️',
+    86: '❄️',
+    95: '⛈️',
+    96: '⛈️',
+    99: '⛈️',
+  };
+
+  const key = weatherKeyMap[code] || 'weather_partly_cloudy';
+  const emoji = emojiMap[code] || '☁️';
+
+  // Import translations dynamically based on language
+  const translations = {
+    en: {
+      weather_clear: 'clear sky',
+      weather_mainly_clear: 'mainly clear',
+      weather_partly_cloudy: 'partly cloudy',
+      weather_overcast: 'overcast',
+      weather_fog: 'fog',
+      weather_drizzle: 'drizzle',
+      weather_rain: 'rain',
+      weather_heavy_rain: 'heavy rain',
+      weather_light_snow: 'light snow',
+      weather_snow: 'snow',
+      weather_heavy_snow: 'heavy snow',
+      weather_rain_showers: 'rain showers',
+      weather_thunderstorm: 'thunderstorm',
+    },
+    no: {
+      weather_clear: 'klar himmel',
+      weather_mainly_clear: 'hovedsakelig klart',
+      weather_partly_cloudy: 'delvis skyet',
+      weather_overcast: 'overskyet',
+      weather_fog: 'tåke',
+      weather_drizzle: 'yr',
+      weather_rain: 'regn',
+      weather_heavy_rain: 'kraftig regn',
+      weather_light_snow: 'lett snø',
+      weather_snow: 'snø',
+      weather_heavy_snow: 'kraftig snø',
+      weather_rain_showers: 'regnbyger',
+      weather_thunderstorm: 'tordenvær',
+    },
+    ua: {
+      weather_clear: 'ясно',
+      weather_mainly_clear: 'переважно ясно',
+      weather_partly_cloudy: 'хмарно',
+      weather_overcast: 'похмуро',
+      weather_fog: 'туман',
+      weather_drizzle: 'мряка',
+      weather_rain: 'дощ',
+      weather_heavy_rain: 'сильний дощ',
+      weather_light_snow: 'невеликий сніг',
+      weather_snow: 'сніг',
+      weather_heavy_snow: 'сильний сніг',
+      weather_rain_showers: 'злива',
+      weather_thunderstorm: 'гроза',
+    },
+  };
+
+  return {
+    description: translations[language][key as keyof typeof translations.en],
+    emoji,
+  };
 }
 
 /**
  * Get weather data from Open-Meteo API
  */
-async function getWeather(latitude: number, longitude: number): Promise<WeatherData> {
+async function getWeather(latitude: number, longitude: number, language: 'en' | 'no' | 'ua'): Promise<WeatherData> {
   const cached = getCachedWeather();
   if (cached) return cached;
 
@@ -146,7 +277,7 @@ async function getWeather(latitude: number, longitude: number): Promise<WeatherD
 
     const data = await response.json();
     const current = data.current_weather;
-    const { description, emoji } = getWeatherInfo(current.weathercode);
+    const { description, emoji } = getWeatherInfo(current.weathercode, language);
 
     return {
       temperature: Math.round(current.temperature),
@@ -195,13 +326,13 @@ function toRadians(degrees: number): number {
 /**
  * Fetch all footer data (location, weather, distance)
  */
-export async function fetchFooterData(): Promise<FooterData> {
+export async function fetchFooterData(language: 'en' | 'no' | 'ua' = 'en'): Promise<FooterData> {
   try {
     // Get user location
     const location = await getUserLocation();
 
     // Get weather for user's location
-    const weather = await getWeather(location.latitude, location.longitude);
+    const weather = await getWeather(location.latitude, location.longitude, language);
 
     // Calculate distance
     const distance = calculateDistance(
@@ -221,11 +352,18 @@ export async function fetchFooterData(): Promise<FooterData> {
     };
   } catch (error) {
     console.error('Error fetching footer data:', error);
+
+    const errorMessages = {
+      en: 'Could not retrieve location data',
+      no: 'Kunne ikke hente stedsdata',
+      ua: 'Не вдалося отримати дані про локацію',
+    };
+
     return {
       userLocation: null,
       weather: null,
       distance: null,
-      error: 'Не вдалося отримати дані про локацію',
+      error: errorMessages[language],
     };
   }
 }

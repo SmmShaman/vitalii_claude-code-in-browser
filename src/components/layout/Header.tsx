@@ -48,8 +48,8 @@ export const Header = ({ isCompact = false }: HeaderProps) => {
               onClick={() => setCurrentLanguage(lang)}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-all duration-300 ${
                 currentLanguage === lang
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-400/30'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80 border border-white/10'
+                  ? 'bg-gray-200/80 text-black border border-gray-300'
+                  : 'bg-white/70 text-black/70 hover:bg-white/90 hover:text-black border border-gray-200'
               }`}
               aria-label={`Switch to ${lang}`}
             >
