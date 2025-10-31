@@ -435,7 +435,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   return (
     <>
       <div className={`h-full w-full ${selectedNewsId || selectedBlogId ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'} flex items-start justify-center px-4`}>
-        <div className={`w-full flex flex-col items-center justify-start py-4`}>
+        <div className={`w-full flex flex-col items-center justify-start`}>
           <LayoutGroup>
             <div
               ref={gridContainerRef}
