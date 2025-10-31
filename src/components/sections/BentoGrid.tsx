@@ -561,12 +561,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Skills: НІКОЛИ не рухається, завжди на місці
                   if (section.id === 'skills') {
-                    return { opacity: 1, y: 0 };
+                    return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Blog: НІКОЛИ не рухається, завжди на місці
                   if (section.id === 'blog') {
-                    return { opacity: 1, y: 0 };
+                    return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Hide all windows except News when news item is being selected
