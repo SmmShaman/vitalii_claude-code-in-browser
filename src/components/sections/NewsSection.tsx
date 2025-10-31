@@ -12,6 +12,33 @@ interface NewsSectionProps {
   onBack?: () => void;
 }
 
+// Helper function to extract YouTube video ID from URL
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+
+  // Handle different YouTube URL formats
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/,
+    /^([a-zA-Z0-9_-]{11})$/ // Direct video ID
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
+  return null;
+};
+
+// Helper function to get YouTube thumbnail URL
+const getYouTubeThumbnail = (videoUrl: string): string | null => {
+  const videoId = getYouTubeVideoId(videoUrl);
+  if (!videoId) return null;
+
+  // Use high quality thumbnail (hqdefault = 480x360)
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+};
+
 const NewsSectionComponent = ({
   isExpanded = false,
   selectedNewsId = null,
@@ -333,27 +360,69 @@ const NewsSectionComponent = ({
 
                       {/* Square Image/Video Thumbnail - Right Side */}
                       {(newsItem.image_url || newsItem.video_url) && (
-                        <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
-                          {newsItem.image_url ? (
-                            <img
-                              src={newsItem.image_url}
-                              alt={String(content.title)}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 flex items-center justify-center">
-                              <Video className="w-8 h-8 text-white/30" />
-                            </div>
-                          )}
+                        <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-slate-900">
+                          {(() => {
+                            // Priority 1: Use image_url if available
+                            if (newsItem.image_url) {
+                              return (
+                                <img
+                                  src={newsItem.image_url}
+                                  alt={String(content.title)}
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                />
+                              );
+                            }
+
+                            // Priority 2: Generate thumbnail from video
+                            if (newsItem.video_url) {
+                              // For YouTube videos - use YouTube thumbnail
+                              if (newsItem.video_type === 'youtube' || newsItem.video_url.includes('youtube.com') || newsItem.video_url.includes('youtu.be')) {
+                                const thumbnailUrl = getYouTubeThumbnail(newsItem.video_url);
+                                if (thumbnailUrl) {
+                                  return (
+                                    <img
+                                      src={thumbnailUrl}
+                                      alt={String(content.title)}
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                    />
+                                  );
+                                }
+                              }
+
+                              // For direct video URLs and Telegram - use video element as thumbnail
+                              if (newsItem.video_type === 'direct_url' || newsItem.video_url.includes('.mp4') || newsItem.video_url.includes('telesco.pe')) {
+                                return (
+                                  <video
+                                    src={newsItem.video_url}
+                                    className="w-full h-full object-cover"
+                                    preload="metadata"
+                                    muted
+                                    playsInline
+                                  />
+                                );
+                              }
+                            }
+
+                            // Fallback: gradient placeholder
+                            return (
+                              <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 flex items-center justify-center">
+                                <Video className="w-8 h-8 text-white/30" />
+                              </div>
+                            );
+                          })()}
+
+                          {/* Play button overlay for videos */}
                           {newsItem.video_url && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                              <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                                 <svg className="w-5 h-5 text-black ml-0.5" fill="currentColor" viewBox="0 0 16 16">
                                   <path d="M4 2v12l10-6L4 2z"/>
                                 </svg>
                               </div>
                             </div>
                           )}
+
+                          {/* Hover overlay gradient */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </div>
                       )}

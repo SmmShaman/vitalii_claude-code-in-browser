@@ -103,16 +103,6 @@ export const getLatestNews = async (limit: number = 3) => {
     return [];
   }
 
-  // Debug: Log raw data from database
-  console.log('📰 Raw news data from DB - Total items:', data?.length);
-  console.table(data?.map(item => ({
-    title: item.title_en?.substring(0, 30),
-    has_video: !!item.video_url,
-    video_url: item.video_url?.substring(0, 50),
-    video_type: item.video_type,
-    has_image: !!item.image_url
-  })));
-
   // Transform data to match LatestNews type structure
   const transformedData = data?.map(item => ({
     id: item.id,
@@ -133,18 +123,10 @@ export const getLatestNews = async (limit: number = 3) => {
     source_category: (item as any).news_sources?.category || null,
   })) || [];
 
-  // Debug: Log video items with details
-  const videoItems = transformedData.filter(item => item.video_url);
-  console.log('📹 Found', videoItems.length, 'video items out of', transformedData.length, 'total');
-
-  videoItems.forEach((item, index) => {
-    console.log(`📹 Video ${index + 1}:`, {
-      title: item.title_en,
-      video_url: item.video_url,
-      video_type: item.video_type,
-      has_image: !!item.image_url
-    });
-  });
+  // Summary log
+  const videoCount = transformedData.filter(item => item.video_url).length;
+  const imageCount = transformedData.filter(item => item.image_url).length;
+  console.log(`📰 Loaded ${transformedData.length} news: ${videoCount} with video, ${imageCount} with images`);
 
   return transformedData;
 };
