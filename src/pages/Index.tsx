@@ -78,24 +78,34 @@ export const Index = () => {
       >
         {!isFullscreen && (
           <div
-            className="text-center w-full max-w-7xl mx-auto h-full flex flex-col items-center justify-start px-4 sm:px-6 md:px-8 pt-8"
+            className="text-center w-full max-w-7xl mx-auto h-full flex flex-col items-center justify-start px-2 sm:px-4 md:px-6 pt-8"
           >
             <h1
               className="font-bold text-black mb-0.5 leading-tight"
-              style={{ fontSize: 'clamp(1.75rem, 3.5vw, 3rem)' }}
+              style={{
+                fontSize: 'clamp(1rem, 3vw, 2.5rem)',
+                whiteSpace: 'nowrap',
+                overflow: 'visible'
+              }}
             >
               {renderTitle()}
             </h1>
             <h2
               className="text-black mt-2 leading-tight"
-              style={{ fontSize: 'clamp(1rem, 2vw, 1.5rem)' }}
+              style={{
+                fontSize: 'clamp(0.75rem, 1.8vw, 1.25rem)',
+                whiteSpace: 'nowrap',
+                overflow: 'visible'
+              }}
             >
               {t('subtitle')}
             </h2>
             <p
               className="text-black mt-1.5 leading-tight font-medium"
               style={{
-                fontSize: 'clamp(0.75rem, 1.2vw, 0.875rem)'
+                fontSize: 'clamp(0.65rem, 1.2vw, 0.875rem)',
+                whiteSpace: 'nowrap',
+                overflow: 'visible'
               }}
             >
               {t('description')}
