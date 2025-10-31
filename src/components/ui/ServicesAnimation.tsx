@@ -359,7 +359,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
             <div
               className="service-text font-bold uppercase text-center px-4"
               style={{
-                fontSize: isHovered ? hoverFontSize : 'clamp(1.5rem, 4vw, 3rem)',
+                fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
                 fontWeight: 900,
                 color: '#1a1a1a',
                 lineHeight: 1.3,
