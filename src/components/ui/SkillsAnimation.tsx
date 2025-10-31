@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSkillLogo } from '../../utils/skillLogos';
+import { useState, useEffect } from 'react';
 
 interface Skill {
   name: string;
@@ -10,6 +11,7 @@ interface SkillsAnimationProps {
   skills: Skill[];
   backgroundText: string;
   isExploding?: boolean;
+  gridContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 // Color mapping for skill categories
@@ -46,24 +48,39 @@ const categoryColors: Record<string, { bg: string; text: string; hover: string }
   },
 };
 
-export const SkillsAnimation = ({ skills, backgroundText, isExploding = false }: SkillsAnimationProps) => {
+export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, gridContainerRef }: SkillsAnimationProps) => {
+  const [gridBounds, setGridBounds] = useState<DOMRect | null>(null);
+
+  // Get grid bounds when exploding
+  useEffect(() => {
+    if (isExploding && gridContainerRef?.current) {
+      const bounds = gridContainerRef.current.getBoundingClientRect();
+      setGridBounds(bounds);
+    }
+  }, [isExploding, gridContainerRef]);
+
   const getColorClasses = (category?: string) => {
     return categoryColors[category || 'development'] || categoryColors.development;
   };
 
-  // Calculate evenly distributed positions for logos
+  // Calculate evenly distributed positions for logos across grid area
   const getLogoPosition = (index: number, total: number) => {
+    if (!gridBounds) return { left: '50%', top: '50%' };
+
     const cols = Math.ceil(Math.sqrt(total));
     const rows = Math.ceil(total / cols);
 
     const col = index % cols;
     const row = Math.floor(index / cols);
 
-    // Distribute evenly across screen
-    const x = (col / (cols - 1 || 1)) * 80 + 10; // 10-90% width
-    const y = (row / (rows - 1 || 1)) * 80 + 10; // 10-90% height
+    // Distribute evenly across grid bounds
+    const xPercent = (col / (cols - 1 || 1));
+    const yPercent = (row / (rows - 1 || 1));
 
-    return { x: `${x}%`, y: `${y}%` };
+    const left = gridBounds.left + (gridBounds.width * xPercent * 0.9) + (gridBounds.width * 0.05);
+    const top = gridBounds.top + (gridBounds.height * yPercent * 0.9) + (gridBounds.height * 0.05);
+
+    return { left: `${left}px`, top: `${top}px` };
   };
 
   return (
@@ -80,10 +97,10 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false }:
 
       <AnimatePresence mode="wait">
         {isExploding ? (
-          /* Exploding logos view */
+          /* Exploding logos view - fixed positioning to cover entire grid area */
           <motion.div
             key="logos"
-            className="absolute inset-0 z-10"
+            className="fixed inset-0 z-[100]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -91,29 +108,32 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false }:
           >
             {skills.map((skill, index) => {
               const pos = getLogoPosition(index, skills.length);
+              const centerX = gridBounds ? gridBounds.left + gridBounds.width / 2 : window.innerWidth / 2;
+              const centerY = gridBounds ? gridBounds.top + gridBounds.height / 2 : window.innerHeight / 2;
+
               return (
                 <motion.div
                   key={`logo-${index}`}
-                  className="absolute"
+                  className="fixed"
                   initial={{
-                    left: '50%',
-                    top: '50%',
+                    left: centerX,
+                    top: centerY,
                     x: '-50%',
                     y: '-50%',
                     scale: 0,
                     opacity: 0
                   }}
                   animate={{
-                    left: pos.x,
-                    top: pos.y,
+                    left: pos.left,
+                    top: pos.top,
                     x: '-50%',
                     y: '-50%',
                     scale: 1,
                     opacity: 1
                   }}
                   exit={{
-                    left: '50%',
-                    top: '50%',
+                    left: centerX,
+                    top: centerY,
                     scale: 0,
                     opacity: 0
                   }}

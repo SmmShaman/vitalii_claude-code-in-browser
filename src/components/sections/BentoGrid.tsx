@@ -523,8 +523,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Fixed gap for uniform spacing on all screen sizes
                   const gapSize = GAP_SIZE;
 
-                  // Hide all windows except Skills when Skills is exploding
-                  if (section.id !== 'skills' && isSkillsExploding) {
+                  // Hide ALL 6 windows when Skills is exploding (logos will show on top)
+                  if (isSkillsExploding) {
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -720,6 +720,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                         skills={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].skills_list}
                         backgroundText={t('skills_title') as string}
                         isExploding={isSkillsExploding}
+                        gridContainerRef={gridContainerRef}
                       />
                     </div>
                   ) : section.id === 'news' ? (
