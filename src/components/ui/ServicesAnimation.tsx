@@ -22,6 +22,8 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   const [hoverFontSize, setHoverFontSize] = useState('2rem');
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const intervalRef = useRef<number | null>(null);
+  const retryCountRef = useRef<number>(0);
+  const maxRetries = 10;
 
   // Calculate optimal font size for all services to fit
   useEffect(() => {
@@ -62,14 +64,28 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
 
     const container = containerRef.current;
 
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(() => {
+    // Function to check if elements have text content
+    const hasTextContent = (elements: NodeListOf<Element>): boolean => {
+      return Array.from(elements).some(el => {
+        const text = el.querySelector('.service-text');
+        return text && text.textContent && text.textContent.trim().length > 0;
+      });
+    };
+
+    // Function to initialize animations
+    const initAnimation = (): boolean => {
       const serviceElements = container.querySelectorAll('.service-item');
 
       // Guard: Check if service elements exist
       if (!serviceElements || serviceElements.length === 0) {
         console.warn('ServicesAnimation: No service elements found');
-        return;
+        return false;
+      }
+
+      // Guard: Check if elements have text content
+      if (!hasTextContent(serviceElements)) {
+        console.warn('ServicesAnimation: Text elements are empty, retrying...');
+        return false;
       }
 
       // Clean up previous animations
@@ -117,7 +133,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
             }
           );
         });
-        return;
+        return true;
       }
 
       // Animation for single service rotation
@@ -220,7 +236,32 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       intervalRef.current = window.setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % services.length);
       }, 3000);
-    });
+
+      return true;
+    };
+
+    // Retry logic with multiple attempts
+    const tryInitAnimation = () => {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        const success = initAnimation();
+
+        if (success) {
+          console.log('✅ ServicesAnimation: Started successfully');
+          retryCountRef.current = 0;
+        } else if (retryCountRef.current < maxRetries) {
+          retryCountRef.current++;
+          console.log(`🔄 ServicesAnimation: Retry ${retryCountRef.current}/${maxRetries}`);
+          setTimeout(tryInitAnimation, 100); // Retry after 100ms
+        } else {
+          console.error(`❌ ServicesAnimation: Failed after ${maxRetries} attempts`);
+          retryCountRef.current = 0;
+        }
+      });
+    };
+
+    // Start initialization with retry logic
+    tryInitAnimation();
 
     return () => {
       if (timelineRef.current) {
