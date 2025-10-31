@@ -65,7 +65,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     const gtl = gsap.timeline({
       defaults: {
         ease: 'power3.inOut',
-        duration: 2.5
+        duration: 4.0
       },
       repeat: -1
     });
@@ -148,7 +148,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       immediateRender: false
     });
 
-    gtl.timeScale(3);
+    gtl.timeScale(1.2);
 
     timelineRef.current = gtl;
 

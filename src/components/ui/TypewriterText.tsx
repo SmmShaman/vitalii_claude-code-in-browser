@@ -129,7 +129,10 @@ export const TypewriterText = ({
     >
       <div
         className="text-gray-800 leading-snug whitespace-pre-wrap break-words"
-        style={{ fontSize: 'clamp(0.7rem, 1.2vw, 1rem)' }}
+        style={{
+          fontSize: 'clamp(0.7rem, 1.2vw, 1rem)',
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        }}
       >
         {formatText(displayedText)}
         {showCursor && (
