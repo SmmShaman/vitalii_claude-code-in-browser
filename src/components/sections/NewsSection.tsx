@@ -334,11 +334,17 @@ const NewsSectionComponent = ({
                       {/* Square Image/Video Thumbnail - Right Side */}
                       {(newsItem.image_url || newsItem.video_url) && (
                         <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
-                          <img
-                            src={newsItem.image_url || 'https://via.placeholder.com/96x96?text=Video'}
-                            alt={String(content.title)}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          />
+                          {newsItem.image_url ? (
+                            <img
+                              src={newsItem.image_url}
+                              alt={String(content.title)}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 flex items-center justify-center">
+                              <Video className="w-8 h-8 text-white/30" />
+                            </div>
+                          )}
                           {newsItem.video_url && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                               <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
