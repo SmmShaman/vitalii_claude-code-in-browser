@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { animate, splitText, stagger } from 'animejs';
+import { splitText, stagger, createTimeline } from 'animejs';
 
 interface AnimatedDescriptionProps {
   text: string;
@@ -8,36 +8,63 @@ interface AnimatedDescriptionProps {
 export const AnimatedDescription = ({ text }: AnimatedDescriptionProps) => {
   const containerRef = useRef<HTMLParagraphElement>(null);
   const splitRef = useRef<any>(null);
+  const timelineRef = useRef<any>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Clean up previous split
+    // Clean up previous animations
+    if (timelineRef.current) {
+      timelineRef.current.pause();
+      timelineRef.current = null;
+    }
+
     if (splitRef.current) {
       splitRef.current.revert();
     }
 
-    // Split text into lines
+    // Split text into characters with 3D structure
     splitRef.current = splitText(containerRef.current, {
-      lines: { wrap: 'clip' },
+      chars: `<span class="char-3d char-{i}">
+        <em class="face face-top">{value}</em>
+        <em class="face face-front">{value}</em>
+        <em class="face face-bottom">{value}</em>
+      </span>`,
     });
 
-    // Add animation effect to lines
-    splitRef.current.addEffect(({ lines }: any) => {
-      return animate(lines, {
-        y: [
-          { to: ['100%', '0%'] },
-          { to: '-100%', delay: 2000, ease: 'in(3)' }  // Increased from 750 to 2000ms
-        ],
-        duration: 750,
-        ease: 'out(3)',
-        delay: stagger(200),
+    // Create stagger timing
+    const charsStagger = stagger(50, { start: 0 });
+
+    // Create 3D rotation animation timeline
+    timelineRef.current = createTimeline({
+      defaults: {
+        ease: 'inOut(2)',
         loop: true,
-        loopDelay: 1500,  // Increased from 500 to 1500ms
-      });
-    });
+        duration: 600,
+      }
+    })
+    .add('.char-3d', { rotateX: [0, -90], delay: charsStagger })
+    .add('.char-3d .face-top', { opacity: [0.5, 0], delay: charsStagger }, 0)
+    .add('.char-3d .face-front', { opacity: [1, 0.5], delay: charsStagger }, 0)
+    .add('.char-3d .face-bottom', { opacity: [0, 1], delay: charsStagger }, 0)
+    .add('.char-3d', { rotateX: [-90, -180], delay: charsStagger }, 600)
+    .add('.char-3d .face-top', { opacity: [0, 0.5], delay: charsStagger }, 600)
+    .add('.char-3d .face-front', { opacity: [0.5, 0], delay: charsStagger }, 600)
+    .add('.char-3d .face-bottom', { opacity: [1, 0.5], delay: charsStagger }, 600)
+    .add('.char-3d', { rotateX: [-180, -270], delay: charsStagger }, 1200)
+    .add('.char-3d .face-top', { opacity: [0.5, 1], delay: charsStagger }, 1200)
+    .add('.char-3d .face-front', { opacity: [0, 0.5], delay: charsStagger }, 1200)
+    .add('.char-3d .face-bottom', { opacity: [0.5, 0], delay: charsStagger }, 1200)
+    .add('.char-3d', { rotateX: [-270, -360], delay: charsStagger }, 1800)
+    .add('.char-3d .face-top', { opacity: [1, 0.5], delay: charsStagger }, 1800)
+    .add('.char-3d .face-front', { opacity: [0.5, 1], delay: charsStagger }, 1800)
+    .add('.char-3d .face-bottom', { opacity: [0, 0], delay: charsStagger }, 1800);
 
     return () => {
+      if (timelineRef.current) {
+        timelineRef.current.pause();
+        timelineRef.current = null;
+      }
       if (splitRef.current) {
         splitRef.current.revert();
       }
@@ -47,8 +74,12 @@ export const AnimatedDescription = ({ text }: AnimatedDescriptionProps) => {
   return (
     <p
       ref={containerRef}
-      className="text-white mt-1.5 leading-tight"
-      style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)' }}
+      className="text-white mt-1.5 leading-tight char-3d-container"
+      style={{
+        fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)',
+        perspective: '600px',
+        perspectiveOrigin: '50% 50%'
+      }}
     >
       {text}
     </p>
