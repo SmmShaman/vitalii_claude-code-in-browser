@@ -27,37 +27,37 @@ const sections: Section[] = [
     id: 'about',
     titleKey: 'about_title',
     contentKey: 'about_content',
-    image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158',
+    image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80&fm=webp',
   },
   {
     id: 'services',
     titleKey: 'services_title',
     contentKey: 'services_content',
-    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40',
+    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&q=80&fm=webp',
   },
   {
     id: 'projects',
     titleKey: 'projects_title',
     contentKey: 'projects_content',
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80&fm=webp',
   },
   {
     id: 'skills',
     titleKey: 'skills_title',
     contentKey: 'skills_content',
-    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3',
+    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80&fm=webp',
   },
   {
     id: 'news',
     titleKey: 'news_title',
     contentKey: 'news_description',
-    image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c',
+    image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80&fm=webp',
   },
   {
     id: 'blog',
     titleKey: 'blog_title',
     contentKey: 'blog_description',
-    image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643',
+    image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&q=80&fm=webp',
   },
 ];
 
@@ -85,9 +85,11 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const [isHidingAllForNews, setIsHidingAllForNews] = useState(false);
   const [isHidingAllForBlog, setIsHidingAllForBlog] = useState(false);
   const [totalGridHeight, setTotalGridHeight] = useState<number>(0);
+  const [isSkillsExploding, setIsSkillsExploding] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
+  const skillsTimeoutRef = useRef<number | null>(null);
 
   const handleNewsClick = () => {
     console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded, 'selectedNewsId:', selectedNewsId);
@@ -335,6 +337,26 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     }
   };
 
+  const handleSkillsClick = () => {
+    console.log('🎯 handleSkillsClick called');
+
+    // Clear any existing timeout
+    if (skillsTimeoutRef.current) {
+      clearTimeout(skillsTimeoutRef.current);
+      skillsTimeoutRef.current = null;
+    }
+
+    // Start explosion animation
+    setIsSkillsExploding(true);
+
+    // After 3 seconds, return to normal
+    skillsTimeoutRef.current = window.setTimeout(() => {
+      console.log('⏰ Returning Skills to normal');
+      setIsSkillsExploding(false);
+      skillsTimeoutRef.current = null;
+    }, 3000);
+  };
+
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
@@ -358,6 +380,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       if (!isBlogExpanded || !selectedBlogId) {
         handleBlogClick();
       }
+      return;
+    }
+
+    // Handle skills explosion animation
+    if (section.id === 'skills') {
+      handleSkillsClick();
       return;
     }
 
@@ -494,6 +522,15 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 const getAnimatedProps = () => {
                   // Fixed gap for uniform spacing on all screen sizes
                   const gapSize = GAP_SIZE;
+
+                  // Hide all windows except Skills when Skills is exploding
+                  if (section.id !== 'skills' && isSkillsExploding) {
+                    console.log('🎬 Animating', section.id, 'opacity to 0 (hiding for skills explosion)');
+                    return {
+                      opacity: 0,
+                      scale: 0.95,
+                    };
+                  }
 
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
@@ -691,6 +728,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       <SkillsAnimation
                         skills={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].skills_list}
                         backgroundText={t('skills_title') as string}
+                        isExploding={isSkillsExploding}
                       />
                     </div>
                   ) : section.id === 'news' ? (

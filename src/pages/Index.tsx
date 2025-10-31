@@ -34,16 +34,19 @@ export const Index = () => {
               whiteSpace: 'nowrap'
             }}
           >
-            <span className="text-amber-400">{t('title')}</span>
+            <span className="text-amber-400">{t('title')}</span>{' '}
+            <span className="font-semibold" style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1.25rem)' }}>
+              {t('subtitle')}
+            </span>
           </h1>
           <h2
-            className="font-semibold text-black mt-1"
+            className="text-black mt-1"
             style={{
-              fontSize: 'clamp(0.75rem, 1.5vw, 1.25rem)',
+              fontSize: 'clamp(0.65rem, 1.2vw, 0.875rem)',
               whiteSpace: 'nowrap'
             }}
           >
-            {t('subtitle')}
+            {t('description')}
           </h2>
         </div>
       </div>
