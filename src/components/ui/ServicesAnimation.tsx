@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 
@@ -17,219 +17,166 @@ interface ServicesAnimationProps {
 
 export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const wheelRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || !wheelRef.current) return;
+    if (!containerRef.current) return;
 
-    // Clean up previous timeline
+    const container = containerRef.current;
+    const serviceElements = container.querySelectorAll('.service-item');
+
+    // Clean up previous animations
     if (timelineRef.current) {
       timelineRef.current.kill();
     }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
 
-    // Get computed font size
-    const fontSize = 32; // Reduced for more compact display
-    const txtElements = wheelRef.current.querySelectorAll('.txt');
-    const numLines = txtElements.length;
+    // If hovered, show all services
+    if (isHovered) {
+      gsap.set(serviceElements, { autoAlpha: 1, scale: 1, y: 0 });
 
-    // Calculate radius with larger multiplier for better spacing
-    const radius = (fontSize * 1.5) / Math.sin((180 / numLines) * (Math.PI / 180));
-    const angle = 360 / numLines;
-    const origin = `50% 50% -${radius}px`;
-
-    // Split text into characters (split by lines first to preserve word structure)
-    txtElements.forEach((txt) => {
-      const lines = txt.querySelectorAll('.service-line');
-      lines.forEach((line) => {
-        new SplitText(line, {
-          type: 'chars',
-          charsClass: 'char',
-          position: 'absolute'
-        });
+      // Animate chars for all services
+      serviceElements.forEach((element) => {
+        const chars = element.querySelectorAll('.char');
+        gsap.fromTo(
+          chars,
+          {
+            opacity: 0,
+            x: () => Math.random() * 200 - 100,
+            y: () => Math.random() * 200 - 100,
+            rotation: () => Math.random() * 720 - 360,
+            scale: 0,
+          },
+          {
+            duration: 0.8,
+            opacity: 1,
+            x: 0,
+            y: 0,
+            rotation: 0,
+            scale: 1,
+            ease: 'back.out(1.7)',
+            stagger: {
+              amount: 0.5,
+              from: 'random',
+            },
+          }
+        );
       });
-    });
+      return;
+    }
 
-    // Position text elements around the wheel
-    gsap.set('.txt', {
-      rotationX: (index) => angle * index,
-      z: radius,
-      transformOrigin: origin
-    });
+    // Animation for single service rotation
+    const animateService = (index: number) => {
+      // Hide all services
+      gsap.set(serviceElements, { autoAlpha: 0 });
 
-    // Make container visible
-    gsap.set(containerRef.current, { autoAlpha: 1 });
+      const currentElement = serviceElements[index] as HTMLElement;
+      if (!currentElement) return;
 
-    // Create main timeline with enhanced effects
-    const charEase = 'elastic.inOut(1, 0.5)';
-    const gtl = gsap.timeline({
-      defaults: {
-        ease: 'power3.inOut',
-        duration: 4.0
-      },
-      repeat: -1
-    });
+      // Show current service
+      gsap.set(currentElement, { autoAlpha: 1 });
 
-    gtl.to(wheelRef.current, {
-      rotationX: -90,
-      transformOrigin: '50% 50%',
-      ease: 'power2.inOut'
-    })
-    .to('.char:nth-child(even)', {
-      rotationY: 25,
-      z: 80,
-      transformOrigin: origin,
-      duration: 2,
-      ease: 'back.out(1.5)'
-    }, '-=1.5')
-    .to('.char:nth-child(odd)', {
-      fontWeight: 100,
-      scale: 0.8,
-      ease: charEase
-    }, '-=2')
-    .to(wheelRef.current, {
-      rotationX: -180,
-      transformOrigin: '50% 50%'
-    }, '-=0.3')
-    .to('.char:nth-child(odd)', {
-      rotationY: -25,
-      z: 80,
-      transformOrigin: origin,
-      duration: 2,
-      ease: 'back.out(1.5)'
-    }, '-=1.5')
-    .to('.char:nth-child(even)', {
-      fontWeight: 100,
-      scale: 0.8,
-      ease: charEase
-    }, '-=2')
-    .to(wheelRef.current, {
-      rotationX: -270,
-      transformOrigin: '50% 50%'
-    }, '-=0.3')
-    .to('.char:nth-child(even)', {
-      rotationY: 25,
-      z: 80,
-      transformOrigin: origin,
-      duration: 2,
-      ease: 'back.out(1.5)'
-    }, '-=1.5')
-    .to('.char:nth-child(odd)', {
-      fontWeight: 900,
-      scale: 1.2,
-      ease: charEase
-    }, '-=2')
-    .to(wheelRef.current, {
-      rotationX: -360,
-      transformOrigin: '50% 50%'
-    }, '-=0.3')
-    .to('.char:nth-child(odd)', {
-      rotationY: 0,
-      z: 0,
-      transformOrigin: origin,
-      duration: 2
-    }, '-=1.5')
-    .to('.char:nth-child(even)', {
-      fontWeight: 900,
-      scale: 1,
-      rotationY: 0,
-      z: 0,
-      ease: charEase
-    }, '-=2')
-    .set('.char', {
-      rotationX: 0,
-      rotationY: 0,
-      z: 0,
-      scale: 1,
-      immediateRender: false
-    })
-    .set(wheelRef.current, {
-      rotationX: 0,
-      immediateRender: false
-    });
+      // Split text into characters
+      const text = currentElement.querySelector('.service-text');
+      if (!text) return;
 
-    gtl.timeScale(1.2);
+      // Clean up old split
+      const oldChars = text.querySelectorAll('.char');
+      oldChars.forEach((char) => char.remove());
 
-    timelineRef.current = gtl;
+      const split = new SplitText(text, {
+        type: 'chars',
+        charsClass: 'char',
+      });
+
+      const chars = split.chars;
+
+      // Animate chars gathering
+      const tl = gsap.timeline();
+
+      tl.fromTo(
+        chars,
+        {
+          opacity: 0,
+          x: () => (Math.random() - 0.5) * 400,
+          y: () => (Math.random() - 0.5) * 400,
+          rotation: () => (Math.random() - 0.5) * 720,
+          scale: 0,
+        },
+        {
+          duration: 2,
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: 1,
+          ease: 'elastic.out(1, 0.5)',
+          stagger: {
+            amount: 0.8,
+            from: 'random',
+          },
+        }
+      );
+
+      // Hold for 1 second
+      tl.to({}, { duration: 1 });
+
+      timelineRef.current = tl;
+    };
+
+    // Start animation with first service
+    animateService(currentIndex);
+
+    // Set interval to rotate services (2s animation + 1s hold = 3s total)
+    intervalRef.current = window.setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % services.length);
+    }, 3000);
 
     return () => {
       if (timelineRef.current) {
         timelineRef.current.kill();
       }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
-  }, [services]);
+  }, [services, currentIndex, isHovered]);
 
   return (
     <div
       ref={containerRef}
       className="h-full w-full flex items-center justify-center relative overflow-hidden"
-      style={{
-        perspective: '800px',
-        visibility: 'hidden',
-        opacity: 0,
-      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        ref={wheelRef}
-        className="relative w-full h-full"
-        style={{
-          transformStyle: 'preserve-3d',
-        }}
-      >
-        {services.map((service, index) => {
-          // Split service title into lines if it's too long or has multiple words
-          const words = service.title.split(/\s+/);
-          const lines: string[] = [];
-
-          // Group words into lines (max 3 words per line or if "&" present, split there)
-          if (words.length <= 2) {
-            lines.push(service.title);
-          } else {
-            // Find natural break points like "&", "and", "та"
-            const breakIndex = words.findIndex(w => w === '&' || w.toLowerCase() === 'and' || w === 'та');
-            if (breakIndex > 0) {
-              lines.push(words.slice(0, breakIndex + 1).join(' '));
-              lines.push(words.slice(breakIndex + 1).join(' '));
-            } else {
-              // Split roughly in half
-              const mid = Math.ceil(words.length / 2);
-              lines.push(words.slice(0, mid).join(' '));
-              lines.push(words.slice(mid).join(' '));
-            }
-          }
-
-          return (
+      <div className="relative w-full h-full flex flex-col items-center justify-center gap-4">
+        {services.map((service, index) => (
+          <div
+            key={index}
+            className="service-item absolute inset-0 flex items-center justify-center"
+            style={{
+              visibility: 'hidden',
+              opacity: 0,
+            }}
+          >
             <div
-              key={index}
-              className="txt absolute m-0 font-bold uppercase"
+              className="service-text font-bold uppercase text-center px-4"
               style={{
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                fontSize: 'clamp(1rem, 2vw, 2rem)',
+                fontSize: 'clamp(1.5rem, 4vw, 3rem)',
                 fontWeight: 900,
-                textTransform: 'uppercase',
-                backfaceVisibility: 'hidden',
-                transformStyle: 'preserve-3d',
-                lineHeight: 1.2,
-                textAlign: 'center',
                 color: '#1a1a1a',
+                lineHeight: 1.2,
               }}
             >
-              {lines.map((line, lineIndex) => (
-                <div
-                  key={lineIndex}
-                  className="service-line"
-                  style={{
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {line}
-                </div>
-              ))}
+              {service.title}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

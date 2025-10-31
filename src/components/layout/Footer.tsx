@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Twitter, Facebook, Send, Instagram, Linkedin, Github, Video, Globe } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Twitter, Facebook, Send, Instagram, Linkedin, Github } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { fetchFooterData } from '../../utils/footerApi';
+import type { FooterData } from '../../utils/footerApi';
 
 // TikTok icon component
 const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
@@ -17,7 +19,14 @@ const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
 export const Footer = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedSocial, setSelectedSocial] = useState<string | null>(null);
+  const [footerData, setFooterData] = useState<FooterData>({
+    userLocation: null,
+    weather: null,
+    distance: null,
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Update clock
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -26,112 +35,120 @@ export const Footer = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Fetch footer data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const data = await fetchFooterData();
+      setFooterData(data);
+      setIsLoading(false);
+    };
+
+    loadData();
+  }, []);
+
   const socialLinks = [
-    { icon: Send, href: 'https://t.me/smmshaman', label: 'Telegram', username: '@smmshaman' },
     { icon: Instagram, href: 'https://instagram.com/smmshaman', label: 'Instagram', username: '@smmshaman' },
-    { icon: Globe, href: 'https://vitalii.no', label: 'Website', username: 'vitalii.no' },
-    { icon: Facebook, href: 'https://facebook.com/SMM.shaman', label: 'Facebook', username: 'SMM.shaman' },
+    { icon: Send, href: 'https://t.me/smmshaman', label: 'Telegram', username: 'SmmShaman' },
+    { icon: Facebook, href: 'https://facebook.com/smm.shaman', label: 'Facebook', username: 'smm.shaman' },
     { icon: Linkedin, href: 'https://linkedin.com/in/smmshaman', label: 'LinkedIn', username: 'smmshaman' },
     { icon: Github, href: 'https://github.com/SmmShaman', label: 'GitHub', username: 'SmmShaman' },
     { icon: Twitter, href: 'https://twitter.com/SmmShaman', label: 'Twitter', username: 'SmmShaman' },
     { icon: TikTokIcon, href: 'https://tiktok.com/@stuardbmw', label: 'TikTok', username: '@stuardbmw' },
-    { icon: Video, href: 'https://youtube.com/@SMMShaman', label: 'YouTube', username: 'SMMShaman' },
   ];
 
-  const generateQRCodeUrl = (url: string) => {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
-  };
+  const { userLocation, weather, distance, error } = footerData;
 
   return (
-    <>
-      <footer className="h-full w-full px-2 sm:px-4 flex items-center relative">
-        <div className="max-w-6xl mx-auto rounded-xl sm:rounded-2xl shadow-2xl border border-black/20 h-full w-full"
-          style={{
-            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
-            backdropFilter: 'blur(2px)',
-          }}
-        >
-          <div className="h-full flex flex-row items-center justify-between px-3 sm:px-4 md:px-6">
-            {/* Clock */}
+    <footer className="h-full w-full px-2 sm:px-4 flex items-center overflow-y-auto">
+      <div
+        className="max-w-6xl mx-auto rounded-xl sm:rounded-2xl shadow-2xl border border-black/20 w-full"
+        style={{
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
+          backdropFilter: 'blur(2px)',
+        }}
+      >
+        <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
+          {/* Top row: Clock, Weather Info, Social Icons */}
+          <div className="flex items-center justify-between gap-4 mb-2">
+            {/* Left: Clock */}
             <div
-              className="text-white/80 font-mono"
-              style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1.125rem)' }}
+              className="text-white/80 font-mono flex-shrink-0"
+              style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
             >
               {currentTime.toLocaleTimeString()}
             </div>
 
-            {/* Social Icons */}
-            <div className="flex items-center gap-1 sm:gap-2">
-              {socialLinks.map(({ icon: Icon, label }) => (
-                <motion.button
+            {/* Center: Weather & Location Info */}
+            <motion.div
+              className="flex-1 flex items-center justify-center gap-3 overflow-hidden"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {isLoading ? (
+                <div className="text-white/60 text-xs sm:text-sm">Завантаження...</div>
+              ) : error ? (
+                <div className="text-white/60 text-xs sm:text-sm">{error}</div>
+              ) : (
+                <div className="flex items-center gap-3 flex-wrap justify-center">
+                  {/* Weather text */}
+                  {weather && userLocation && (
+                    <div
+                      className="text-white/90 text-center"
+                      style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
+                    >
+                      У тебе в <span className="font-semibold">{userLocation.city}</span>{' '}
+                      {weather.temperature > 0 ? '+' : ''}
+                      {weather.temperature}°C, {weather.description} {weather.emoji}
+                    </div>
+                  )}
+
+                  {/* Distance */}
+                  {distance !== null && (
+                    <div
+                      className="text-white/90"
+                      style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
+                    >
+                      Від мене ти на відстані {distance.toLocaleString()} км
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Right: Social Icons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {socialLinks.map(({ icon: Icon, href, label }) => (
+                <a
                   key={label}
-                  onClick={() => setSelectedSocial(selectedSocial === label ? null : label)}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="text-white/80 hover:text-white transition-colors duration-300 p-1"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/80 hover:text-white transition-colors duration-300"
                   aria-label={label}
+                  onMouseEnter={() => setSelectedSocial(label)}
+                  onMouseLeave={() => setSelectedSocial(null)}
                 >
-                  <Icon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                </motion.button>
+                  <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                </a>
               ))}
             </div>
           </div>
-        </div>
-      </footer>
 
-      {/* QR Code Modal */}
-      <AnimatePresence>
-        {selectedSocial && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setSelectedSocial(null)}
-          >
+          {/* Bottom row: Selected social info */}
+          {selectedSocial && (
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full"
+              className="text-center text-white/70 text-xs"
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
             >
-              {(() => {
-                const social = socialLinks.find(s => s.label === selectedSocial);
-                if (!social) return null;
-                const Icon = social.icon;
-                return (
-                  <>
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                      <Icon className="w-8 h-8 text-primary" />
-                      <h3 className="text-2xl font-bold text-gray-900">{social.label}</h3>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border-2 border-gray-200 mb-4">
-                      <img
-                        src={generateQRCodeUrl(social.href)}
-                        alt={`${social.label} QR Code`}
-                        className="w-full h-auto"
-                      />
-                    </div>
-                    <div className="text-center mb-4">
-                      <p className="text-gray-600 text-sm mb-2">Scan QR code to visit profile</p>
-                      <p className="text-lg font-semibold text-gray-900">{social.username}</p>
-                    </div>
-                    <a
-                      href={social.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full py-3 px-4 bg-primary text-white rounded-lg text-center font-medium hover:bg-primary/90 transition-colors"
-                    >
-                      Open Link
-                    </a>
-                  </>
-                );
-              })()}
+              {socialLinks.find((s) => s.label === selectedSocial)?.username}
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          )}
+        </div>
+      </div>
+    </footer>
   );
 };
