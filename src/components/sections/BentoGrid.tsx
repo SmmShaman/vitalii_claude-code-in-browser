@@ -525,7 +525,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except Skills when Skills is exploding
                   if (section.id !== 'skills' && isSkillsExploding) {
-                    console.log('🎬 Animating', section.id, 'opacity to 0 (hiding for skills explosion)');
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -534,7 +533,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
-                    console.log('🎬 Animating', section.id, 'scaleY to 0 (hiding for news)');
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -544,7 +542,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except Blog when blog item is being selected
                   if (section.id !== 'blog' && (isHidingAllForBlog || selectedBlogId)) {
-                    console.log('🎬 Animating', section.id, 'scaleY to 0 (hiding for blog)');
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -554,7 +551,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Services: scale to 0 height when hiding (0fr grid trick)
                   if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
-                    console.log('🎬 Animating Services scaleY to 0');
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -564,7 +560,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Projects: scale to 0 height when hiding
                   if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
-                    console.log('🎬 Animating Projects scaleY to 0');
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -574,7 +569,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // News: fullscreen mode - reset transform when news item is selected
                   if (section.id === 'news' && selectedNewsId) {
-                    console.log('🎬 Animating News to FULLSCREEN - translateY to 0');
                     return {
                       opacity: 1,
                       y: 0,
@@ -584,7 +578,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // News: move upward by Services height when expanded (but not in fullscreen)
                   if (section.id === 'news' && isNewsExpanded && servicesHeight > 0) {
                     const moveDistance = -(servicesHeight + gapSize);
-                    console.log('🎬 Animating News translateY to', moveDistance);
                     return {
                       opacity: 1,
                       y: moveDistance,
@@ -593,7 +586,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Blog: fullscreen mode - reset transform when blog item is selected
                   if (section.id === 'blog' && selectedBlogId) {
-                    console.log('🎬 Animating Blog to FULLSCREEN - translateY to 0');
                     return {
                       opacity: 1,
                       y: 0,
@@ -603,7 +595,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Blog: move upward by Projects height when expanded (but not in fullscreen)
                   if (section.id === 'blog' && isBlogExpanded && projectsHeight > 0) {
                     const moveDistance = -(projectsHeight + gapSize);
-                    console.log('🎬 Animating Blog translateY to', moveDistance);
                     return {
                       opacity: 1,
                       y: moveDistance,

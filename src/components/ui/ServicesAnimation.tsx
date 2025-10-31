@@ -133,7 +133,6 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
 
     // Cleanup previous SplitText instances before creating new ones
     if (splitTextsRef.current.length > 0) {
-      console.log('🧹 Cleaning up previous SplitText instances');
       splitTextsRef.current.forEach((split) => split.revert());
       splitTextsRef.current = [];
     }
@@ -171,7 +170,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
               charsClass: 'char',
             });
             splitTextsRef.current.push(split);
-            console.log(`✅ Created SplitText for: "${text.textContent}"`);
+            // Removed console.log to prevent infinite log spam
           } catch (error) {
             console.error('ServicesAnimation: Error creating SplitText:', error);
           }
@@ -187,12 +186,10 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
         const success = initSplitTexts();
 
         if (success) {
-          console.log('✅ ServicesAnimation: SplitTexts initialized');
           retryCountRef.current = 0;
           startRotation();
         } else if (retryCountRef.current < maxRetries) {
           retryCountRef.current++;
-          console.log(`🔄 ServicesAnimation: Retry ${retryCountRef.current}/${maxRetries}`);
           setTimeout(tryInit, 100);
         } else {
           console.error(`❌ ServicesAnimation: Failed after ${maxRetries} attempts`);
@@ -213,7 +210,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
       splitTextsRef.current.forEach((split) => split.revert());
       splitTextsRef.current = [];
     };
-  }, [services, startRotation]);
+  }, [services]); // Removed startRotation to prevent infinite loop
 
   // Effect for currentIndex changes (rotation)
   useEffect(() => {
