@@ -442,7 +442,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
               className="grid gap-2 sm:gap-3 md:gap-4 w-full relative"
               style={{
                 gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
-                gridAutoRows: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
+                gridAutoRows: screenSize.isSmall ? 'clamp(160px, 23vh, 230px)' : 'clamp(230px, 28vh, 320px)',
               }}
             >
               <AnimatePresence mode="sync">
