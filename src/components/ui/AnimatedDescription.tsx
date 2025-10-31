@@ -95,7 +95,7 @@ export const AnimatedDescription = ({ text }: AnimatedDescriptionProps) => {
       ref={containerRef}
       className="text-white mt-1.5 leading-tight char-3d-container"
       style={{
-        fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)',
+        fontSize: 'clamp(0.75rem, 1.2vw, 0.875rem)', // Reduced from clamp(0.875rem, 1.5vw, 1.125rem)
         perspective: '600px',
         perspectiveOrigin: '50% 50%'
       }}
