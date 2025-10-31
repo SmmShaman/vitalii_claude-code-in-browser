@@ -101,16 +101,28 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     }
 
     if (!isNewsExpanded) {
-      // Get both News and Services heights before animation
-      const newsEl = cardRefs.current['news'];
+      // Get heights of all windows to calculate full grid height
+      const aboutEl = cardRefs.current['about'];
       const servicesEl = cardRefs.current['services'];
+      const projectsEl = cardRefs.current['projects'];
+      const skillsEl = cardRefs.current['skills'];
+      const newsEl = cardRefs.current['news'];
+      const blogEl = cardRefs.current['blog'];
 
-      if (newsEl && servicesEl) {
-        const newsH = newsEl.offsetHeight;
-        const servicesH = servicesEl.offsetHeight;
-        console.log('📏 News height:', newsH, 'Services height:', servicesH);
-        setNewsHeight(newsH);
-        setServicesHeight(servicesH);
+      if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
+        const gapSize = GAP_SIZE;
+
+        // Calculate row heights
+        const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
+        const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
+
+        // News will span from top of row1 to bottom of row2
+        const newsFullHeight = row1Height + row2Height + gapSize;
+
+        console.log('📏 Full grid height for News:', newsFullHeight, '= row1:', row1Height, '+ row2:', row2Height, '+ gap:', gapSize);
+
+        setNewsHeight(newsFullHeight);
+        setServicesHeight(servicesEl.offsetHeight);
       }
 
       // Start hiding Services first
@@ -626,24 +638,25 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       }
                     }}
                     onMouseLeave={() => {
-                      // Auto-collapse News and Blog when mouse leaves
+                      // News/Blog: longer timeout to prevent accidental collapse
+                      // Give user time to move cursor around the expanded window
                       if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
-                        console.log('🖱️ Mouse left News, will collapse in 300ms');
+                        console.log('🖱️ Mouse left News, will collapse in 1500ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
                           console.log('⏰ Collapsing News now');
                           setIsNewsExpanded(false);
                           setServicesHeight(0);
                           setNewsHeight(0);
                           mouseLeaveTimeoutRef.current = null;
-                        }, 300);
+                        }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
                       }
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
-                        console.log('🖱️ Mouse left Blog, will collapse in 300ms');
+                        console.log('🖱️ Mouse left Blog, will collapse in 1500ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
                           console.log('⏰ Collapsing Blog now');
                           setIsBlogExpanded(false);
                           mouseLeaveTimeoutRef.current = null;
-                        }, 300);
+                        }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
                       }
                     }}
                     className={`relative rounded-lg transition-all duration-300 hover:shadow-2xl w-full cursor-pointer ${
