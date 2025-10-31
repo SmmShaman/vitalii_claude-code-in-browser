@@ -478,12 +478,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Fixed gap for uniform spacing on all screen sizes
                   const gapSize = GAP_SIZE;
 
-                  // Skills: always normal height - never expands with News/Blog
-                  // Skills only uses explosion animation, not height expansion
-                  if (section.id === 'skills') {
-                    return 'clamp(200px, 25vh, 280px)';
-                  }
-
                   // News: full grid height when news item selected
                   if (section.id === 'news' && selectedNewsId && totalGridHeight > 0) {
                     console.log('📐 News FULL height:', totalGridHeight, '(all 6 windows)');
@@ -510,6 +504,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     return `${totalHeight}px`;
                   }
 
+                  // Skills: normal height - same as other windows (News, Blog)
+                  // Skills uses explosion animation, not height expansion
                   return '100%';
                 };
 
