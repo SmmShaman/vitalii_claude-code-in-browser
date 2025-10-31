@@ -78,7 +78,7 @@ export const Index = () => {
       >
         {!isFullscreen && (
           <div
-            className="text-center w-full max-w-7xl mx-auto h-full flex flex-col items-center justify-start px-2 sm:px-4 md:px-6 pt-8"
+            className="text-center w-full max-w-7xl mx-auto h-full flex flex-col items-center justify-start px-4 pt-4 pb-0"
           >
             <h1
               className="font-bold text-black mb-0.5 leading-tight"
