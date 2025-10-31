@@ -568,12 +568,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     };
                   }
 
-                  // News: move upward by Services height when expanded (but not in fullscreen)
-                  if (section.id === 'news' && isNewsExpanded && servicesHeight > 0) {
-                    const moveDistance = -(servicesHeight + gapSize);
+                  // News: stays at same level when expanded - no upward movement
+                  // It expands downward taking Services space
+                  if (section.id === 'news' && isNewsExpanded) {
                     return {
                       opacity: 1,
-                      y: moveDistance,
+                      y: 0,  // No vertical movement - stays aligned with Skills and Blog
                     };
                   }
 
