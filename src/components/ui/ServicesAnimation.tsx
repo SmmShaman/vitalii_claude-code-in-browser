@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 
@@ -24,6 +24,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   const intervalRef = useRef<number | null>(null);
   const retryCountRef = useRef<number>(0);
   const maxRetries = 10;
+  const splitTextsRef = useRef<SplitText[]>([]);
 
   // Calculate optimal font size for all services to fit
   useEffect(() => {
@@ -55,8 +56,73 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     setHoverFontSize(`${fontSize}px`);
   }, [isHovered, services]);
 
+  // Function to start rotation animation
+  const startRotation = useCallback(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const serviceElements = container.querySelectorAll('.service-item');
+
+    const animateService = (index: number) => {
+      if (!serviceElements || serviceElements.length === 0) return;
+
+      // Hide all services
+      gsap.set(serviceElements, { autoAlpha: 0 });
+
+      const currentElement = serviceElements[index] as HTMLElement;
+      if (!currentElement) return;
+
+      // Show current service
+      gsap.set(currentElement, { autoAlpha: 1 });
+
+      const chars = currentElement.querySelectorAll('.char');
+      if (!chars || chars.length === 0) return;
+
+      // Animate chars gathering
+      const tl = gsap.timeline();
+
+      tl.fromTo(
+        chars,
+        {
+          opacity: 0,
+          x: () => (Math.random() - 0.5) * 400,
+          y: () => (Math.random() - 0.5) * 400,
+          rotation: () => (Math.random() - 0.5) * 720,
+          scale: 0,
+        },
+        {
+          duration: 2,
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: 1,
+          ease: 'elastic.out(1, 0.5)',
+          stagger: {
+            amount: 0.8,
+            from: 'random',
+          },
+        }
+      );
+
+      tl.to({}, { duration: 1 });
+      timelineRef.current = tl;
+    };
+
+    // Start with current index
+    animateService(currentIndex);
+
+    // Set interval for rotation
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    intervalRef.current = window.setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % services.length);
+    }, 3000);
+  }, [currentIndex, services.length]);
+
+  // Main initialization effect - runs once
   useEffect(() => {
-    // Guard: Check if container exists
     if (!containerRef.current) {
       console.warn('ServicesAnimation: Container not ready');
       return;
@@ -72,187 +138,53 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       });
     };
 
-    // Function to initialize animations
-    const initAnimation = (): boolean => {
+    // Function to initialize split texts
+    const initSplitTexts = (): boolean => {
       const serviceElements = container.querySelectorAll('.service-item');
 
-      // Guard: Check if service elements exist
       if (!serviceElements || serviceElements.length === 0) {
         console.warn('ServicesAnimation: No service elements found');
         return false;
       }
 
-      // Guard: Check if elements have text content
       if (!hasTextContent(serviceElements)) {
         console.warn('ServicesAnimation: Text elements are empty, retrying...');
         return false;
       }
 
-      // Clean up previous animations
-      if (timelineRef.current) {
-        timelineRef.current.kill();
-      }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-
-      // If hovered, show all services
-      if (isHovered) {
-        gsap.set(serviceElements, { autoAlpha: 1, scale: 1, y: 0 });
-
-        // Animate chars for all services
-        serviceElements.forEach((element) => {
-          const chars = element.querySelectorAll('.char');
-
-          // Guard: Only animate if chars exist
-          if (!chars || chars.length === 0) {
-            return;
+      // Create SplitText for all services
+      splitTextsRef.current = [];
+      serviceElements.forEach((element) => {
+        const text = element.querySelector('.service-text');
+        if (text && text.textContent && text.textContent.trim()) {
+          try {
+            const split = new SplitText(text, {
+              type: 'chars',
+              charsClass: 'char',
+            });
+            splitTextsRef.current.push(split);
+          } catch (error) {
+            console.error('ServicesAnimation: Error creating SplitText:', error);
           }
-
-          gsap.fromTo(
-            chars,
-            {
-              opacity: 0,
-              x: () => Math.random() * 200 - 100,
-              y: () => Math.random() * 200 - 100,
-              rotation: () => Math.random() * 720 - 360,
-              scale: 0,
-            },
-            {
-              duration: 0.8,
-              opacity: 1,
-              x: 0,
-              y: 0,
-              rotation: 0,
-              scale: 1,
-              ease: 'back.out(1.7)',
-              stagger: {
-                amount: 0.5,
-                from: 'random',
-              },
-            }
-          );
-        });
-        return true;
-      }
-
-      // Animation for single service rotation
-      const animateService = (index: number) => {
-        // Guard: Check if serviceElements still exist
-        if (!serviceElements || serviceElements.length === 0) {
-          console.warn('ServicesAnimation: Service elements disappeared');
-          return;
         }
+      });
 
-        // Hide all services
-        gsap.set(serviceElements, { autoAlpha: 0 });
-
-        const currentElement = serviceElements[index] as HTMLElement;
-        if (!currentElement) {
-          console.warn(`ServicesAnimation: Element at index ${index} not found`);
-          return;
-        }
-
-        // Show current service
-        gsap.set(currentElement, { autoAlpha: 1 });
-
-        // Split text into characters
-        const text = currentElement.querySelector('.service-text');
-        if (!text) {
-          console.warn('ServicesAnimation: .service-text not found');
-          return;
-        }
-
-        // Guard: Check if text has content
-        if (!text.textContent || text.textContent.trim() === '') {
-          console.warn('ServicesAnimation: Text element is empty');
-          return;
-        }
-
-        // Clean up old split
-        const oldChars = text.querySelectorAll('.char');
-        oldChars.forEach((char) => char.remove());
-
-        try {
-          // Guard: Check if SplitText is available
-          if (typeof SplitText === 'undefined') {
-            console.error('ServicesAnimation: SplitText plugin not loaded');
-            return;
-          }
-
-          const split = new SplitText(text, {
-            type: 'chars',
-            charsClass: 'char',
-          });
-
-          const chars = split.chars;
-
-          // Guard: Check if split created chars
-          if (!chars || chars.length === 0) {
-            console.warn('ServicesAnimation: SplitText created no characters');
-            return;
-          }
-
-          // Animate chars gathering
-          const tl = gsap.timeline();
-
-          tl.fromTo(
-            chars,
-            {
-              opacity: 0,
-              x: () => (Math.random() - 0.5) * 400,
-              y: () => (Math.random() - 0.5) * 400,
-              rotation: () => (Math.random() - 0.5) * 720,
-              scale: 0,
-            },
-            {
-              duration: 2,
-              opacity: 1,
-              x: 0,
-              y: 0,
-              rotation: 0,
-              scale: 1,
-              ease: 'elastic.out(1, 0.5)',
-              stagger: {
-                amount: 0.8,
-                from: 'random',
-              },
-            }
-          );
-
-          // Hold for 1 second
-          tl.to({}, { duration: 1 });
-
-          timelineRef.current = tl;
-        } catch (error) {
-          console.error('ServicesAnimation: Error in SplitText:', error);
-        }
-      };
-
-      // Start animation with first service
-      animateService(currentIndex);
-
-      // Set interval to rotate services (2s animation + 1s hold = 3s total)
-      intervalRef.current = window.setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % services.length);
-      }, 3000);
-
-      return true;
+      return splitTextsRef.current.length > 0;
     };
 
-    // Retry logic with multiple attempts
-    const tryInitAnimation = () => {
-      // Use requestAnimationFrame to ensure DOM is ready
+    // Retry logic for initialization
+    const tryInit = () => {
       requestAnimationFrame(() => {
-        const success = initAnimation();
+        const success = initSplitTexts();
 
         if (success) {
-          console.log('✅ ServicesAnimation: Started successfully');
+          console.log('✅ ServicesAnimation: SplitTexts initialized');
           retryCountRef.current = 0;
+          startRotation();
         } else if (retryCountRef.current < maxRetries) {
           retryCountRef.current++;
           console.log(`🔄 ServicesAnimation: Retry ${retryCountRef.current}/${maxRetries}`);
-          setTimeout(tryInitAnimation, 100); // Retry after 100ms
+          setTimeout(tryInit, 100);
         } else {
           console.error(`❌ ServicesAnimation: Failed after ${maxRetries} attempts`);
           retryCountRef.current = 0;
@@ -260,8 +192,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       });
     };
 
-    // Start initialization with retry logic
-    tryInitAnimation();
+    tryInit();
 
     return () => {
       if (timelineRef.current) {
@@ -270,8 +201,117 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      splitTextsRef.current.forEach((split) => split.revert());
     };
-  }, [services, currentIndex, isHovered]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [services]);
+
+  // Effect for currentIndex changes (rotation)
+  useEffect(() => {
+    if (!isHovered && containerRef.current) {
+      const container = containerRef.current;
+      const serviceElements = container.querySelectorAll('.service-item');
+
+      if (!serviceElements || serviceElements.length === 0) return;
+
+      // Hide all
+      gsap.set(serviceElements, { autoAlpha: 0 });
+
+      const currentElement = serviceElements[currentIndex] as HTMLElement;
+      if (!currentElement) return;
+
+      // Show current
+      gsap.set(currentElement, { autoAlpha: 1 });
+
+      const chars = currentElement.querySelectorAll('.char');
+      if (!chars || chars.length === 0) return;
+
+      // Animate chars
+      if (timelineRef.current) {
+        timelineRef.current.kill();
+      }
+
+      const tl = gsap.timeline();
+
+      tl.fromTo(
+        chars,
+        {
+          opacity: 0,
+          x: () => (Math.random() - 0.5) * 400,
+          y: () => (Math.random() - 0.5) * 400,
+          rotation: () => (Math.random() - 0.5) * 720,
+          scale: 0,
+        },
+        {
+          duration: 2,
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: 1,
+          ease: 'elastic.out(1, 0.5)',
+          stagger: {
+            amount: 0.8,
+            from: 'random',
+          },
+        }
+      );
+
+      tl.to({}, { duration: 1 });
+      timelineRef.current = tl;
+    }
+  }, [currentIndex, isHovered, services.length]);
+
+  // Effect for hover state changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const serviceElements = container.querySelectorAll('.service-item');
+
+    if (!serviceElements || serviceElements.length === 0) return;
+
+    if (isHovered) {
+      // Pause rotation
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (timelineRef.current) {
+        timelineRef.current.pause();
+      }
+
+      // Show all services
+      gsap.to(serviceElements, {
+        autoAlpha: 1,
+        duration: 0.3,
+        stagger: 0.05,
+      });
+
+      // Animate all chars to gathered state
+      serviceElements.forEach((element) => {
+        const chars = element.querySelectorAll('.char');
+        if (!chars || chars.length === 0) return;
+
+        gsap.to(chars, {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: 'back.out(1.7)',
+          stagger: {
+            amount: 0.3,
+            from: 'random',
+          },
+        });
+      });
+    } else {
+      // Resume rotation
+      startRotation();
+    }
+  }, [isHovered, startRotation]);
 
   return (
     <div
