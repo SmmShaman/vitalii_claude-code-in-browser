@@ -587,6 +587,16 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
+                  // About: ЗАВЖДИ видимий, ніколи не ховається
+                  if (section.id === 'about') {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // Projects: ЗАВЖДИ видимий (окрім коли Blog розширюється)
+                  if (section.id === 'projects' && !isProjectsHiding && !isBlogExpanded) {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
                   // Services: scale to 0 height when hiding (0fr grid trick)
                   if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
                     return {
