@@ -516,6 +516,21 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     return `${totalHeight}px`;
                   }
 
+                  // Skills: maintain original height when News or Blog is expanded (don't stretch)
+                  if (section.id === 'skills' && (isNewsExpanded || isBlogExpanded)) {
+                    return 'auto';
+                  }
+
+                  // Blog: maintain original height when News is expanded (don't stretch)
+                  if (section.id === 'blog' && isNewsExpanded && !isBlogExpanded) {
+                    return 'auto';
+                  }
+
+                  // News: maintain original height when Blog is expanded (don't stretch)
+                  if (section.id === 'news' && isBlogExpanded && !isNewsExpanded) {
+                    return 'auto';
+                  }
+
                   // Skills: normal height - same as other windows (News, Blog)
                   // Skills uses explosion animation, not height expansion
                   return '100%';
