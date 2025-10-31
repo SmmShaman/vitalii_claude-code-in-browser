@@ -45,15 +45,6 @@ export const Index = () => {
           >
             {t('subtitle')}
           </h2>
-          <p
-            className="text-black mt-1"
-            style={{
-              fontSize: 'clamp(0.65rem, 1.2vw, 0.875rem)',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {t('description')}
-          </p>
         </div>
       </div>
 
