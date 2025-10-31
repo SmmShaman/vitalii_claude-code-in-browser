@@ -104,7 +104,14 @@ export const getLatestNews = async (limit: number = 3) => {
   }
 
   // Debug: Log raw data from database
-  console.log('📰 Raw news data from DB:', data);
+  console.log('📰 Raw news data from DB - Total items:', data?.length);
+  console.table(data?.map(item => ({
+    title: item.title_en?.substring(0, 30),
+    has_video: !!item.video_url,
+    video_url: item.video_url?.substring(0, 50),
+    video_type: item.video_type,
+    has_image: !!item.image_url
+  })));
 
   // Transform data to match LatestNews type structure
   const transformedData = data?.map(item => ({
@@ -126,18 +133,18 @@ export const getLatestNews = async (limit: number = 3) => {
     source_category: (item as any).news_sources?.category || null,
   })) || [];
 
-  // Debug: Log video items
+  // Debug: Log video items with details
   const videoItems = transformedData.filter(item => item.video_url);
-  if (videoItems.length > 0) {
-    console.log('📹 Found video items:', videoItems.map(v => ({
-      id: v.id,
-      title: v.title_en,
-      video_url: v.video_url,
-      video_type: v.video_type
-    })));
-  } else {
-    console.log('⚠️ No video items found in news feed');
-  }
+  console.log('📹 Found', videoItems.length, 'video items out of', transformedData.length, 'total');
+
+  videoItems.forEach((item, index) => {
+    console.log(`📹 Video ${index + 1}:`, {
+      title: item.title_en,
+      video_url: item.video_url,
+      video_type: item.video_type,
+      has_image: !!item.image_url
+    });
+  });
 
   return transformedData;
 };
