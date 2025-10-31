@@ -153,16 +153,16 @@ const NewsSectionComponent = ({
     const content = getTranslatedContent(selectedNews);
     return (
       <div className="h-full flex flex-col overflow-y-auto">
-        {/* Back Button */}
-        <div className="flex-shrink-0 mb-4">
+        {/* Floating Back Button - Sticky at top-right */}
+        <div className="sticky top-0 right-0 z-50 flex justify-end pointer-events-none -mb-14">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onBack}
-            className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+            className="pointer-events-auto m-4 w-10 h-10 rounded-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 border border-slate-200 dark:border-slate-700"
+            title="Back to news"
           >
             <ChevronLeft className="h-5 w-5" />
-            <span className="font-medium">Back to news</span>
           </motion.button>
         </div>
 
