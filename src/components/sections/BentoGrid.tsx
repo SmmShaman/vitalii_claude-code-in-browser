@@ -179,7 +179,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     const blogEl = cardRefs.current['blog'];
 
     if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
-      const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+      const gapSize = 16; // Fixed gap for uniform spacing
 
       // Calculate total height: all 6 windows + 5 gaps (between rows)
       const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
@@ -260,7 +260,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     const blogEl = cardRefs.current['blog'];
 
     if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
-      const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+      const gapSize = 16; // Fixed gap for uniform spacing
 
       // Calculate total height: all 6 windows + 5 gaps (between rows)
       const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
@@ -439,7 +439,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
           <LayoutGroup>
             <div
               ref={gridContainerRef}
-              className="grid gap-2 sm:gap-3 md:gap-4 w-full relative"
+              className="grid gap-4 w-full relative"
               style={{
                 gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
                 gridAutoRows: screenSize.isSmall ? 'clamp(160px, 23vh, 230px)' : 'clamp(230px, 28vh, 320px)',
@@ -453,8 +453,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                 // Calculate expanded height: original + target + gap
                 const getExpandedHeight = () => {
-                  // Gap depends on screen size: gap-2 (8px) / gap-3 (12px) / gap-4 (16px)
-                  const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+                  // Fixed gap for uniform spacing on all screen sizes
+                  const gapSize = 16; // gap-4 (16px)
 
                   // News: full grid height when news item selected
                   if (section.id === 'news' && selectedNewsId && totalGridHeight > 0) {
@@ -491,8 +491,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                 // Get animated properties for each section
                 const getAnimatedProps = () => {
-                  // Gap depends on screen size: gap-2 (8px) / gap-3 (12px) / gap-4 (16px)
-                  const gapSize = screenSize.isSmall ? 8 : screenSize.columnsCount < 3 ? 12 : 16;
+                  // Fixed gap for uniform spacing on all screen sizes
+                  const gapSize = 16; // gap-4 (16px)
 
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
