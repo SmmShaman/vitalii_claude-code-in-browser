@@ -123,16 +123,9 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
         setIsNewsExpanded(true);
         setIsServicesHiding(false);
       }, 500);
-    } else {
-      console.log('🔵 Collapsing News');
-      setIsNewsExpanded(false);
-      setServicesHeight(0);
-      setNewsHeight(0);
-      setSelectedNewsId(null); // Reset selected news when collapsing
-      setIsHidingAllForNews(false);
-      setTotalGridHeight(0);
-      onFullscreenChange?.(false); // ← Notify parent about exit fullscreen
     }
+    // News stays expanded - no collapse on repeated clicks
+    // User must click another section or scroll to change view
   };
 
   const handleNewsItemSelect = (newsId: string) => {
@@ -630,16 +623,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       }
                     }}
                     onMouseLeave={() => {
-                      // Delay collapse by 300ms to avoid accidental triggers
-                      // Don't collapse if a news item is selected
-                      if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
-                        console.log('🖱️ Mouse left News, will collapse in 300ms');
-                        mouseLeaveTimeoutRef.current = window.setTimeout(() => {
-                          console.log('⏰ Collapsing News now');
-                          setIsNewsExpanded(false);
-                          mouseLeaveTimeoutRef.current = null;
-                        }, 300);
-                      }
+                      // News stays open when expanded - no auto-collapse
+                      // Blog collapses on mouse leave if expanded and no blog selected
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
                         console.log('🖱️ Mouse left Blog, will collapse in 300ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
