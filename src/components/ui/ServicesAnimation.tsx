@@ -122,7 +122,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
     }, 3000);
   }, [currentIndex, services.length]);
 
-  // Main initialization effect - runs once
+  // Main initialization effect - runs when services change (language change)
   useEffect(() => {
     if (!containerRef.current) {
       console.warn('ServicesAnimation: Container not ready');
@@ -130,6 +130,13 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
     }
 
     const container = containerRef.current;
+
+    // Cleanup previous SplitText instances before creating new ones
+    if (splitTextsRef.current.length > 0) {
+      console.log('🧹 Cleaning up previous SplitText instances');
+      splitTextsRef.current.forEach((split) => split.revert());
+      splitTextsRef.current = [];
+    }
 
     // Function to check if elements have text content
     const hasTextContent = (elements: NodeListOf<Element>): boolean => {
@@ -164,6 +171,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
               charsClass: 'char',
             });
             splitTextsRef.current.push(split);
+            console.log(`✅ Created SplitText for: "${text.textContent}"`);
           } catch (error) {
             console.error('ServicesAnimation: Error creating SplitText:', error);
           }
@@ -203,9 +211,9 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
         clearInterval(intervalRef.current);
       }
       splitTextsRef.current.forEach((split) => split.revert());
+      splitTextsRef.current = [];
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [services]);
+  }, [services, startRotation]);
 
   // Effect for currentIndex changes (rotation)
   useEffect(() => {
