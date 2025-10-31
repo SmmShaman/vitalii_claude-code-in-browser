@@ -80,6 +80,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const [projectsHeight, setProjectsHeight] = useState<number>(0);
   const [newsHeight, setNewsHeight] = useState<number>(0);
   const [blogHeight, setBlogHeight] = useState<number>(0);
+  const [skillsNormalHeight, setSkillsNormalHeight] = useState<number>(0);
+  const [blogNormalHeight, setBlogNormalHeight] = useState<number>(0);
   const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [isHidingAllForNews, setIsHidingAllForNews] = useState(false);
@@ -123,6 +125,10 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
         setNewsHeight(newsFullHeight);
         setServicesHeight(servicesEl.offsetHeight);
+
+        // Save normal heights of Skills and Blog so they don't stretch when News expands
+        setSkillsNormalHeight(skillsEl.offsetHeight);
+        setBlogNormalHeight(blogEl.offsetHeight);
       }
 
       // Start hiding Services first
@@ -516,19 +522,16 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     return `${totalHeight}px`;
                   }
 
-                  // Skills: maintain original height when News or Blog is expanded (don't stretch)
-                  if (section.id === 'skills' && (isNewsExpanded || isBlogExpanded)) {
-                    return 'auto';
+                  // Skills: fixed height when News is expanded (don't stretch!)
+                  if (section.id === 'skills' && isNewsExpanded && skillsNormalHeight > 0) {
+                    console.log('📐 Skills FIXED height:', skillsNormalHeight);
+                    return `${skillsNormalHeight}px`;
                   }
 
-                  // Blog: maintain original height when News is expanded (don't stretch)
-                  if (section.id === 'blog' && isNewsExpanded && !isBlogExpanded) {
-                    return 'auto';
-                  }
-
-                  // News: maintain original height when Blog is expanded (don't stretch)
-                  if (section.id === 'news' && isBlogExpanded && !isNewsExpanded) {
-                    return 'auto';
+                  // Blog: fixed height when News is expanded (don't stretch!)
+                  if (section.id === 'blog' && isNewsExpanded && !isBlogExpanded && blogNormalHeight > 0) {
+                    console.log('📐 Blog FIXED height:', blogNormalHeight);
+                    return `${blogNormalHeight}px`;
                   }
 
                   // Skills: normal height - same as other windows (News, Blog)
@@ -662,6 +665,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                           setIsNewsExpanded(false);
                           setServicesHeight(0);
                           setNewsHeight(0);
+                          setSkillsNormalHeight(0);
+                          setBlogNormalHeight(0);
                           mouseLeaveTimeoutRef.current = null;
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
                       }
