@@ -2,8 +2,11 @@ import { Header } from '../components/layout/Header';
 import { Footer } from '../components/layout/Footer';
 import { BentoGrid } from '../components/sections/BentoGrid';
 import { ParticlesBackground } from '../components/background/ParticlesBackground';
+import { useTranslations } from '../contexts/TranslationContext';
 
 export const Index = () => {
+  const { t } = useTranslations();
+
   const handleFullscreenChange = (fullscreen: boolean) => {
     console.log('🎬 Fullscreen change:', fullscreen);
   };
@@ -19,6 +22,42 @@ export const Index = () => {
       </div>
 
       {/* Spacing after header - 16px */}
+      <div className="flex-shrink-0 h-4" />
+
+      {/* Title Section */}
+      <div className="flex-shrink-0 relative z-40 flex justify-start pt-4 px-4">
+        <div className="text-left">
+          <h1
+            className="font-bold text-black"
+            style={{
+              fontSize: 'clamp(1rem, 2vw, 2.5rem)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span className="text-amber-400">{t('title')}</span>
+          </h1>
+          <h2
+            className="font-semibold text-black mt-1"
+            style={{
+              fontSize: 'clamp(0.75rem, 1.5vw, 1.25rem)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {t('subtitle')}
+          </h2>
+          <p
+            className="text-black mt-1"
+            style={{
+              fontSize: 'clamp(0.65rem, 1.2vw, 0.875rem)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {t('description')}
+          </p>
+        </div>
+      </div>
+
+      {/* Spacing after title - 16px */}
       <div className="flex-shrink-0 h-4" />
 
       {/* Main Content - Takes remaining space */}

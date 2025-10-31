@@ -1,8 +1,8 @@
 export const translations = {
   en: {
-    title: "Vitalii Berbeha an expert in e-commerce and marketing",
-    subtitle: "Professional in e-commerce, marketing, and project management",
-    description: "Helping businesses grow, optimize processes, and achieve success",
+    title: "Vitalii Berbeha",
+    subtitle: "Marketing & Analytics Expert | Creator of Elvarika",
+    description: "I help organisations grow by blending data-driven marketing with modern tech.",
 
     about: "About me",
     about_title: "About me",
@@ -226,9 +226,9 @@ export const translations = {
     weather_thunderstorm: "thunderstorm",
   },
   no: {
-    title: "Vitalii Berbeha en ekspert innen e-handel og markedsføring",
-    subtitle: "Profesjonell innen e-handel, markedsføring og prosjektledelse",
-    description: "Hjelper bedrifter med å vokse, optimalisere prosesser og oppnå suksess",
+    title: "Vitalii Berbeha",
+    subtitle: "Markedsførings- og analyseekspert | Skaperen av Elvarika",
+    description: "Jeg hjelper organisasjoner å vokse ved å kombinere datadrevet markedsføring med moderne teknologi.",
 
     about: "Om meg",
     about_title: "Om meg",
@@ -450,9 +450,9 @@ export const translations = {
     weather_thunderstorm: "tordenvær",
   },
   ua: {
-    title: "Віталій Бербега експерт з електронної комерції та маркетингу",
-    subtitle: "Професіонал у сфері електронної комерції, маркетингу та управління проєктами",
-    description: "Допомагаю бізнесу рости, оптимізувати процеси та досягати успіху",
+    title: "Віталій Бербега",
+    subtitle: "Експерт з маркетингу та аналітики | Творець Elvarika",
+    description: "Допомагаю організаціям рости, поєднуючи маркетинг на основі даних з сучасними технологіями.",
 
     about: "Про мене",
     about_title: "Про мене",
