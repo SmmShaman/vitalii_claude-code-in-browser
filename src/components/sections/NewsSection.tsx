@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink } from 'lucide-react';
+import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink, Video, Image } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { getLatestNews, getNewsById } from '../../integrations/supabase/client';
 import type { LatestNews, NewsItem } from '../../integrations/supabase/types';
@@ -297,9 +297,22 @@ const NewsSectionComponent = ({
 
                         {/* Meta Information - Bottom */}
                         <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3 flex-shrink-0" />
-                            <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3 flex-shrink-0" />
+                              <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
+                            </div>
+                            {/* Video or Image icon indicator */}
+                            {(newsItem as any).video_url ? (
+                              <div className="flex items-center gap-1 text-primary">
+                                <Video className="h-3 w-3 flex-shrink-0" />
+                                <span className="text-xs">Video</span>
+                              </div>
+                            ) : newsItem.image_url && (
+                              <div className="flex items-center gap-1">
+                                <Image className="h-3 w-3 flex-shrink-0" />
+                              </div>
+                            )}
                           </div>
 
                           {newsItem.tags && newsItem.tags.length > 0 && (
