@@ -267,18 +267,6 @@ const NewsSectionComponent = ({
           <AnimatePresence mode="popLayout">
             {news.map((newsItem, index) => {
               const content = getTranslatedContent(newsItem);
-
-              // Debug: Log each news item's video status
-              if (index === 0) {
-                console.log('📰 First news item:', {
-                  title: content.title,
-                  has_video_url: !!newsItem.video_url,
-                  video_url: newsItem.video_url,
-                  video_type: newsItem.video_type,
-                  has_image_url: !!newsItem.image_url
-                });
-              }
-
               return (
                 <motion.div
                   key={newsItem.id}
@@ -315,35 +303,17 @@ const NewsSectionComponent = ({
                               <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
                             </div>
                             {/* Video or Image icon indicator */}
-                            {(() => {
-                              const hasVideo = !!newsItem.video_url;
-                              const hasImage = !!newsItem.image_url;
-
-                              if (index === 0) {
-                                console.log('🎬 Rendering icon for first item:', {
-                                  hasVideo,
-                                  hasImage,
-                                  willRenderVideo: hasVideo,
-                                  willRenderImage: !hasVideo && hasImage
-                                });
-                              }
-
-                              if (hasVideo) {
-                                return (
-                                  <div className="flex items-center gap-1 text-primary">
-                                    <Video className="h-3 w-3 flex-shrink-0" />
-                                    <span className="text-xs">Video</span>
-                                  </div>
-                                );
-                              } else if (hasImage) {
-                                return (
-                                  <div className="flex items-center gap-1">
-                                    <Image className="h-3 w-3 flex-shrink-0" />
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
+                            {newsItem.video_url && (
+                              <div className="flex items-center gap-1 text-primary">
+                                <Video className="h-3 w-3 flex-shrink-0" />
+                                <span className="text-xs">Video</span>
+                              </div>
+                            )}
+                            {!newsItem.video_url && newsItem.image_url && (
+                              <div className="flex items-center gap-1">
+                                <Image className="h-3 w-3 flex-shrink-0" />
+                              </div>
+                            )}
                           </div>
 
                           {newsItem.tags && newsItem.tags.length > 0 && (
