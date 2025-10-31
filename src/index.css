@@ -143,6 +143,7 @@
   transform-style: preserve-3d;
   transform-origin: center center;
   margin: 0 0.05em;
+  will-change: transform; /* Performance optimization */
 }
 
 .face {
@@ -154,6 +155,7 @@
   backface-visibility: hidden;
   font-style: normal;
   display: block;
+  will-change: opacity; /* Performance optimization */
 }
 
 .face-top {
@@ -166,4 +168,13 @@
 
 .face-bottom {
   transform: rotateX(-90deg) translateZ(0.5em);
+}
+
+/* Services Animation Performance */
+.service-item {
+  will-change: opacity, transform;
+}
+
+.service-item .char {
+  will-change: transform, opacity;
 }

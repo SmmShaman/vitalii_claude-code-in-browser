@@ -39,7 +39,7 @@ export const ParticlesBackground = () => {
 
       // Create particles
       const particlesGeometry = new THREE.BufferGeometry();
-      const particlesCount = 1000;
+      const particlesCount = 500; // Reduced from 1000 for better performance
       const posArray = new Float32Array(particlesCount * 3);
 
       for (let i = 0; i < particlesCount * 3; i++) {
@@ -62,13 +62,19 @@ export const ParticlesBackground = () => {
       particles = new THREE.Points(particlesGeometry, particlesMaterial);
       scene.add(particles);
 
-      // Mouse move handler
+      // Mouse move handler with RAF-based throttling for better performance
+      let rafId: number | null = null;
       const handleMouseMove = (event: MouseEvent) => {
-        mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouseRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        if (rafId !== null) return; // Skip if already scheduled
+
+        rafId = requestAnimationFrame(() => {
+          mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouseRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
+          rafId = null;
+        });
       };
 
-      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
 
       // Animation loop
       const animate = () => {

@@ -55,6 +55,13 @@ const NewsSectionComponent = ({
     loadNews();
   }, []);
 
+  // Reload news when expanded state changes for optimization
+  useEffect(() => {
+    if (news.length > 0) {
+      loadNews();
+    }
+  }, [isExpanded]);
+
   useEffect(() => {
     if (selectedNewsId) {
       loadNewsDetail(selectedNewsId);
@@ -78,7 +85,9 @@ const NewsSectionComponent = ({
   const loadNews = async () => {
     try {
       setLoading(true);
-      const data = await getLatestNews(8); // Increased from 3 to 8
+      // Load fewer items when not expanded for better performance
+      const limit = isExpanded ? 8 : 3;
+      const data = await getLatestNews(limit);
       setNews(data);
     } catch (error) {
       console.error('Failed to load news:', error);
@@ -395,7 +404,7 @@ const NewsSectionComponent = ({
                                   <video
                                     src={newsItem.video_url}
                                     className="w-full h-full object-cover"
-                                    preload="metadata"
+                                    preload={isExpanded ? "metadata" : "none"}
                                     muted
                                     playsInline
                                   />

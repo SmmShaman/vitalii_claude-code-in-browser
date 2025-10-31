@@ -100,7 +100,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
           scale: 1,
           ease: 'elastic.out(1, 0.5)',
           stagger: {
-            amount: 0.8,
+            amount: 0.4, // Reduced from 0.8 for better performance
             from: 'random',
           },
         }
@@ -260,7 +260,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
           scale: 1,
           ease: 'elastic.out(1, 0.5)',
           stagger: {
-            amount: 0.8,
+            amount: 0.4, // Reduced from 0.8 for better performance
             from: 'random',
           },
         }
@@ -311,7 +311,7 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
           duration: 0.6,
           ease: 'back.out(1.7)',
           stagger: {
-            amount: 0.3,
+            amount: 0.2, // Reduced from 0.3 for better performance
             from: 'random',
           },
         });

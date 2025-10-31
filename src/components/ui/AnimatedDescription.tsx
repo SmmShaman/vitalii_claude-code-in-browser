@@ -60,7 +60,26 @@ export const AnimatedDescription = ({ text }: AnimatedDescriptionProps) => {
     .add('.char-3d .face-front', { opacity: [0.5, 1], delay: charsStagger }, 1800)
     .add('.char-3d .face-bottom', { opacity: [0, 0], delay: charsStagger }, 1800);
 
+    // Intersection Observer to pause animation when not visible
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (timelineRef.current) {
+          if (entry.isIntersecting) {
+            timelineRef.current.play();
+          } else {
+            timelineRef.current.pause();
+          }
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
     return () => {
+      observer.disconnect();
       if (timelineRef.current) {
         timelineRef.current.pause();
         timelineRef.current = null;
