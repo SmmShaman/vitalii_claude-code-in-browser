@@ -559,16 +559,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     };
                   }
 
-                  // Skills: НІКОЛИ не рухається, завжди на місці
-                  if (section.id === 'skills') {
-                    return { opacity: 1, y: 0, scaleY: 1 };
-                  }
-
-                  // Blog: НІКОЛИ не рухається, завжди на місці
-                  if (section.id === 'blog') {
-                    return { opacity: 1, y: 0, scaleY: 1 };
-                  }
-
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
                     return {
@@ -585,6 +575,16 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       scaleY: 0,
                       transformOrigin: 'top',
                     };
+                  }
+
+                  // Skills: НІКОЛИ не рухається, завжди на місці (ПІСЛЯ перевірок вище)
+                  if (section.id === 'skills') {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // Blog: НІКОЛИ не рухається, завжди на місці (ПІСЛЯ перевірок вище)
+                  if (section.id === 'blog') {
+                    return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Services: scale to 0 height when hiding (0fr grid trick)
@@ -613,13 +613,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     };
                   }
 
-                  // News: moves UP to Services position when expanded
-                  // Takes Services place in the grid
-                  if (section.id === 'news' && isNewsExpanded && servicesHeight > 0) {
-                    const moveDistance = -(servicesHeight + gapSize);
+                  // News: НЕ рухається вгору, просто стає вищим на своєму місці
+                  if (section.id === 'news' && isNewsExpanded) {
+                    // servicesHeight saved for potential future use
+                    console.log('📰 News expanded, Services height was:', servicesHeight);
                     return {
                       opacity: 1,
-                      y: moveDistance,  // Move up by Services height + gap
+                      y: 0,  // Залишається на місці, НЕ рухається вгору!
                     };
                   }
 
