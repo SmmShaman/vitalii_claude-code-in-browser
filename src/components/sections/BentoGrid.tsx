@@ -559,6 +559,30 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     };
                   }
 
+                  // ====== LOCK УМОВИ - ЗАВЖДИ ПЕРШИМИ! ======
+
+                  // About: ЗАВЖДИ видимий, окрім fullscreen режимів
+                  if (section.id === 'about' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів або Blog expansion
+                  if (section.id === 'projects' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog && !isBlogExpanded && !isProjectsHiding) {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // Skills: НІКОЛИ не рухається, окрім fullscreen режимів
+                  if (section.id === 'skills' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // Blog: НІКОЛИ не рухається, окрім fullscreen режимів
+                  if (section.id === 'blog' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // ====== РЕШТА УМОВ ======
+
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
                     return {
@@ -575,26 +599,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       scaleY: 0,
                       transformOrigin: 'top',
                     };
-                  }
-
-                  // Skills: НІКОЛИ не рухається, завжди на місці (ПІСЛЯ перевірок вище)
-                  if (section.id === 'skills') {
-                    return { opacity: 1, y: 0, scaleY: 1 };
-                  }
-
-                  // Blog: НІКОЛИ не рухається, завжди на місці (ПІСЛЯ перевірок вище)
-                  if (section.id === 'blog') {
-                    return { opacity: 1, y: 0, scaleY: 1 };
-                  }
-
-                  // About: ЗАВЖДИ видимий, ніколи не ховається
-                  if (section.id === 'about') {
-                    return { opacity: 1, y: 0, scaleY: 1 };
-                  }
-
-                  // Projects: ЗАВЖДИ видимий (окрім коли Blog розширюється)
-                  if (section.id === 'projects' && !isProjectsHiding && !isBlogExpanded) {
-                    return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Services: scale to 0 height when hiding (0fr grid trick)
