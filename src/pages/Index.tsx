@@ -4,13 +4,32 @@ import { Header } from '../components/layout/Header';
 import { Footer } from '../components/layout/Footer';
 import { BentoGrid } from '../components/sections/BentoGrid';
 import { ParticlesBackground } from '../components/background/ParticlesBackground';
-import { AnimatedHeaderTitle } from '../components/ui/AnimatedHeaderTitle';
-import { AnimatedDescription } from '../components/ui/AnimatedDescription';
 import { useTranslations } from '../contexts/TranslationContext';
 
 export const Index = () => {
   const { t } = useTranslations();
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Helper function to highlight name in title
+  const renderTitle = () => {
+    const title = t('title') as string;
+    const namePattern = /Vitalii Berbeha|Віталій Бербега/;
+    const match = title.match(namePattern);
+
+    if (!match) return title;
+
+    const name = match[0];
+    const beforeName = title.substring(0, match.index);
+    const afterName = title.substring((match.index || 0) + name.length);
+
+    return (
+      <>
+        {beforeName}
+        <span className="text-amber-400 font-extrabold">{name}</span>
+        {afterName}
+      </>
+    );
+  };
 
   // Header heights
   const headerHeight = isFullscreen ? 60 : 180;
@@ -64,17 +83,27 @@ export const Index = () => {
               textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.5)'
             }}
           >
-            <AnimatedHeaderTitle
-              text={t('title') as string}
-              namePattern={/Vitalii Berbeha|Віталій Бербега/}
-            />
+            <h1
+              className="font-bold text-white mb-0.5 leading-tight"
+              style={{ fontSize: 'clamp(1.75rem, 3.5vw, 3rem)' }}
+            >
+              {renderTitle()}
+            </h1>
             <h2
               className="text-white mt-2 leading-tight"
               style={{ fontSize: 'clamp(1rem, 2vw, 1.5rem)' }}
             >
               {t('subtitle')}
             </h2>
-            <AnimatedDescription text={t('description') as string} />
+            <p
+              className="text-black mt-1.5 leading-tight font-medium"
+              style={{
+                fontSize: 'clamp(0.75rem, 1.2vw, 0.875rem)',
+                textShadow: 'none'
+              }}
+            >
+              {t('description')}
+            </p>
           </div>
         )}
       </motion.div>
