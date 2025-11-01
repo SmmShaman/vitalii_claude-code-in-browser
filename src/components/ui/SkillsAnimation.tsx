@@ -51,10 +51,19 @@ const categoryColors: Record<string, { bg: string; text: string; hover: string }
 export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, gridContainerRef }: SkillsAnimationProps) => {
   const [gridBounds, setGridBounds] = useState<DOMRect | null>(null);
 
+  console.log('🎨 SkillsAnimation render:', {
+    isExploding,
+    hasGridRef: !!gridContainerRef?.current,
+    skillsCount: skills.length,
+    gridBounds
+  });
+
   // Get grid bounds when exploding
   useEffect(() => {
+    console.log('🔄 useEffect triggered:', { isExploding, hasGridRef: !!gridContainerRef?.current });
     if (isExploding && gridContainerRef?.current) {
       const bounds = gridContainerRef.current.getBoundingClientRect();
+      console.log('📐 Grid bounds calculated:', bounds);
       setGridBounds(bounds);
     }
   }, [isExploding, gridContainerRef]);
@@ -66,7 +75,10 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
   // Calculate evenly distributed positions for logos across grid area
   // Fixed 5x5 grid layout (25 positions for up to 25 skills)
   const getLogoPosition = (index: number, _total: number) => {
-    if (!gridBounds) return { left: '50%', top: '50%' };
+    if (!gridBounds) {
+      console.log(`⚠️ Logo ${index}: No gridBounds, using center`);
+      return { left: '50%', top: '50%' };
+    }
 
     const cols = 5; // Fixed: 5 columns
     const rows = 5; // Fixed: 5 rows
@@ -81,7 +93,9 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
     const left = gridBounds.left + (gridBounds.width * xPercent * 0.9) + (gridBounds.width * 0.05);
     const top = gridBounds.top + (gridBounds.height * yPercent * 0.9) + (gridBounds.height * 0.05);
 
-    return { left: `${left}px`, top: `${top}px` };
+    const position = { left: `${left}px`, top: `${top}px` };
+    if (index === 0) console.log(`📍 Logo ${index} position:`, position, { col, row, xPercent, yPercent });
+    return position;
   };
 
   return (
@@ -106,13 +120,18 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
+            onAnimationStart={() => console.log('💥 Explosion container animation started')}
           >
-            {skills.map((skill, index) => {
-              const pos = getLogoPosition(index, skills.length);
-              const centerX = gridBounds ? gridBounds.left + gridBounds.width / 2 : window.innerWidth / 2;
-              const centerY = gridBounds ? gridBounds.top + gridBounds.height / 2 : window.innerHeight / 2;
+            {(() => {
+              console.log('🎯 Rendering logos:', { count: skills.length, hasGridBounds: !!gridBounds });
+              return skills.map((skill, index) => {
+                const pos = getLogoPosition(index, skills.length);
+                const centerX = gridBounds ? gridBounds.left + gridBounds.width / 2 : window.innerWidth / 2;
+                const centerY = gridBounds ? gridBounds.top + gridBounds.height / 2 : window.innerHeight / 2;
 
-              return (
+                if (index === 0) console.log('🚀 First logo data:', { skill: skill.name, pos, centerX, centerY });
+
+                return (
                 <motion.div
                   key={`logo-${index}`}
                   className="fixed"
@@ -151,10 +170,13 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     style={{
                       filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
                     }}
+                    onLoad={() => index === 0 && console.log('✅ First logo image loaded')}
+                    onError={() => console.error(`❌ Logo failed to load: ${skill.name}`)}
                   />
                 </motion.div>
               );
-            })}
+            });
+            })()}
           </motion.div>
         ) : (
           /* Normal text badges view */
