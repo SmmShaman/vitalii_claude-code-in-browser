@@ -95,32 +95,36 @@ export const translations = {
 
     services: "Services",
     services_title: "Services",
-    services_content: "**AI Integration**\nFrom concept to production using OpenAI, LangChain, and other cutting-edge AI technologies. I help businesses integrate artificial intelligence into their workflows, automate processes, and build intelligent systems that scale.\n\n**Workshops & Training**\nHands-on sessions for teams to upskill in modern technologies, AI tools, and digital transformation strategies. Tailored training programs designed to boost productivity and technical capabilities.\n\n**Data & BI Dashboards**\nPower BI, Supabase, SQL - creating comprehensive business intelligence solutions that turn raw data into actionable insights. Custom dashboards for real-time monitoring and data-driven decision making.\n\n**Growth Marketing & Analytics**\nConversion optimization, user behavior analysis, and data-driven marketing strategies. Implementing analytics frameworks that identify growth opportunities and maximize ROI.\n\n**Automation & Process Optimization**\nStreamline workflows through intelligent automation using Zapier, Make, and custom solutions. Eliminating repetitive tasks and optimizing business processes for maximum efficiency.\n\n**Strategic Consulting**\nDigital transformation guidance for businesses looking to modernize their operations, adopt new technologies, and stay competitive in the digital age. From strategy development to implementation support.",
+    services_content: "**AI Integration & Automation**\nFrom concept to production using OpenAI, LangChain, and other cutting-edge AI technologies. I help businesses integrate artificial intelligence into their workflows, automate processes, and build intelligent systems that scale.\n\n**Growth Marketing & Analytics**\nConversion optimization, user behavior analysis, and data-driven marketing strategies. Implementing analytics frameworks that identify growth opportunities and maximize ROI across all channels.\n\n**Marketing Analytics & Dashboarding**\nPower BI, Supabase, SQL - creating comprehensive business intelligence solutions that turn raw data into actionable insights. Custom dashboards for real-time monitoring and data-driven decision making.\n\n**Digital Strategy & Automation Consulting**\nDigital transformation guidance for businesses looking to modernize their operations, adopt new technologies, and stay competitive. Streamline workflows through intelligent automation using Zapier, Make, and custom solutions.\n\n**EdTech Product Development (Elvarika)**\nDevelopment of innovative educational technology solutions, including my flagship SaaS platform for language learning using AI algorithms and personalized audio playlists. Full-cycle product development from concept to market launch.\n\n**E-commerce Optimization (Amazon / Etsy / Shopify)**\nStrategic optimization for online marketplaces and e-commerce platforms. Product launches, listing optimization, sales analytics, and conversion rate improvement for Amazon, Etsy, and Shopify stores.\n\n**AI Workshops & Practical Training**\nHands-on sessions for teams to upskill in modern AI technologies, automation tools, and digital transformation strategies. Tailored training programs designed to boost productivity and technical capabilities.",
 
     services_list: [
       {
-        title: "AI Integration",
-        description: "from concept to production (OpenAI, LangChain)"
-      },
-      {
-        title: "Workshops & Training",
-        description: "hands-on sessions for teams"
-      },
-      {
-        title: "Data & BI Dashboards",
-        description: "Power BI, Supabase, SQL"
+        title: "AI Integration & Automation",
+        description: "from concept to production"
       },
       {
         title: "Growth Marketing & Analytics",
-        description: "conversion optimization"
+        description: "data-driven growth strategies"
       },
       {
-        title: "Automation & Process Optimization",
-        description: "streamline workflows"
+        title: "Marketing Analytics & Dashboarding",
+        description: "actionable insights & visualization"
       },
       {
-        title: "Strategic Consulting",
-        description: "digital transformation"
+        title: "Digital Strategy & Automation Consulting",
+        description: "transform & optimize workflows"
+      },
+      {
+        title: "EdTech Product Development (Elvarika)",
+        description: "innovative learning solutions"
+      },
+      {
+        title: "E-commerce Optimization",
+        description: "Amazon / Etsy / Shopify"
+      },
+      {
+        title: "AI Workshops & Practical Training",
+        description: "hands-on learning sessions"
       }
     ],
     services_label: "my services",
@@ -319,32 +323,36 @@ export const translations = {
 
     services: "Tjenester",
     services_title: "Tjenester",
-    services_content: "**AI-integrasjon**\nFra konsept til produksjon ved hjelp av OpenAI, LangChain og andre banebrytende AI-teknologier. Jeg hjelper bedrifter med å integrere kunstig intelligens i sine arbeidsflyter, automatisere prosesser og bygge intelligente systemer som skalerer.\n\n**Workshops & Opplæring**\nHåndson-økter for team for å oppgradere ferdigheter i moderne teknologier, AI-verktøy og digital transformasjon. Skreddersydde opplæringsprogrammer designet for å øke produktivitet og tekniske evner.\n\n**Data & BI Dashboards**\nPower BI, Supabase, SQL - skaper omfattende business intelligence-løsninger som gjør rådata om til handlingsrettet innsikt. Tilpassede dashboards for sanntidsovervåking og datadrevet beslutningstaking.\n\n**Vekstmarkedsføring & Analyse**\nKonverteringsoptimalisering, brukeratferdsanalyse og datadrevne markedsføringsstrategier. Implementering av analyserammeverk som identifiserer vekstmuligheter og maksimerer ROI.\n\n**Automatisering & Prosessoptimalisering**\nStrømlinjeforme arbeidsflyter gjennom intelligent automatisering ved hjelp av Zapier, Make og tilpassede løsninger. Eliminering av repetitive oppgaver og optimalisering av forretningsprosesser for maksimal effektivitet.\n\n**Strategisk Konsultasjon**\nDigital transformasjonsveiledning for bedrifter som ønsker å modernisere sine operasjoner, ta i bruk nye teknologier og forbli konkurransedyktige i den digitale tidsalderen. Fra strategiutvikling til implementeringsstøtte.",
+    services_content: "**AI-integrasjon & Automatisering**\nFra konsept til produksjon ved hjelp av OpenAI, LangChain og andre banebrytende AI-teknologier. Jeg hjelper bedrifter med å integrere kunstig intelligens i sine arbeidsflyter, automatisere prosesser og bygge intelligente systemer som skalerer.\n\n**Vekstmarkedsføring & Analyse**\nKonverteringsoptimalisering, brukeratferdsanalyse og datadrevne markedsføringsstrategier. Implementering av analyserammeverk som identifiserer vekstmuligheter og maksimerer ROI på tvers av alle kanaler.\n\n**Marketing Analytics & Dashboarding**\nPower BI, Supabase, SQL - skaper omfattende business intelligence-løsninger som gjør rådata om til handlingsrettet innsikt. Tilpassede dashboards for sanntidsovervåking og datadrevet beslutningstaking.\n\n**Digital Strategi & Automatiseringskonsultasjon**\nDigital transformasjonsveiledning for bedrifter som ønsker å modernisere sine operasjoner, ta i bruk nye teknologier og forbli konkurransedyktige. Strømlinjeforme arbeidsflyter gjennom intelligent automatisering ved hjelp av Zapier, Make og tilpassede løsninger.\n\n**EdTech Produktutvikling (Elvarika)**\nUtvikling av innovative pedagogiske teknologiløsninger, inkludert min flaggskip SaaS-plattform for språklæring ved bruk av AI-algoritmer og personaliserte lydspillelister. Full syklus produktutvikling fra konsept til markedslansering.\n\n**E-handelsoptimalisering (Amazon / Etsy / Shopify)**\nStrategisk optimalisering for nettbaserte markedsplasser og e-handelsplattformer. Produktlanseringer, oppføringsoptimalisering, salgsanalyse og forbedring av konverteringsrate for Amazon, Etsy og Shopify butikker.\n\n**AI Workshops & Praktisk Opplæring**\nHåndson-økter for team for å oppgradere ferdigheter i moderne AI-teknologier, automatiseringsverktøy og digital transformasjon. Skreddersydde opplæringsprogrammer designet for å øke produktivitet og tekniske evner.",
 
     services_list: [
       {
-        title: "AI-integrasjon",
-        description: "fra konsept til produksjon (OpenAI, LangChain)"
-      },
-      {
-        title: "Workshops & Opplæring",
-        description: "praktiske sesjoner for team"
-      },
-      {
-        title: "Data & BI Dashboards",
-        description: "Power BI, Supabase, SQL"
+        title: "AI-integrasjon & Automatisering",
+        description: "fra konsept til produksjon"
       },
       {
         title: "Vekstmarkedsføring & Analyse",
-        description: "konverteringsoptimalisering"
+        description: "datadrevne vekststrategier"
       },
       {
-        title: "Automatisering & Prosessoptimalisering",
-        description: "strømlinjeforme arbeidsflyter"
+        title: "Marketing Analytics & Dashboarding",
+        description: "handlingsrettet innsikt & visualisering"
       },
       {
-        title: "Strategisk Konsultasjon",
-        description: "digital transformasjon"
+        title: "Digital Strategi & Automatiseringskonsultasjon",
+        description: "transformer & optimaliser arbeidsflyter"
+      },
+      {
+        title: "EdTech Produktutvikling (Elvarika)",
+        description: "innovative læringsløsninger"
+      },
+      {
+        title: "E-handelsoptimalisering",
+        description: "Amazon / Etsy / Shopify"
+      },
+      {
+        title: "AI Workshops & Praktisk Opplæring",
+        description: "hands-on læringssessjoner"
       }
     ],
     services_label: "mine tjenester",
@@ -543,32 +551,36 @@ export const translations = {
 
     services: "Послуги",
     services_title: "Послуги",
-    services_content: "**AI-інтеграція**\nВід концепції до продакшену з використанням OpenAI, LangChain та інших передових AI-технологій. Допомагаю бізнесам інтегрувати штучний інтелект у їхні робочі процеси, автоматизувати процеси та створювати інтелектуальні системи, які масштабуються.\n\n**Воркшопи та Навчання**\nПрактичні сесії для команд для підвищення кваліфікації в сучасних технологіях, AI-інструментах та стратегіях цифрової трансформації. Індивідуальні навчальні програми, розроблені для підвищення продуктивності та технічних можливостей.\n\n**Дашборди Data & BI**\nPower BI, Supabase, SQL - створення комплексних рішень бізнес-аналітики, які перетворюють сирі дані на практичні висновки. Індивідуальні дашборди для моніторингу в реальному часі та прийняття рішень на основі даних.\n\n**Маркетинг Зростання та Аналітика**\nОптимізація конверсії, аналіз поведінки користувачів та маркетингові стратегії на основі даних. Впровадження аналітичних фреймворків, які визначають можливості зростання та максимізують ROI.\n\n**Автоматизація та Оптимізація Процесів**\nОптимізація робочих процесів через інтелектуальну автоматизацію з використанням Zapier, Make та індивідуальних рішень. Усунення повторюваних завдань та оптимізація бізнес-процесів для максимальної ефективності.\n\n**Стратегічний Консалтинг**\nКерівництво цифровою трансформацією для бізнесів, які прагнуть модернізувати свої операції, впроваджувати нові технології та залишатися конкурентоспроможними в цифрову епоху. Від розробки стратегії до підтримки впровадження.",
+    services_content: "**AI-інтеграція та Автоматизація**\nВід концепції до продакшену з використанням OpenAI, LangChain та інших передових AI-технологій. Допомагаю бізнесам інтегрувати штучний інтелект у їхні робочі процеси, автоматизувати процеси та створювати інтелектуальні системи, які масштабуються.\n\n**Маркетинг Зростання та Аналітика**\nОптимізація конверсії, аналіз поведінки користувачів та маркетингові стратегії на основі даних. Впровадження аналітичних фреймворків, які визначають можливості зростання та максимізують ROI по всіх каналах.\n\n**Маркетингова Аналітика та Дашбординг**\nPower BI, Supabase, SQL - створення комплексних рішень бізнес-аналітики, які перетворюють сирі дані на практичні висновки. Індивідуальні дашборди для моніторингу в реальному часі та прийняття рішень на основі даних.\n\n**Цифрова Стратегія та Консалтинг Автоматизації**\nКерівництво цифровою трансформацією для бізнесів, які прагнуть модернізувати свої операції, впроваджувати нові технології та залишатися конкурентоспроможними. Оптимізація робочих процесів через інтелектуальну автоматизацію з використанням Zapier, Make та індивідуальних рішень.\n\n**EdTech Розробка Продуктів (Elvarika)**\nРозробка інноваційних освітніх технологічних рішень, включаючи мою флагманську SaaS-платформу для вивчення мов з використанням AI-алгоритмів та персоналізованих аудіоплейлистів. Повний цикл розробки продукту від концепції до виходу на ринок.\n\n**E-commerce Оптимізація (Amazon / Etsy / Shopify)**\nСтратегічна оптимізація для онлайн-маркетплейсів та e-commerce платформ. Запуск продуктів, оптимізація лістингів, аналітика продажів та покращення конверсій для Amazon, Etsy та Shopify магазинів.\n\n**AI Воркшопи та Практичне Навчання**\nПрактичні сесії для команд для підвищення кваліфікації в сучасних AI-технологіях, інструментах автоматизації та стратегіях цифрової трансформації. Індивідуальні навчальні програми, розроблені для підвищення продуктивності та технічних можливостей.",
 
     services_list: [
       {
-        title: "AI-інтеграція",
-        description: "від концепції до продакшену (OpenAI, LangChain)"
+        title: "AI-інтеграція та Автоматизація",
+        description: "від концепції до продакшену"
       },
       {
-        title: "Воркшопи та тренінги",
-        description: "практичні сесії для команд"
+        title: "Маркетинг Зростання та Аналітика",
+        description: "стратегії зростання на основі даних"
       },
       {
-        title: "Дашборди даних та BI",
-        description: "Power BI, Supabase, SQL"
+        title: "Маркетингова Аналітика та Дашбординг",
+        description: "практичні висновки та візуалізація"
       },
       {
-        title: "Маркетинг зростання та аналітика",
-        description: "оптимізація конверсій"
+        title: "Цифрова Стратегія та Консалтинг Автоматизації",
+        description: "трансформація та оптимізація процесів"
       },
       {
-        title: "Автоматизація та оптимізація процесів",
-        description: "оптимізація робочих процесів"
+        title: "EdTech Розробка Продуктів (Elvarika)",
+        description: "інноваційні навчальні рішення"
       },
       {
-        title: "Стратегічний консалтинг",
-        description: "цифрова трансформація"
+        title: "E-commerce Оптимізація",
+        description: "Amazon / Etsy / Shopify"
+      },
+      {
+        title: "AI Воркшопи та Практичне Навчання",
+        description: "практичні навчальні сесії"
       }
     ],
     services_label: "мої послуги",
