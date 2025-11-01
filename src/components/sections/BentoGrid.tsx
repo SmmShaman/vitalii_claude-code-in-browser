@@ -489,16 +489,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Fixed gap for uniform spacing on all screen sizes
                   const gapSize = GAP_SIZE;
 
-                  // Skills: ЗАВЖДИ auto, без змін
-                  if (section.id === 'skills') {
-                    return 'auto';
-                  }
-
-                  // Blog: ЗАВЖДИ auto, без змін
-                  if (section.id === 'blog') {
-                    return 'auto';
-                  }
-
                   // News: full grid height when news item selected
                   if (section.id === 'news' && selectedNewsId && totalGridHeight > 0) {
                     console.log('📐 News FULL height:', totalGridHeight, '(all 6 windows)');
@@ -708,14 +698,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     style={{
                       height: getExpandedHeight(),
                       willChange: 'transform',
-                      // Skills: ЗАВЖДИ alignSelf start - не розтягується по grid row
-                      ...(section.id === 'skills' ? {
-                        alignSelf: 'start'
-                      } : {}),
-                      // Blog: ЗАВЖДИ alignSelf start - не розтягується по grid row
-                      ...(section.id === 'blog' ? {
-                        alignSelf: 'start'
-                      } : {}),
                       // Expand to full grid when news/blog item is selected
                       ...(section.id === 'news' && selectedNewsId ? {
                         gridColumn: '1 / -1',
