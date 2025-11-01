@@ -19,6 +19,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
   const [gridBounds, setGridBounds] = useState<DOMRect | null>(null);
   const splitTextRef = useRef<SplitText | null>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const [currentText, setCurrentText] = useState(text);
 
   // Log component lifecycle
   useEffect(() => {
@@ -32,6 +33,12 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
   useEffect(() => {
     console.log('🔄 AboutAnimation: isExploding changed to:', isExploding);
   }, [isExploding]);
+
+  // Update text when it changes
+  useEffect(() => {
+    console.log('🌐 AboutAnimation: text changed, updating currentText');
+    setCurrentText(text);
+  }, [text]);
 
   // Calculate grid bounds when explosion starts
   useEffect(() => {
@@ -48,7 +55,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
 
   // Animate text when exploding
   useEffect(() => {
-    console.log('🎬 AboutAnimation: Animation useEffect triggered. isExploding:', isExploding, 'textRef:', !!textRef.current, 'gridBounds:', !!gridBounds);
+    console.log('🎬 AboutAnimation: Animation useEffect triggered. isExploding:', isExploding, 'textRef:', !!textRef.current, 'gridBounds:', !!gridBounds, 'currentText length:', currentText.length);
 
     if (!isExploding || !textRef.current || !gridBounds) {
       // Cleanup
@@ -132,7 +139,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
         timelineRef.current = null;
       }
     };
-  }, [isExploding, gridBounds, text]);
+  }, [isExploding, gridBounds, currentText]);
 
   console.log('🖼️ AboutAnimation: Render called. isExploding:', isExploding, 'gridBounds:', !!gridBounds);
 
@@ -143,11 +150,15 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
 
   console.log('✅ AboutAnimation: Rendering portal');
 
+  // Convert \n\n to proper spacing
+  const formattedText = currentText.replace(/\n\n/g, '\n\n');
+  console.log('📝 AboutAnimation: Text length:', formattedText.length);
+
   return createPortal(
     <AnimatePresence mode="wait">
       {isExploding && (
         <motion.div
-          key="about-explosion"
+          key={`about-explosion-${currentText.substring(0, 50)}`}
           className="fixed bg-white"
           style={{
             left: gridBounds.left,
@@ -178,13 +189,14 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
           <div className="w-full h-full flex items-center justify-center p-8 overflow-auto">
             <div
               ref={textRef}
-              className="text-gray-900 max-w-full"
+              className="text-gray-900 max-w-4xl"
               style={{
                 fontSize: 'clamp(0.9rem, 2vw, 1.2rem)',
-                lineHeight: 1.6,
+                lineHeight: 1.8,
+                whiteSpace: 'pre-line',
               }}
             >
-              {text}
+              {formattedText}
             </div>
           </div>
         </motion.div>
