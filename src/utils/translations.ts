@@ -175,7 +175,6 @@ export const translations = {
       { name: "Netlify", category: "integration" },
       // Other tools
       { name: "Bolt.new", category: "ui" },
-      { name: "PowerPoint", category: "ui" },
       { name: "Canva", category: "ui" },
     ],
 
@@ -417,7 +416,6 @@ export const translations = {
       { name: "Netlify", category: "integration" },
       // Other tools
       { name: "Bolt.new", category: "ui" },
-      { name: "PowerPoint", category: "ui" },
       { name: "Canva", category: "ui" },
     ],
 
@@ -659,7 +657,6 @@ export const translations = {
       { name: "Netlify", category: "integration" },
       // Other tools
       { name: "Bolt.new", category: "ui" },
-      { name: "PowerPoint", category: "ui" },
       { name: "Canva", category: "ui" },
     ],
 

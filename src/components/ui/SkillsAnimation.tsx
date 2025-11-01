@@ -254,7 +254,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                 >
                   <span
                     className={`font-semibold ${colors.text} whitespace-nowrap`}
-                    style={{ fontSize: 'clamp(0.6rem, 1vw, 0.75rem)' }}
+                    style={{ fontSize: 'clamp(1.2rem, 2vw, 1.5rem)' }}
                   >
                     {skill.name}
                   </span>
