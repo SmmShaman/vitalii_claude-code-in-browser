@@ -548,9 +548,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                 // Get animated properties for each section
                 const getAnimatedProps = () => {
-                  // Fixed gap for uniform spacing on all screen sizes
-                  const gapSize = GAP_SIZE;
-
                   // Hide ALL 6 windows when Skills is exploding (logos will show on top)
                   if (isSkillsExploding) {
                     return {
@@ -561,6 +558,16 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // ====== LOCK УМОВИ - ЗАВЖДИ ПЕРШИМИ! ======
 
+                  // Skills: НІКОЛИ не рухається - ПЕРША УМОВА!
+                  if (section.id === 'skills' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // Blog: НІКОЛИ не рухається - ДРУГА УМОВА!
+                  if (section.id === 'blog' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
                   // About: ЗАВЖДИ видимий, окрім fullscreen режимів
                   if (section.id === 'about' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
                     return { opacity: 1, y: 0, scaleY: 1 };
@@ -568,16 +575,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів або Blog expansion
                   if (section.id === 'projects' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog && !isBlogExpanded && !isProjectsHiding) {
-                    return { opacity: 1, y: 0, scaleY: 1 };
-                  }
-
-                  // Skills: НІКОЛИ не рухається, окрім fullscreen режимів
-                  if (section.id === 'skills' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
-                    return { opacity: 1, y: 0, scaleY: 1 };
-                  }
-
-                  // Blog: НІКОЛИ не рухається, окрім fullscreen режимів
-                  if (section.id === 'blog' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
@@ -645,14 +642,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     };
                   }
 
-                  // Blog: move upward by Projects height when expanded (but not in fullscreen)
-                  if (section.id === 'blog' && isBlogExpanded && projectsHeight > 0) {
-                    const moveDistance = -(projectsHeight + gapSize);
-                    return {
-                      opacity: 1,
-                      y: moveDistance,
-                    };
-                  }
+                  // Blog: expanded but NOT moving (lock умова вище вже обробляє це)
+                  // ВИДАЛЕНО moveDistance - Blog НЕ рухається вгору!
 
                   return {
                     opacity: 1,
