@@ -122,7 +122,9 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
                 className="font-bold text-white text-center relative px-4"
                 style={{
                   fontSize: 'clamp(0.7rem, 1.4vw, 0.95rem)',
-                  whiteSpace: 'nowrap'
+                  wordBreak: 'normal',
+                  overflowWrap: 'normal',
+                  hyphens: 'none'
                 }}
               >
                 {service.title}
