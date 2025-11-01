@@ -28,6 +28,8 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
   const wheelTimeoutRef = useRef<number | null>(null);
   const detailBoxRef = useRef<HTMLDivElement>(null);
   const simpleBoxRef = useRef<HTMLDivElement>(null);
+  const line1Ref = useRef<SVGLineElement>(null);
+  const line2Ref = useRef<SVGLineElement>(null);
 
   // Handle wheel scroll to navigate between services
   useEffect(() => {
@@ -64,7 +66,7 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
     };
   }, [isOpen, services.length]);
 
-  // Animate boxes when active service changes (like template)
+  // Animate boxes and lines when active service changes (like template)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -78,9 +80,25 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
 
     const detailBox = detailBoxRef.current;
     const simpleBox = simpleBoxRef.current;
+    const line1 = line1Ref.current;
+    const line2 = line2Ref.current;
 
-    if (detailBox && simpleBox) {
-      // Animate first box (detailed description) - appears immediately
+    if (detailBox && simpleBox && line1 && line2) {
+      // Animate first line - appears first
+      gsap.set(line1, {
+        strokeDasharray: 1000,
+        strokeDashoffset: 1000,
+        opacity: 0,
+      });
+
+      gsap.to(line1, {
+        strokeDashoffset: 0,
+        opacity: 1,
+        duration: 0.5,
+        ease: 'power2.out',
+      });
+
+      // Animate first box (detailed description) - appears after line
       gsap.set(detailBox, {
         scale: 0.8,
         xPercent: -10,
@@ -96,10 +114,26 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
         yPercent: 0,
         rotation: 0,
         duration: 0.7,
+        delay: 0.3,
         ease: 'expo.out',
       });
 
-      // Animate second box (simple explanation) - appears after 1 second
+      // Animate second line - appears after 1 second
+      gsap.set(line2, {
+        strokeDasharray: 1000,
+        strokeDashoffset: 1000,
+        opacity: 0,
+      });
+
+      gsap.to(line2, {
+        strokeDashoffset: 0,
+        opacity: 1,
+        duration: 0.5,
+        delay: 1.0,
+        ease: 'power2.out',
+      });
+
+      // Animate second box (simple explanation) - appears after line 2
       gsap.set(simpleBox, {
         scale: 0.8,
         xPercent: -10,
@@ -115,7 +149,7 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
         yPercent: 0,
         rotation: 0,
         duration: 0.7,
-        delay: 1.0, // Delay 1 second for second box
+        delay: 1.3, // After line 2
         ease: 'expo.out',
       });
     }
@@ -217,9 +251,9 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
                         fontSize: activeIndex === index
                           ? 'clamp(2rem, 4vw, 3.6rem)' // 2x larger for active
                           : 'clamp(1rem, 2vw, 1.8rem)',
-                        lineHeight: 1,
+                        lineHeight: 1.1,
                         color: activeIndex === index ? '#c24628' : '#e6e3d8',
-                        whiteSpace: 'nowrap',
+                        whiteSpace: activeIndex === index ? 'normal' : 'nowrap', // Multi-line for active
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}
@@ -232,14 +266,41 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
             </div>
 
             {/* Right side: Active service details (2/3 width) */}
-            <div className="w-2/3 h-full flex flex-col justify-center gap-12">
-              {/* Detailed description box */}
+            <div className="w-2/3 h-full flex flex-col justify-center gap-6 relative">
+              {/* Line 1: from active service to first box */}
+              <svg
+                className="absolute"
+                style={{
+                  width: '150px',
+                  height: '150px',
+                  left: '-150px',
+                  top: 'calc(25% - 75px)',
+                  pointerEvents: 'none',
+                }}
+              >
+                <line
+                  ref={line1Ref}
+                  x1="0"
+                  y1="75"
+                  x2="150"
+                  y2="75"
+                  stroke="#e6e3d8"
+                  strokeWidth="2"
+                  opacity="0"
+                />
+              </svg>
+
+              {/* Detailed description box - more square */}
               <div
                 ref={detailBoxRef}
-                className="relative p-10 rounded-2xl shadow-2xl"
+                className="relative shadow-2xl"
                 style={{
                   backgroundColor: detailColor,
                   opacity: 0, // Initial state for GSAP
+                  padding: 'clamp(2rem, 4vw, 3.5rem)',
+                  minHeight: '200px',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
                 <p
@@ -255,13 +316,40 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
                 </p>
               </div>
 
-              {/* Simple explanation box */}
+              {/* Line 2: from first box to second box */}
+              <svg
+                className="absolute"
+                style={{
+                  width: '150px',
+                  height: '150px',
+                  left: '-150px',
+                  top: 'calc(75% - 75px)',
+                  pointerEvents: 'none',
+                }}
+              >
+                <line
+                  ref={line2Ref}
+                  x1="0"
+                  y1="75"
+                  x2="150"
+                  y2="75"
+                  stroke="#e6e3d8"
+                  strokeWidth="2"
+                  opacity="0"
+                />
+              </svg>
+
+              {/* Simple explanation box - more square */}
               <div
                 ref={simpleBoxRef}
-                className="relative p-10 rounded-2xl shadow-2xl"
+                className="relative shadow-2xl"
                 style={{
                   backgroundColor: simpleColor,
                   opacity: 0, // Initial state for GSAP
+                  padding: 'clamp(2rem, 4vw, 3.5rem)',
+                  minHeight: '200px',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
                 <p
