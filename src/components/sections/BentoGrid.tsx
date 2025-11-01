@@ -665,11 +665,24 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseEnter={() => {
                       console.log(`🐭 MOUSE ENTER: ${section.id}`);
-                      // Cancel collapse timeout if mouse returns
+                      // Cancel collapse timeout ONLY if mouse returns to the SAME expanded window
                       if (mouseLeaveTimeoutRef.current) {
-                        console.log(`⏹️ Скасовано таймер згортання для ${section.id}`);
-                        clearTimeout(mouseLeaveTimeoutRef.current);
-                        mouseLeaveTimeoutRef.current = null;
+                        // Only cancel if returning to News when News is expanded
+                        if (section.id === 'news' && isNewsExpanded) {
+                          console.log(`⏹️ СКАСОВАНО таймер - курсор повернувся в News`);
+                          clearTimeout(mouseLeaveTimeoutRef.current);
+                          mouseLeaveTimeoutRef.current = null;
+                        }
+                        // Only cancel if returning to Blog when Blog is expanded
+                        else if (section.id === 'blog' && isBlogExpanded) {
+                          console.log(`⏹️ СКАСОВАНО таймер - курсор повернувся в Blog`);
+                          clearTimeout(mouseLeaveTimeoutRef.current);
+                          mouseLeaveTimeoutRef.current = null;
+                        }
+                        // Do NOT cancel if entering other windows
+                        else {
+                          console.log(`⚠️ НЕ скасовуємо таймер - це інше вікно (${section.id})`);
+                        }
                       }
                     }}
                     onMouseLeave={() => {
