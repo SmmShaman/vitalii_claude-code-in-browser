@@ -703,7 +703,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       // ЯВНІ grid positions щоб вікна залишалися на місцях
                       // Row 1: About(1,1), Services(2,1), Projects(3,1)
                       // Row 2: Skills(1,2), News(2,2), Blog(3,2)
-                      // ВИНЯТОК: Blog займає ОБИДВА ряди (1-2) коли розширений
+                      // ВИНЯТОК: News та Blog займають ОБИДВА ряди (1-2) коли розширені
                       gridColumn: section.id === 'about' ? '1' :
                                   section.id === 'services' ? '2' :
                                   section.id === 'projects' ? '3' :
@@ -711,6 +711,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                                   section.id === 'news' ? '2' :
                                   section.id === 'blog' ? '3' : 'auto',
                       gridRow: section.id === 'about' || section.id === 'services' || section.id === 'projects' ? '1' :
+                               section.id === 'news' && isNewsExpanded ? '1 / 3' : // News займає ряди 1-2 (обидва ряди)
                                section.id === 'blog' && isBlogExpanded ? '1 / 3' : // Blog займає ряди 1-2 (обидва ряди)
                                '2',
                       // Expand to full grid when news/blog item is selected (override positions)
