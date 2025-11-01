@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { X } from 'lucide-react';
 
+// Import Host Grotesk font
+const FONT_IMPORT = `
+@import url('https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&display=swap');
+`;
+
 interface Service {
   title: string;
   description: string;
@@ -21,6 +26,8 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const wheelTimeoutRef = useRef<number | null>(null);
+  const detailBoxRef = useRef<HTMLDivElement>(null);
+  const simpleBoxRef = useRef<HTMLDivElement>(null);
 
   // Handle wheel scroll to navigate between services
   useEffect(() => {
@@ -57,42 +64,60 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
     };
   }, [isOpen, services.length]);
 
-  // Animate lines and descriptions when active service changes
+  // Animate boxes when active service changes (like template)
   useEffect(() => {
     if (!isOpen) return;
 
     console.log(`🎨 Active service changed to: ${activeIndex}`);
 
-    // Animate detailed description entry
-    const detailBox = document.querySelector(`#detail-box`);
-    const simpleBox = document.querySelector(`#simple-box`);
-    const line1 = document.querySelector(`#line1`);
-    const line2 = document.querySelector(`#line2`);
+    // Use GSAP animations similar to template
+    gsap.defaults({
+      duration: 0.55,
+      ease: 'expo.out',
+    });
 
-    if (detailBox && simpleBox && line1 && line2) {
-      gsap.fromTo(
-        line1,
-        { scaleX: 0, opacity: 0 },
-        { scaleX: 1, opacity: 1, duration: 0.5, ease: 'power2.out' }
-      );
+    const detailBox = detailBoxRef.current;
+    const simpleBox = simpleBoxRef.current;
 
-      gsap.fromTo(
-        detailBox,
-        { opacity: 0, x: -30 },
-        { opacity: 1, x: 0, duration: 0.6, delay: 0.3, ease: 'power2.out' }
-      );
+    if (detailBox && simpleBox) {
+      // Animate first box (detailed description) - appears immediately
+      gsap.set(detailBox, {
+        scale: 0.8,
+        xPercent: -10,
+        yPercent: 20,
+        rotation: -8,
+        opacity: 0,
+      });
 
-      gsap.fromTo(
-        line2,
-        { scaleX: 0, opacity: 0 },
-        { scaleX: 1, opacity: 1, duration: 0.5, delay: 0.6, ease: 'power2.out' }
-      );
+      gsap.to(detailBox, {
+        opacity: 1,
+        scale: 1,
+        xPercent: 0,
+        yPercent: 0,
+        rotation: 0,
+        duration: 0.7,
+        ease: 'expo.out',
+      });
 
-      gsap.fromTo(
-        simpleBox,
-        { opacity: 0, x: -30 },
-        { opacity: 1, x: 0, duration: 0.6, delay: 0.9, ease: 'power2.out' }
-      );
+      // Animate second box (simple explanation) - appears after 1 second
+      gsap.set(simpleBox, {
+        scale: 0.8,
+        xPercent: -10,
+        yPercent: 20,
+        rotation: -8,
+        opacity: 0,
+      });
+
+      gsap.to(simpleBox, {
+        opacity: 1,
+        scale: 1,
+        xPercent: 0,
+        yPercent: 0,
+        rotation: 0,
+        duration: 0.7,
+        delay: 1.0, // Delay 1 second for second box
+        ease: 'expo.out',
+      });
     }
   }, [activeIndex, isOpen]);
 
@@ -106,6 +131,33 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
 
   const currentService = services[activeIndex];
 
+  // Color palette for each service (like template)
+  const colors = [
+    '#6495ed', // cornflowerblue - AI Integration
+    '#ffe4b5', // moccasin - Growth Marketing
+    '#66cdaa', // mediumaquamarine - Marketing Analytics
+    '#800000', // maroon - Digital Strategy
+    '#ee82ee', // violet - EdTech
+    '#ffa500', // orange - E-commerce
+    '#20b2aa', // lightseagreen - AI Workshops
+  ];
+
+  const detailColor = colors[activeIndex] || '#6495ed';
+  const simpleColor = colors[(activeIndex + 1) % colors.length] || '#66cdaa';
+
+  // Determine text color based on background brightness
+  const getTextColor = (bgColor: string) => {
+    const hex = bgColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 155 ? '#131313' : '#ffffff';
+  };
+
+  const detailTextColor = getTextColor(detailColor);
+  const simpleTextColor = getTextColor(simpleColor);
+
   return (
     <AnimatePresence>
       <motion.div
@@ -113,112 +165,134 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 z-50 bg-white rounded-lg"
+        className="absolute inset-0 z-50 rounded-lg"
         style={{
           overflow: 'hidden',
+          backgroundColor: '#131313', // Dark background like template
         }}
       >
+        {/* Import font */}
+        <style>{FONT_IMPORT}</style>
+
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-6 right-6 z-50 rounded-full p-3 bg-black/10 hover:bg-black/20 transition-colors"
+          className="absolute top-6 right-6 z-50 rounded-full p-3 bg-white/10 hover:bg-white/20 transition-colors"
           aria-label="Close"
         >
-          <X className="w-6 h-6 text-black" />
+          <X className="w-6 h-6 text-white" />
         </button>
 
         {/* Main content - no scroll */}
         <div className="w-full h-full flex items-center justify-center px-8 md:px-12">
           <div className="w-full h-full flex items-center gap-8 md:gap-12">
             {/* Left side: All services (1/3 width) */}
-            <div className="w-1/3 h-full flex flex-col justify-center gap-4">
+            <div className="w-1/3 h-full flex flex-col justify-center gap-3">
               {services.map((service, index) => (
                 <div
                   key={index}
                   onClick={() => setActiveIndex(index)}
-                  className={`cursor-pointer transition-all duration-500 p-3 rounded-lg ${
+                  className={`cursor-pointer transition-all duration-350 p-3 ${
                     activeIndex === index
-                      ? 'bg-black text-white scale-105'
-                      : 'text-gray-300 hover:text-gray-500 hover:bg-gray-50'
+                      ? 'opacity-100'
+                      : 'opacity-50 hover:opacity-75'
                   }`}
                 >
                   <h3
-                    className={`font-black uppercase transition-all duration-500`}
+                    className="uppercase transition-all duration-350"
                     style={{
-                      fontSize: 'clamp(0.9rem, 1.8vw, 1.5rem)',
-                      lineHeight: 1.2,
+                      fontFamily: '"Host Grotesk", sans-serif',
+                      fontWeight: 700,
+                      fontSize: 'clamp(1rem, 2vw, 1.8rem)',
+                      lineHeight: 1,
+                      color: activeIndex === index ? '#c24628' : '#e6e3d8',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                     }}
                   >
-                    {index + 1}. {service.title}
+                    {service.title}
                   </h3>
                 </div>
               ))}
             </div>
 
             {/* Right side: Active service details (2/3 width) */}
-            <div className="w-2/3 h-full flex flex-col justify-center gap-8">
-              {/* Line 1 */}
-              <svg
-                id="line1"
-                className="w-full h-1"
-                style={{ transformOrigin: 'left center' }}
-              >
-                <line
-                  x1="0"
-                  y1="50%"
-                  x2="100%"
-                  y2="50%"
-                  stroke="#000"
-                  strokeWidth="2"
-                />
-              </svg>
-
+            <div className="w-2/3 h-full flex flex-col justify-center gap-12">
               {/* Detailed description box */}
               <div
-                id="detail-box"
-                className="bg-gradient-to-br from-slate-100 to-slate-200 p-8 rounded-lg shadow-lg border-l-4 border-black"
+                ref={detailBoxRef}
+                className="relative p-10 rounded-2xl shadow-2xl"
+                style={{
+                  backgroundColor: detailColor,
+                  opacity: 0, // Initial state for GSAP
+                }}
               >
-                <div className="flex items-start gap-4">
-                  <span className="text-3xl">🧠</span>
+                <div className="flex items-start gap-5">
+                  <span className="text-5xl">🧠</span>
                   <div>
-                    <p className="text-sm uppercase font-bold text-gray-500 mb-2">
+                    <p
+                      className="uppercase mb-3"
+                      style={{
+                        fontFamily: '"Host Grotesk", sans-serif',
+                        fontWeight: 700,
+                        fontSize: '0.875rem',
+                        letterSpacing: '0.05em',
+                        color: detailTextColor,
+                        opacity: 0.8,
+                      }}
+                    >
                       Серйозний опис
                     </p>
-                    <p className="text-xl text-gray-800 leading-relaxed">
+                    <p
+                      style={{
+                        fontFamily: '"Host Grotesk", sans-serif',
+                        fontWeight: 500,
+                        fontSize: 'clamp(1.1rem, 2.2vw, 1.6rem)',
+                        lineHeight: 1.5,
+                        color: detailTextColor,
+                      }}
+                    >
                       {currentService.detailedDescription}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Line 2 */}
-              <svg
-                id="line2"
-                className="w-full h-1"
-                style={{ transformOrigin: 'left center' }}
-              >
-                <line
-                  x1="0"
-                  y1="50%"
-                  x2="100%"
-                  y2="50%"
-                  stroke="#000"
-                  strokeWidth="2"
-                />
-              </svg>
-
               {/* Simple explanation box */}
               <div
-                id="simple-box"
-                className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-lg shadow-lg border-l-4 border-blue-500"
+                ref={simpleBoxRef}
+                className="relative p-10 rounded-2xl shadow-2xl"
+                style={{
+                  backgroundColor: simpleColor,
+                  opacity: 0, // Initial state for GSAP
+                }}
               >
-                <div className="flex items-start gap-4">
-                  <span className="text-3xl">💬</span>
+                <div className="flex items-start gap-5">
+                  <span className="text-5xl">💬</span>
                   <div>
-                    <p className="text-sm uppercase font-bold text-blue-600 mb-2">
+                    <p
+                      className="uppercase mb-3"
+                      style={{
+                        fontFamily: '"Host Grotesk", sans-serif',
+                        fontWeight: 700,
+                        fontSize: '0.875rem',
+                        letterSpacing: '0.05em',
+                        color: simpleTextColor,
+                        opacity: 0.8,
+                      }}
+                    >
                       Просте пояснення
                     </p>
-                    <p className="text-xl text-gray-700 leading-relaxed">
+                    <p
+                      style={{
+                        fontFamily: '"Host Grotesk", sans-serif',
+                        fontWeight: 500,
+                        fontSize: 'clamp(1.1rem, 2.2vw, 1.6rem)',
+                        lineHeight: 1.5,
+                        color: simpleTextColor,
+                      }}
+                    >
                       {currentService.simpleExplanation}
                     </p>
                   </div>
@@ -232,18 +306,34 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
+          transition={{ delay: 1.5 }}
           className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2"
         >
-          <span className="text-sm text-gray-400 uppercase tracking-wider">
+          <span
+            className="uppercase tracking-wider"
+            style={{
+              fontFamily: '"Host Grotesk", sans-serif',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#e6e3d8',
+              opacity: 0.6,
+            }}
+          >
             Scroll to navigate ({activeIndex + 1}/{services.length})
           </span>
           <motion.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-6 h-10 border-2 border-gray-300 rounded-full flex items-start justify-center p-2"
+            className="w-6 h-10 border-2 rounded-full flex items-start justify-center p-2"
+            style={{
+              borderColor: '#e6e3d8',
+              opacity: 0.4,
+            }}
           >
-            <div className="w-1 h-2 bg-gray-400 rounded-full" />
+            <div
+              className="w-1 h-2 rounded-full"
+              style={{ backgroundColor: '#e6e3d8' }}
+            />
           </motion.div>
         </motion.div>
       </motion.div>
