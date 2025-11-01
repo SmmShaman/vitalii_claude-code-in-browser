@@ -250,6 +250,37 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
 
       if (!serviceElements || serviceElements.length === 0) return;
 
+      console.log('🔄 ANIMATION CYCLE - Starting transition to index:', currentIndex);
+
+      // 🔍 DIAGNOSTIC: Log positions of ALL chars BEFORE hiding
+      serviceElements.forEach((element, idx) => {
+        const chars = element.querySelectorAll('.char');
+        if (chars.length > 0) {
+          const positions = Array.from(chars).slice(0, 3).map(char => {
+            const rect = (char as HTMLElement).getBoundingClientRect();
+            return { x: rect.x, y: rect.y, opacity: window.getComputedStyle(char as HTMLElement).opacity };
+          });
+          console.log(`🔍 Service ${idx} chars positions BEFORE hide:`, positions);
+        }
+      });
+
+      // IMPORTANT: First scatter chars of ALL non-current elements to prevent piling
+      serviceElements.forEach((element, idx) => {
+        if (idx !== currentIndex) {
+          const chars = element.querySelectorAll('.char');
+          if (chars.length > 0) {
+            console.log(`💨 Scattering chars of service ${idx} (non-current)`);
+            gsap.set(chars, {
+              opacity: 0,
+              x: () => (Math.random() - 0.5) * 600,
+              y: () => (Math.random() - 0.5) * 600,
+              rotation: () => (Math.random() - 0.5) * 360,
+              scale: 0.1,
+            });
+          }
+        }
+      });
+
       // Hide all
       gsap.set(serviceElements, { autoAlpha: 0 });
 
@@ -262,12 +293,35 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
       const chars = currentElement.querySelectorAll('.char');
       if (!chars || chars.length === 0) return;
 
+      console.log(`✨ Animating service ${currentIndex} with ${chars.length} chars`);
+
       // Animate chars
       if (timelineRef.current) {
         timelineRef.current.kill();
       }
 
-      const tl = gsap.timeline();
+      const tl = gsap.timeline({
+        onUpdate: () => {
+          // 🔍 DIAGNOSTIC: Log animation progress
+          if (Math.random() < 0.1) { // Log only 10% of frames to avoid spam
+            const firstChar = chars[0] as HTMLElement;
+            const rect = firstChar.getBoundingClientRect();
+            console.log('🎬 Animation progress:', {
+              progress: tl.progress(),
+              firstCharPos: { x: rect.x, y: rect.y }
+            });
+          }
+        },
+        onComplete: () => {
+          console.log('✅ Animation complete for service', currentIndex);
+          // 🔍 DIAGNOSTIC: Log final positions
+          const positions = Array.from(chars).slice(0, 3).map(char => {
+            const rect = (char as HTMLElement).getBoundingClientRect();
+            return { x: rect.x, y: rect.y };
+          });
+          console.log('🔍 Final positions:', positions);
+        }
+      });
 
       tl.fromTo(
         chars,
