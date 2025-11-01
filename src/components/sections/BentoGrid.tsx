@@ -479,7 +479,22 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
               }}
             >
               <AnimatePresence mode="sync">
-                {sections.map((section) => {
+                {sections
+                  // ФІЛЬТРУЄМО Services коли News розширюється
+                  .filter((section) => {
+                    // Ховаємо Services коли News розширений
+                    if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
+                      console.log('🚫 Services ВИДАЛЕНО з DOM');
+                      return false;
+                    }
+                    // Ховаємо Projects коли Blog розширений
+                    if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
+                      console.log('🚫 Projects ВИДАЛЕНО з DOM');
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((section) => {
                 const isExpanded =
                   (section.id === 'news' && isNewsExpanded) ||
                   (section.id === 'blog' && isBlogExpanded);
@@ -704,7 +719,17 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     style={{
                       height: getExpandedHeight(),
                       willChange: 'transform',
-                      // Expand to full grid when news/blog item is selected
+                      // ЯВНІ grid positions щоб вікна залишалися на місцях
+                      // Row 1: About(1,1), Services(2,1), Projects(3,1)
+                      // Row 2: Skills(1,2), News(2,2), Blog(3,2)
+                      gridColumn: section.id === 'about' ? '1' :
+                                  section.id === 'services' ? '2' :
+                                  section.id === 'projects' ? '3' :
+                                  section.id === 'skills' ? '1' :
+                                  section.id === 'news' ? '2' :
+                                  section.id === 'blog' ? '3' : 'auto',
+                      gridRow: section.id === 'about' || section.id === 'services' || section.id === 'projects' ? '1' : '2',
+                      // Expand to full grid when news/blog item is selected (override positions)
                       ...(section.id === 'news' && selectedNewsId ? {
                         gridColumn: '1 / -1',
                         gridRow: '1 / -1'
