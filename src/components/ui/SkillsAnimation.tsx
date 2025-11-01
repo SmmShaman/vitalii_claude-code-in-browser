@@ -102,13 +102,20 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
   return (
     <>
       {/* Render explosion animation in portal to escape parent transforms */}
-      {isExploding && createPortal(
+      {isExploding && gridBounds && createPortal(
         <AnimatePresence mode="wait">
           {isExploding && (
-          /* Exploding logos view - fixed positioning to cover entire grid area */
+          /* Exploding logos view - fixed positioning to cover grid area only */
           <motion.div
             key="logos"
-            className="fixed inset-0 z-[100] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
+            className="fixed bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
+            style={{
+              left: gridBounds.left,
+              top: gridBounds.top,
+              width: gridBounds.width,
+              height: gridBounds.height,
+              zIndex: 100
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -151,7 +158,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                 return (
                 <motion.div
                   key={`logo-${skill.name}-${index}`}
-                  className="fixed border-4 border-red-500"
+                  className="fixed"
                   style={{
                     zIndex: 200 + index
                   }}
@@ -178,7 +185,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     opacity: 0
                   }}
                   transition={{
-                    duration: 2,
+                    duration: 0.8,
                     delay: index * 0.05,
                     ease: 'easeOut'
                   }}
