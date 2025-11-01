@@ -27,6 +27,21 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
   const maxRetries = 10;
   const splitTextsRef = useRef<SplitText[]>([]);
 
+  // 🔍 DIAGNOSTIC LOG: Services passed to component
+  useEffect(() => {
+    console.log('🔍 ServicesAnimation DIAGNOSTIC - Services received:', {
+      count: services.length,
+      services: services.map((s, idx) => ({
+        index: idx,
+        title: s.title,
+        titleLength: s.title.length,
+        hasAmpersand: s.title.includes('&'),
+        words: s.title.split(' '),
+        wordCount: s.title.split(' ').length
+      }))
+    });
+  }, [services]);
+
   // Calculate optimal font size for all services to fit
   useEffect(() => {
     if (!containerRef.current || !isHovered) return;
@@ -161,16 +176,30 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
 
       // Create SplitText for all services
       splitTextsRef.current = [];
-      serviceElements.forEach((element) => {
+      serviceElements.forEach((element, idx) => {
         const text = element.querySelector('.service-text');
         if (text && text.textContent && text.textContent.trim()) {
           try {
+            console.log(`🔍 DIAGNOSTIC - Creating SplitText for service ${idx}:`, {
+              originalText: text.textContent,
+              textLength: text.textContent.length,
+              element: text,
+              computedStyle: window.getComputedStyle(text as Element)
+            });
+
             const split = new SplitText(text, {
               type: 'chars',
               charsClass: 'char',
             });
+
+            console.log(`🔍 DIAGNOSTIC - SplitText created for service ${idx}:`, {
+              chars: split.chars,
+              charsCount: split.chars?.length,
+              lines: split.lines,
+              linesCount: split.lines?.length
+            });
+
             splitTextsRef.current.push(split);
-            // Removed console.log to prevent infinite log spam
           } catch (error) {
             console.error('ServicesAnimation: Error creating SplitText:', error);
           }
@@ -347,32 +376,47 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
           padding: isHovered ? '1rem' : '0',
         }}
       >
-        {services.map((service, index) => (
-          <div
-            key={index}
-            className={`service-item ${isHovered ? 'relative' : 'absolute inset-0'} flex items-center justify-center`}
-            style={{
-              visibility: 'hidden',
-              opacity: 0,
-            }}
-          >
+        {services.map((service, index) => {
+          // 🔍 DIAGNOSTIC LOG: Rendering each service
+          console.log(`🔍 DIAGNOSTIC - Rendering service ${index}:`, {
+            title: service.title,
+            isHovered,
+            fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
+            cssProperties: {
+              wordBreak: 'normal',
+              overflowWrap: 'normal',
+              hyphens: 'none',
+              whiteSpace: 'normal',
+            }
+          });
+
+          return (
             <div
-              className="service-text font-bold uppercase text-center px-4"
+              key={index}
+              className={`service-item ${isHovered ? 'relative' : 'absolute inset-0'} flex items-center justify-center`}
               style={{
-                fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
-                fontWeight: 900,
-                color: '#1a1a1a',
-                lineHeight: 1.3,
-                wordBreak: 'normal',
-                overflowWrap: 'normal',
-                hyphens: 'none',
-                whiteSpace: 'normal',
+                visibility: 'hidden',
+                opacity: 0,
               }}
             >
-              {service.title}
+              <div
+                className="service-text font-bold uppercase text-center px-4"
+                style={{
+                  fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
+                  fontWeight: 900,
+                  color: '#1a1a1a',
+                  lineHeight: 1.3,
+                  wordBreak: 'normal',
+                  overflowWrap: 'normal',
+                  hyphens: 'none',
+                  whiteSpace: 'normal',
+                }}
+              >
+                {service.title}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
