@@ -131,7 +131,7 @@ export const TypewriterText = ({
         className="text-gray-800 leading-snug whitespace-pre-wrap break-words"
         style={{
           fontSize: 'clamp(0.7rem, 1.2vw, 1rem)',
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+          fontFamily: "'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
         }}
       >
         {formatText(displayedText)}
