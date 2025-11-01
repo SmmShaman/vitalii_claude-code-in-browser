@@ -188,33 +188,47 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
           <div className="w-full h-full flex items-center gap-8 md:gap-12">
             {/* Left side: All services (1/3 width) */}
             <div className="w-1/3 h-full flex flex-col justify-center gap-3">
-              {services.map((service, index) => (
-                <div
-                  key={index}
-                  onClick={() => setActiveIndex(index)}
-                  className={`cursor-pointer transition-all duration-350 p-3 ${
-                    activeIndex === index
-                      ? 'opacity-100'
-                      : 'opacity-50 hover:opacity-75'
-                  }`}
-                >
-                  <h3
-                    className="uppercase transition-all duration-350"
+              {services.map((service, index) => {
+                // Calculate translateY based on position relative to active
+                const getTransform = () => {
+                  if (index === activeIndex) return 'translateY(0)';
+                  if (index < activeIndex) return 'translateY(-40px)'; // Push up
+                  return 'translateY(40px)'; // Push down
+                };
+
+                return (
+                  <div
+                    key={index}
+                    onClick={() => setActiveIndex(index)}
+                    className={`cursor-pointer transition-all duration-500 p-3 ${
+                      activeIndex === index
+                        ? 'opacity-100'
+                        : 'opacity-50 hover:opacity-75'
+                    }`}
                     style={{
-                      fontFamily: '"Host Grotesk", sans-serif',
-                      fontWeight: 700,
-                      fontSize: 'clamp(1rem, 2vw, 1.8rem)',
-                      lineHeight: 1,
-                      color: activeIndex === index ? '#c24628' : '#e6e3d8',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      transform: getTransform(),
                     }}
                   >
-                    {service.title}
-                  </h3>
-                </div>
-              ))}
+                    <h3
+                      className="uppercase transition-all duration-500"
+                      style={{
+                        fontFamily: '"Host Grotesk", sans-serif',
+                        fontWeight: 700,
+                        fontSize: activeIndex === index
+                          ? 'clamp(2rem, 4vw, 3.6rem)' // 2x larger for active
+                          : 'clamp(1rem, 2vw, 1.8rem)',
+                        lineHeight: 1,
+                        color: activeIndex === index ? '#c24628' : '#e6e3d8',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {service.title}
+                    </h3>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Right side: Active service details (2/3 width) */}
