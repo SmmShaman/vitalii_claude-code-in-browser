@@ -1,5 +1,9 @@
-import { useEffect, useRef } from 'react';
-import { createTimeline, stagger } from 'animejs';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import gsap from 'gsap';
+import { SplitText } from 'gsap/SplitText';
+
+// Register GSAP plugins
+gsap.registerPlugin(SplitText);
 
 interface Service {
   title: string;
@@ -9,142 +13,473 @@ interface Service {
 interface ServicesAnimationProps {
   services: Service[];
   backgroundText: string;
+  servicesLabel?: string;
 }
 
-export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
+export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const timelineRef = useRef<any>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [hoverFontSize, setHoverFontSize] = useState('2rem');
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const retryCountRef = useRef<number>(0);
+  const maxRetries = 10;
+  const splitTextsRef = useRef<SplitText[]>([]);
 
-  // Number of squares per row
-  const SQUARES_COUNT = 12;
-
+  // 🔍 DIAGNOSTIC LOG: Services passed to component
   useEffect(() => {
-    if (!containerRef.current) return;
+    console.log('🔍 ServicesAnimation DIAGNOSTIC - Services received:', {
+      count: services.length,
+      services: services.map((s, idx) => ({
+        index: idx,
+        title: s.title,
+        titleLength: s.title.length,
+        hasAmpersand: s.title.includes('&'),
+        words: s.title.split(' '),
+        wordCount: s.title.split(' ').length
+      }))
+    });
+  }, [services]);
 
-    // Clean up previous timeline
-    if (timelineRef.current) {
-      timelineRef.current.pause();
+  // Calculate optimal font size for all services to fit
+  useEffect(() => {
+    if (!containerRef.current || !isHovered) return;
+
+    const container = containerRef.current;
+    const containerHeight = container.clientHeight;
+
+    // Estimate total height needed for all services
+    const numServices = services.length;
+    const lineHeight = 1.3;
+    const gapBetweenLines = 10; // pixels
+
+    // Calculate max font size that fits all services
+    let fontSize = 48; // Start with large font
+    const minFontSize = 12;
+
+    while (fontSize > minFontSize) {
+      const estimatedLineHeight = fontSize * lineHeight;
+      const totalHeight = (estimatedLineHeight * numServices) + (gapBetweenLines * (numServices - 1));
+
+      // Check if it fits with some padding
+      if (totalHeight < containerHeight * 0.9) {
+        break;
+      }
+      fontSize -= 2;
     }
 
-    // Create timeline animation with square reveal effect
-    timelineRef.current = createTimeline({
-      loop: true,
-      defaults: { duration: 500 },
-      delay: 500,
-      loopDelay: 500
-    });
+    setHoverFontSize(`${fontSize}px`);
+  }, [isHovered, services]);
 
-    // Animate each row with different stagger patterns
-    const staggerPatterns = [
-      { from: 7 },           // Row 1: from index 7
-      { from: 'first' },     // Row 2: from first
-      { from: 'center' },    // Row 3: from center
-      { from: 'last' },      // Row 4: from last
-      { from: 0 },           // Row 5: from index 0
-      { from: 'random' },    // Row 6: from random
-    ];
+  // Function to start rotation animation
+  const startRotation = useCallback(() => {
+    if (!containerRef.current) return;
 
-    services.forEach((_, index) => {
-      const rowIndex = index + 1;
-      const pattern = staggerPatterns[index] || { from: 'center' };
+    const container = containerRef.current;
+    const serviceElements = container.querySelectorAll('.service-item');
 
-      // Highlight one square
-      if (typeof pattern.from === 'number') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:nth-child(${pattern.from + 1})`, {
-          color: '#FFF',
-          scale: 1.2
-        });
-      } else if (pattern.from === 'first') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:first-child`, {
-          color: '#FFF',
-          scale: 1.2
-        });
-      } else if (pattern.from === 'last') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:last-child`, {
-          color: '#FFF',
-          scale: 1.2
-        });
-      } else if (pattern.from === 'center') {
-        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:nth-child(${Math.floor(SQUARES_COUNT / 2)})`, {
-          color: '#FFF',
-          scale: 1.2
-        });
+    const animateService = (index: number) => {
+      if (!serviceElements || serviceElements.length === 0) return;
+
+      // Hide all services
+      gsap.set(serviceElements, { autoAlpha: 0 });
+
+      const currentElement = serviceElements[index] as HTMLElement;
+      if (!currentElement) return;
+
+      // Show current service
+      gsap.set(currentElement, { autoAlpha: 1 });
+
+      const chars = currentElement.querySelectorAll('.char');
+      if (!chars || chars.length === 0) return;
+
+      // Animate chars gathering
+      const tl = gsap.timeline();
+
+      tl.fromTo(
+        chars,
+        {
+          opacity: 0,
+          x: () => (Math.random() - 0.5) * 400,
+          y: () => (Math.random() - 0.5) * 400,
+          rotation: () => (Math.random() - 0.5) * 720,
+          scale: 0,
+        },
+        {
+          duration: 2,
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: 1,
+          ease: 'elastic.out(1, 0.5)',
+          stagger: {
+            amount: 0.4, // Reduced from 0.8 for better performance
+            from: 'random',
+          },
+        }
+      );
+
+      tl.to({}, { duration: 1 });
+      timelineRef.current = tl;
+    };
+
+    // Start with current index
+    animateService(currentIndex);
+
+    // Set interval for rotation
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    intervalRef.current = window.setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % services.length);
+    }, 3000);
+  }, [currentIndex, services.length]);
+
+  // Main initialization effect - runs when services change (language change)
+  useEffect(() => {
+    if (!containerRef.current) {
+      console.warn('ServicesAnimation: Container not ready');
+      return;
+    }
+
+    const container = containerRef.current;
+
+    // Cleanup previous SplitText instances before creating new ones
+    if (splitTextsRef.current.length > 0) {
+      splitTextsRef.current.forEach((split) => split.revert());
+      splitTextsRef.current = [];
+    }
+
+    // Function to check if elements have text content
+    const hasTextContent = (elements: NodeListOf<Element>): boolean => {
+      return Array.from(elements).some(el => {
+        const text = el.querySelector('.service-text');
+        return text && text.textContent && text.textContent.trim().length > 0;
+      });
+    };
+
+    // Function to initialize split texts
+    const initSplitTexts = (): boolean => {
+      const serviceElements = container.querySelectorAll('.service-item');
+
+      if (!serviceElements || serviceElements.length === 0) {
+        console.warn('ServicesAnimation: No service elements found');
+        return false;
       }
 
-      // Make squares disappear to reveal text
-      timelineRef.current.add(`.row:nth-child(${rowIndex}) .square`, {
-        scale: 0,
-        delay: stagger(25, pattern as any),
-      }, '<');
-    });
+      if (!hasTextContent(serviceElements)) {
+        console.warn('ServicesAnimation: Text elements are empty, retrying...');
+        return false;
+      }
 
-    // Reset colors
-    timelineRef.current.set('.row .square', { color: 'currentColor' });
+      // Create SplitText for all services
+      splitTextsRef.current = [];
+      serviceElements.forEach((element, idx) => {
+        const text = element.querySelector('.service-text');
+        if (text && text.textContent && text.textContent.trim()) {
+          try {
+            console.log(`🔍 DIAGNOSTIC - Creating SplitText for service ${idx}:`, {
+              originalText: text.textContent,
+              textLength: text.textContent.length,
+              element: text,
+              computedStyle: window.getComputedStyle(text as Element)
+            });
 
-    // Bring squares back
-    timelineRef.current.add('.row .square', {
-      scale: 1,
-      delay: stagger(25, { from: 'random' }),
-    });
+            const split = new SplitText(text, {
+              type: 'words,chars',
+              charsClass: 'char',
+              wordsClass: 'word',
+            });
+
+            console.log(`🔍 DIAGNOSTIC - SplitText created for service ${idx}:`, {
+              chars: split.chars,
+              charsCount: split.chars?.length,
+              lines: split.lines,
+              linesCount: split.lines?.length
+            });
+
+            splitTextsRef.current.push(split);
+          } catch (error) {
+            console.error('ServicesAnimation: Error creating SplitText:', error);
+          }
+        }
+      });
+
+      return splitTextsRef.current.length > 0;
+    };
+
+    // Retry logic for initialization
+    const tryInit = () => {
+      requestAnimationFrame(() => {
+        const success = initSplitTexts();
+
+        if (success) {
+          retryCountRef.current = 0;
+          startRotation();
+        } else if (retryCountRef.current < maxRetries) {
+          retryCountRef.current++;
+          setTimeout(tryInit, 100);
+        } else {
+          console.error(`❌ ServicesAnimation: Failed after ${maxRetries} attempts`);
+          retryCountRef.current = 0;
+        }
+      });
+    };
+
+    tryInit();
 
     return () => {
       if (timelineRef.current) {
+        timelineRef.current.kill();
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      splitTextsRef.current.forEach((split) => split.revert());
+      splitTextsRef.current = [];
+    };
+  }, [services]); // Removed startRotation to prevent infinite loop
+
+  // Effect for currentIndex changes (rotation)
+  useEffect(() => {
+    if (!isHovered && containerRef.current) {
+      const container = containerRef.current;
+      const serviceElements = container.querySelectorAll('.service-item');
+
+      if (!serviceElements || serviceElements.length === 0) return;
+
+      console.log('🔄 ANIMATION CYCLE - Starting transition to index:', currentIndex);
+
+      // 🔍 DIAGNOSTIC: Log positions of ALL chars BEFORE hiding
+      serviceElements.forEach((element, idx) => {
+        const chars = element.querySelectorAll('.char');
+        if (chars.length > 0) {
+          const positions = Array.from(chars).slice(0, 3).map(char => {
+            const rect = (char as HTMLElement).getBoundingClientRect();
+            return { x: rect.x, y: rect.y, opacity: window.getComputedStyle(char as HTMLElement).opacity };
+          });
+          console.log(`🔍 Service ${idx} chars positions BEFORE hide:`, positions);
+        }
+      });
+
+      // IMPORTANT: First scatter chars of ALL non-current elements to prevent piling
+      serviceElements.forEach((element, idx) => {
+        if (idx !== currentIndex) {
+          const chars = element.querySelectorAll('.char');
+          if (chars.length > 0) {
+            console.log(`💨 Scattering chars of service ${idx} (non-current)`);
+            gsap.set(chars, {
+              opacity: 0,
+              x: () => (Math.random() - 0.5) * 600,
+              y: () => (Math.random() - 0.5) * 600,
+              rotation: () => (Math.random() - 0.5) * 360,
+              scale: 0.1,
+            });
+          }
+        }
+      });
+
+      // Hide all
+      gsap.set(serviceElements, { autoAlpha: 0 });
+
+      const currentElement = serviceElements[currentIndex] as HTMLElement;
+      if (!currentElement) return;
+
+      // Show current
+      gsap.set(currentElement, { autoAlpha: 1 });
+
+      const chars = currentElement.querySelectorAll('.char');
+      if (!chars || chars.length === 0) return;
+
+      console.log(`✨ Animating service ${currentIndex} with ${chars.length} chars`);
+
+      // Animate chars
+      if (timelineRef.current) {
+        timelineRef.current.kill();
+      }
+
+      const tl = gsap.timeline({
+        onUpdate: () => {
+          // 🔍 DIAGNOSTIC: Log animation progress
+          if (Math.random() < 0.1) { // Log only 10% of frames to avoid spam
+            const firstChar = chars[0] as HTMLElement;
+            const rect = firstChar.getBoundingClientRect();
+            console.log('🎬 Animation progress:', {
+              progress: tl.progress(),
+              firstCharPos: { x: rect.x, y: rect.y }
+            });
+          }
+        },
+        onComplete: () => {
+          console.log('✅ Animation complete for service', currentIndex);
+          // 🔍 DIAGNOSTIC: Log final positions
+          const positions = Array.from(chars).slice(0, 3).map(char => {
+            const rect = (char as HTMLElement).getBoundingClientRect();
+            return { x: rect.x, y: rect.y };
+          });
+          console.log('🔍 Final positions:', positions);
+        }
+      });
+
+      tl.fromTo(
+        chars,
+        {
+          opacity: 0,
+          x: () => (Math.random() - 0.5) * 400,
+          y: () => (Math.random() - 0.5) * 400,
+          rotation: () => (Math.random() - 0.5) * 720,
+          scale: 0,
+        },
+        {
+          duration: 2,
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: 1,
+          ease: 'elastic.out(1, 0.5)',
+          stagger: {
+            amount: 0.4, // Reduced from 0.8 for better performance
+            from: 'random',
+          },
+        }
+      );
+
+      tl.to({}, { duration: 1 });
+      timelineRef.current = tl;
+    }
+  }, [currentIndex, isHovered, services.length]);
+
+  // Effect for hover state changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const serviceElements = container.querySelectorAll('.service-item');
+
+    if (!serviceElements || serviceElements.length === 0) return;
+
+    if (isHovered) {
+      // Pause rotation
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (timelineRef.current) {
         timelineRef.current.pause();
       }
-    };
-  }, [services]);
+
+      // Show all services
+      gsap.to(serviceElements, {
+        autoAlpha: 1,
+        duration: 0.3,
+        stagger: 0.05,
+      });
+
+      // Animate all chars to gathered state
+      serviceElements.forEach((element) => {
+        const chars = element.querySelectorAll('.char');
+        if (!chars || chars.length === 0) return;
+
+        gsap.to(chars, {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: 'back.out(1.7)',
+          stagger: {
+            amount: 0.2, // Reduced from 0.3 for better performance
+            from: 'random',
+          },
+        });
+      });
+    } else {
+      // Resume rotation
+      startRotation();
+    }
+  }, [isHovered, startRotation]);
 
   return (
-    <div className="h-full w-full overflow-hidden relative">
-      {/* Background text */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-        <h2
-          className="font-bold text-white/10 select-none"
-          style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
-        >
-          {backgroundText}
-        </h2>
+    <div
+      ref={containerRef}
+      className="h-full w-full flex items-center justify-center relative overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        // Global styles for GSAP SplitText words to prevent breaking
+        // @ts-ignore
+        '--word-display': 'inline-block',
+      }}
+    >
+      <style>{`
+        .word {
+          display: inline-block;
+          white-space: nowrap;
+          margin-right: 0.25em;
+        }
+      `}</style>
+      {/* Red rotated text (services label) in bottom right */}
+      <div
+        className="absolute bottom-4 right-4 text-red-600 font-bold uppercase opacity-80 pointer-events-none"
+        style={{
+          fontSize: 'clamp(1rem, 2vw, 1.5rem)',
+          transform: 'rotate(-12deg)',
+          transformOrigin: 'center',
+          letterSpacing: '0.1em',
+        }}
+      >
+        {servicesLabel}
       </div>
 
-      {/* Services in column */}
       <div
-        ref={containerRef}
-        className="relative h-full w-full flex flex-col items-center justify-center gap-0 z-10"
+        className={`relative w-full h-full flex items-center justify-center ${
+          isHovered ? 'flex-col gap-2' : ''
+        }`}
+        style={{
+          padding: isHovered ? '1rem' : '0',
+        }}
       >
         {services.map((service, index) => {
+          // 🔍 DIAGNOSTIC LOG: Rendering each service
+          console.log(`🔍 DIAGNOSTIC - Rendering service ${index}:`, {
+            title: service.title,
+            isHovered,
+            fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
+            cssProperties: {
+              wordBreak: 'normal',
+              overflowWrap: 'normal',
+              hyphens: 'none',
+              whiteSpace: 'normal',
+            }
+          });
+
           return (
             <div
               key={index}
-              className="row relative py-1 w-full"
+              className={`service-item ${isHovered ? 'relative' : 'absolute inset-0'} flex items-center justify-center`}
+              style={{
+                visibility: 'hidden',
+                opacity: 0,
+              }}
             >
-              {/* Service title - centered */}
-              <h4
-                className="font-bold text-white text-center relative px-4"
+              <div
+                className="service-text font-bold uppercase text-center px-4"
                 style={{
-                  fontSize: 'clamp(0.7rem, 1.4vw, 0.95rem)',
+                  fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
+                  fontWeight: 900,
+                  color: '#1a1a1a',
+                  lineHeight: 1.3,
                   wordBreak: 'normal',
                   overflowWrap: 'normal',
-                  hyphens: 'none'
+                  hyphens: 'none',
+                  whiteSpace: 'normal',
                 }}
               >
                 {service.title}
-              </h4>
-
-              {/* Squares overlay - full width */}
-              <div className="absolute inset-0 flex items-center justify-center z-20">
-                <div className="flex gap-1 w-full justify-center px-2">
-                  {Array.from({ length: SQUARES_COUNT }).map((_, squareIndex) => (
-                    <div
-                      key={squareIndex}
-                      className="square bg-orange-400 flex-1"
-                      style={{
-                        maxWidth: 'clamp(10px, 2.5vw, 30px)',
-                        height: 'clamp(8px, 1.5vh, 16px)',
-                        borderRadius: '2px',
-                      }}
-                    />
-                  ))}
-                </div>
               </div>
             </div>
           );

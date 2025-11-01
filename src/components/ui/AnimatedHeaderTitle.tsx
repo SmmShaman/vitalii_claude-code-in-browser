@@ -30,11 +30,8 @@ export const AnimatedHeaderTitle = ({ text, namePattern }: AnimatedHeaderTitlePr
     // Get the paragraph with the name
     const nameParagraph = containerRef.current.querySelector('.name-paragraph') as HTMLElement;
     if (!nameParagraph) {
-      console.error('AnimatedHeaderTitle: Name paragraph not found');
       return;
     }
-
-    console.log('AnimatedHeaderTitle: Name paragraph found:', nameParagraph);
 
     // Clean up previous split
     if (splitRef.current) {
@@ -48,11 +45,8 @@ export const AnimatedHeaderTitle = ({ text, namePattern }: AnimatedHeaderTitlePr
       lines: true,
     });
 
-    console.log('AnimatedHeaderTitle: Split created:', splitRef.current);
-
     // Add lines animation effect - reduced amplitude
     splitRef.current.addEffect(({ lines }: any) => {
-      console.log('AnimatedHeaderTitle: addEffect called with lines:', lines);
       return animate(lines, {
         y: ['25%', '-25%'],
         loop: true,
@@ -64,7 +58,6 @@ export const AnimatedHeaderTitle = ({ text, namePattern }: AnimatedHeaderTitlePr
 
     // Add hover effect on words
     splitRef.current.addEffect((split: any) => {
-      console.log('AnimatedHeaderTitle: addEffect called with words:', split.words);
       split.words.forEach(($el: HTMLElement, i: number) => {
         const color = colors[i];
         if (color) utils.set($el, { color });
@@ -95,7 +88,7 @@ export const AnimatedHeaderTitle = ({ text, namePattern }: AnimatedHeaderTitlePr
   return (
     <h1
       ref={containerRef}
-      className="font-bold text-gray-800 mb-0.5 leading-tight"
+      className="font-bold text-white mb-0.5 leading-tight"
       style={{ fontSize: 'clamp(1.75rem, 3.5vw, 3rem)' }}
     />
   );

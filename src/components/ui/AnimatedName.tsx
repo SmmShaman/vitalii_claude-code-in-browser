@@ -58,7 +58,7 @@ export const AnimatedName = ({ fullText, namePattern, className = '', style }: A
       ],
       delay: stagger(50),
       loop: true,
-      loopDelay: 1000
+      loopDelay: 3000 // Increased from 1000ms for better performance
     });
 
     return () => {

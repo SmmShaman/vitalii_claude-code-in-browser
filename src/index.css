@@ -14,7 +14,7 @@
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-yellow-400 to-orange-500 text-foreground;
+    @apply bg-white text-foreground;
     margin: 0;
     padding: 0;
     height: 100vh;
@@ -130,4 +130,51 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(102, 126, 234, 0.7);
+}
+
+/* 3D Text Animation Styles */
+.char-3d-container {
+  transform-style: preserve-3d;
+}
+
+.char-3d {
+  display: inline-block;
+  position: relative;
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  margin: 0 0.05em;
+  will-change: transform; /* Performance optimization */
+}
+
+.face {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  font-style: normal;
+  display: block;
+  will-change: opacity; /* Performance optimization */
+}
+
+.face-top {
+  transform: rotateX(90deg) translateZ(0.5em);
+}
+
+.face-front {
+  transform: rotateX(0deg) translateZ(0.5em);
+}
+
+.face-bottom {
+  transform: rotateX(-90deg) translateZ(0.5em);
+}
+
+/* Services Animation Performance */
+.service-item {
+  will-change: opacity, transform;
+}
+
+.service-item .char {
+  will-change: transform, opacity;
 }
