@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { X } from 'lucide-react';
@@ -15,6 +14,7 @@ interface ServicesDetailProps {
   services: Service[];
   isOpen: boolean;
   onClose: () => void;
+  gridContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProps) => {
@@ -106,14 +106,14 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
 
   const currentService = services[activeIndex];
 
-  return createPortal(
+  return (
     <AnimatePresence>
       <motion.div
         ref={containerRef}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-white"
+        className="absolute inset-0 z-50 bg-white rounded-lg"
         style={{
           overflow: 'hidden',
         }}
@@ -121,15 +121,15 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="fixed top-6 right-6 z-50 rounded-full p-3 bg-black/10 hover:bg-black/20 transition-colors"
+          className="absolute top-6 right-6 z-50 rounded-full p-3 bg-black/10 hover:bg-black/20 transition-colors"
           aria-label="Close"
         >
           <X className="w-6 h-6 text-black" />
         </button>
 
         {/* Main content - no scroll */}
-        <div className="w-full h-full flex items-center justify-center px-12">
-          <div className="w-full max-w-7xl h-full flex items-center gap-12">
+        <div className="w-full h-full flex items-center justify-center px-8 md:px-12">
+          <div className="w-full h-full flex items-center gap-8 md:gap-12">
             {/* Left side: All services (1/3 width) */}
             <div className="w-1/3 h-full flex flex-col justify-center gap-4">
               {services.map((service, index) => (
@@ -233,7 +233,7 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2"
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2"
         >
           <span className="text-sm text-gray-400 uppercase tracking-wider">
             Scroll to navigate ({activeIndex + 1}/{services.length})
@@ -247,7 +247,6 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
           </motion.div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>,
-    document.body
+    </AnimatePresence>
   );
 };

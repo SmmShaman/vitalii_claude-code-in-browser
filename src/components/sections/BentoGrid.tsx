@@ -929,6 +929,14 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 );
               })}
             </AnimatePresence>
+
+            {/* Services Detail - renders inside grid */}
+            <ServicesDetail
+              services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
+              isOpen={isServicesDetailOpen}
+              onClose={handleServicesDetailClose}
+              gridContainerRef={gridContainerRef}
+            />
           </div>
         </LayoutGroup>
         </div>
@@ -960,13 +968,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
         isExploding={isAboutExploding}
         gridContainerRef={gridContainerRef}
         onClose={handleAboutClose}
-      />
-
-      {/* Services Detail */}
-      <ServicesDetail
-        services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
-        isOpen={isServicesDetailOpen}
-        onClose={handleServicesDetailClose}
       />
     </>
   );
