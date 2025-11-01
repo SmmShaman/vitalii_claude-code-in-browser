@@ -133,16 +133,26 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
 
               return skills.map((skill, index) => {
                 const pos = getLogoPosition(index, skills.length);
-                const centerX = gridBounds ? gridBounds.left + gridBounds.width / 2 : window.innerWidth / 2;
-                const centerY = gridBounds ? gridBounds.top + gridBounds.height / 2 : window.innerHeight / 2;
+                const centerX = gridBounds.left + gridBounds.width / 2;
+                const centerY = gridBounds.top + gridBounds.height / 2;
 
-                if (index === 0) console.log('🚀 First logo data:', { skill: skill.name, pos, centerX, centerY });
+                // Parse position strings to numbers
+                const targetLeft = parseFloat(pos.left);
+                const targetTop = parseFloat(pos.top);
+
+                if (index === 0) console.log('🚀 First logo data:', {
+                  skill: skill.name,
+                  centerX,
+                  centerY,
+                  targetLeft,
+                  targetTop
+                });
 
                 if (index === 0) console.log('🎬 Animating logo 0 - MOTION CONFIG:', {
                   initialLeft: centerX,
                   initialTop: centerY,
-                  animateLeft: pos.left,
-                  animateTop: pos.top
+                  animateLeft: targetLeft,
+                  animateTop: targetTop
                 });
 
                 return (
@@ -161,8 +171,8 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     opacity: 0
                   }}
                   animate={{
-                    left: pos.left,
-                    top: pos.top,
+                    left: targetLeft,
+                    top: targetTop,
                     x: '-50%',
                     y: '-50%',
                     scale: 1,
