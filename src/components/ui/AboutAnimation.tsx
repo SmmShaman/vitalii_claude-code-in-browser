@@ -20,21 +20,39 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
   const splitTextRef = useRef<SplitText | null>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
+  // Log component lifecycle
+  useEffect(() => {
+    console.log('🎭 AboutAnimation: Component MOUNTED');
+    return () => {
+      console.log('🎭 AboutAnimation: Component UNMOUNTED');
+    };
+  }, []);
+
+  // Log prop changes
+  useEffect(() => {
+    console.log('🔄 AboutAnimation: isExploding changed to:', isExploding);
+  }, [isExploding]);
+
   // Calculate grid bounds when explosion starts
   useEffect(() => {
+    console.log('📍 AboutAnimation: useEffect[isExploding] triggered. isExploding:', isExploding);
     if (isExploding && gridContainerRef.current) {
       const bounds = gridContainerRef.current.getBoundingClientRect();
       setGridBounds(bounds);
       console.log('📐 About: Grid bounds calculated:', bounds);
     } else {
+      console.log('🚫 About: Clearing grid bounds (isExploding:', isExploding, ')');
       setGridBounds(null);
     }
   }, [isExploding, gridContainerRef]);
 
   // Animate text when exploding
   useEffect(() => {
+    console.log('🎬 AboutAnimation: Animation useEffect triggered. isExploding:', isExploding, 'textRef:', !!textRef.current, 'gridBounds:', !!gridBounds);
+
     if (!isExploding || !textRef.current || !gridBounds) {
       // Cleanup
+      console.log('🧹 About: Cleaning up animation (isExploding:', isExploding, ')');
       if (splitTextRef.current) {
         splitTextRef.current.revert();
         splitTextRef.current = null;
@@ -104,6 +122,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
     });
 
     return () => {
+      console.log('🧹 About: Cleanup function called from animation useEffect');
       if (splitTextRef.current) {
         splitTextRef.current.revert();
         splitTextRef.current = null;
@@ -115,9 +134,14 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
     };
   }, [isExploding, gridBounds, text]);
 
+  console.log('🖼️ AboutAnimation: Render called. isExploding:', isExploding, 'gridBounds:', !!gridBounds);
+
   if (!isExploding || !gridBounds) {
+    console.log('⏹️ AboutAnimation: Returning null (not rendering)');
     return null;
   }
+
+  console.log('✅ AboutAnimation: Rendering portal');
 
   return createPortal(
     <AnimatePresence mode="wait">
@@ -139,7 +163,10 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
         >
           {/* Close button */}
           <button
-            onClick={onClose}
+            onClick={() => {
+              console.log('❌ AboutAnimation: Close button CLICKED');
+              onClose();
+            }}
             className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full transition-colors z-10"
             aria-label="Close"
           >

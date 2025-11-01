@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
@@ -73,18 +73,34 @@ export const BentoGrid = () => {
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const skillsTimeoutRef = useRef<number | null>(null);
 
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log('🔔 BentoGrid: isAboutExploding state changed to:', isAboutExploding);
+    console.log('🕐 BentoGrid: Current timestamp:', new Date().toISOString());
+  }, [isAboutExploding]);
+
+  useEffect(() => {
+    console.log('🔔 BentoGrid: isSkillsExploding state changed to:', isSkillsExploding);
+  }, [isSkillsExploding]);
+
   const handleAboutClick = () => {
-    console.log('🎯 About clicked! Starting explosion animation');
-    console.log('📦 Grid ref:', gridContainerRef.current);
+    console.log('🎯 BentoGrid: handleAboutClick CALLED');
+    console.log('🕐 BentoGrid: Click timestamp:', new Date().toISOString());
+    console.log('📦 BentoGrid: Grid ref:', gridContainerRef.current);
+    console.log('📊 BentoGrid: Current isAboutExploding state:', isAboutExploding);
 
     // Start explosion animation (no timeout - stays until user closes)
-    console.log('💥 Setting isAboutExploding = true');
+    console.log('💥 BentoGrid: Setting isAboutExploding = true');
     setIsAboutExploding(true);
+    console.log('✅ BentoGrid: setIsAboutExploding(true) called');
   };
 
   const handleAboutClose = () => {
-    console.log('❌ About close clicked');
+    console.log('❌ BentoGrid: handleAboutClose CALLED');
+    console.log('🕐 BentoGrid: Close timestamp:', new Date().toISOString());
+    console.log('📊 BentoGrid: Current isAboutExploding state before close:', isAboutExploding);
     setIsAboutExploding(false);
+    console.log('✅ BentoGrid: setIsAboutExploding(false) called');
   };
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
