@@ -685,6 +685,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
                           setIsBlogExpanded(false);
+                          setBlogHeight(0);
+                          setProjectsHeight(0);
                           mouseLeaveTimeoutRef.current = null;
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
                       }
