@@ -76,7 +76,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const [isBlogExpanded, setIsBlogExpanded] = useState(false);
   const [isServicesHiding, setIsServicesHiding] = useState(false);
   const [isProjectsHiding, setIsProjectsHiding] = useState(false);
-  const [servicesHeight, setServicesHeight] = useState<number>(0);
   const [projectsHeight, setProjectsHeight] = useState<number>(0);
   const [newsHeight, setNewsHeight] = useState<number>(0);
   const [blogHeight, setBlogHeight] = useState<number>(0);
@@ -112,7 +111,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
         const newsExpandedHeight = servicesEl.offsetHeight + newsEl.offsetHeight;
 
         setNewsHeight(newsExpandedHeight);
-        setServicesHeight(servicesEl.offsetHeight);
 
         // Save normal heights of Skills and Blog so they don't stretch when News expands
         setSkillsNormalHeight(skillsEl.offsetHeight);
@@ -141,9 +139,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
       if (newsEl && servicesEl) {
         const newsH = newsEl.offsetHeight;
-        const servicesH = servicesEl.offsetHeight;
         setNewsHeight(newsH);
-        setServicesHeight(servicesH);
       }
 
       setIsServicesHiding(true);
@@ -458,10 +454,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     return true;
                   })
                   .map((section) => {
-                const isExpanded =
-                  (section.id === 'news' && isNewsExpanded) ||
-                  (section.id === 'blog' && isBlogExpanded);
-
                 // Calculate expanded height: original + target + gap
                 const getExpandedHeight = () => {
                   // Fixed gap for uniform spacing on all screen sizes
@@ -639,7 +631,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
                           setIsNewsExpanded(false);
-                          setServicesHeight(0);
                           setNewsHeight(0);
                           setSkillsNormalHeight(0);
                           setBlogNormalHeight(0);
