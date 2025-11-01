@@ -664,31 +664,51 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseEnter={() => {
+                      console.log(`🐭 MOUSE ENTER: ${section.id}`);
                       // Cancel collapse timeout if mouse returns
                       if (mouseLeaveTimeoutRef.current) {
+                        console.log(`⏹️ Скасовано таймер згортання для ${section.id}`);
                         clearTimeout(mouseLeaveTimeoutRef.current);
                         mouseLeaveTimeoutRef.current = null;
                       }
                     }}
                     onMouseLeave={() => {
+                      console.log(`🐭 MOUSE LEAVE: ${section.id}`, {
+                        isNewsExpanded,
+                        isBlogExpanded,
+                        isServicesHiding,
+                        isProjectsHiding,
+                        selectedNewsId,
+                        selectedBlogId,
+                      });
+
                       // News/Blog: longer timeout to prevent accidental collapse
                       // Give user time to move cursor around the expanded window
                       if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
+                        console.log(`⏰ NEWS: Встановлюю таймер згортання (1.5s)`);
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
+                          console.log(`✅ NEWS: Таймер спрацював - згортаю News`);
                           setIsNewsExpanded(false);
                           setNewsHeight(0);
                           setSkillsNormalHeight(0);
                           setBlogNormalHeight(0);
                           mouseLeaveTimeoutRef.current = null;
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
+                      } else if (section.id === 'news') {
+                        console.log(`❌ NEWS: Умова НЕ виконалась - таймер НЕ встановлено`);
                       }
+
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
+                        console.log(`⏰ BLOG: Встановлюю таймер згортання (1.5s)`);
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
+                          console.log(`✅ BLOG: Таймер спрацював - згортаю Blog`);
                           setIsBlogExpanded(false);
                           setBlogHeight(0);
                           setProjectsHeight(0);
                           mouseLeaveTimeoutRef.current = null;
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
+                      } else if (section.id === 'blog') {
+                        console.log(`❌ BLOG: Умова НЕ виконалась - таймер НЕ встановлено`);
                       }
                     }}
                     className={`relative rounded-lg transition-all duration-300 hover:shadow-2xl w-full cursor-pointer ${
