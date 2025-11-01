@@ -115,7 +115,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
           /* Exploding logos view - fixed positioning to cover entire grid area */
           <motion.div
             key="logos"
-            className="fixed inset-0 z-[100]"
+            className="fixed inset-0 z-[100] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -124,6 +124,13 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
           >
             {(() => {
               console.log('🎯 Rendering logos:', { count: skills.length, hasGridBounds: !!gridBounds });
+
+              // Don't render logos until we have gridBounds
+              if (!gridBounds) {
+                console.log('⏳ Waiting for gridBounds...');
+                return null;
+              }
+
               return skills.map((skill, index) => {
                 const pos = getLogoPosition(index, skills.length);
                 const centerX = gridBounds ? gridBounds.left + gridBounds.width / 2 : window.innerWidth / 2;
