@@ -108,7 +108,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
           /* Exploding logos view - fixed positioning to cover grid area only */
           <motion.div
             key="logos"
-            className="fixed bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
+            className="fixed"
             style={{
               left: gridBounds.left,
               top: gridBounds.top,
