@@ -138,10 +138,20 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
 
                 if (index === 0) console.log('🚀 First logo data:', { skill: skill.name, pos, centerX, centerY });
 
+                if (index === 0) console.log('🎬 Animating logo 0 - MOTION CONFIG:', {
+                  initialLeft: centerX,
+                  initialTop: centerY,
+                  animateLeft: pos.left,
+                  animateTop: pos.top
+                });
+
                 return (
                 <motion.div
-                  key={`logo-${index}`}
-                  className="fixed"
+                  key={`logo-${skill.name}-${index}`}
+                  className="fixed border-4 border-red-500"
+                  style={{
+                    zIndex: 200 + index
+                  }}
                   initial={{
                     left: centerX,
                     top: centerY,
@@ -165,10 +175,12 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     opacity: 0
                   }}
                   transition={{
-                    duration: 0.8,
+                    duration: 2,
                     delay: index * 0.05,
                     ease: 'easeOut'
                   }}
+                  onAnimationStart={() => index === 0 && console.log('🎬 ANIMATION STARTED for logo 0')}
+                  onAnimationComplete={() => index === 0 && console.log('✅ ANIMATION COMPLETE for logo 0')}
                 >
                   <img
                     src={getSkillLogo(skill.name)}
