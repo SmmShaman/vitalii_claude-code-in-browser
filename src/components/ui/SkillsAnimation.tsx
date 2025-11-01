@@ -64,11 +64,12 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
   };
 
   // Calculate evenly distributed positions for logos across grid area
-  const getLogoPosition = (index: number, total: number) => {
+  // Fixed 5x5 grid layout (25 positions for up to 25 skills)
+  const getLogoPosition = (index: number, _total: number) => {
     if (!gridBounds) return { left: '50%', top: '50%' };
 
-    const cols = Math.ceil(Math.sqrt(total));
-    const rows = Math.ceil(total / cols);
+    const cols = 5; // Fixed: 5 columns
+    const rows = 5; // Fixed: 5 rows
 
     const col = index % cols;
     const row = Math.floor(index / cols);
