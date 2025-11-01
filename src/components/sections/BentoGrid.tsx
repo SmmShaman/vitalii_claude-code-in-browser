@@ -66,8 +66,10 @@ export const BentoGrid = () => {
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [activeProjectIndex, setActiveProjectIndex] = useState(0);
   const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
-  const [isSkillsAnimationActive, setIsSkillsAnimationActive] = useState(false);
+  const [isSkillsExploding, setIsSkillsExploding] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const skillsTimeoutRef = useRef<number | null>(null);
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
@@ -75,13 +77,21 @@ export const BentoGrid = () => {
     // Don't open dialog for projects section (it has its own modal)
     if (section.id === 'projects') return;
 
-    // Special handling for skills section - trigger fullscreen animation
+    // Handle skills explosion animation
     if (section.id === 'skills') {
-      setIsSkillsAnimationActive(true);
+      // Clear any existing timeout
+      if (skillsTimeoutRef.current) {
+        clearTimeout(skillsTimeoutRef.current);
+        skillsTimeoutRef.current = null;
+      }
 
-      // After 3 seconds, reverse the animation
-      setTimeout(() => {
-        setIsSkillsAnimationActive(false);
+      // Start explosion animation
+      setIsSkillsExploding(true);
+
+      // After 3 seconds, return to normal
+      skillsTimeoutRef.current = window.setTimeout(() => {
+        setIsSkillsExploding(false);
+        skillsTimeoutRef.current = null;
       }, 3000);
 
       return;
@@ -181,6 +191,7 @@ export const BentoGrid = () => {
           </div>
 
           <div
+            ref={gridContainerRef}
             className="grid gap-2 sm:gap-3 md:gap-4 w-full"
             style={{
               gridTemplateColumns: `repeat(${screenSize.columnsCount}, 1fr)`,
@@ -194,19 +205,19 @@ export const BentoGrid = () => {
                 }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{
-                  opacity: isSkillsAnimationActive ? 0 : 1,
-                  y: isSkillsAnimationActive ? 0 : 0,
-                  scale: isSkillsAnimationActive ? 0.95 : 1
+                  opacity: isSkillsExploding ? 0 : 1,
+                  y: isSkillsExploding ? 0 : 0,
+                  scale: isSkillsExploding ? 0.95 : 1
                 }}
                 transition={{
-                  duration: isSkillsAnimationActive ? 0.3 : 0.3,
-                  delay: isSkillsAnimationActive ? 0 : index * 0.1
+                  duration: isSkillsExploding ? 0.3 : 0.3,
+                  delay: isSkillsExploding ? 0 : index * 0.1
                 }}
                 onClick={section.id === 'projects' ? undefined : () => handleCardClick(section, cardRefs.current[section.id])}
                 className="relative overflow-hidden rounded-lg cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl w-full"
                 style={{
                   height: screenSize.isSmall ? 'clamp(140px, 20vh, 200px)' : 'clamp(200px, 25vh, 280px)',
-                  pointerEvents: isSkillsAnimationActive ? 'none' : 'auto'
+                  pointerEvents: isSkillsExploding ? 'none' : 'auto'
                 }}
               >
                 {/* Background - conditional based on section */}
@@ -255,7 +266,8 @@ export const BentoGrid = () => {
                       <SkillsAnimation
                         skills={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].skills_list}
                         backgroundText={t('skills_title') as string}
-                        isAnimationActive={isSkillsAnimationActive}
+                        isExploding={isSkillsExploding}
+                        gridContainerRef={gridContainerRef}
                       />
                     </div>
                   ) : (

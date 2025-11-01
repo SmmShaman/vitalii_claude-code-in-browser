@@ -1,4 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { getSkillLogo } from '../../utils/skillLogos';
+import { useState, useEffect } from 'react';
 
 interface Skill {
   name: string;
@@ -8,7 +10,8 @@ interface Skill {
 interface SkillsAnimationProps {
   skills: Skill[];
   backgroundText: string;
-  isAnimationActive?: boolean;
+  isExploding?: boolean;
+  gridContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 // Color mapping for skill categories
@@ -45,47 +48,128 @@ const categoryColors: Record<string, { bg: string; text: string; hover: string }
   },
 };
 
-export const SkillsAnimation = ({ skills, backgroundText, isAnimationActive = false }: SkillsAnimationProps) => {
+export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, gridContainerRef }: SkillsAnimationProps) => {
+  const [gridBounds, setGridBounds] = useState<DOMRect | null>(null);
+
+  // Get grid bounds when exploding
+  useEffect(() => {
+    if (isExploding && gridContainerRef?.current) {
+      const bounds = gridContainerRef.current.getBoundingClientRect();
+      setGridBounds(bounds);
+    }
+  }, [isExploding, gridContainerRef]);
+
   const getColorClasses = (category?: string) => {
     return categoryColors[category || 'development'] || categoryColors.development;
   };
 
-  // Calculate grid positions for 5x5 layout
-  const getGridPosition = (index: number) => {
-    const cols = 5;
-    const rows = 5;
-    const row = Math.floor(index / cols);
+  // Calculate evenly distributed positions for logos across grid area
+  const getLogoPosition = (index: number, total: number) => {
+    if (!gridBounds) return { left: '50%', top: '50%' };
+
+    const cols = Math.ceil(Math.sqrt(total));
+    const rows = Math.ceil(total / cols);
+
     const col = index % cols;
+    const row = Math.floor(index / cols);
 
-    // Calculate position as percentage of container
-    const x = (col / (cols - 1)) * 100 - 50; // -50 to 50%
-    const y = (row / (rows - 1)) * 100 - 50; // -50 to 50%
+    // Distribute evenly across grid bounds
+    const xPercent = (col / (cols - 1 || 1));
+    const yPercent = (row / (rows - 1 || 1));
 
-    return { x: `${x}%`, y: `${y}%` };
+    const left = gridBounds.left + (gridBounds.width * xPercent * 0.9) + (gridBounds.width * 0.05);
+    const top = gridBounds.top + (gridBounds.height * yPercent * 0.9) + (gridBounds.height * 0.05);
+
+    return { left: `${left}px`, top: `${top}px` };
   };
 
   return (
-    <>
-      {/* Normal mode - inside card */}
-      {!isAnimationActive && (
-        <div className="h-full w-full overflow-hidden relative">
-          {/* Background text */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-            <h2
-              className="font-bold text-white/10 select-none"
-              style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
-            >
-              {backgroundText}
-            </h2>
-          </div>
+    <div className="h-full w-full overflow-hidden relative">
+      {/* Background text */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+        <h2
+          className="font-bold text-white/10 select-none"
+          style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
+        >
+          {backgroundText}
+        </h2>
+      </div>
 
-          {/* Skills tags */}
-          <div className="relative h-full w-full flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 z-10 px-2 sm:px-3 py-2 sm:py-3">
+      <AnimatePresence mode="wait">
+        {isExploding ? (
+          /* Exploding logos view - fixed positioning to cover entire grid area */
+          <motion.div
+            key="logos"
+            className="fixed inset-0 z-[100]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {skills.map((skill, index) => {
+              const pos = getLogoPosition(index, skills.length);
+              const centerX = gridBounds ? gridBounds.left + gridBounds.width / 2 : window.innerWidth / 2;
+              const centerY = gridBounds ? gridBounds.top + gridBounds.height / 2 : window.innerHeight / 2;
+
+              return (
+                <motion.div
+                  key={`logo-${index}`}
+                  className="fixed"
+                  initial={{
+                    left: centerX,
+                    top: centerY,
+                    x: '-50%',
+                    y: '-50%',
+                    scale: 0,
+                    opacity: 0
+                  }}
+                  animate={{
+                    left: pos.left,
+                    top: pos.top,
+                    x: '-50%',
+                    y: '-50%',
+                    scale: 1,
+                    opacity: 1
+                  }}
+                  exit={{
+                    left: centerX,
+                    top: centerY,
+                    scale: 0,
+                    opacity: 0
+                  }}
+                  transition={{
+                    duration: 0.8,
+                    delay: index * 0.05,
+                    ease: 'easeOut'
+                  }}
+                >
+                  <img
+                    src={getSkillLogo(skill.name)}
+                    alt={skill.name}
+                    className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-contain"
+                    style={{
+                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                    }}
+                  />
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        ) : (
+          /* Normal text badges view */
+          <motion.div
+            key="badges"
+            className="relative h-full w-full flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 z-10 px-2 sm:px-3 py-2 sm:py-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             {skills.map((skill, index) => {
               const colors = getColorClasses(skill.category);
               return (
                 <motion.div
-                  key={index}
+                  key={`badge-${index}`}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{
@@ -108,71 +192,9 @@ export const SkillsAnimation = ({ skills, backgroundText, isAnimationActive = fa
                 </motion.div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Fullscreen animation mode */}
-      <AnimatePresence>
-        {isAnimationActive && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center"
-          >
-            {/* Logos spreading from center */}
-            <div className="relative w-full h-full flex items-center justify-center">
-              {skills.map((skill, index) => {
-                const colors = getColorClasses(skill.category);
-                const gridPos = getGridPosition(index);
-
-                return (
-                  <motion.div
-                    key={index}
-                    initial={{
-                      opacity: 0,
-                      scale: 0,
-                      x: 0,
-                      y: 0
-                    }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      x: gridPos.x,
-                      y: gridPos.y
-                    }}
-                    exit={{
-                      opacity: 0,
-                      scale: 0,
-                      x: 0,
-                      y: 0
-                    }}
-                    transition={{
-                      duration: 0.5,
-                      delay: index * 0.02,
-                      ease: 'easeOut'
-                    }}
-                    className={`absolute px-4 py-2 ${colors.bg} rounded-full shadow-lg`}
-                    style={{
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  >
-                    <span
-                      className={`font-semibold ${colors.text} whitespace-nowrap`}
-                      style={{ fontSize: 'clamp(0.8rem, 1.5vw, 1.2rem)' }}
-                    >
-                      {skill.name}
-                    </span>
-                  </motion.div>
-                );
-              })}
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 };
