@@ -30,6 +30,8 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
   const simpleBoxRef = useRef<HTMLDivElement>(null);
   const line1Ref = useRef<SVGLineElement>(null);
   const line2Ref = useRef<SVGLineElement>(null);
+  const activeServiceRef = useRef<HTMLDivElement>(null);
+  const svgContainerRef = useRef<SVGSVGElement>(null);
 
   // Handle wheel scroll to navigate between services
   useEffect(() => {
@@ -66,28 +68,70 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
     };
   }, [isOpen, services.length]);
 
-  // Animate boxes and lines when active service changes (like template)
+  // Calculate line positions and animate when active service changes
   useEffect(() => {
     if (!isOpen) return;
 
     console.log(`🎨 Active service changed to: ${activeIndex}`);
 
-    // Use GSAP animations similar to template
-    gsap.defaults({
-      duration: 0.55,
-      ease: 'expo.out',
-    });
+    // Wait for DOM to update
+    requestAnimationFrame(() => {
+      const activeService = activeServiceRef.current;
+      const detailBox = detailBoxRef.current;
+      const simpleBox = simpleBoxRef.current;
+      const line1 = line1Ref.current;
+      const line2 = line2Ref.current;
+      const svg = svgContainerRef.current;
 
-    const detailBox = detailBoxRef.current;
-    const simpleBox = simpleBoxRef.current;
-    const line1 = line1Ref.current;
-    const line2 = line2Ref.current;
+      if (!activeService || !detailBox || !simpleBox || !line1 || !line2 || !svg) return;
 
-    if (detailBox && simpleBox && line1 && line2) {
+      // Get bounding boxes
+      const serviceRect = activeService.getBoundingClientRect();
+      const detailRect = detailBox.getBoundingClientRect();
+      const simpleRect = simpleBox.getBoundingClientRect();
+      const svgRect = svg.getBoundingClientRect();
+
+      // Line 1: From right of active service to middle of left side of first box
+      const line1_x1 = serviceRect.right - svgRect.left;
+      const line1_y1 = serviceRect.top + serviceRect.height / 2 - svgRect.top;
+      const line1_x2 = detailRect.left - svgRect.left;
+      const line1_y2 = detailRect.top + detailRect.height / 2 - svgRect.top;
+
+      // Line 2: From right side of first box to left side of second box
+      const line2_x1 = detailRect.right - svgRect.left;
+      const line2_y1 = detailRect.top + detailRect.height / 2 - svgRect.top;
+      const line2_x2 = simpleRect.left - svgRect.left;
+      const line2_y2 = simpleRect.top + simpleRect.height / 2 - svgRect.top;
+
+      // Set line positions
+      line1.setAttribute('x1', line1_x1.toString());
+      line1.setAttribute('y1', line1_y1.toString());
+      line1.setAttribute('x2', line1_x2.toString());
+      line1.setAttribute('y2', line1_y2.toString());
+
+      line2.setAttribute('x1', line2_x1.toString());
+      line2.setAttribute('y1', line2_y1.toString());
+      line2.setAttribute('x2', line2_x2.toString());
+      line2.setAttribute('y2', line2_y2.toString());
+
+      // Calculate line lengths for stroke-dasharray
+      const line1Length = Math.sqrt(
+        Math.pow(line1_x2 - line1_x1, 2) + Math.pow(line1_y2 - line1_y1, 2)
+      );
+      const line2Length = Math.sqrt(
+        Math.pow(line2_x2 - line2_x1, 2) + Math.pow(line2_y2 - line2_y1, 2)
+      );
+
+      // Use GSAP animations
+      gsap.defaults({
+        duration: 0.55,
+        ease: 'expo.out',
+      });
+
       // Animate first line - appears first
       gsap.set(line1, {
-        strokeDasharray: 1000,
-        strokeDashoffset: 1000,
+        strokeDasharray: line1Length,
+        strokeDashoffset: line1Length,
         opacity: 0,
       });
 
@@ -120,8 +164,8 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
 
       // Animate second line - appears after 1 second
       gsap.set(line2, {
-        strokeDasharray: 1000,
-        strokeDashoffset: 1000,
+        strokeDasharray: line2Length,
+        strokeDashoffset: line2Length,
         opacity: 0,
       });
 
@@ -149,10 +193,10 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
         yPercent: 0,
         rotation: 0,
         duration: 0.7,
-        delay: 1.3, // After line 2
+        delay: 1.3,
         ease: 'expo.out',
       });
-    }
+    });
   }, [activeIndex, isOpen]);
 
   const handleClose = useCallback(() => {
@@ -233,6 +277,7 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
                 return (
                   <div
                     key={index}
+                    ref={activeIndex === index ? activeServiceRef : null}
                     onClick={() => setActiveIndex(index)}
                     className={`cursor-pointer transition-all duration-500 p-3 ${
                       activeIndex === index
@@ -267,23 +312,33 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
 
             {/* Right side: Active service details (2/3 width) */}
             <div className="w-2/3 h-full flex flex-col justify-center gap-6 relative">
-              {/* Line 1: from active service to first box */}
+              {/* SVG for all connecting lines */}
               <svg
-                className="absolute"
+                ref={svgContainerRef}
+                className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{
-                  width: '150px',
-                  height: '150px',
-                  left: '-150px',
-                  top: 'calc(25% - 75px)',
-                  pointerEvents: 'none',
+                  left: '-33.33%', // Extend to cover left side (1/3)
+                  width: '133.33%', // Cover both left and right
                 }}
               >
+                {/* Line 1: from active service to first box */}
                 <line
                   ref={line1Ref}
                   x1="0"
-                  y1="75"
-                  x2="150"
-                  y2="75"
+                  y1="0"
+                  x2="100"
+                  y2="100"
+                  stroke="#e6e3d8"
+                  strokeWidth="2"
+                  opacity="0"
+                />
+                {/* Line 2: from first box to second box */}
+                <line
+                  ref={line2Ref}
+                  x1="0"
+                  y1="0"
+                  x2="100"
+                  y2="100"
                   stroke="#e6e3d8"
                   strokeWidth="2"
                   opacity="0"
@@ -315,29 +370,6 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
                   {currentService.detailedDescription}
                 </p>
               </div>
-
-              {/* Line 2: from first box to second box */}
-              <svg
-                className="absolute"
-                style={{
-                  width: '150px',
-                  height: '150px',
-                  left: '-150px',
-                  top: 'calc(75% - 75px)',
-                  pointerEvents: 'none',
-                }}
-              >
-                <line
-                  ref={line2Ref}
-                  x1="0"
-                  y1="75"
-                  x2="150"
-                  y2="75"
-                  stroke="#e6e3d8"
-                  strokeWidth="2"
-                  opacity="0"
-                />
-              </svg>
 
               {/* Simple explanation box - more square */}
               <div
