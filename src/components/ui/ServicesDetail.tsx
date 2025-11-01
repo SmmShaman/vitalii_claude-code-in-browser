@@ -2,11 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { X } from 'lucide-react';
-
-// Register GSAP plugins
-gsap.registerPlugin(ScrollTrigger);
 
 interface Service {
   title: string;
@@ -23,41 +19,43 @@ interface ServicesDetailProps {
 
 export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const serviceRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const wheelTimeoutRef = useRef<number | null>(null);
 
-  // Setup scroll-triggered animations
+  // Handle wheel scroll to navigate between services
   useEffect(() => {
     if (!isOpen || !containerRef.current) return;
 
-    console.log('🎬 ServicesDetail: Setting up scroll triggers');
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
 
-    // Clear previous scroll triggers
-    ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+      // Debounce wheel events
+      if (wheelTimeoutRef.current) return;
 
-    // Setup scroll trigger for each service
-    serviceRefs.current.forEach((ref, index) => {
-      if (!ref) return;
+      if (e.deltaY > 0) {
+        // Scroll down - next service
+        setActiveIndex((prev) => Math.min(prev + 1, services.length - 1));
+      } else {
+        // Scroll up - previous service
+        setActiveIndex((prev) => Math.max(prev - 1, 0));
+      }
 
-      ScrollTrigger.create({
-        trigger: ref,
-        start: 'top center',
-        end: 'bottom center',
-        onEnter: () => {
-          console.log(`📍 Service ${index} ACTIVE`);
-          setActiveIndex(index);
-        },
-        onEnterBack: () => {
-          console.log(`📍 Service ${index} ACTIVE (scroll back)`);
-          setActiveIndex(index);
-        },
-      });
-    });
+      // Set timeout to prevent too rapid changes
+      wheelTimeoutRef.current = window.setTimeout(() => {
+        wheelTimeoutRef.current = null;
+      }, 500);
+    };
+
+    const container = containerRef.current;
+    container.addEventListener('wheel', handleWheel, { passive: false });
 
     return () => {
-      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+      container.removeEventListener('wheel', handleWheel);
+      if (wheelTimeoutRef.current) {
+        clearTimeout(wheelTimeoutRef.current);
+      }
     };
-  }, [isOpen, services]);
+  }, [isOpen, services.length]);
 
   // Animate lines and descriptions when active service changes
   useEffect(() => {
@@ -66,10 +64,10 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
     console.log(`🎨 Active service changed to: ${activeIndex}`);
 
     // Animate detailed description entry
-    const detailBox = document.querySelector(`#detail-${activeIndex}`);
-    const simpleBox = document.querySelector(`#simple-${activeIndex}`);
-    const line1 = document.querySelector(`#line1-${activeIndex}`);
-    const line2 = document.querySelector(`#line2-${activeIndex}`);
+    const detailBox = document.querySelector(`#detail-box`);
+    const simpleBox = document.querySelector(`#simple-box`);
+    const line1 = document.querySelector(`#line1`);
+    const line2 = document.querySelector(`#line2`);
 
     if (detailBox && simpleBox && line1 && line2) {
       gsap.fromTo(
@@ -100,15 +98,18 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
 
   const handleClose = useCallback(() => {
     console.log('❌ ServicesDetail: Closing');
-    ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    setActiveIndex(0);
     onClose();
   }, [onClose]);
 
   if (!isOpen) return null;
 
+  const currentService = services[activeIndex];
+
   return createPortal(
     <AnimatePresence>
       <motion.div
+        ref={containerRef}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -126,121 +127,104 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
           <X className="w-6 h-6 text-black" />
         </button>
 
-        {/* Scrollable content */}
-        <div
-          ref={containerRef}
-          className="w-full h-full overflow-y-auto overflow-x-hidden"
-          style={{
-            scrollBehavior: 'smooth',
-          }}
-        >
-          <div className="max-w-7xl mx-auto px-8 py-20">
-            {/* Header */}
-            <motion.h1
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-5xl font-black uppercase mb-20 text-center"
-            >
-              Services
-            </motion.h1>
-
-            {/* Services list */}
-            <div className="space-y-32">
+        {/* Main content - no scroll */}
+        <div className="w-full h-full flex items-center justify-center px-12">
+          <div className="w-full max-w-7xl h-full flex items-center gap-12">
+            {/* Left side: All services (1/3 width) */}
+            <div className="w-1/3 h-full flex flex-col justify-center gap-4">
               {services.map((service, index) => (
                 <div
                   key={index}
-                  ref={(el) => {
-                    serviceRefs.current[index] = el;
-                  }}
-                  className="relative min-h-screen flex items-center"
+                  onClick={() => setActiveIndex(index)}
+                  className={`cursor-pointer transition-all duration-500 p-3 rounded-lg ${
+                    activeIndex === index
+                      ? 'bg-black text-white scale-105'
+                      : 'text-gray-300 hover:text-gray-500 hover:bg-gray-50'
+                  }`}
                 >
-                  {/* Left side: Service title */}
-                  <div className="w-1/3 pr-8">
-                    <h2
-                      className={`text-4xl font-black uppercase transition-all duration-500 ${
-                        activeIndex === index
-                          ? 'text-black opacity-100 scale-110'
-                          : 'text-gray-300 opacity-50'
-                      }`}
-                      style={{
-                        fontSize: 'clamp(1.5rem, 4vw, 3rem)',
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {service.title}
-                    </h2>
-                  </div>
-
-                  {/* Right side: Descriptions (only visible when active) */}
-                  <div className="w-2/3 flex flex-col gap-8">
-                    {activeIndex === index && (
-                      <>
-                        {/* Line 1 */}
-                        <svg
-                          id={`line1-${index}`}
-                          className="w-full h-1"
-                          style={{ transformOrigin: 'left center' }}
-                        >
-                          <line
-                            x1="0"
-                            y1="50%"
-                            x2="100%"
-                            y2="50%"
-                            stroke="#000"
-                            strokeWidth="2"
-                          />
-                        </svg>
-
-                        {/* Detailed description box */}
-                        <div
-                          id={`detail-${index}`}
-                          className="bg-gradient-to-br from-slate-100 to-slate-200 p-6 rounded-lg shadow-lg border-l-4 border-black"
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="text-2xl">🧠</span>
-                            <p className="text-lg text-gray-800 leading-relaxed">
-                              {service.detailedDescription}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Line 2 */}
-                        <svg
-                          id={`line2-${index}`}
-                          className="w-full h-1"
-                          style={{ transformOrigin: 'left center' }}
-                        >
-                          <line
-                            x1="0"
-                            y1="50%"
-                            x2="100%"
-                            y2="50%"
-                            stroke="#000"
-                            strokeWidth="2"
-                          />
-                        </svg>
-
-                        {/* Simple explanation box */}
-                        <div
-                          id={`simple-${index}`}
-                          className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg shadow-lg border-l-4 border-blue-500"
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="text-2xl">💬</span>
-                            <p className="text-lg text-gray-700 leading-relaxed">
-                              {service.simpleExplanation}
-                            </p>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <h3
+                    className={`font-black uppercase transition-all duration-500`}
+                    style={{
+                      fontSize: 'clamp(0.9rem, 1.8vw, 1.5rem)',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {index + 1}. {service.title}
+                  </h3>
                 </div>
               ))}
             </div>
 
-            {/* Bottom spacer */}
-            <div className="h-32" />
+            {/* Right side: Active service details (2/3 width) */}
+            <div className="w-2/3 h-full flex flex-col justify-center gap-8">
+              {/* Line 1 */}
+              <svg
+                id="line1"
+                className="w-full h-1"
+                style={{ transformOrigin: 'left center' }}
+              >
+                <line
+                  x1="0"
+                  y1="50%"
+                  x2="100%"
+                  y2="50%"
+                  stroke="#000"
+                  strokeWidth="2"
+                />
+              </svg>
+
+              {/* Detailed description box */}
+              <div
+                id="detail-box"
+                className="bg-gradient-to-br from-slate-100 to-slate-200 p-8 rounded-lg shadow-lg border-l-4 border-black"
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-3xl">🧠</span>
+                  <div>
+                    <p className="text-sm uppercase font-bold text-gray-500 mb-2">
+                      Серйозний опис
+                    </p>
+                    <p className="text-xl text-gray-800 leading-relaxed">
+                      {currentService.detailedDescription}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line 2 */}
+              <svg
+                id="line2"
+                className="w-full h-1"
+                style={{ transformOrigin: 'left center' }}
+              >
+                <line
+                  x1="0"
+                  y1="50%"
+                  x2="100%"
+                  y2="50%"
+                  stroke="#000"
+                  strokeWidth="2"
+                />
+              </svg>
+
+              {/* Simple explanation box */}
+              <div
+                id="simple-box"
+                className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-lg shadow-lg border-l-4 border-blue-500"
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-3xl">💬</span>
+                  <div>
+                    <p className="text-sm uppercase font-bold text-blue-600 mb-2">
+                      Просте пояснення
+                    </p>
+                    <p className="text-xl text-gray-700 leading-relaxed">
+                      {currentService.simpleExplanation}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -251,7 +235,9 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
           transition={{ delay: 1 }}
           className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2"
         >
-          <span className="text-sm text-gray-400 uppercase tracking-wider">Scroll</span>
+          <span className="text-sm text-gray-400 uppercase tracking-wider">
+            Scroll to navigate ({activeIndex + 1}/{services.length})
+          </span>
           <motion.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
