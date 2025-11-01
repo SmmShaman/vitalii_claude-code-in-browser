@@ -8,6 +8,7 @@ import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
 import { SkillsAnimation } from '../ui/SkillsAnimation';
 import { AboutAnimation } from '../ui/AboutAnimation';
+import { ServicesDetail } from '../ui/ServicesDetail';
 import { NewsSection } from './NewsSection';
 import { BlogSection } from './BlogSection';
 import { translations } from '../../utils/translations';
@@ -89,6 +90,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const [totalGridHeight, setTotalGridHeight] = useState<number>(0);
   const [isSkillsExploding, setIsSkillsExploding] = useState(false);
   const [isAboutExploding, setIsAboutExploding] = useState(false);
+  const [isServicesDetailOpen, setIsServicesDetailOpen] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
@@ -373,6 +375,18 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     }, 3000);
   };
 
+  const handleServicesClick = () => {
+    console.log('🎯 Services clicked! Opening detail view');
+    setIsServicesDetailOpen(true);
+    onFullscreenChange?.(true);
+  };
+
+  const handleServicesDetailClose = () => {
+    console.log('❌ Services detail closed');
+    setIsServicesDetailOpen(false);
+    onFullscreenChange?.(false);
+  };
+
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
@@ -382,6 +396,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     // Handle about explosion animation
     if (section.id === 'about') {
       handleAboutClick();
+      return;
+    }
+
+    // Handle services detail view
+    if (section.id === 'services') {
+      handleServicesClick();
       return;
     }
 
@@ -559,6 +579,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 const getAnimatedProps = () => {
                   console.log(`🎬 getAnimatedProps для ${section.id}:`, {
                     isSkillsExploding,
+                    isServicesDetailOpen,
                     selectedNewsId,
                     selectedBlogId,
                     isNewsExpanded,
@@ -579,6 +600,15 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Hide ALL 6 windows when About is exploding (text will show on top)
                   if (isAboutExploding) {
                     console.log(`💥 ${section.id}: About exploding - opacity: 0`);
+                    return {
+                      opacity: 0,
+                      scale: 0.95,
+                    };
+                  }
+
+                  // Hide ALL 6 windows when Services detail is open
+                  if (isServicesDetailOpen) {
+                    console.log(`📋 ${section.id}: Services detail open - opacity: 0`);
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -930,6 +960,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
         isExploding={isAboutExploding}
         gridContainerRef={gridContainerRef}
         onClose={handleAboutClose}
+      />
+
+      {/* Services Detail */}
+      <ServicesDetail
+        services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
+        isOpen={isServicesDetailOpen}
+        onClose={handleServicesDetailClose}
       />
     </>
   );

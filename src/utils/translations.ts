@@ -100,31 +100,45 @@ export const translations = {
     services_list: [
       {
         title: "AI Integration & Automation",
-        description: "from concept to production"
+        description: "from concept to production",
+        detailedDescription: "Implementation of artificial intelligence and automation to accelerate routine processes — communications, request processing, content creation, and reporting.",
+        simpleExplanation: "I help companies use artificial intelligence to save time and make work faster — for example, so that emails, texts, or customer responses are created automatically."
       },
       {
         title: "Growth Marketing & Analytics",
-        description: "data-driven growth strategies"
+        description: "data-driven growth strategies",
+        detailedDescription: "Analysis of advertising campaign effectiveness and budget optimization to increase business profitability.",
+        simpleExplanation: "I check which advertising really brings results and help spend money on what actually works."
       },
       {
         title: "Marketing Analytics & Dashboarding",
-        description: "actionable insights & visualization"
+        description: "actionable insights & visualization",
+        detailedDescription: "Creating convenient analytical reports and dashboards in Power BI or Google Sheets to monitor advertising and sales results.",
+        simpleExplanation: "I make clear tables and charts so the manager can see which campaigns give the best results."
       },
       {
         title: "Digital Strategy & Automation",
-        description: "transform & optimize workflows"
+        description: "transform & optimize workflows",
+        detailedDescription: "Development of digitalization strategy — how to combine company services (CRM, advertising, AI, reporting) into a single effective system.",
+        simpleExplanation: "I help the company organize its online services so that everything works smoothly and without unnecessary manual work."
       },
       {
         title: "EdTech Product Development (Elvarika)",
-        description: "innovative learning solutions"
+        description: "innovative learning solutions",
+        detailedDescription: "Creation of language and educational applications using AI and audio for interactive learning.",
+        simpleExplanation: "I develop modern educational products that help people learn languages faster through listening and practice."
       },
       {
         title: "E-commerce Optimization",
-        description: "Amazon / Etsy / Shopify"
+        description: "Amazon / Etsy / Shopify",
+        detailedDescription: "Increasing sales in online stores through market analysis, page optimization, and advertising campaigns.",
+        simpleExplanation: "I help online sellers update product descriptions, set up advertising, and increase the number of buyers."
       },
       {
         title: "AI Workshops & Practical Training",
-        description: "hands-on learning sessions"
+        description: "hands-on learning sessions",
+        detailedDescription: "Conducting practical training for teams on effective use of AI and automation tools.",
+        simpleExplanation: "I teach employees how to use artificial intelligence in daily work — to do less manually and more productively."
       }
     ],
     services_label: "my services",
@@ -328,31 +342,45 @@ export const translations = {
     services_list: [
       {
         title: "AI-integrasjon & Automatisering",
-        description: "fra konsept til produksjon"
+        description: "fra konsept til produksjon",
+        detailedDescription: "Implementering av kunstig intelligens og automatisering for å akselerere rutineprosesser — kommunikasjon, behandling av forespørsler, innholdsproduksjon og rapportering.",
+        simpleExplanation: "Jeg hjelper bedrifter med å bruke kunstig intelligens for å spare tid og gjøre arbeidet raskere — for eksempel slik at e-poster, tekster eller kundesvar opprettes automatisk."
       },
       {
         title: "Vekstmarkedsføring & Analyse",
-        description: "datadrevne vekststrategier"
+        description: "datadrevne vekststrategier",
+        detailedDescription: "Analyse av effektiviteten til reklamekampanjer og budsjettoptimalisering for å øke bedriftens lønnsomhet.",
+        simpleExplanation: "Jeg sjekker hvilken reklame som faktisk gir resultater og hjelper med å bruke penger på det som virkelig fungerer."
       },
       {
         title: "Marketing Analytics & Dashboarding",
-        description: "handlingsrettet innsikt & visualisering"
+        description: "handlingsrettet innsikt & visualisering",
+        detailedDescription: "Oppretting av praktiske analytiske rapporter og dashboards i Power BI eller Google Sheets for å overvåke reklame- og salgsresultater.",
+        simpleExplanation: "Jeg lager tydelige tabeller og grafer slik at lederen kan se hvilke kampanjer som gir de beste resultatene."
       },
       {
         title: "Digital Strategi & Automatisering",
-        description: "transformer & optimaliser arbeidsflyter"
+        description: "transformer & optimaliser arbeidsflyter",
+        detailedDescription: "Utvikling av digitaliseringsstrategi — hvordan å kombinere bedriftens tjenester (CRM, reklame, AI, rapportering) i ett effektivt system.",
+        simpleExplanation: "Jeg hjelper bedriften med å organisere sine nettjenester slik at alt fungerer smidig og uten unødvendig manuelt arbeid."
       },
       {
         title: "EdTech Produktutvikling (Elvarika)",
-        description: "innovative læringsløsninger"
+        description: "innovative læringsløsninger",
+        detailedDescription: "Opprettelse av språk- og pedagogiske applikasjoner ved bruk av AI og lyd for interaktiv læring.",
+        simpleExplanation: "Jeg utvikler moderne pedagogiske produkter som hjelper folk med å lære språk raskere gjennom lytting og praksis."
       },
       {
         title: "E-handelsoptimalisering",
-        description: "Amazon / Etsy / Shopify"
+        description: "Amazon / Etsy / Shopify",
+        detailedDescription: "Økning av salg i nettbutikker gjennom markedsanalyse, sideoptimalisering og reklamekampanjer.",
+        simpleExplanation: "Jeg hjelper nettselgere med å oppdatere produktbeskrivelser, sette opp reklame og øke antall kjøpere."
       },
       {
         title: "AI Workshops & Praktisk Opplæring",
-        description: "hands-on læringssessjoner"
+        description: "hands-on læringssessjoner",
+        detailedDescription: "Gjennomføring av praktisk opplæring for team om effektiv bruk av AI og automatiseringsverktøy.",
+        simpleExplanation: "Jeg lærer ansatte hvordan de bruker kunstig intelligens i daglig arbeid — for å gjøre mindre manuelt og mer produktivt."
       }
     ],
     services_label: "mine tjenester",
@@ -556,31 +584,45 @@ export const translations = {
     services_list: [
       {
         title: "AI-інтеграція та Автоматизація",
-        description: "від концепції до продакшену"
+        description: "від концепції до продакшену",
+        detailedDescription: "Впровадження штучного інтелекту та автоматизації для прискорення рутинних процесів — комунікацій, обробки заявок, створення контенту чи звітів.",
+        simpleExplanation: "Я допомагаю компаніям використовувати штучний інтелект, щоб зекономити час і зробити роботу швидшою — наприклад, щоб листи, тексти чи відповіді клієнтам створювалися автоматично."
       },
       {
         title: "Маркетинг Зростання та Аналітика",
-        description: "стратегії зростання на основі даних"
+        description: "стратегії зростання на основі даних",
+        detailedDescription: "Аналіз ефективності рекламних кампаній і оптимізація бюджетів для підвищення прибутковості бізнесу.",
+        simpleExplanation: "Я перевіряю, яка реклама справді приносить результат, і допомагаю витрачати гроші на те, що реально працює."
       },
       {
         title: "Маркетингова Аналітика та Дашбординг",
-        description: "практичні висновки та візуалізація"
+        description: "практичні висновки та візуалізація",
+        detailedDescription: "Створення зручних аналітичних звітів і панелей у Power BI або Google Sheets для контролю результатів реклами та продажів.",
+        simpleExplanation: "Я роблю наочні таблиці й графіки, щоб керівник бачив, які кампанії дають кращі результати."
       },
       {
         title: "Цифрова Стратегія та Автоматизація",
-        description: "трансформація та оптимізація процесів"
+        description: "трансформація та оптимізація процесів",
+        detailedDescription: "Розробка стратегії цифровізації — як об'єднати сервіси компанії (CRM, реклама, AI, звітність) в єдину ефективну систему.",
+        simpleExplanation: "Я допомагаю компанії навести порядок у своїх онлайн-сервісах, щоб усе працювало злагоджено й без зайвої ручної роботи."
       },
       {
         title: "EdTech Розробка Продуктів (Elvarika)",
-        description: "інноваційні навчальні рішення"
+        description: "інноваційні навчальні рішення",
+        detailedDescription: "Створення мовних і навчальних додатків із використанням AI та аудіо для інтерактивного навчання.",
+        simpleExplanation: "Я розробляю сучасні навчальні продукти, які допомагають людям швидше вивчати мови через слухання і практику."
       },
       {
         title: "E-commerce Оптимізація",
-        description: "Amazon / Etsy / Shopify"
+        description: "Amazon / Etsy / Shopify",
+        detailedDescription: "Підвищення продажів в інтернет-магазинах через аналіз ринку, оптимізацію сторінок і рекламних кампаній.",
+        simpleExplanation: "Я допомагаю продавцям у мережі оновити опис товарів, налаштувати рекламу й збільшити кількість покупців."
       },
       {
         title: "AI Воркшопи та Практичне Навчання",
-        description: "практичні навчальні сесії"
+        description: "практичні навчальні сесії",
+        detailedDescription: "Проведення практичних навчань для команд щодо ефективного використання AI та автоматизаційних інструментів.",
+        simpleExplanation: "Я навчаю співробітників, як користуватися штучним інтелектом у щоденній роботі — щоб робити менше вручну, а більше результативно."
       }
     ],
     services_label: "мої послуги",
