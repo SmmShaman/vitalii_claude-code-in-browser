@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSkillLogo } from '../../utils/skillLogos';
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Skill {
   name: string;
@@ -99,19 +100,11 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
   };
 
   return (
-    <div className="h-full w-full overflow-hidden relative">
-      {/* Background text */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-        <h2
-          className="font-bold text-white/10 select-none"
-          style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
-        >
-          {backgroundText}
-        </h2>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {isExploding ? (
+    <>
+      {/* Render explosion animation in portal to escape parent transforms */}
+      {isExploding && createPortal(
+        <AnimatePresence mode="wait">
+          {isExploding && (
           /* Exploding logos view - fixed positioning to cover entire grid area */
           <motion.div
             key="logos"
@@ -207,7 +200,24 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
             });
             })()}
           </motion.div>
-        ) : (
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      <div className="h-full w-full overflow-hidden relative">
+        {/* Background text */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+          <h2
+            className="font-bold text-white/10 select-none"
+            style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
+          >
+            {backgroundText}
+          </h2>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {!isExploding && (
           /* Normal text badges view */
           <motion.div
             key="badges"
@@ -245,8 +255,9 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
               );
             })}
           </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   );
 };
