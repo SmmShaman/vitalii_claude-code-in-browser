@@ -521,8 +521,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
-                  // Blog: НІКОЛИ не рухається - ДРУГА УМОВА!
-                  if (section.id === 'blog' && !selectedNewsId && !selectedBlogId) {
+                  // Blog: НЕ рухається ОКРІМ коли сам розширений (тоді піднімається вгору)
+                  if (section.id === 'blog' && !selectedNewsId && !selectedBlogId && !isBlogExpanded) {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
@@ -598,8 +598,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     };
                   }
 
-                  // Blog: expanded but NOT moving (lock умова вище вже обробляє це)
-                  // ВИДАЛЕНО moveDistance - Blog НЕ рухається вгору!
+                  // Blog: піднімається вгору на місце Projects коли розширений
+                  if (section.id === 'blog' && isBlogExpanded) {
+                    return {
+                      opacity: 1,
+                      y: 0,  // Grid position change handled by gridRow, не потрібен y transform
+                    };
+                  }
 
                   return {
                     opacity: 1,
@@ -662,13 +667,16 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       // ЯВНІ grid positions щоб вікна залишалися на місцях
                       // Row 1: About(1,1), Services(2,1), Projects(3,1)
                       // Row 2: Skills(1,2), News(2,2), Blog(3,2)
+                      // ВИНЯТОК: Blog піднімається до Row 1 коли розширений
                       gridColumn: section.id === 'about' ? '1' :
                                   section.id === 'services' ? '2' :
                                   section.id === 'projects' ? '3' :
                                   section.id === 'skills' ? '1' :
                                   section.id === 'news' ? '2' :
                                   section.id === 'blog' ? '3' : 'auto',
-                      gridRow: section.id === 'about' || section.id === 'services' || section.id === 'projects' ? '1' : '2',
+                      gridRow: section.id === 'about' || section.id === 'services' || section.id === 'projects' ? '1' :
+                               section.id === 'blog' && isBlogExpanded ? '1' : // Blog піднімається на Row 1 коли розширений
+                               '2',
                       // Expand to full grid when news/blog item is selected (override positions)
                       ...(section.id === 'news' && selectedNewsId ? {
                         gridColumn: '1 / -1',
