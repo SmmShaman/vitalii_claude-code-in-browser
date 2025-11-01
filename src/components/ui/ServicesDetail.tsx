@@ -228,35 +228,17 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
                   opacity: 0, // Initial state for GSAP
                 }}
               >
-                <div className="flex items-start gap-5">
-                  <span className="text-5xl">🧠</span>
-                  <div>
-                    <p
-                      className="uppercase mb-3"
-                      style={{
-                        fontFamily: '"Host Grotesk", sans-serif',
-                        fontWeight: 700,
-                        fontSize: '0.875rem',
-                        letterSpacing: '0.05em',
-                        color: detailTextColor,
-                        opacity: 0.8,
-                      }}
-                    >
-                      Серйозний опис
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: '"Host Grotesk", sans-serif',
-                        fontWeight: 500,
-                        fontSize: 'clamp(1.1rem, 2.2vw, 1.6rem)',
-                        lineHeight: 1.5,
-                        color: detailTextColor,
-                      }}
-                    >
-                      {currentService.detailedDescription}
-                    </p>
-                  </div>
-                </div>
+                <p
+                  style={{
+                    fontFamily: '"Host Grotesk", sans-serif',
+                    fontWeight: 500,
+                    fontSize: 'clamp(1.1rem, 2.2vw, 1.6rem)',
+                    lineHeight: 1.5,
+                    color: detailTextColor,
+                  }}
+                >
+                  {currentService.detailedDescription}
+                </p>
               </div>
 
               {/* Simple explanation box */}
@@ -268,35 +250,17 @@ export const ServicesDetail = ({ services, isOpen, onClose }: ServicesDetailProp
                   opacity: 0, // Initial state for GSAP
                 }}
               >
-                <div className="flex items-start gap-5">
-                  <span className="text-5xl">💬</span>
-                  <div>
-                    <p
-                      className="uppercase mb-3"
-                      style={{
-                        fontFamily: '"Host Grotesk", sans-serif',
-                        fontWeight: 700,
-                        fontSize: '0.875rem',
-                        letterSpacing: '0.05em',
-                        color: simpleTextColor,
-                        opacity: 0.8,
-                      }}
-                    >
-                      Просте пояснення
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: '"Host Grotesk", sans-serif',
-                        fontWeight: 500,
-                        fontSize: 'clamp(1.1rem, 2.2vw, 1.6rem)',
-                        lineHeight: 1.5,
-                        color: simpleTextColor,
-                      }}
-                    >
-                      {currentService.simpleExplanation}
-                    </p>
-                  </div>
-                </div>
+                <p
+                  style={{
+                    fontFamily: '"Host Grotesk", sans-serif',
+                    fontWeight: 500,
+                    fontSize: 'clamp(1.1rem, 2.2vw, 1.6rem)',
+                    lineHeight: 1.5,
+                    color: simpleTextColor,
+                  }}
+                >
+                  {currentService.simpleExplanation}
+                </p>
               </div>
             </div>
           </div>
