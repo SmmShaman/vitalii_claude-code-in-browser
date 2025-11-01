@@ -271,12 +271,20 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleBlogClick = () => {
+    console.log('🔴 handleBlogClick викликано, поточний стан:', {
+      isBlogExpanded,
+      selectedBlogId,
+      isProjectsHiding,
+    });
+
     // Don't toggle if a blog item is currently selected
     if (selectedBlogId) {
+      console.log('⚠️ Blog item вибраний, ігноруємо клік');
       return;
     }
 
     if (!isBlogExpanded) {
+      console.log('🟢 Розширюємо Blog...');
       // Get both Blog and Projects heights before animation
       const blogEl = cardRefs.current['blog'];
       const projectsEl = cardRefs.current['projects'];
@@ -284,18 +292,22 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       if (blogEl && projectsEl) {
         const blogH = blogEl.offsetHeight;
         const projectsH = projectsEl.offsetHeight;
+        console.log('📏 Blog висота:', blogH, 'Projects висота:', projectsH);
         setBlogHeight(blogH);
         setProjectsHeight(projectsH);
       }
 
       // Start hiding Projects first
+      console.log('🟡 Починаємо ховати Projects (setIsProjectsHiding(true))');
       setIsProjectsHiding(true);
       // After 0.5s, expand Blog
       setTimeout(() => {
+        console.log('🟢 Розширюємо Blog зараз (setIsBlogExpanded(true))');
         setIsBlogExpanded(true);
         setIsProjectsHiding(false);
       }, 500);
     } else {
+      console.log('🔵 Згортаємо Blog...');
       setIsBlogExpanded(false);
       setProjectsHeight(0);
       setBlogHeight(0);
@@ -445,12 +457,15 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   .filter((section) => {
                     // Ховаємо Services коли News розширений
                     if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
+                      console.log('🚫 FILTER: Services ВИДАЛЕНО з DOM');
                       return false;
                     }
                     // Ховаємо Projects коли Blog розширений
                     if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
+                      console.log('🚫 FILTER: Projects ВИДАЛЕНО з DOM');
                       return false;
                     }
+                    console.log('✅ FILTER: ', section.id, 'залишається в DOM');
                     return true;
                   })
                   .map((section) => {
@@ -498,8 +513,19 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                 // Get animated properties for each section
                 const getAnimatedProps = () => {
+                  console.log(`🎬 getAnimatedProps для ${section.id}:`, {
+                    isSkillsExploding,
+                    selectedNewsId,
+                    selectedBlogId,
+                    isNewsExpanded,
+                    isBlogExpanded,
+                    isHidingAllForNews,
+                    isHidingAllForBlog,
+                  });
+
                   // Hide ALL 6 windows when Skills is exploding (logos will show on top)
                   if (isSkillsExploding) {
+                    console.log(`💥 ${section.id}: Skills exploding - opacity: 0`);
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -510,21 +536,31 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Skills: НІКОЛИ не рухається - ПЕРША УМОВА!
                   if (section.id === 'skills' && !selectedNewsId && !selectedBlogId) {
+                    console.log(`🔒 Skills LOCK спрацював: opacity: 1, y: 0`);
+                    return { opacity: 1, y: 0, scaleY: 1 };
+                  }
+
+                  // News: НІКОЛИ не рухається (окрім fullscreen)
+                  if (section.id === 'news' && !selectedNewsId && !selectedBlogId) {
+                    console.log(`🔒 News LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Blog: НЕ рухається ОКРІМ коли сам розширений (тоді піднімається вгору)
                   if (section.id === 'blog' && !selectedNewsId && !selectedBlogId && !isBlogExpanded) {
+                    console.log(`🔒 Blog LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // About: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'about' && !selectedNewsId && !selectedBlogId) {
+                    console.log(`🔒 About LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'projects' && !selectedNewsId && !selectedBlogId) {
+                    console.log(`🔒 Projects LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
@@ -532,6 +568,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
+                    console.log(`❌ ${section.id}: HIDING для News fullscreen - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -541,6 +578,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except Blog when blog item is being selected
                   if (section.id !== 'blog' && (isHidingAllForBlog || selectedBlogId)) {
+                    console.log(`❌ ${section.id}: HIDING для Blog fullscreen - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -550,6 +588,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Services: scale to 0 height when hiding (0fr grid trick)
                   if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
+                    console.log(`❌ Services: HIDING (News розширений) - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -559,6 +598,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Projects: scale to 0 height when hiding
                   if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
+                    console.log(`❌ Projects: HIDING (Blog розширений) - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -568,6 +608,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // News: fullscreen mode - reset transform when news item is selected
                   if (section.id === 'news' && selectedNewsId) {
+                    console.log(`📰 News FULLSCREEN: opacity: 1`);
                     return {
                       opacity: 1,
                       y: 0,
@@ -576,6 +617,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // News: НЕ рухається вгору, просто стає вищим на своєму місці
                   if (section.id === 'news' && isNewsExpanded) {
+                    console.log(`📰 News РОЗШИРЕНИЙ: opacity: 1, y: 0`);
                     return {
                       opacity: 1,
                       y: 0,  // Залишається на місці, НЕ рухається вгору!
@@ -584,6 +626,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Blog: fullscreen mode - reset transform when blog item is selected
                   if (section.id === 'blog' && selectedBlogId) {
+                    console.log(`📝 Blog FULLSCREEN: opacity: 1`);
                     return {
                       opacity: 1,
                       y: 0,
@@ -592,12 +635,14 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Blog: піднімається вгору на місце Projects коли розширений
                   if (section.id === 'blog' && isBlogExpanded) {
+                    console.log(`📝 Blog РОЗШИРЕНИЙ (піднімається вгору): opacity: 1, y: 0`);
                     return {
                       opacity: 1,
                       y: 0,  // Grid position change handled by gridRow, не потрібен y transform
                     };
                   }
 
+                  console.log(`✨ ${section.id}: DEFAULT стан - opacity: 1, y: 0`);
                   return {
                     opacity: 1,
                     y: 0,
