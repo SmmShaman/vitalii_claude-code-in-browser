@@ -364,8 +364,9 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
                 color: '#1a1a1a',
                 lineHeight: 1.3,
                 wordBreak: 'normal',
-                overflowWrap: 'break-word',
+                overflowWrap: 'normal',
                 hyphens: 'none',
+                whiteSpace: 'normal',
               }}
             >
               {service.title}
