@@ -94,11 +94,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const skillsTimeoutRef = useRef<number | null>(null);
 
   const handleNewsClick = () => {
-    console.log('🔴 handleNewsClick called, current isNewsExpanded:', isNewsExpanded, 'selectedNewsId:', selectedNewsId);
-
     // Don't toggle if a news item is currently selected
     if (selectedNewsId) {
-      console.log('⚠️ News item is selected, ignoring card click');
       return;
     }
 
@@ -114,8 +111,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
         // News becomes 2x bigger (doubles in height)
         const newsExpandedHeight = servicesEl.offsetHeight + newsEl.offsetHeight;
 
-        console.log('📏 News expanded height:', newsExpandedHeight, '= Services:', servicesEl.offsetHeight, '+ News normal:', newsEl.offsetHeight);
-
         setNewsHeight(newsExpandedHeight);
         setServicesHeight(servicesEl.offsetHeight);
 
@@ -125,12 +120,10 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       }
 
       // Start hiding Services first
-      console.log('🟡 Starting Services hide animation');
       setIsServicesHiding(true);
 
       // After 0.5s, expand News
       setTimeout(() => {
-        console.log('🟢 Expanding News now');
         setIsNewsExpanded(true);
         setIsServicesHiding(false);
       }, 500);
@@ -140,11 +133,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleNewsItemSelect = (newsId: string) => {
-    console.log('📰 News item selected:', newsId);
-
     // If News is not expanded yet, expand it first, then select the item
     if (!isNewsExpanded) {
-      console.log('⚠️ News not expanded yet, expanding first...');
       // First expand News (Services will hide)
       const newsEl = cardRefs.current['news'];
       const servicesEl = cardRefs.current['services'];
@@ -152,7 +142,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       if (newsEl && servicesEl) {
         const newsH = newsEl.offsetHeight;
         const servicesH = servicesEl.offsetHeight;
-        console.log('📏 News height:', newsH, 'Services height:', servicesH);
         setNewsHeight(newsH);
         setServicesHeight(servicesH);
       }
@@ -176,8 +165,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const selectNewsItem = (newsId: string) => {
-    console.log('🎯 Selecting news item:', newsId);
-
     // Calculate heights of all windows for expansion
     const aboutEl = cardRefs.current['about'];
     const servicesEl = cardRefs.current['services'];
@@ -194,17 +181,14 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
       const total = row1Height + row2Height + gapSize;
 
-      console.log('📐 Total grid height:', total, '= row1:', row1Height, '+ row2:', row2Height, '+ gap:', gapSize);
       setTotalGridHeight(total);
     }
 
     // Step 1: Hide all other windows
-    console.log('🟡 Step 1: Hiding all windows except News');
     setIsHidingAllForNews(true);
 
     // Step 2: After 0.5s, show the selected news (News will expand to fullscreen)
     setTimeout(() => {
-      console.log('🟢 Step 2: Expanding News to fullscreen');
       setSelectedNewsId(newsId);
       setIsHidingAllForNews(false);
       onFullscreenChange?.(true); // ← Notify parent about fullscreen
@@ -212,7 +196,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleNewsItemBack = () => {
-    console.log('🔙 Back to news list');
     setSelectedNewsId(null);
     setTotalGridHeight(0);
     setIsHidingAllForNews(false);
@@ -221,11 +204,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleBlogItemSelect = (blogId: string) => {
-    console.log('📝 Blog item selected:', blogId);
-
     // If Blog is not expanded yet, expand it first, then select the item
     if (!isBlogExpanded) {
-      console.log('⚠️ Blog not expanded yet, expanding first...');
       // First expand Blog (Projects will hide)
       const blogEl = cardRefs.current['blog'];
       const projectsEl = cardRefs.current['projects'];
@@ -233,7 +213,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       if (blogEl && projectsEl) {
         const blogH = blogEl.offsetHeight;
         const projectsH = projectsEl.offsetHeight;
-        console.log('📏 Blog height:', blogH, 'Projects height:', projectsH);
         setBlogHeight(blogH);
         setProjectsHeight(projectsH);
       }
@@ -257,8 +236,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const selectBlogItem = (blogId: string) => {
-    console.log('🎯 Selecting blog item:', blogId);
-
     // Calculate heights of all windows for expansion
     const aboutEl = cardRefs.current['about'];
     const servicesEl = cardRefs.current['services'];
@@ -275,17 +252,14 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
       const total = row1Height + row2Height + gapSize;
 
-      console.log('📐 Total grid height for Blog:', total, '= row1:', row1Height, '+ row2:', row2Height, '+ gap:', gapSize);
       setTotalGridHeight(total);
     }
 
     // Step 1: Hide all other windows
-    console.log('🟡 Step 1: Hiding all windows except Blog');
     setIsHidingAllForBlog(true);
 
     // Step 2: After 0.5s, show the selected blog (Blog will expand to fullscreen)
     setTimeout(() => {
-      console.log('🟢 Step 2: Expanding Blog to fullscreen');
       setSelectedBlogId(blogId);
       setIsHidingAllForBlog(false);
       onFullscreenChange?.(true); // ← Notify parent about fullscreen
@@ -293,7 +267,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleBlogItemBack = () => {
-    console.log('🔙 Back to blog list');
     setSelectedBlogId(null);
     setTotalGridHeight(0);
     setIsHidingAllForBlog(false);
@@ -302,11 +275,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleBlogClick = () => {
-    console.log('🔴 handleBlogClick called, current isBlogExpanded:', isBlogExpanded, 'selectedBlogId:', selectedBlogId);
-
     // Don't toggle if a blog item is currently selected
     if (selectedBlogId) {
-      console.log('⚠️ Blog item is selected, ignoring card click');
       return;
     }
 
@@ -318,7 +288,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
       if (blogEl && projectsEl) {
         const blogH = blogEl.offsetHeight;
         const projectsH = projectsEl.offsetHeight;
-        console.log('📏 Blog height:', blogH, 'Projects height:', projectsH);
         setBlogHeight(blogH);
         setProjectsHeight(projectsH);
       }
@@ -342,8 +311,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleSkillsClick = () => {
-    console.log('🎯 handleSkillsClick called');
-
     // Clear any existing timeout
     if (skillsTimeoutRef.current) {
       clearTimeout(skillsTimeoutRef.current);
@@ -355,7 +322,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
     // After 3 seconds, return to normal
     skillsTimeoutRef.current = window.setTimeout(() => {
-      console.log('⏰ Returning Skills to normal');
       setIsSkillsExploding(false);
       skillsTimeoutRef.current = null;
     }, 3000);
@@ -425,7 +391,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleProjectsCardClick = (activeIndex: number) => {
-    console.log('handleProjectsCardClick called with index:', activeIndex);
     setActiveProjectIndex(activeIndex);
     setIsProjectsModalOpen(true);
   };
@@ -484,12 +449,10 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   .filter((section) => {
                     // Ховаємо Services коли News розширений
                     if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
-                      console.log('🚫 Services ВИДАЛЕНО з DOM');
                       return false;
                     }
                     // Ховаємо Projects коли Blog розширений
                     if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
-                      console.log('🚫 Projects ВИДАЛЕНО з DOM');
                       return false;
                     }
                     return true;
@@ -506,39 +469,33 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // News: full grid height when news item selected
                   if (section.id === 'news' && selectedNewsId && totalGridHeight > 0) {
-                    console.log('📐 News FULL height:', totalGridHeight, '(all 6 windows)');
                     return `${totalGridHeight}px`;
                   }
 
                   // Blog: full grid height when blog item selected
                   if (section.id === 'blog' && selectedBlogId && totalGridHeight > 0) {
-                    console.log('📐 Blog FULL height:', totalGridHeight, '(all 6 windows)');
                     return `${totalGridHeight}px`;
                   }
 
                   // News: expanded height when just News section expanded
                   // newsHeight already contains: Services height + News normal height
                   if (section.id === 'news' && isNewsExpanded && newsHeight > 0) {
-                    console.log('📐 News expanded height:', newsHeight, '(already includes Services + News)');
                     return `${newsHeight}px`;
                   }
 
                   // Blog: expanded height when just Blog section expanded
                   if (section.id === 'blog' && isBlogExpanded && blogHeight > 0 && projectsHeight > 0) {
                     const totalHeight = blogHeight + projectsHeight + gapSize;
-                    console.log('📐 Blog expanded height:', totalHeight, '=', blogHeight, '+', projectsHeight, '+', gapSize);
                     return `${totalHeight}px`;
                   }
 
                   // Skills: fixed height when News is expanded (don't stretch!)
                   if (section.id === 'skills' && isNewsExpanded && skillsNormalHeight > 0) {
-                    console.log('📐 Skills FIXED height:', skillsNormalHeight);
                     return `${skillsNormalHeight}px`;
                   }
 
                   // Blog: fixed height when News is expanded (don't stretch!)
                   if (section.id === 'blog' && isNewsExpanded && !isBlogExpanded && blogNormalHeight > 0) {
-                    console.log('📐 Blog FIXED height:', blogNormalHeight);
                     return `${blogNormalHeight}px`;
                   }
 
@@ -546,10 +503,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Skills uses explosion animation, not height expansion
                   return '100%';
                 };
-
-                if (section.id === 'news') {
-                  console.log(`📰 Rendering NEWS - isExpanded: ${isExpanded}, isNewsExpanded: ${isNewsExpanded}, width: SAME (1 column), height: ${isExpanded ? 'EXPANDED' : 'normal'}`);
-                }
 
                 // Get animated properties for each section
                 const getAnimatedProps = () => {
@@ -565,25 +518,21 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Skills: НІКОЛИ не рухається - ПЕРША УМОВА!
                   if (section.id === 'skills' && !selectedNewsId && !selectedBlogId) {
-                    console.log('✅ Skills LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Blog: НІКОЛИ не рухається - ДРУГА УМОВА!
                   if (section.id === 'blog' && !selectedNewsId && !selectedBlogId) {
-                    console.log('✅ Blog LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // About: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'about' && !selectedNewsId && !selectedBlogId) {
-                    console.log('✅ About LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'projects' && !selectedNewsId && !selectedBlogId) {
-                    console.log('✅ Projects LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
@@ -591,7 +540,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
-                    console.log('❌ HIDING', section.id, '- isHidingAllForNews:', isHidingAllForNews, 'selectedNewsId:', selectedNewsId);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -601,7 +549,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except Blog when blog item is being selected
                   if (section.id !== 'blog' && (isHidingAllForBlog || selectedBlogId)) {
-                    console.log('❌ HIDING', section.id, '- isHidingAllForBlog:', isHidingAllForBlog, 'selectedBlogId:', selectedBlogId);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -637,8 +584,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // News: НЕ рухається вгору, просто стає вищим на своєму місці
                   if (section.id === 'news' && isNewsExpanded) {
-                    // servicesHeight saved for potential future use
-                    console.log('📰 News expanded, Services height was:', servicesHeight);
                     return {
                       opacity: 1,
                       y: 0,  // Залишається на місці, НЕ рухається вгору!
@@ -681,16 +626,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       if (mouseLeaveTimeoutRef.current) {
                         clearTimeout(mouseLeaveTimeoutRef.current);
                         mouseLeaveTimeoutRef.current = null;
-                        console.log('🐭 Mouse returned, cancel collapse');
                       }
                     }}
                     onMouseLeave={() => {
                       // News/Blog: longer timeout to prevent accidental collapse
                       // Give user time to move cursor around the expanded window
                       if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
-                        console.log('🖱️ Mouse left News, will collapse in 1500ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
-                          console.log('⏰ Collapsing News now');
                           setIsNewsExpanded(false);
                           setServicesHeight(0);
                           setNewsHeight(0);
@@ -700,9 +642,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
                       }
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
-                        console.log('🖱️ Mouse left Blog, will collapse in 1500ms');
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
-                          console.log('⏰ Collapsing Blog now');
                           setIsBlogExpanded(false);
                           mouseLeaveTimeoutRef.current = null;
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
