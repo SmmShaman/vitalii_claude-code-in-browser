@@ -150,9 +150,30 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
 
   console.log('✅ AboutAnimation: Rendering portal');
 
-  // Convert \n\n to proper spacing
-  const formattedText = currentText.replace(/\n\n/g, '\n\n');
-  console.log('📝 AboutAnimation: Text length:', formattedText.length);
+  // Process text: remove ** markdown and split into paragraphs
+  const cleanText = currentText.replace(/\*\*/g, '');
+  const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
+  console.log('📝 AboutAnimation: Paragraphs count:', paragraphs.length);
+
+  // Function to split paragraph into bold start and rest
+  const renderParagraph = (text: string, index: number) => {
+    const trimmed = text.trim();
+    const words = trimmed.split(' ');
+
+    // First 2-3 words will be bold
+    const boldWordCount = Math.min(3, words.length);
+    const boldPart = words.slice(0, boldWordCount).join(' ');
+    const restPart = words.slice(boldWordCount).join(' ');
+
+    return (
+      <p key={index} className="mb-6 first:mt-0">
+        <span className="font-bold text-gray-900" style={{ fontWeight: 700 }}>
+          {boldPart}
+        </span>
+        {restPart && ' ' + restPart}
+      </p>
+    );
+  };
 
   return createPortal(
     <AnimatePresence mode="wait">
@@ -186,17 +207,16 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
             </svg>
           </button>
 
-          <div className="w-full h-full flex items-center justify-center p-8 overflow-auto">
+          <div className="w-full h-full overflow-auto pt-16 pb-8 px-12">
             <div
               ref={textRef}
-              className="text-gray-900 max-w-4xl"
+              className="text-gray-900 w-full"
               style={{
                 fontSize: 'clamp(0.9rem, 2vw, 1.2rem)',
                 lineHeight: 1.8,
-                whiteSpace: 'pre-line',
               }}
             >
-              {formattedText}
+              {paragraphs.map(renderParagraph)}
             </div>
           </div>
         </motion.div>
