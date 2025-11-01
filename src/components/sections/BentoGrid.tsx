@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { SectionDialog } from './SectionDialog';
@@ -7,6 +7,7 @@ import { ProjectsCarousel } from '../ui/ProjectsCarousel';
 import { ProjectsModal } from '../ui/ProjectsModal';
 import { ServicesAnimation } from '../ui/ServicesAnimation';
 import { SkillsAnimation } from '../ui/SkillsAnimation';
+import { AboutAnimation } from '../ui/AboutAnimation';
 import { NewsSection } from './NewsSection';
 import { BlogSection } from './BlogSection';
 import { translations } from '../../utils/translations';
@@ -87,10 +88,41 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const [isHidingAllForBlog, setIsHidingAllForBlog] = useState(false);
   const [totalGridHeight, setTotalGridHeight] = useState<number>(0);
   const [isSkillsExploding, setIsSkillsExploding] = useState(false);
+  const [isAboutExploding, setIsAboutExploding] = useState(false);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
   const skillsTimeoutRef = useRef<number | null>(null);
+
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log('🔔 BentoGrid: isAboutExploding state changed to:', isAboutExploding);
+    console.log('🕐 BentoGrid: Current timestamp:', new Date().toISOString());
+  }, [isAboutExploding]);
+
+  useEffect(() => {
+    console.log('🔔 BentoGrid: isSkillsExploding state changed to:', isSkillsExploding);
+  }, [isSkillsExploding]);
+
+  const handleAboutClick = () => {
+    console.log('🎯 BentoGrid: handleAboutClick CALLED');
+    console.log('🕐 BentoGrid: Click timestamp:', new Date().toISOString());
+    console.log('📦 BentoGrid: Grid ref:', gridContainerRef.current);
+    console.log('📊 BentoGrid: Current isAboutExploding state:', isAboutExploding);
+
+    // Start explosion animation (no timeout - stays until user closes)
+    console.log('💥 BentoGrid: Setting isAboutExploding = true');
+    setIsAboutExploding(true);
+    console.log('✅ BentoGrid: setIsAboutExploding(true) called');
+  };
+
+  const handleAboutClose = () => {
+    console.log('❌ BentoGrid: handleAboutClose CALLED');
+    console.log('🕐 BentoGrid: Close timestamp:', new Date().toISOString());
+    console.log('📊 BentoGrid: Current isAboutExploding state before close:', isAboutExploding);
+    setIsAboutExploding(false);
+    console.log('✅ BentoGrid: setIsAboutExploding(false) called');
+  };
 
   const handleNewsClick = () => {
     // Don't toggle if a news item is currently selected
@@ -347,6 +379,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     // Don't open dialog for sections that have their own modals
     if (section.id === 'projects') return;
 
+    // Handle about explosion animation
+    if (section.id === 'about') {
+      handleAboutClick();
+      return;
+    }
+
     // Handle news expansion separately
     if (section.id === 'news') {
       // Only toggle if not expanded or if no news item is selected
@@ -532,6 +570,15 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Hide ALL 6 windows when Skills is exploding (logos will show on top)
                   if (isSkillsExploding) {
                     console.log(`💥 ${section.id}: Skills exploding - opacity: 0`);
+                    return {
+                      opacity: 0,
+                      scale: 0.95,
+                    };
+                  }
+
+                  // Hide ALL 6 windows when About is exploding (text will show on top)
+                  if (isAboutExploding) {
+                    console.log(`💥 ${section.id}: About exploding - opacity: 0`);
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -875,6 +922,14 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
         onOpenChange={setIsProjectsModalOpen}
         projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
         activeProjectIndex={activeProjectIndex}
+      />
+
+      {/* About Animation */}
+      <AboutAnimation
+        text={t('about_content') as string}
+        isExploding={isAboutExploding}
+        gridContainerRef={gridContainerRef}
+        onClose={handleAboutClose}
       />
     </>
   );
