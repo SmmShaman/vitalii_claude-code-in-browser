@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSkillLogo } from '../../utils/skillLogos';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 interface Skill {
@@ -49,13 +49,26 @@ const categoryColors: Record<string, { bg: string; text: string; hover: string }
   },
 };
 
+// Shuffle function to randomize skills order
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, gridContainerRef }: SkillsAnimationProps) => {
   const [gridBounds, setGridBounds] = useState<DOMRect | null>(null);
+
+  // Shuffle skills once on mount
+  const shuffledSkills = useMemo(() => shuffleArray(skills), []);
 
   console.log('🎨 SkillsAnimation render:', {
     isExploding,
     hasGridRef: !!gridContainerRef?.current,
-    skillsCount: skills.length,
+    skillsCount: shuffledSkills.length,
     gridBounds
   });
 
@@ -123,7 +136,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
             onAnimationStart={() => console.log('💥 Explosion container animation started')}
           >
             {(() => {
-              console.log('🎯 Rendering logos:', { count: skills.length, hasGridBounds: !!gridBounds });
+              console.log('🎯 Rendering logos:', { count: shuffledSkills.length, hasGridBounds: !!gridBounds });
 
               // Don't render logos until we have gridBounds
               if (!gridBounds) {
@@ -131,8 +144,8 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                 return null;
               }
 
-              return skills.map((skill, index) => {
-                const pos = getLogoPosition(index, skills.length);
+              return shuffledSkills.map((skill, index) => {
+                const pos = getLogoPosition(index, shuffledSkills.length);
                 const centerX = gridBounds.left + gridBounds.width / 2;
                 const centerY = gridBounds.top + gridBounds.height / 2;
 
@@ -228,13 +241,13 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
           /* Normal text badges view */
           <motion.div
             key="badges"
-            className="relative h-full w-full flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 z-10 px-2 sm:px-3 py-2 sm:py-3"
+            className="relative h-full w-full flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 md:gap-2 z-10 px-1 sm:px-2 py-1 sm:py-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {skills.map((skill, index) => {
+            {shuffledSkills.map((skill, index) => {
               const colors = getColorClasses(skill.category);
               return (
                 <motion.div
@@ -250,7 +263,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     scale: 1.08,
                     transition: { duration: 0.2 }
                   }}
-                  className={`px-2 sm:px-2.5 py-1 sm:py-1.5 ${colors.bg} ${colors.hover} rounded-full shadow-sm cursor-pointer transition-colors`}
+                  className={`px-1.5 py-0.5 ${colors.bg} ${colors.hover} rounded-full shadow-sm cursor-pointer transition-colors`}
                 >
                   <span
                     className={`font-semibold ${colors.text} whitespace-nowrap`}
