@@ -120,7 +120,10 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
               {/* Service title - centered */}
               <h4
                 className="font-bold text-white text-center relative px-4"
-                style={{ fontSize: 'clamp(0.7rem, 1.4vw, 0.95rem)' }}
+                style={{
+                  fontSize: 'clamp(0.7rem, 1.4vw, 0.95rem)',
+                  whiteSpace: 'nowrap'
+                }}
               >
                 {service.title}
               </h4>
