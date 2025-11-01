@@ -188,8 +188,9 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
             });
 
             const split = new SplitText(text, {
-              type: 'chars',
+              type: 'words,chars',
               charsClass: 'char',
+              wordsClass: 'word',
             });
 
             console.log(`🔍 DIAGNOSTIC - SplitText created for service ${idx}:`, {
@@ -354,7 +355,19 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
       className="h-full w-full flex items-center justify-center relative overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      style={{
+        // Global styles for GSAP SplitText words to prevent breaking
+        // @ts-ignore
+        '--word-display': 'inline-block',
+      }}
     >
+      <style>{`
+        .word {
+          display: inline-block;
+          white-space: nowrap;
+          margin-right: 0.25em;
+        }
+      `}</style>
       {/* Red rotated text (services label) in bottom right */}
       <div
         className="absolute bottom-4 right-4 text-red-600 font-bold uppercase opacity-80 pointer-events-none"
