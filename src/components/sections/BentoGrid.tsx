@@ -333,12 +333,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     console.log('💥 Setting isSkillsExploding = true');
     setIsSkillsExploding(true);
 
-    // After 2 seconds, return to normal
+    // After 3 seconds, return to normal
     skillsTimeoutRef.current = window.setTimeout(() => {
-      console.log('⏰ 2 seconds elapsed, returning to normal');
+      console.log('⏰ 3 seconds elapsed, returning to normal');
       setIsSkillsExploding(false);
       skillsTimeoutRef.current = null;
-    }, 2000);
+    }, 3000);
   };
 
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
