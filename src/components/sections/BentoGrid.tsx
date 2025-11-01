@@ -550,21 +550,25 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Skills: НІКОЛИ не рухається - ПЕРША УМОВА!
                   if (section.id === 'skills' && !selectedNewsId && !selectedBlogId) {
+                    console.log('✅ Skills LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Blog: НІКОЛИ не рухається - ДРУГА УМОВА!
                   if (section.id === 'blog' && !selectedNewsId && !selectedBlogId) {
+                    console.log('✅ Blog LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // About: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'about' && !selectedNewsId && !selectedBlogId) {
+                    console.log('✅ About LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'projects' && !selectedNewsId && !selectedBlogId) {
+                    console.log('✅ Projects LOCK спрацював: opacity: 1, y: 0');
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
@@ -572,6 +576,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
+                    console.log('❌ HIDING', section.id, '- isHidingAllForNews:', isHidingAllForNews, 'selectedNewsId:', selectedNewsId);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -581,6 +586,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                   // Hide all windows except Blog when blog item is being selected
                   if (section.id !== 'blog' && (isHidingAllForBlog || selectedBlogId)) {
+                    console.log('❌ HIDING', section.id, '- isHidingAllForBlog:', isHidingAllForBlog, 'selectedBlogId:', selectedBlogId);
                     return {
                       opacity: 0,
                       scaleY: 0,
