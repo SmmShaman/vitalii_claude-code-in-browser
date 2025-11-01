@@ -549,22 +549,22 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // ====== LOCK УМОВИ - ЗАВЖДИ ПЕРШИМИ! ======
 
                   // Skills: НІКОЛИ не рухається - ПЕРША УМОВА!
-                  if (section.id === 'skills' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                  if (section.id === 'skills' && !selectedNewsId && !selectedBlogId) {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Blog: НІКОЛИ не рухається - ДРУГА УМОВА!
-                  if (section.id === 'blog' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                  if (section.id === 'blog' && !selectedNewsId && !selectedBlogId) {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
-                  // About: ЗАВЖДИ видимий, окрім fullscreen режимів
-                  if (section.id === 'about' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog) {
+                  // About: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
+                  if (section.id === 'about' && !selectedNewsId && !selectedBlogId) {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
-                  // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів або Blog expansion
-                  if (section.id === 'projects' && !selectedNewsId && !selectedBlogId && !isHidingAllForNews && !isHidingAllForBlog && !isBlogExpanded && !isProjectsHiding) {
+                  // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
+                  if (section.id === 'projects' && !selectedNewsId && !selectedBlogId) {
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
