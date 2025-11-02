@@ -123,7 +123,7 @@ export const translations = {
         simpleExplanation: "I help the company organize its online services so that everything works smoothly and without unnecessary manual work."
       },
       {
-        title: "EdTech Product Development (Elvarika)",
+        title: "EdTech Product Development",
         description: "innovative learning solutions",
         detailedDescription: "Creation of language and educational applications using AI and audio for interactive learning.",
         simpleExplanation: "I develop modern educational products that help people learn languages faster through listening and practice."
@@ -182,6 +182,7 @@ export const translations = {
     news_title: "News",
     news_description: "Latest news and updates",
     news_read_more: "Read more",
+    news_view_full_article: "View full article",
     news_view_all: "View all news",
     news_no_items: "No news available",
     news_loading: "Loading news...",
@@ -364,7 +365,7 @@ export const translations = {
         simpleExplanation: "Jeg hjelper bedriften med å organisere sine nettjenester slik at alt fungerer smidig og uten unødvendig manuelt arbeid."
       },
       {
-        title: "EdTech Produktutvikling (Elvarika)",
+        title: "EdTech Produktutvikling",
         description: "innovative læringsløsninger",
         detailedDescription: "Opprettelse av språk- og pedagogiske applikasjoner ved bruk av AI og lyd for interaktiv læring.",
         simpleExplanation: "Jeg utvikler moderne pedagogiske produkter som hjelper folk med å lære språk raskere gjennom lytting og praksis."
@@ -423,6 +424,7 @@ export const translations = {
     news_title: "Nyheter",
     news_description: "Siste nyheter og oppdateringer",
     news_read_more: "Les mer",
+    news_view_full_article: "Se hele artikkelen",
     news_view_all: "Se alle nyheter",
     news_no_items: "Ingen nyheter tilgjengelig",
     news_loading: "Laster nyheter...",
@@ -605,7 +607,7 @@ export const translations = {
         simpleExplanation: "Я допомагаю компанії навести порядок у своїх онлайн-сервісах, щоб усе працювало злагоджено й без зайвої ручної роботи."
       },
       {
-        title: "EdTech Розробка Продуктів (Elvarika)",
+        title: "EdTech Розробка Продуктів",
         description: "інноваційні навчальні рішення",
         detailedDescription: "Створення мовних і навчальних додатків із використанням AI та аудіо для інтерактивного навчання.",
         simpleExplanation: "Я розробляю сучасні навчальні продукти, які допомагають людям швидше вивчати мови через слухання і практику."
@@ -664,6 +666,7 @@ export const translations = {
     news_title: "Новини",
     news_description: "Останні новини та оновлення",
     news_read_more: "Читати далі",
+    news_view_full_article: "Переглянути повну статтю",
     news_view_all: "Всі новини",
     news_no_items: "Немає доступних новин",
     news_loading: "Завантаження новин...",

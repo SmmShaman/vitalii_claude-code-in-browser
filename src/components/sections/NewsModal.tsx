@@ -203,8 +203,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                   }
                   @media (min-width: 640px) {
                     .news-media-float {
-                      width: 100%;
-                      max-width: 448px;
+                      width: 448px;
                       float: left;
                       margin-right: 1.5rem;
                       margin-bottom: 1rem;
@@ -302,7 +301,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                       to={`/news/${getNewsSlug(selectedNews)}`}
                       className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
                     >
-                      View full article
+                      {t('news_view_full_article')}
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   </div>
