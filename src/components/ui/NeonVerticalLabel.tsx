@@ -76,7 +76,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false }: NeonVertic
       ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="absolute left-2 sm:left-3 md:left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-auto cursor-pointer"
+      className="absolute left-1 sm:left-1.5 md:left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-auto cursor-pointer"
     >
       <svg
         viewBox={`0 0 200 ${svgHeight}`}

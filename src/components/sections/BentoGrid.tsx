@@ -851,9 +851,12 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
                 ) : (
                   <div
-                    className="absolute inset-0 bg-cover bg-center transition-all duration-500"
+                    className={`absolute inset-0 bg-no-repeat transition-all duration-500 ${
+                      section.id === 'projects' ? 'bg-right' : 'bg-cover bg-center'
+                    }`}
                     style={{
                       backgroundImage: `url(${section.id === 'projects' ? currentProjectImage : section.image})`,
+                      backgroundSize: section.id === 'projects' ? '70%' : 'cover',
                     }}
                   >
                     <div className="absolute inset-0 bg-black/40" />
@@ -869,8 +872,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 {/* Content */}
                 <div className={`relative h-full max-h-full flex items-start justify-center ${
                   section.id === 'about'
-                    ? 'pt-1.5 pr-1.5 pb-1.5 pl-12 sm:pt-3 sm:pr-3 sm:pb-3 sm:pl-14 md:pt-4 md:pr-4 md:pb-4 md:pl-16'
-                    : 'pt-3 pr-3 pb-3 pl-12 sm:pt-4 sm:pr-4 sm:pb-4 sm:pl-14 md:pt-5 md:pr-5 md:pb-5 md:pl-16'
+                    ? 'p-4 pl-14 sm:p-5 sm:pl-16 md:p-6 md:pl-18'
+                    : 'p-4 pl-14 sm:p-5 sm:pl-16 md:p-6 md:pl-18'
                 } overflow-hidden`}>
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full flex flex-col">
