@@ -864,13 +864,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
                 ) : section.id === 'projects' ? (
                   <div
-                    className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500 z-0"
+                    className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500 z-10"
                     style={{
                       backgroundImage: `url(${currentProjectImage})`,
                       backgroundSize: '70%',
                     }}
                   >
-                    <div className="absolute inset-0 bg-white/85 z-0" />
+                    <div className="absolute inset-0 bg-white/85 z-10" />
                   </div>
                 ) : (
                   <div

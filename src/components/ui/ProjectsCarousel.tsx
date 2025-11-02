@@ -23,6 +23,15 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
   const progressRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
+  // Unique neon colors for each project
+  const projectColors = [
+    { from: '#fc51c9', via: '#e707f7', to: '#9c27b0' }, // Pink/Magenta/Purple
+    { from: '#05ddfa', via: '#00bfff', to: '#4169e1' }, // Cyan/Blue
+    { from: '#ffeb3b', via: '#ffc107', to: '#ff9800' }, // Yellow/Amber/Orange
+    { from: '#4caf50', via: '#8bc34a', to: '#cddc39' }, // Green/Light Green/Lime
+    { from: '#ff6b6b', via: '#ff5252', to: '#f44336' }, // Red/Pink Red/Red
+  ];
+
   // Notify parent when index changes
   useEffect(() => {
     if (onIndexChange) {
@@ -146,6 +155,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
   };
 
   const currentProject = projects[currentIndex];
+  const currentColor = projectColors[currentIndex % projectColors.length];
 
   return (
     <div
@@ -168,7 +178,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
       {/* Current Project - ONLY ONE VISIBLE */}
       <div
         ref={projectRef}
-        className="absolute w-full px-4 pointer-events-none z-10"
+        className="absolute w-full px-4 pointer-events-none z-20"
         style={{
           top: '50%',
         }}
@@ -178,8 +188,11 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
           <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
             <div
               ref={progressRef}
-              className="h-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"
-              style={{ width: '0%' }}
+              className="h-full"
+              style={{
+                width: '0%',
+                background: `linear-gradient(to right, ${currentColor.from}, ${currentColor.via}, ${currentColor.to})`
+              }}
             />
           </div>
 
