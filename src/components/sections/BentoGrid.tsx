@@ -859,7 +859,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       backgroundSize: section.id === 'projects' ? '70%' : 'cover',
                     }}
                   >
-                    <div className="absolute inset-0 bg-black/40" />
+                    {section.id !== 'projects' && <div className="absolute inset-0 bg-black/40" />}
                   </div>
                 )}
 
