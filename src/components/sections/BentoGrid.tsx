@@ -869,15 +869,21 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   {(t(section.titleKey as any) as string).split('').map((char, idx) => (
                     <span
                       key={idx}
-                      className={`font-bold ${
-                        section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
-                          ? 'text-white drop-shadow-lg'
-                          : 'text-gray-800'
-                      }`}
+                      className="font-bold"
                       style={{
                         fontSize: 'clamp(0.75rem, 1.5vw, 1.1rem)',
                         lineHeight: '1.2',
-                        fontFamily: 'Anton, sans-serif'
+                        fontFamily: 'Anton, sans-serif',
+                        letterSpacing: '0.1em',
+                        transform: 'scaleX(1.2)',
+                        display: 'inline-block',
+                        color: 'transparent',
+                        WebkitTextStroke: section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
+                          ? '1.5px white'
+                          : '1.5px #1f2937',
+                        filter: section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
+                          ? 'drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5))'
+                          : 'none'
                       }}
                     >
                       {char}
