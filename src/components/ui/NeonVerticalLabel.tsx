@@ -3,12 +3,18 @@ import { useEffect, useRef, useState } from 'react';
 interface NeonVerticalLabelProps {
   text: string;
   isDarkBackground?: boolean;
+  currentLanguage?: string;
 }
 
-export const NeonVerticalLabel = ({ text, isDarkBackground = false }: NeonVerticalLabelProps) => {
+export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLanguage = 'EN' }: NeonVerticalLabelProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const letters = text.split('');
-  const svgHeight = letters.length * 130 + 120;
+
+  // Зменшуємо розмір для норвезької мови
+  const isNorwegian = currentLanguage.toLowerCase() === 'no';
+  const fontSize = isNorwegian ? 105 : 120;
+  const letterSpacing = isNorwegian ? 115 : 130;
+  const svgHeight = letters.length * letterSpacing + fontSize;
 
   const liquidLevelRef = useRef<SVGRectElement>(null);
   const waveRef = useRef<SVGPathElement>(null);
@@ -123,9 +129,9 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false }: NeonVertic
         {/* Контур букв (завжди видимий, темний або світлий залежно від фону) */}
         <text
           x="100"
-          y="120"
+          y={fontSize}
           fontFamily="Anton, sans-serif"
-          fontSize="120"
+          fontSize={fontSize}
           textAnchor="middle"
           dominantBaseline="central"
           fill="none"
@@ -133,7 +139,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false }: NeonVertic
           strokeWidth="4"
         >
           {letters.map((letter, idx) => (
-            <tspan key={idx} x="100" dy={idx === 0 ? "0" : "130"}>
+            <tspan key={idx} x="100" dy={idx === 0 ? "0" : letterSpacing}>
               {letter}
             </tspan>
           ))}
@@ -144,16 +150,16 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false }: NeonVertic
           {/* Рожевий неоновий шар */}
           <text
             x="100"
-            y="120"
+            y={fontSize}
             fontFamily="Anton, sans-serif"
-            fontSize="120"
+            fontSize={fontSize}
             textAnchor="middle"
             dominantBaseline="central"
             fill="#fc51c9"
             filter={`url(#${uniqueId}-pink-glow)`}
           >
             {letters.map((letter, idx) => (
-              <tspan key={idx} x="100" dy={idx === 0 ? "0" : "130"}>
+              <tspan key={idx} x="100" dy={idx === 0 ? "0" : letterSpacing}>
                 {letter}
               </tspan>
             ))}
@@ -162,9 +168,9 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false }: NeonVertic
           {/* Блакитний неоновий шар з режимом змішування */}
           <text
             x="100"
-            y="117"
+            y={fontSize - 3}
             fontFamily="Anton, sans-serif"
-            fontSize="120"
+            fontSize={fontSize}
             textAnchor="middle"
             dominantBaseline="central"
             fill="#05ddfa"
@@ -173,7 +179,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false }: NeonVertic
             style={{ mixBlendMode: 'screen' }}
           >
             {letters.map((letter, idx) => (
-              <tspan key={idx} x="100" dy={idx === 0 ? "0" : "130"}>
+              <tspan key={idx} x="100" dy={idx === 0 ? "0" : letterSpacing}>
                 {letter}
               </tspan>
             ))}

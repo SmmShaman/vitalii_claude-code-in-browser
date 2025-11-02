@@ -867,6 +867,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 <NeonVerticalLabel
                   text={t(section.titleKey as any) as string}
                   isDarkBackground={section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'}
+                  currentLanguage={currentLanguage}
                 />
 
                 {/* Content */}
