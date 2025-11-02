@@ -13,7 +13,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
   // Зменшуємо розмір для норвезької мови
   const isNorwegian = currentLanguage.toLowerCase() === 'no';
   const fontSize = isNorwegian ? 105 : 120;
-  const letterSpacing = isNorwegian ? 115 : 130;
+  const letterSpacing = isNorwegian ? 95 : 130;
   const svgHeight = letters.length * letterSpacing + fontSize;
 
   const liquidLevelRef = useRef<SVGRectElement>(null);
