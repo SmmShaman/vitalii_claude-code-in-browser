@@ -188,9 +188,25 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 animate={{ opacity: 1, x: 0 }}
                 className="max-w-4xl mx-auto"
               >
+                <style>{`
+                  .news-media-float {
+                    width: 100%;
+                    margin-bottom: 1rem;
+                  }
+                  @media (min-width: 640px) {
+                    .news-media-float {
+                      width: 100%;
+                      max-width: 448px;
+                      float: left;
+                      margin-right: 1.5rem;
+                      margin-bottom: 1rem;
+                    }
+                  }
+                `}</style>
+
                 {/* Video Player (if video exists) - Floated left with text wrapping on desktop */}
                 {(selectedNews as any).video_url && (
-                  <div className="w-full sm:float-left sm:w-[448px] sm:mr-6 mb-4 rounded-xl overflow-hidden bg-black shadow-lg">
+                  <div className="news-media-float rounded-xl overflow-hidden bg-black shadow-lg">
                     {(selectedNews as any).video_type === 'youtube' ? (
                       // YouTube embed
                       <iframe
@@ -227,7 +243,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
 
                 {/* Image (only if no video) - Floated left with text wrapping on desktop */}
                 {!((selectedNews as any).video_url) && selectedNews.image_url && (
-                  <div className="w-full sm:float-left sm:w-[448px] sm:mr-6 mb-4 rounded-xl overflow-hidden shadow-lg">
+                  <div className="news-media-float rounded-xl overflow-hidden shadow-lg">
                     <img
                       src={selectedNews.image_url as string}
                       alt={String(getTranslatedContent(selectedNews).title)}
