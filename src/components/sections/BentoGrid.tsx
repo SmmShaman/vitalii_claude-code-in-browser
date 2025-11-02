@@ -876,7 +876,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       }`}
                       style={{
                         fontSize: 'clamp(0.75rem, 1.5vw, 1.1rem)',
-                        lineHeight: '1.2'
+                        lineHeight: '1.2',
+                        fontFamily: 'Anton, sans-serif'
                       }}
                     >
                       {char}
