@@ -13,10 +13,9 @@ interface Service {
 interface ServicesAnimationProps {
   services: Service[];
   backgroundText: string;
-  servicesLabel?: string;
 }
 
-export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: ServicesAnimationProps) => {
+export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -422,18 +421,6 @@ export const ServicesAnimation = ({ services, servicesLabel = 'my services' }: S
           margin-right: 0.25em;
         }
       `}</style>
-      {/* Red rotated text (services label) in bottom right */}
-      <div
-        className="absolute bottom-4 right-4 text-red-600 font-bold uppercase opacity-80 pointer-events-none"
-        style={{
-          fontSize: 'clamp(1rem, 2vw, 1.5rem)',
-          transform: 'rotate(-12deg)',
-          transformOrigin: 'center',
-          letterSpacing: '0.1em',
-        }}
-      >
-        {servicesLabel}
-      </div>
 
       <div
         className={`relative w-full h-full flex items-center justify-center ${

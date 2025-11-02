@@ -859,27 +859,29 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   </div>
                 )}
 
-                {/* Vertical Section Label - Right Side */}
+                {/* Vertical Section Label - Left Side, letter by letter */}
                 <div
-                  className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
+                  className="absolute left-2 sm:left-3 md:left-4 top-4 z-20 pointer-events-none flex flex-col"
                   style={{
-                    writingMode: 'vertical-rl',
-                    textOrientation: 'mixed'
+                    gap: '0.1em'
                   }}
                 >
-                  <span
-                    className={`font-bold tracking-wider ${
-                      section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
-                        ? 'text-white drop-shadow-lg'
-                        : 'text-gray-800'
-                    }`}
-                    style={{
-                      fontSize: 'clamp(0.75rem, 1.5vw, 1.1rem)',
-                      letterSpacing: '0.15em'
-                    }}
-                  >
-                    {t(section.titleKey as any)}
-                  </span>
+                  {(t(section.titleKey as any) as string).split('').map((char, idx) => (
+                    <span
+                      key={idx}
+                      className={`font-bold ${
+                        section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
+                          ? 'text-white drop-shadow-lg'
+                          : 'text-gray-800'
+                      }`}
+                      style={{
+                        fontSize: 'clamp(0.75rem, 1.5vw, 1.1rem)',
+                        lineHeight: '1.2'
+                      }}
+                    >
+                      {char}
+                    </span>
+                  ))}
                 </div>
 
                 {/* Content */}
@@ -906,7 +908,6 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                         key={currentLanguage} // Force re-render on language change
                         services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
                         backgroundText={t('services_title') as string}
-                        servicesLabel={t('services_label' as any)}
                       />
                     </div>
                   ) : section.id === 'skills' ? (
@@ -936,14 +937,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                         onBack={handleBlogItemBack}
                       />
                     </div>
-                  ) : (
-                    <h3
-                      className="font-bold text-white text-center drop-shadow-lg self-center px-2"
-                      style={{ fontSize: 'clamp(1.25rem, 3vw, 2.5rem)' }}
-                    >
-                      {t(section.titleKey as any)}
-                    </h3>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Hover Effect Overlay */}
