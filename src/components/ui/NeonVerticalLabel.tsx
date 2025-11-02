@@ -4,9 +4,17 @@ interface NeonVerticalLabelProps {
   text: string;
   isDarkBackground?: boolean;
   currentLanguage?: string;
+  isHovered?: boolean;
+  neonColor?: { primary: string; secondary: string };
 }
 
-export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLanguage = 'EN' }: NeonVerticalLabelProps) => {
+export const NeonVerticalLabel = ({
+  text,
+  isDarkBackground = false,
+  currentLanguage = 'EN',
+  isHovered = false,
+  neonColor = { primary: '#fc51c9', secondary: '#e707f7' }
+}: NeonVerticalLabelProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const letters = text.split('');
 
@@ -18,7 +26,6 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
 
   const liquidLevelRef = useRef<SVGRectElement>(null);
   const waveRef = useRef<SVGPathElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const animationFrameRef = useRef<number | undefined>(undefined);
   const currentYRef = useRef(svgHeight);
   const targetYRef = useRef(svgHeight);
@@ -80,9 +87,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="absolute left-1 sm:left-1.5 md:left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-auto cursor-pointer"
+      className="absolute left-1 sm:left-1.5 md:left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
     >
       <svg
         viewBox={`0 0 200 ${svgHeight}`}
@@ -93,13 +98,13 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
         }}
       >
         <defs>
-          {/* Неоновий ефект для рожевого */}
-          <filter id={`${uniqueId}-pink-glow`} x="-100%" y="-100%" width="300%" height="300%">
+          {/* Неоновий ефект для primary кольору */}
+          <filter id={`${uniqueId}-primary-glow`} x="-100%" y="-100%" width="300%" height="300%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur1" />
             <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur2" />
-            <feFlood floodColor="#fc51c9" floodOpacity="0.9" />
+            <feFlood floodColor={neonColor.primary} floodOpacity="0.9" />
             <feComposite in2="blur1" operator="in" result="glow1" />
-            <feFlood floodColor="#e707f7" floodOpacity="0.6" />
+            <feFlood floodColor={neonColor.secondary} floodOpacity="0.6" />
             <feComposite in2="blur2" operator="in" result="glow2" />
             <feMerge>
               <feMergeNode in="glow2" />
@@ -108,10 +113,10 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
             </feMerge>
           </filter>
 
-          {/* Неоновий ефект для блакитного */}
-          <filter id={`${uniqueId}-blue-glow`} x="-100%" y="-100%" width="300%" height="300%">
+          {/* Неоновий ефект для secondary кольору */}
+          <filter id={`${uniqueId}-secondary-glow`} x="-100%" y="-100%" width="300%" height="300%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-            <feFlood floodColor="#05ddfa" floodOpacity="0.8" />
+            <feFlood floodColor={neonColor.secondary} floodOpacity="0.8" />
             <feComposite in2="blur" operator="in" result="glow" />
             <feMerge>
               <feMergeNode in="glow" />
@@ -135,7 +140,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
           textAnchor="middle"
           dominantBaseline="central"
           fill="none"
-          stroke={isDarkBackground ? "#ffffff22" : "#252630"}
+          stroke={isDarkBackground ? "#000000" : "#252630"}
           strokeWidth="4"
         >
           {letters.map((letter, idx) => (
@@ -147,7 +152,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
 
         {/* Група з неоновою рідиною (з маскою) */}
         <g clipPath={`url(#${uniqueId}-liquid-mask)`}>
-          {/* Рожевий неоновий шар */}
+          {/* Primary неоновий шар */}
           <text
             x="100"
             y={fontSize}
@@ -155,8 +160,8 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
             fontSize={fontSize}
             textAnchor="middle"
             dominantBaseline="central"
-            fill="#fc51c9"
-            filter={`url(#${uniqueId}-pink-glow)`}
+            fill={neonColor.primary}
+            filter={`url(#${uniqueId}-primary-glow)`}
           >
             {letters.map((letter, idx) => (
               <tspan key={idx} x="100" dy={idx === 0 ? "0" : letterSpacing}>
@@ -165,7 +170,7 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
             ))}
           </text>
 
-          {/* Блакитний неоновий шар з режимом змішування */}
+          {/* Secondary неоновий шар з режимом змішування */}
           <text
             x="100"
             y={fontSize - 3}
@@ -173,8 +178,8 @@ export const NeonVerticalLabel = ({ text, isDarkBackground = false, currentLangu
             fontSize={fontSize}
             textAnchor="middle"
             dominantBaseline="central"
-            fill="#05ddfa"
-            filter={`url(#${uniqueId}-blue-glow)`}
+            fill={neonColor.secondary}
+            filter={`url(#${uniqueId}-secondary-glow)`}
             opacity="0.8"
             style={{ mixBlendMode: 'screen' }}
           >

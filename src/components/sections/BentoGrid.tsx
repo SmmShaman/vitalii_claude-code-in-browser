@@ -96,6 +96,17 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
   const skillsTimeoutRef = useRef<number | null>(null);
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+
+  // Neon colors for each section
+  const neonColors: { [key: string]: { primary: string; secondary: string } } = {
+    about: { primary: '#fc51c9', secondary: '#e707f7' }, // Pink/Magenta
+    services: { primary: '#05ddfa', secondary: '#00bfff' }, // Cyan/Blue
+    projects: { primary: '#ffeb3b', secondary: '#ffc107' }, // Yellow/Amber
+    skills: { primary: '#4caf50', secondary: '#8bc34a' }, // Green/Light Green
+    news: { primary: '#ff6b6b', secondary: '#ff5252' }, // Red/Pink Red
+    blog: { primary: '#9c27b0', secondary: '#ba68c8' }, // Purple/Light Purple
+  };
 
   // Log state changes for debugging
   useEffect(() => {
@@ -749,6 +760,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseEnter={() => {
                       console.log(`🐭 MOUSE ENTER: ${section.id}`);
+                      setHoveredSection(section.id);
                       // Cancel collapse timeout ONLY if mouse returns to the SAME expanded window
                       if (mouseLeaveTimeoutRef.current) {
                         // Only cancel if returning to News when News is expanded
@@ -778,6 +790,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                         selectedNewsId,
                         selectedBlogId,
                       });
+                      setHoveredSection(null);
 
                       // News/Blog: longer timeout to prevent accidental collapse
                       // Give user time to move cursor around the expanded window
@@ -851,13 +864,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
                 ) : section.id === 'projects' ? (
                   <div
-                    className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500"
+                    className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500 z-0"
                     style={{
                       backgroundImage: `url(${currentProjectImage})`,
                       backgroundSize: '70%',
                     }}
                   >
-                    <div className="absolute inset-0 bg-white/85" />
+                    <div className="absolute inset-0 bg-white/85 z-0" />
                   </div>
                 ) : (
                   <div
@@ -875,6 +888,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   text={t(section.titleKey as any) as string}
                   isDarkBackground={section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'}
                   currentLanguage={currentLanguage}
+                  isHovered={hoveredSection === section.id}
+                  neonColor={neonColors[section.id]}
                 />
 
                 {/* Content */}
