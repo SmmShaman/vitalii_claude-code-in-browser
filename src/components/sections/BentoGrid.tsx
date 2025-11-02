@@ -861,7 +861,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                 {/* Vertical Section Label - Left Side, letter by letter */}
                 <div
-                  className="absolute left-2 sm:left-3 md:left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col"
+                  className="absolute left-2 sm:left-3 md:left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center"
                   style={{
                     gap: '0.1em'
                   }}
