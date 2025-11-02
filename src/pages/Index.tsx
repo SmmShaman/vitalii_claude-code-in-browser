@@ -1,8 +1,7 @@
 import { Header } from '../components/layout/Header';
 import { Footer } from '../components/layout/Footer';
 import { BentoGrid } from '../components/sections/BentoGrid';
-import { ParticlesBackground } from '../components/background/ParticlesBackground';
-import { DailyDoodle } from '../components/doodle/DailyDoodle';
+import { DailyBackground } from '../components/background/DailyBackground';
 
 export const Index = () => {
   const handleFullscreenChange = (fullscreen: boolean) => {
@@ -11,24 +10,16 @@ export const Index = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col relative">
-      {/* Animated Background */}
-      <ParticlesBackground />
+      {/* Daily Background - Image of the day as background */}
+      <DailyBackground />
 
       {/* Header - Fixed 60px */}
       <div className="flex-shrink-0 h-[60px] relative z-50">
         <Header isCompact={false} />
       </div>
 
-      {/* Spacing after header - 8px */}
-      <div className="flex-shrink-0 h-2" />
-
-      {/* Daily Doodle - Interactive daily image */}
-      <div className="flex-shrink-0 relative z-40">
-        <DailyDoodle />
-      </div>
-
-      {/* Spacing after doodle - 8px */}
-      <div className="flex-shrink-0 h-2" />
+      {/* Spacing after header - 16px */}
+      <div className="flex-shrink-0 h-4" />
 
       {/* Main Content - Takes remaining space */}
       <main className="flex-1 relative z-10 overflow-hidden">
