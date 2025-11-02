@@ -1,4 +1,4 @@
-import * as Vibrant from 'node-vibrant';
+import { Vibrant } from 'node-vibrant/browser';
 import type { ColorPalette } from '../../types/doodle';
 
 export class ColorAnalyzer {
@@ -9,7 +9,8 @@ export class ColorAnalyzer {
     try {
       console.log('🎨 Analyzing image colors:', imageUrl);
 
-      const palette = await Vibrant.from(imageUrl).getPalette();
+      const vibrant = new Vibrant(imageUrl);
+      const palette = await vibrant.getPalette();
 
       const colors: ColorPalette = {
         vibrant: palette.Vibrant?.hex,
