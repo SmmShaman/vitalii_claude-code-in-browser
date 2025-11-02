@@ -11,6 +11,7 @@ import { AboutAnimation } from '../ui/AboutAnimation';
 import { ServicesDetail } from '../ui/ServicesDetail';
 import { NewsSection } from './NewsSection';
 import { BlogSection } from './BlogSection';
+import { NeonVerticalLabel } from '../ui/NeonVerticalLabel';
 import { translations } from '../../utils/translations';
 
 // Grid layout constants
@@ -859,37 +860,11 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   </div>
                 )}
 
-                {/* Vertical Section Label - Left Side, letter by letter */}
-                <div
-                  className="absolute left-2 sm:left-3 md:left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center"
-                  style={{
-                    gap: '0.1em'
-                  }}
-                >
-                  {(t(section.titleKey as any) as string).split('').map((char, idx) => (
-                    <span
-                      key={idx}
-                      className="font-bold"
-                      style={{
-                        fontSize: 'clamp(0.75rem, 1.5vw, 1.1rem)',
-                        lineHeight: '1.2',
-                        fontFamily: 'Anton, sans-serif',
-                        letterSpacing: '0.2em',
-                        transform: 'scaleX(1.5)',
-                        display: 'inline-block',
-                        color: 'transparent',
-                        WebkitTextStroke: section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
-                          ? '1px white'
-                          : '1px #1f2937',
-                        filter: section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
-                          ? 'drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5))'
-                          : 'none'
-                      }}
-                    >
-                      {char}
-                    </span>
-                  ))}
-                </div>
+                {/* Neon Vertical Label */}
+                <NeonVerticalLabel
+                  text={t(section.titleKey as any) as string}
+                  isDarkBackground={section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'}
+                />
 
                 {/* Content */}
                 <div className={`relative h-full max-h-full flex items-start justify-center ${
