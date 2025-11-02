@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Calendar, Tag, ExternalLink, Clock, ChevronLeft } from 'lucide-react';
+import { Calendar, Tag, ExternalLink, Clock, ChevronLeft } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
 import { getLatestBlogPosts, getBlogPostById } from '../../integrations/supabase/client';
 import type { LatestBlogPost, BlogPost } from '../../integrations/supabase/types';
@@ -121,7 +121,6 @@ const BlogSectionComponent = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">{t('blog_no_posts')}</p>
         </div>
       </div>
@@ -220,14 +219,6 @@ const BlogSectionComponent = ({
 
   return (
       <div className="h-full flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            <h3 className="text-xl font-bold">{t('blog')}</h3>
-          </div>
-        </div>
-
         {/* Blog Posts Grid */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           <AnimatePresence mode="popLayout">
