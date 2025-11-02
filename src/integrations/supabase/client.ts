@@ -183,7 +183,7 @@ export const getAllNews = async (filters: NewsFilters = {}) => {
 export const getNewsById = async (id: string) => {
   if (!supabase) return null;
 
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('news')
     .select('*')
     .eq('id', id)
@@ -200,6 +200,34 @@ export const getNewsById = async (id: string) => {
       .from('news')
       .update({ views_count: (data.views_count || 0) + 1 })
       .eq('id', id);
+  }
+
+  return data;
+};
+
+export const getNewsBySlug = async (slug: string, language: 'en' | 'no' | 'ua' = 'en') => {
+  if (!supabase) return null;
+
+  const slugColumn = `slug_${language}`;
+
+  const { data, error } = await supabase
+    .from('news')
+    .select('*')
+    .eq(slugColumn, slug)
+    .eq('is_published', true)
+    .single();
+
+  if (error) {
+    console.error('Error fetching news by slug:', error);
+    return null;
+  }
+
+  // Increment view count
+  if (data) {
+    await supabase
+      .from('news')
+      .update({ views_count: (data.views_count || 0) + 1 })
+      .eq('id', data.id);
   }
 
   return data;

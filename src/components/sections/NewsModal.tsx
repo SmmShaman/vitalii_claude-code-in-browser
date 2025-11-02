@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Calendar, Tag, ExternalLink, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { useTranslations } from '../../contexts/TranslationContext';
@@ -95,6 +96,13 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
       content: content as string,
       summary: description as string,
     };
+  };
+
+  const getNewsSlug = (newsItem: NewsItem | LatestNews): string | null => {
+    const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const slug = newsItem[`slug_${lang}` as keyof typeof newsItem] as string | null;
+    // Fallback to English slug if current language slug doesn't exist
+    return slug || (newsItem as any).slug_en || null;
   };
 
   const formatDate = (dateString: string) => {
@@ -284,20 +292,35 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                   <p className="whitespace-pre-wrap">{getTranslatedContent(selectedNews).content}</p>
                 </div>
 
-                {/* Clear float to ensure source link appears below all content */}
+                {/* Clear float to ensure links appear below all content */}
                 <div className="clear-both"></div>
+
+                {/* SEO Link - View full article on separate page */}
+                {getNewsSlug(selectedNews) && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <Link
+                      to={`/news/${getNewsSlug(selectedNews)}`}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                    >
+                      View full article
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </div>
+                )}
 
                 {/* Source Link */}
                 {selectedNews.original_url && (
-                  <a
-                    href={selectedNews.original_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-primary hover:underline mt-4"
-                  >
-                    {t('news_read_more')}
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  <div className={getNewsSlug(selectedNews) ? "mt-4" : "mt-6 pt-6 border-t border-border"}>
+                    <a
+                      href={selectedNews.original_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm"
+                    >
+                      {t('news_read_more')}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
                 )}
               </motion.div>
             ) : (
@@ -417,16 +440,25 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                       {news.map((newsItem, index) => {
                         const content = getTranslatedContent(newsItem);
+                        const slug = getNewsSlug(newsItem);
                         return (
                           <motion.div
                             key={newsItem.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            onClick={() => handleNewsClick(newsItem)}
-                            className="group cursor-pointer"
+                            className="group"
                           >
-                            <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full flex flex-col">
+                            <Link
+                              to={slug ? `/news/${slug}` : '#'}
+                              onClick={(e) => {
+                                if (!slug) {
+                                  e.preventDefault();
+                                  handleNewsClick(newsItem);
+                                }
+                              }}
+                              className="block bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full flex flex-col cursor-pointer"
+                            >
                               {/* Image */}
                               {newsItem.image_url && (
                                 <div className="relative w-full h-48 overflow-hidden">
@@ -461,7 +493,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                                   </motion.div>
                                 </div>
                               </div>
-                            </div>
+                            </Link>
                           </motion.div>
                         );
                       })}
