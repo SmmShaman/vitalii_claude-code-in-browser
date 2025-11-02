@@ -7,9 +7,9 @@
   # Directory with built files
   publish = "dist"
 
-  # Node version
+  # Node version - updated to 22 for react-helmet-async compatibility
   [build.environment]
-    NODE_VERSION = "18"
+    NODE_VERSION = "22"
 
 # Redirects for Single Page Application (SPA)
 # All routes should redirect to index.html
