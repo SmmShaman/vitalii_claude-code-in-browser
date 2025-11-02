@@ -15,33 +15,70 @@ export const Header = ({ isCompact = false }: HeaderProps) => {
     <header className="w-full h-full flex items-center px-2 sm:px-4">
       {/* Container wrapper for consistent width with BentoGrid */}
       <motion.div
-        className="max-w-7xl mx-auto w-full flex items-center"
-        animate={{
-          justifyContent: isCompact ? 'space-between' : 'flex-end',
-        }}
+        className="max-w-7xl mx-auto w-full flex items-center justify-between"
         transition={{ duration: 0.3 }}
       >
-        {/* Compact title - shown when fullscreen */}
+        {/* Title Section - Always visible */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{
-            opacity: isCompact ? 1 : 0,
-            x: isCompact ? 0 : -20,
-            display: isCompact ? 'block' : 'none',
+            opacity: 1,
+            x: 0,
           }}
           transition={{ duration: 0.3 }}
-          className="text-white font-semibold"
-          style={{
-            fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)',
-            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
-          }}
+          className="text-white flex-1"
         >
-          <span className="font-bold text-amber-400">Vitalii Berbeha</span>
-          <span className="hidden sm:inline"> - {t('subtitle')}</span>
+          {isCompact ? (
+            // Compact version for fullscreen
+            <div
+              className="font-semibold"
+              style={{
+                fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)',
+                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
+              }}
+            >
+              <span className="font-bold text-amber-400">Vitalii Berbeha</span>
+              <span className="hidden sm:inline"> - {t('subtitle')}</span>
+            </div>
+          ) : (
+            // Full version for normal state
+            <div className="space-y-0.5">
+              <h1
+                className="font-bold text-amber-400"
+                style={{
+                  fontSize: 'clamp(1.25rem, 2.5vw, 2rem)',
+                  textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+                  lineHeight: '1.2'
+                }}
+              >
+                {t('title')}
+              </h1>
+              <p
+                className="font-semibold text-white/90"
+                style={{
+                  fontSize: 'clamp(0.75rem, 1.2vw, 1rem)',
+                  textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
+                  lineHeight: '1.3'
+                }}
+              >
+                {t('subtitle')}
+              </p>
+              <p
+                className="text-white/80 hidden sm:block"
+                style={{
+                  fontSize: 'clamp(0.7rem, 1vw, 0.875rem)',
+                  textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
+                  lineHeight: '1.3'
+                }}
+              >
+                {t('description')}
+              </p>
+            </div>
+          )}
         </motion.div>
 
         {/* Language Switcher */}
-        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+        <div className="flex gap-1 sm:gap-2 flex-shrink-0 ml-4">
           {languages.map((lang) => (
             <button
               key={lang}
