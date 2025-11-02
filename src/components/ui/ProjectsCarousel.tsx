@@ -158,8 +158,8 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
       {/* Background text "Projects" */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
         <h2
-          className="font-bold text-white/10 select-none"
-          style={{ fontSize: 'clamp(3rem, 8vw, 6.5rem)' }}
+          className="font-bold text-white/10 select-none text-center"
+          style={{ fontSize: 'clamp(2.5rem, 6vw, 5rem)' }}
         >
           {backgroundText}
         </h2>

@@ -229,8 +229,8 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
         {/* Background text */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
           <h2
-            className="font-bold text-white/10 select-none"
-            style={{ fontSize: 'clamp(2.5rem, 6vw, 6rem)' }}
+            className="font-bold text-white/10 select-none text-center"
+            style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)' }}
           >
             {backgroundText}
           </h2>
