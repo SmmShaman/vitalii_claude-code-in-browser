@@ -3,11 +3,8 @@ import { Footer } from '../components/layout/Footer';
 import { BentoGrid } from '../components/sections/BentoGrid';
 import { ParticlesBackground } from '../components/background/ParticlesBackground';
 import { DailyDoodle } from '../components/doodle/DailyDoodle';
-import { useTranslations } from '../contexts/TranslationContext';
 
 export const Index = () => {
-  const { t } = useTranslations();
-
   const handleFullscreenChange = (fullscreen: boolean) => {
     console.log('🎬 Fullscreen change:', fullscreen);
   };

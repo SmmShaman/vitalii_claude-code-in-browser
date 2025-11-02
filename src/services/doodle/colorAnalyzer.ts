@@ -1,5 +1,5 @@
-import Vibrant from 'node-vibrant';
-import { ColorPalette } from '../../types/doodle';
+import * as Vibrant from 'node-vibrant';
+import type { ColorPalette } from '../../types/doodle';
 
 export class ColorAnalyzer {
   /**

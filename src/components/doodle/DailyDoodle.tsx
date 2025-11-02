@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
-import { DailyImage } from '../../types/doodle';
+import type { DailyImage } from '../../types/doodle';
 import { DailyImageService } from '../../services/doodle/dailyImageService';
 import { ColorAnalyzer } from '../../services/doodle/colorAnalyzer';
 import { ParticleSystem } from './effects/ParticleSystem';
@@ -155,7 +155,6 @@ export const DailyDoodle = () => {
   }
 
   const dominantColor = ColorAnalyzer.getDominant(image.colors);
-  const accentColor = ColorAnalyzer.getAccent(image.colors);
   const backgroundColor = ColorAnalyzer.getBackground(image.colors);
 
   return (

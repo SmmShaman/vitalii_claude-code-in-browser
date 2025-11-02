@@ -1,4 +1,4 @@
-import { EffectType, ParticleConfig } from '../../../types/doodle';
+import type { EffectType, ParticleConfig } from '../../../types/doodle';
 
 interface Particle {
   x: number;

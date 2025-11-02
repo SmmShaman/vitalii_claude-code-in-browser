@@ -1,4 +1,4 @@
-import { DailyImage } from '../../types/doodle';
+import type { DailyImage } from '../../types/doodle';
 
 const API_BASE_URL = '/.netlify/functions';
 
