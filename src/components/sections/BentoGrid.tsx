@@ -863,15 +863,18 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 ) : section.id === 'news' || section.id === 'blog' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
                 ) : section.id === 'projects' ? (
-                  <div
-                    className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500 z-10"
-                    style={{
-                      backgroundImage: `url(${currentProjectImage})`,
-                      backgroundSize: '70%',
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-white/85 z-10" />
-                  </div>
+                  <>
+                    {/* White background layer - bottom */}
+                    <div className="absolute inset-0 bg-white/85 z-0" />
+                    {/* Project image layer - middle */}
+                    <div
+                      className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500 z-10"
+                      style={{
+                        backgroundImage: `url(${currentProjectImage})`,
+                        backgroundSize: '70%',
+                      }}
+                    />
+                  </>
                 ) : (
                   <div
                     className="absolute inset-0 bg-no-repeat bg-cover bg-center transition-all duration-500"
