@@ -849,17 +849,24 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   <div className="absolute inset-0 bg-white" />
                 ) : section.id === 'news' || section.id === 'blog' ? (
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
-                ) : (
+                ) : section.id === 'projects' ? (
                   <div
-                    className={`absolute inset-0 bg-no-repeat transition-all duration-500 ${
-                      section.id === 'projects' ? 'bg-right' : 'bg-cover bg-center'
-                    }`}
+                    className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500"
                     style={{
-                      backgroundImage: `url(${section.id === 'projects' ? currentProjectImage : section.image})`,
-                      backgroundSize: section.id === 'projects' ? '70%' : 'cover',
+                      backgroundImage: `url(${currentProjectImage})`,
+                      backgroundSize: '70%',
                     }}
                   >
-                    {section.id !== 'projects' && <div className="absolute inset-0 bg-black/40" />}
+                    <div className="absolute inset-0 bg-white/85" />
+                  </div>
+                ) : (
+                  <div
+                    className="absolute inset-0 bg-no-repeat bg-cover bg-center transition-all duration-500"
+                    style={{
+                      backgroundImage: `url(${section.image})`,
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-black/40" />
                   </div>
                 )}
 
@@ -873,8 +880,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 {/* Content */}
                 <div className={`relative h-full max-h-full flex items-start justify-center ${
                   section.id === 'about'
-                    ? 'p-4 pl-16 sm:p-5 sm:pl-20 md:p-6 md:pl-24'
-                    : 'p-4 pl-16 sm:p-5 sm:pl-20 md:p-6 md:pl-24'
+                    ? 'p-4 pl-12 sm:p-5 sm:pl-14 md:p-6 md:pl-16'
+                    : 'p-4 pl-12 sm:p-5 sm:pl-14 md:p-6 md:pl-16'
                 } overflow-hidden`}>
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full flex flex-col">
