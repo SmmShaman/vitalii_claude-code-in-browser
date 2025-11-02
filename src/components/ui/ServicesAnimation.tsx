@@ -13,9 +13,10 @@ interface Service {
 interface ServicesAnimationProps {
   services: Service[];
   backgroundText: string;
+  currentLanguage?: string;
 }
 
-export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
+export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: ServicesAnimationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -37,7 +38,9 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     // Estimate total height needed for all services
     const numServices = services.length;
     const lineHeight = 1.3;
-    const gapBetweenLines = 10; // pixels
+    // Зменшуємо відступ для української мови через довші назви
+    const isUkrainian = currentLanguage.toLowerCase() === 'ua';
+    const gapBetweenLines = isUkrainian ? 5 : 10; // pixels
 
     // Calculate max font size that fits all services
     let fontSize = 48; // Start with large font
@@ -55,7 +58,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     }
 
     setHoverFontSize(`${fontSize}px`);
-  }, [isHovered, services]);
+  }, [isHovered, services, currentLanguage]);
 
   // Function to start rotation animation
   const startRotation = useCallback(() => {
@@ -385,7 +388,7 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
 
       <div
         className={`relative w-full h-full flex items-center justify-center ${
-          isHovered ? 'flex-col gap-2' : ''
+          isHovered ? `flex-col ${currentLanguage.toLowerCase() === 'ua' ? 'gap-1' : 'gap-2'}` : ''
         }`}
         style={{
           padding: isHovered ? '1rem' : '0',

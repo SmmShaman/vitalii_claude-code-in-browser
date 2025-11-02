@@ -18,10 +18,11 @@ export const NeonVerticalLabel = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const letters = text.split('');
 
-  // Зменшуємо розмір для норвезької мови
+  // Зменшуємо розмір для норвезької та української мов
   const isNorwegian = currentLanguage.toLowerCase() === 'no';
-  const fontSize = isNorwegian ? 105 : 120;
-  const letterSpacing = isNorwegian ? 95 : 130;
+  const isUkrainian = currentLanguage.toLowerCase() === 'ua';
+  const fontSize = (isNorwegian || isUkrainian) ? 105 : 120;
+  const letterSpacing = (isNorwegian || isUkrainian) ? 95 : 130;
   const svgHeight = letters.length * letterSpacing + fontSize;
 
   const liquidLevelRef = useRef<SVGRectElement>(null);

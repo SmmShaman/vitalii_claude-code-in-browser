@@ -923,6 +923,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                         key={currentLanguage} // Force re-render on language change
                         services={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].services_list}
                         backgroundText={t('services_title') as string}
+                        currentLanguage={currentLanguage}
                       />
                     </div>
                   ) : section.id === 'skills' ? (
