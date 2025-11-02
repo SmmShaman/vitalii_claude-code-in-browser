@@ -100,9 +100,23 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
 
   const getNewsSlug = (newsItem: NewsItem | LatestNews): string | null => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
-    const slug = newsItem[`slug_${lang}` as keyof typeof newsItem] as string | null;
+    const slugKey = `slug_${lang}`;
+    const slug = newsItem[slugKey as keyof typeof newsItem] as string | null;
+    const fallbackSlug = (newsItem as any).slug_en;
+    console.log('🔍 getNewsSlug called:', {
+      lang,
+      slugKey,
+      currentSlug: slug,
+      fallbackSlug,
+      finalResult: slug || fallbackSlug || null,
+      allSlugs: {
+        slug_en: (newsItem as any).slug_en,
+        slug_no: (newsItem as any).slug_no,
+        slug_ua: (newsItem as any).slug_ua
+      }
+    });
     // Fallback to English slug if current language slug doesn't exist
-    return slug || (newsItem as any).slug_en || null;
+    return slug || fallbackSlug || null;
   };
 
   const formatDate = (dateString: string) => {
@@ -196,10 +210,19 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 animate={{ opacity: 1, x: 0 }}
                 className="max-w-4xl mx-auto"
               >
+                {(() => {
+                  console.log('📰 NewsModal Detail View - selectedNews:', selectedNews);
+                  console.log('🎥 Video URL:', (selectedNews as any).video_url);
+                  console.log('🖼️ Image URL:', selectedNews.image_url);
+                  console.log('🔗 SEO Slug:', getNewsSlug(selectedNews));
+                  console.log('📱 Window width:', window.innerWidth, 'CSS float applies at >640px');
+                  return null;
+                })()}
                 <style>{`
                   .news-media-float {
                     width: 100%;
                     margin-bottom: 1rem;
+                    background-color: rgba(255, 0, 0, 0.1); /* Debug red tint */
                   }
                   @media (min-width: 640px) {
                     .news-media-float {
@@ -207,13 +230,16 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                       float: left;
                       margin-right: 1.5rem;
                       margin-bottom: 1rem;
+                      background-color: rgba(0, 255, 0, 0.1); /* Debug green tint on desktop */
                     }
                   }
                 `}</style>
 
                 {/* Video Player (if video exists) - Floated left with text wrapping on desktop */}
+                {(() => { console.log('🎬 Video check - has video_url?', !!(selectedNews as any).video_url); return null; })()}
                 {(selectedNews as any).video_url && (
                   <div className="news-media-float rounded-xl overflow-hidden bg-black shadow-lg">
+                    {(() => { console.log('✅ Rendering VIDEO - type:', (selectedNews as any).video_type, 'url:', (selectedNews as any).video_url); return null; })()}
                     {(selectedNews as any).video_type === 'youtube' ? (
                       // YouTube embed
                       <iframe
@@ -249,8 +275,10 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 )}
 
                 {/* Image (only if no video) - Floated left with text wrapping on desktop */}
+                {(() => { console.log('🖼️ Image check - no video?', !((selectedNews as any).video_url), 'has image_url?', !!selectedNews.image_url); return null; })()}
                 {!((selectedNews as any).video_url) && selectedNews.image_url && (
                   <div className="news-media-float rounded-xl overflow-hidden shadow-lg">
+                    {(() => { console.log('✅ Rendering IMAGE - url:', selectedNews.image_url); return null; })()}
                     <img
                       src={selectedNews.image_url as string}
                       alt={String(getTranslatedContent(selectedNews).title)}
@@ -287,6 +315,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 </div>
 
                 {/* Content - Text wraps around floated media */}
+                {(() => { console.log('📝 Content length:', getTranslatedContent(selectedNews).content?.length, 'chars'); return null; })()}
                 <div className="prose prose-lg dark:prose-invert max-w-none mb-6">
                   <p className="whitespace-pre-wrap">{getTranslatedContent(selectedNews).content}</p>
                 </div>
@@ -295,17 +324,35 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 <div className="clear-both"></div>
 
                 {/* SEO Link - View full article on separate page */}
-                {getNewsSlug(selectedNews) && (
-                  <div className="mt-6 pt-6 border-t border-border">
-                    <Link
-                      to={`/news/${getNewsSlug(selectedNews)}`}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
-                    >
-                      {t('news_view_full_article')}
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </div>
-                )}
+                {(() => {
+                  const slug = getNewsSlug(selectedNews);
+                  console.log('🔍 SEO Link Check:', {
+                    hasSlug: !!slug,
+                    slug: slug,
+                    slug_en: (selectedNews as any).slug_en,
+                    slug_no: (selectedNews as any).slug_no,
+                    slug_ua: (selectedNews as any).slug_ua,
+                    currentLanguage: currentLanguage,
+                    translationKey: t('news_view_full_article')
+                  });
+                  if (slug) {
+                    console.log('✅ Rendering SEO Link for slug:', slug);
+                    return (
+                      <div className="mt-6 pt-6 border-t border-border">
+                        <Link
+                          to={`/news/${slug}`}
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                        >
+                          {t('news_view_full_article')}
+                          <ExternalLink className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    );
+                  } else {
+                    console.log('❌ NO SEO Link - slug is null/undefined');
+                    return null;
+                  }
+                })()}
 
                 {/* Source Link */}
                 {selectedNews.original_url && (
