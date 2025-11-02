@@ -10,6 +10,12 @@ interface SectionDialogProps {
   content: string;
   image: string;
   sectionId: string;
+  mediaType?: 'image' | 'video';
+  videoUrl?: string;
+  date?: string;
+  tags?: string[];
+  sourceLink?: string;
+  sourceName?: string;
 }
 
 export const SectionDialog = ({
@@ -19,6 +25,12 @@ export const SectionDialog = ({
   content,
   image,
   sectionId,
+  mediaType = 'image',
+  videoUrl,
+  date,
+  tags = [],
+  sourceLink,
+  sourceName,
 }: SectionDialogProps) => {
   const isContact = sectionId === 'contact';
 
@@ -57,53 +69,113 @@ export const SectionDialog = ({
             background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%)',
           }}
         >
-          <div className="flex h-full overflow-hidden rounded-[2rem]">
-            {/* Left side - Image */}
-            <div className="relative w-1/3 overflow-hidden group">
-              <div
-                className="absolute inset-0 bg-cover bg-center animate-slide-right transition-transform duration-300 group-hover:scale-105"
-                style={{
-                  backgroundImage: `url(${image})`,
-                }}
+          <div className="h-full overflow-hidden rounded-[2rem] p-6 md:p-8 relative">
+            {/* Close button */}
+            <Dialog.Close asChild>
+              <button
+                className="absolute top-6 right-6 rounded-full p-2 bg-white/10 hover:bg-white/20 transition-colors z-10"
+                aria-label="Close"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-              </div>
-            </div>
+                <X className="w-6 h-6 text-white" />
+              </button>
+            </Dialog.Close>
 
-            {/* Right side - Content */}
-            <div className="flex-1 flex flex-col p-8">
-              <div className="flex items-center justify-between mb-6">
-                <Dialog.Title className="text-3xl font-bold text-white">
-                  {title}
-                </Dialog.Title>
-                <Dialog.Close asChild>
-                  <button
-                    className="absolute top-6 right-6 rounded-full p-2 bg-white/10 hover:bg-white/20 transition-colors"
-                    aria-label="Close"
-                  >
-                    <X className="w-6 h-6 text-white" />
-                  </button>
-                </Dialog.Close>
-              </div>
-
-              <ScrollArea.Root className="flex-1 overflow-hidden">
-                <ScrollArea.Viewport className="w-full h-full">
-                  {isContact ? (
+            <ScrollArea.Root className="h-full overflow-hidden">
+              <ScrollArea.Viewport className="w-full h-full">
+                {isContact ? (
+                  <div className="pr-4">
+                    <Dialog.Title className="text-3xl font-bold text-white mb-6">
+                      {title}
+                    </Dialog.Title>
                     <ContactForm />
-                  ) : (
-                    <div className="text-lg text-white/90 leading-relaxed pr-4 whitespace-pre-wrap">
+                  </div>
+                ) : (
+                  <div className="pr-4">
+                    {/* Title */}
+                    <Dialog.Title className="text-2xl md:text-3xl font-bold text-white mb-4">
+                      {title}
+                    </Dialog.Title>
+
+                    {/* Date and Tags (if provided) */}
+                    {(date || tags.length > 0) && (
+                      <div className="mb-4 flex flex-wrap gap-2 items-center">
+                        {date && (
+                          <span className="text-white/70 text-sm">{date}</span>
+                        )}
+                        {tags.length > 0 && (
+                          <>
+                            {date && <span className="text-white/40">•</span>}
+                            <div className="flex flex-wrap gap-2">
+                              {tags.map((tag, index) => (
+                                <span
+                                  key={index}
+                                  className="px-2 py-1 bg-white/10 rounded-full text-white/80 text-xs"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Media - Float left on desktop, full width on mobile */}
+                    {(mediaType === 'image' || mediaType === 'video') && (
+                      <div className="w-full md:w-[448px] md:float-left md:mr-4 mb-4 rounded-lg overflow-hidden shadow-lg">
+                        {mediaType === 'video' && videoUrl ? (
+                          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                            <iframe
+                              className="absolute top-0 left-0 w-full h-full"
+                              src={videoUrl}
+                              title={title}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        ) : (
+                          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                            <img
+                              src={image}
+                              alt={title}
+                              className="absolute top-0 left-0 w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="text-base md:text-lg text-white/90 leading-relaxed whitespace-pre-wrap">
                       {formatText(content)}
                     </div>
-                  )}
-                </ScrollArea.Viewport>
-                <ScrollArea.Scrollbar
-                  className="flex select-none touch-none p-0.5 bg-white/10 transition-colors duration-150 ease-out hover:bg-white/20 data-[orientation=vertical]:w-2.5 data-[orientation=horizontal]:flex-col data-[orientation=horizontal]:h-2.5"
-                  orientation="vertical"
-                >
-                  <ScrollArea.Thumb className="flex-1 bg-white/50 rounded-[10px] relative before:content-[''] before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-[44px] before:min-h-[44px]" />
-                </ScrollArea.Scrollbar>
-              </ScrollArea.Root>
-            </div>
+
+                    {/* Clear float */}
+                    <div className="clear-both" />
+
+                    {/* Source link (if provided) */}
+                    {sourceLink && (
+                      <div className="mt-6 pt-4 border-t border-white/20">
+                        <a
+                          href={sourceLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-white/80 hover:text-white text-sm underline transition-colors"
+                        >
+                          {sourceName || 'Посилання на джерело'}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </ScrollArea.Viewport>
+              <ScrollArea.Scrollbar
+                className="flex select-none touch-none p-0.5 bg-white/10 transition-colors duration-150 ease-out hover:bg-white/20 data-[orientation=vertical]:w-2.5 data-[orientation=horizontal]:flex-col data-[orientation=horizontal]:h-2.5"
+                orientation="vertical"
+              >
+                <ScrollArea.Thumb className="flex-1 bg-white/50 rounded-[10px] relative before:content-[''] before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-[44px] before:min-h-[44px]" />
+              </ScrollArea.Scrollbar>
+            </ScrollArea.Root>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
