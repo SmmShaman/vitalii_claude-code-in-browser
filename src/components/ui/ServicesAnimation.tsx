@@ -81,6 +81,20 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
     const animateService = (index: number) => {
       if (!serviceElements || serviceElements.length === 0) return;
 
+      // IMPORTANT: First scatter ALL chars to prevent piling
+      serviceElements.forEach((element) => {
+        const allChars = element.querySelectorAll('.char');
+        if (allChars.length > 0) {
+          gsap.set(allChars, {
+            opacity: 0,
+            x: () => (Math.random() - 0.5) * 600,
+            y: () => (Math.random() - 0.5) * 600,
+            rotation: () => (Math.random() - 0.5) * 360,
+            scale: 0.1,
+          });
+        }
+      });
+
       // Hide all services
       gsap.set(serviceElements, { autoAlpha: 0 });
 
@@ -263,20 +277,18 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
         }
       });
 
-      // IMPORTANT: First scatter chars of ALL non-current elements to prevent piling
+      // IMPORTANT: Scatter chars of ALL elements (including current) to prevent piling
       serviceElements.forEach((element, idx) => {
-        if (idx !== currentIndex) {
-          const chars = element.querySelectorAll('.char');
-          if (chars.length > 0) {
-            console.log(`💨 Scattering chars of service ${idx} (non-current)`);
-            gsap.set(chars, {
-              opacity: 0,
-              x: () => (Math.random() - 0.5) * 600,
-              y: () => (Math.random() - 0.5) * 600,
-              rotation: () => (Math.random() - 0.5) * 360,
-              scale: 0.1,
-            });
-          }
+        const chars = element.querySelectorAll('.char');
+        if (chars.length > 0) {
+          console.log(`💨 Scattering chars of service ${idx}`);
+          gsap.set(chars, {
+            opacity: 0,
+            x: () => (Math.random() - 0.5) * 600,
+            y: () => (Math.random() - 0.5) * 600,
+            rotation: () => (Math.random() - 0.5) * 360,
+            scale: 0.1,
+          });
         }
       });
 
@@ -397,8 +409,24 @@ export const ServicesAnimation = ({ services }: ServicesAnimationProps) => {
         });
       });
     } else {
-      // Resume rotation
-      startRotation();
+      // IMPORTANT: Scatter all chars BEFORE resuming rotation to prevent piling
+      serviceElements.forEach((element) => {
+        const chars = element.querySelectorAll('.char');
+        if (chars.length > 0) {
+          gsap.set(chars, {
+            opacity: 0,
+            x: () => (Math.random() - 0.5) * 600,
+            y: () => (Math.random() - 0.5) * 600,
+            rotation: () => (Math.random() - 0.5) * 360,
+            scale: 0.1,
+          });
+        }
+      });
+
+      // Small delay to ensure scatter is applied before rotation starts
+      setTimeout(() => {
+        startRotation();
+      }, 50);
     }
   }, [isHovered, startRotation]);
 
