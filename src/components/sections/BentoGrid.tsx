@@ -207,6 +207,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const selectNewsItem = (newsId: string) => {
+    console.log('📰 selectNewsItem CALLED with newsId:', newsId);
     // Calculate heights of all windows for expansion
     const aboutEl = cardRefs.current['about'];
     const servicesEl = cardRefs.current['services'];
@@ -231,9 +232,11 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
     // Step 2: After 0.5s, show the selected news (News will expand to fullscreen)
     setTimeout(() => {
+      console.log('✅ setSelectedNewsId CALLED - setting newsId:', newsId);
       setSelectedNewsId(newsId);
       setIsHidingAllForNews(false);
       onFullscreenChange?.(true); // ← Notify parent about fullscreen
+      console.log('✅ Fullscreen change notified (true)');
     }, 500);
   };
 

@@ -160,6 +160,10 @@ const NewsSectionComponent = ({
   // Show full news detail if selected
   if (selectedNews) {
     const content = getTranslatedContent(selectedNews);
+    console.log('📰 NewsSection Detail View - selectedNews:', selectedNews);
+    console.log('🎥 Video URL:', (selectedNews as any).video_url);
+    console.log('🖼️ Image URL:', selectedNews.image_url);
+    console.log('📝 Content:', content);
     return (
       <div className="h-full flex flex-col overflow-y-auto">
         {/* Floating Back Button - Sticky at top-right */}

@@ -158,7 +158,14 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
     setCurrentPage(1);
   };
 
-  if (!isOpen) return null;
+  console.log('🔍 NewsModal RENDER - isOpen:', isOpen, 'selectedNews:', !!selectedNews, 'selectedNewsId:', selectedNewsId);
+
+  if (!isOpen) {
+    console.log('❌ NewsModal NOT RENDERING - isOpen is false');
+    return null;
+  }
+
+  console.log('✅ NewsModal IS RENDERING - isOpen is true');
 
   return (
     <AnimatePresence>
