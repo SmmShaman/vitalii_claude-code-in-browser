@@ -872,8 +872,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 {/* Content */}
                 <div className={`relative h-full max-h-full flex items-start justify-center ${
                   section.id === 'about'
-                    ? 'p-4 pl-14 sm:p-5 sm:pl-16 md:p-6 md:pl-18'
-                    : 'p-4 pl-14 sm:p-5 sm:pl-16 md:p-6 md:pl-18'
+                    ? 'p-4 pl-16 sm:p-5 sm:pl-20 md:p-6 md:pl-24'
+                    : 'p-4 pl-16 sm:p-5 sm:pl-20 md:p-6 md:pl-24'
                 } overflow-hidden`}>
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full flex flex-col">
