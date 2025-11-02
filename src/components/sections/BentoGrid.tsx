@@ -859,6 +859,29 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   </div>
                 )}
 
+                {/* Vertical Section Label - Right Side */}
+                <div
+                  className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
+                  style={{
+                    writingMode: 'vertical-rl',
+                    textOrientation: 'mixed'
+                  }}
+                >
+                  <span
+                    className={`font-bold tracking-wider ${
+                      section.id === 'projects' || section.id === 'testimonials' || section.id === 'contact'
+                        ? 'text-white drop-shadow-lg'
+                        : 'text-gray-800'
+                    }`}
+                    style={{
+                      fontSize: 'clamp(0.75rem, 1.5vw, 1.1rem)',
+                      letterSpacing: '0.15em'
+                    }}
+                  >
+                    {t(section.titleKey as any)}
+                  </span>
+                </div>
+
                 {/* Content */}
                 <div className={`relative h-full max-h-full flex items-start justify-center ${section.id === 'about' ? 'p-1.5 sm:p-3 md:p-4' : 'p-3 sm:p-4 md:p-5'} overflow-hidden`}>
                   {section.id === 'about' ? (

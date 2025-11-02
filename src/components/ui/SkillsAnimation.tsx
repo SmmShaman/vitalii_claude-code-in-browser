@@ -230,7 +230,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
           <h2
             className="font-bold text-white/10 select-none"
-            style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
+            style={{ fontSize: 'clamp(2.5rem, 6vw, 6rem)' }}
           >
             {backgroundText}
           </h2>
@@ -241,7 +241,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
           /* Normal text badges view */
           <motion.div
             key="badges"
-            className="relative h-full w-full flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 md:gap-2 z-10 px-1 sm:px-2 py-1 sm:py-2"
+            className="relative h-full w-full flex flex-wrap items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5 z-10 px-1 sm:px-1.5 py-0.5 sm:py-1"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -263,11 +263,11 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     scale: 1.08,
                     transition: { duration: 0.2 }
                   }}
-                  className={`px-1.5 py-0.5 ${colors.bg} ${colors.hover} rounded-full shadow-sm cursor-pointer transition-colors`}
+                  className={`px-1.5 py-0.5 sm:px-2 sm:py-0.5 ${colors.bg} ${colors.hover} rounded-full shadow-sm cursor-pointer transition-colors`}
                 >
                   <span
                     className={`font-semibold ${colors.text} whitespace-nowrap`}
-                    style={{ fontSize: 'clamp(1.2rem, 2vw, 1.5rem)' }}
+                    style={{ fontSize: 'clamp(1rem, 1.6vw, 1.25rem)' }}
                   >
                     {skill.name}
                   </span>
