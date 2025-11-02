@@ -13,21 +13,21 @@ export const Index = () => {
       {/* Daily Background - Image of the day as background */}
       <DailyBackground />
 
-      {/* Header - Fixed 60px */}
-      <div className="flex-shrink-0 h-[60px] relative z-50">
+      {/* Header - Fixed 120px (doubled from 60px) */}
+      <div className="flex-shrink-0 h-[120px] relative z-50">
         <Header isCompact={false} />
       </div>
 
-      {/* Spacing after header - 16px */}
-      <div className="flex-shrink-0 h-4" />
+      {/* Spacing after header - 21px (16px + 5px) */}
+      <div className="flex-shrink-0 h-[21px]" />
 
       {/* Main Content - Takes remaining space */}
       <main className="flex-1 relative z-10 overflow-hidden">
         <BentoGrid onFullscreenChange={handleFullscreenChange} />
       </main>
 
-      {/* Spacing before footer - 16px */}
-      <div className="flex-shrink-0 h-4" />
+      {/* Spacing before footer - 21px (16px + 5px) */}
+      <div className="flex-shrink-0 h-[21px]" />
 
       {/* Footer - Fixed 60px */}
       <div className="flex-shrink-0 h-[60px] relative z-50">

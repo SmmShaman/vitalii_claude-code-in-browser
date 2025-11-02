@@ -42,33 +42,37 @@ export const Header = ({ isCompact = false }: HeaderProps) => {
             </div>
           ) : (
             // Full version for normal state
-            <div className="space-y-0.5">
-              <h1
-                className="font-bold text-amber-400"
-                style={{
-                  fontSize: 'clamp(1.25rem, 2.5vw, 2rem)',
-                  textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
-                  lineHeight: '1.2'
-                }}
-              >
-                {t('title')}
-              </h1>
+            <div className="space-y-1">
+              {/* First line: Name + Subtitle */}
+              <div className="flex flex-wrap items-baseline gap-2">
+                <h1
+                  className="font-bold text-amber-400"
+                  style={{
+                    fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
+                    textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+                    lineHeight: '1.2'
+                  }}
+                >
+                  {t('title')}
+                </h1>
+                <p
+                  className="font-semibold text-white/90"
+                  style={{
+                    fontSize: 'clamp(0.875rem, 1.5vw, 1.25rem)',
+                    textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
+                    lineHeight: '1.3'
+                  }}
+                >
+                  {t('subtitle')}
+                </p>
+              </div>
+              {/* Second line: Description */}
               <p
-                className="font-semibold text-white/90"
+                className="text-white/80"
                 style={{
-                  fontSize: 'clamp(0.75rem, 1.2vw, 1rem)',
+                  fontSize: 'clamp(0.875rem, 1.2vw, 1.125rem)',
                   textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
-                  lineHeight: '1.3'
-                }}
-              >
-                {t('subtitle')}
-              </p>
-              <p
-                className="text-white/80 hidden sm:block"
-                style={{
-                  fontSize: 'clamp(0.7rem, 1vw, 0.875rem)',
-                  textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
-                  lineHeight: '1.3'
+                  lineHeight: '1.4'
                 }}
               >
                 {t('description')}
