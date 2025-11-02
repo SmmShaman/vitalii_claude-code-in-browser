@@ -178,7 +178,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
       {/* Current Project - ONLY ONE VISIBLE */}
       <div
         ref={projectRef}
-        className="absolute w-full px-4 pointer-events-none z-20"
+        className="absolute w-full px-4 pointer-events-none z-50"
         style={{
           top: '50%',
         }}
