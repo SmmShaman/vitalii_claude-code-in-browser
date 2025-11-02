@@ -283,21 +283,7 @@ const NewsSectionComponent = ({
   }
 
   return (
-    <div className="h-full flex gap-3">
-      {/* Vertical Section Title */}
-      <div className="flex items-center">
-        <div className="relative flex flex-col items-center">
-          {t('news').split('').map((letter: string, i: number) => (
-            <span
-              key={i}
-              className="text-xl font-bold text-primary/60 uppercase leading-tight"
-            >
-              {letter}
-            </span>
-          ))}
-        </div>
-      </div>
-
+    <div className="h-full flex">
       {/* News List */}
       <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-2">
           <AnimatePresence mode="popLayout">

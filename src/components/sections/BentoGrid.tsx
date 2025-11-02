@@ -861,7 +861,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
                 {/* Vertical Section Label - Left Side, letter by letter */}
                 <div
-                  className="absolute left-2 sm:left-3 md:left-4 top-4 z-20 pointer-events-none flex flex-col"
+                  className="absolute left-2 sm:left-3 md:left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col"
                   style={{
                     gap: '0.1em'
                   }}
@@ -885,7 +885,11 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                 </div>
 
                 {/* Content */}
-                <div className={`relative h-full max-h-full flex items-start justify-center ${section.id === 'about' ? 'p-1.5 sm:p-3 md:p-4' : 'p-3 sm:p-4 md:p-5'} overflow-hidden`}>
+                <div className={`relative h-full max-h-full flex items-start justify-center ${
+                  section.id === 'about'
+                    ? 'pt-1.5 pr-1.5 pb-1.5 pl-8 sm:pt-3 sm:pr-3 sm:pb-3 sm:pl-10 md:pt-4 md:pr-4 md:pb-4 md:pl-12'
+                    : 'pt-3 pr-3 pb-3 pl-8 sm:pt-4 sm:pr-4 sm:pb-4 sm:pl-10 md:pt-5 md:pr-5 md:pb-5 md:pl-12'
+                } overflow-hidden`}>
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full flex flex-col">
                       <TypewriterText
