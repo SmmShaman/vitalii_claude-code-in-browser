@@ -188,9 +188,9 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 animate={{ opacity: 1, x: 0 }}
                 className="max-w-4xl mx-auto"
               >
-                {/* Video Player (if video exists) */}
+                {/* Video Player (if video exists) - Floated left with text wrapping on desktop */}
                 {(selectedNews as any).video_url && (
-                  <div className="w-full mb-6 rounded-xl overflow-hidden bg-black">
+                  <div className="w-full sm:float-left sm:w-[448px] sm:mr-6 mb-4 rounded-xl overflow-hidden bg-black shadow-lg">
                     {(selectedNews as any).video_type === 'youtube' ? (
                       // YouTube embed
                       <iframe
@@ -225,13 +225,14 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                   </div>
                 )}
 
-                {/* Image (only if no video) */}
+                {/* Image (only if no video) - Floated left with text wrapping on desktop */}
                 {!((selectedNews as any).video_url) && selectedNews.image_url && (
-                  <div className="w-full h-96 rounded-xl overflow-hidden mb-6">
+                  <div className="w-full sm:float-left sm:w-[448px] sm:mr-6 mb-4 rounded-xl overflow-hidden shadow-lg">
                     <img
                       src={selectedNews.image_url as string}
                       alt={String(getTranslatedContent(selectedNews).title)}
-                      className="w-full h-full object-cover"
+                      className="w-full h-auto object-cover"
+                      style={{ aspectRatio: '16/9' }}
                     />
                   </div>
                 )}
@@ -262,10 +263,13 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                   )}
                 </div>
 
-                {/* Content */}
+                {/* Content - Text wraps around floated media */}
                 <div className="prose prose-lg dark:prose-invert max-w-none mb-6">
                   <p className="whitespace-pre-wrap">{getTranslatedContent(selectedNews).content}</p>
                 </div>
+
+                {/* Clear float to ensure source link appears below all content */}
+                <div className="clear-both"></div>
 
                 {/* Source Link */}
                 {selectedNews.original_url && (
@@ -273,7 +277,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                     href={selectedNews.original_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-primary hover:underline"
+                    className="inline-flex items-center gap-2 text-primary hover:underline mt-4"
                   >
                     {t('news_read_more')}
                     <ExternalLink className="h-4 w-4" />
