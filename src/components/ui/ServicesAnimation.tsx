@@ -100,7 +100,7 @@ export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimatio
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
         <h2
           className="font-bold text-white/10 select-none"
-          style={{ fontSize: 'clamp(3rem, 8vw, 8rem)' }}
+          style={{ fontSize: 'clamp(2rem, 6vw, 6rem)' }}
         >
           {backgroundText}
         </h2>
