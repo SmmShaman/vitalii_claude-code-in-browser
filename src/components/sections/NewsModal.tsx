@@ -217,164 +217,173 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 animate={{ opacity: 1, x: 0 }}
                 className="max-w-4xl mx-auto"
               >
-                {(() => {
-                  console.log('📰 NewsModal Detail View - selectedNews:', selectedNews);
-                  console.log('🎥 Video URL:', (selectedNews as any).video_url);
-                  console.log('🖼️ Image URL:', selectedNews.image_url);
-                  console.log('🔗 SEO Slug:', getNewsSlug(selectedNews));
-                  console.log('📱 Window width:', window.innerWidth, 'CSS float applies at >640px');
-                  return null;
-                })()}
                 <style>{`
-                  .news-media-float {
-                    width: 100%;
-                    margin-bottom: 1rem;
-                    background-color: rgba(255, 0, 0, 0.1); /* Debug red tint */
+                  /* Mobile: Stack layout */
+                  .news-detail-grid {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
                   }
+
+                  .news-media-container {
+                    width: 100%;
+                  }
+
+                  .news-content-wrapper {
+                    width: 100%;
+                  }
+
+                  /* Desktop: Grid layout with media on left, content on right */
                   @media (min-width: 640px) {
-                    .news-media-float {
+                    .news-detail-grid {
+                      display: grid;
+                      grid-template-columns: 448px 1fr;
+                      gap: 1.5rem;
+                      grid-template-areas:
+                        "media title"
+                        "media meta"
+                        "media content"
+                        "links links";
+                    }
+
+                    .news-media-container {
+                      grid-area: media;
                       width: 448px;
-                      float: left;
-                      margin-right: 1.5rem;
-                      margin-bottom: 1rem;
-                      background-color: rgba(0, 255, 0, 0.1); /* Debug green tint on desktop */
+                    }
+
+                    .news-title {
+                      grid-area: title;
+                    }
+
+                    .news-meta {
+                      grid-area: meta;
+                    }
+
+                    .news-content {
+                      grid-area: content;
+                      grid-column: 1 / -1; /* Span both columns after media ends */
+                    }
+
+                    .news-links {
+                      grid-area: links;
                     }
                   }
                 `}</style>
 
-                {/* Video Player (if video exists) - Floated left with text wrapping on desktop */}
-                {(() => { console.log('🎬 Video check - has video_url?', !!(selectedNews as any).video_url); return null; })()}
-                {(selectedNews as any).video_url && (
-                  <div className="news-media-float rounded-xl overflow-hidden bg-black shadow-lg">
-                    {(() => { console.log('✅ Rendering VIDEO - type:', (selectedNews as any).video_type, 'url:', (selectedNews as any).video_url); return null; })()}
-                    {(selectedNews as any).video_type === 'youtube' ? (
-                      // YouTube embed
-                      <iframe
-                        src={(selectedNews as any).video_url}
-                        className="w-full aspect-video"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title="Video"
-                      />
-                    ) : (selectedNews as any).video_type === 'telegram_embed' ? (
-                      // Telegram embed
-                      <iframe
-                        src={(selectedNews as any).video_url}
-                        className="w-full aspect-video"
-                        frameBorder="0"
-                        scrolling="no"
-                        title="Telegram Video"
-                      />
-                    ) : (
-                      // Direct video URL (HTML5)
-                      <video
-                        src={(selectedNews as any).video_url}
-                        controls
-                        className="w-full aspect-video"
-                        playsInline
-                        preload="metadata"
-                      >
-                        <source src={(selectedNews as any).video_url} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                    )}
-                  </div>
-                )}
-
-                {/* Image (only if no video) - Floated left with text wrapping on desktop */}
-                {(() => { console.log('🖼️ Image check - no video?', !((selectedNews as any).video_url), 'has image_url?', !!selectedNews.image_url); return null; })()}
-                {!((selectedNews as any).video_url) && selectedNews.image_url && (
-                  <div className="news-media-float rounded-xl overflow-hidden shadow-lg">
-                    {(() => { console.log('✅ Rendering IMAGE - url:', selectedNews.image_url); return null; })()}
-                    <img
-                      src={selectedNews.image_url as string}
-                      alt={String(getTranslatedContent(selectedNews).title)}
-                      className="w-full h-auto object-cover"
-                      style={{ aspectRatio: '16/9' }}
-                    />
-                  </div>
-                )}
-
-                {/* Title */}
-                <h1 className="text-3xl font-bold mb-4">
-                  {getTranslatedContent(selectedNews).title}
-                </h1>
-
-                {/* Meta */}
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{selectedNews.published_at ? formatDate(selectedNews.published_at) : ''}</span>
-                  </div>
-                  {selectedNews.tags && selectedNews.tags.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Tag className="h-4 w-4" />
-                      {selectedNews.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                <div className="news-detail-grid">
+                  {/* Video Player or Image */}
+                  {((selectedNews as any).video_url || selectedNews.image_url) && (
+                    <div className="news-media-container rounded-xl overflow-hidden shadow-lg">
+                      {(selectedNews as any).video_url ? (
+                        <div className="bg-black">
+                          {(selectedNews as any).video_type === 'youtube' ? (
+                            <iframe
+                              src={(selectedNews as any).video_url}
+                              className="w-full aspect-video"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              title="Video"
+                            />
+                          ) : (selectedNews as any).video_type === 'telegram_embed' ? (
+                            <iframe
+                              src={(selectedNews as any).video_url}
+                              className="w-full aspect-video"
+                              frameBorder="0"
+                              scrolling="no"
+                              title="Telegram Video"
+                            />
+                          ) : (
+                            <video
+                              src={(selectedNews as any).video_url}
+                              controls
+                              className="w-full aspect-video"
+                              playsInline
+                              preload="metadata"
+                            >
+                              <source src={(selectedNews as any).video_url} type="video/mp4" />
+                              Your browser does not support the video tag.
+                            </video>
+                          )}
+                        </div>
+                      ) : selectedNews.image_url && (
+                        <img
+                          src={selectedNews.image_url as string}
+                          alt={String(getTranslatedContent(selectedNews).title)}
+                          className="w-full h-auto object-cover"
+                          style={{ aspectRatio: '16/9' }}
+                        />
+                      )}
                     </div>
                   )}
-                </div>
 
-                {/* Content - Text wraps around floated media */}
-                {(() => { console.log('📝 Content length:', getTranslatedContent(selectedNews).content?.length, 'chars'); return null; })()}
-                <div className="prose prose-lg dark:prose-invert max-w-none mb-6">
-                  <p className="whitespace-pre-wrap">{getTranslatedContent(selectedNews).content}</p>
-                </div>
+                  {/* Title */}
+                  <h1 className="news-title text-3xl font-bold mb-4">
+                    {getTranslatedContent(selectedNews).title}
+                  </h1>
 
-                {/* Clear float to ensure links appear below all content */}
-                <div className="clear-both"></div>
-
-                {/* SEO Link - View full article on separate page */}
-                {(() => {
-                  const slug = getNewsSlug(selectedNews);
-                  console.log('🔍 SEO Link Check:', {
-                    hasSlug: !!slug,
-                    slug: slug,
-                    slug_en: (selectedNews as any).slug_en,
-                    slug_no: (selectedNews as any).slug_no,
-                    slug_ua: (selectedNews as any).slug_ua,
-                    currentLanguage: currentLanguage,
-                    translationKey: t('news_view_full_article')
-                  });
-                  if (slug) {
-                    console.log('✅ Rendering SEO Link for slug:', slug);
-                    return (
-                      <div className="mt-6 pt-6 border-t border-border">
-                        <Link
-                          to={`/news/${slug}`}
-                          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
-                        >
-                          {t('news_view_full_article')}
-                          <ExternalLink className="h-4 w-4" />
-                        </Link>
+                  {/* Meta */}
+                  <div className="news-meta flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>{selectedNews.published_at ? formatDate(selectedNews.published_at) : ''}</span>
+                    </div>
+                    {selectedNews.tags && selectedNews.tags.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Tag className="h-4 w-4" />
+                        {selectedNews.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
+                          >
+                            {tag}
+                          </span>
+                        ))}
                       </div>
-                    );
-                  } else {
-                    console.log('❌ NO SEO Link - slug is null/undefined');
-                    return null;
-                  }
-                })()}
-
-                {/* Source Link */}
-                {selectedNews.original_url && (
-                  <div className={getNewsSlug(selectedNews) ? "mt-4" : "mt-6 pt-6 border-t border-border"}>
-                    <a
-                      href={selectedNews.original_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm"
-                    >
-                      {t('news_read_more')}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                    )}
                   </div>
-                )}
+
+                  {/* Content */}
+                  <div className="news-content prose prose-lg dark:prose-invert max-w-none mb-6">
+                    <p className="whitespace-pre-wrap">{getTranslatedContent(selectedNews).content}</p>
+                  </div>
+
+                  {/* Links Section */}
+                  <div className="news-links">
+                    {/* SEO Link - View full article on separate page */}
+                    {(() => {
+                      const slug = getNewsSlug(selectedNews);
+                      if (slug) {
+                        return (
+                          <div className="mt-6 pt-6 border-t border-border">
+                            <Link
+                              to={`/news/${slug}`}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                            >
+                              {t('news_view_full_article')}
+                              <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Source Link */}
+                    {selectedNews.original_url && (
+                      <div className={getNewsSlug(selectedNews) ? "mt-4" : "mt-6 pt-6 border-t border-border"}>
+                        <a
+                          href={selectedNews.original_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm"
+                        >
+                          {t('news_read_more')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </motion.div>
             ) : (
               // List View
