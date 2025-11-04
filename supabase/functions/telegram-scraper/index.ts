@@ -501,8 +501,22 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
             try {
               console.log('🚀 YouTube configured - will upload video to YouTube')
 
-              // Extract CDN URL from video element
-              const cdnUrl = videoElement?.getAttribute('src')
+              // Extract CDN URL from video element or source element
+              let cdnUrl = videoElement?.getAttribute('src')
+
+              // If no src on video, check source elements
+              if (!cdnUrl && videoElement) {
+                const sourceElement = videoElement.querySelector('source')
+                cdnUrl = sourceElement?.getAttribute('src') || null
+              }
+
+              // Also check data-src attribute (lazy loading)
+              if (!cdnUrl && videoElement) {
+                cdnUrl = videoElement.getAttribute('data-src') || null
+              }
+
+              console.log(`🔍 CDN URL found: ${cdnUrl ? 'Yes' : 'No'}`)
+              if (cdnUrl) console.log(`🔗 CDN URL: ${cdnUrl}`)
 
               if (cdnUrl) {
                 console.log(`📥 Downloading video from: ${cdnUrl}`)
