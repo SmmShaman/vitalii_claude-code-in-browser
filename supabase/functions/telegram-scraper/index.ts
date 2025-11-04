@@ -16,6 +16,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
 
 // YouTube API credentials
 const YOUTUBE_CLIENT_ID = Deno.env.get('YOUTUBE_CLIENT_ID')
@@ -547,6 +548,10 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
                 if (videoBuffer) {
                   console.log('✅ Video downloaded, uploading to YouTube...')
 
+                  // Translate title to English for YouTube
+                  console.log('🌐 Translating title to English...')
+                  const englishTitle = await translateTitleToEnglish(text)
+
                   // Get YouTube access token
                   const accessToken = await getYouTubeAccessToken({
                     clientId: YOUTUBE_CLIENT_ID!,
@@ -557,7 +562,7 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
                   // Upload to YouTube
                   const uploadResult = await uploadVideoToYouTube(accessToken, {
                     videoBuffer,
-                    title: text.substring(0, 100) || 'News Video', // First 100 chars as title
+                    title: englishTitle || 'News Video', // Translated English title
                     description: `Source: https://t.me/${channelUsername}/${dataPost.split('/')[1]}\n\n${text.substring(0, 500)}`,
                     tags: ['news', 'ai', 'technology'],
                     categoryId: '25' // News & Politics
@@ -638,6 +643,56 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
   }
 
   return posts
+}
+
+/**
+ * Translate title to English using OpenAI (for YouTube upload)
+ */
+async function translateTitleToEnglish(text: string): Promise<string> {
+  if (!OPENAI_API_KEY) {
+    console.warn('⚠️ OPENAI_API_KEY not configured, using original text')
+    return text.substring(0, 100)
+  }
+
+  try {
+    const titleText = text.substring(0, 200) // Take first 200 chars
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Translate the following text to English. Return ONLY the translation, no explanations. Keep it concise (max 100 characters).'
+          },
+          {
+            role: 'user',
+            content: titleText
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 50
+      })
+    })
+
+    if (!response.ok) {
+      console.error('❌ OpenAI API error:', response.status)
+      return text.substring(0, 100)
+    }
+
+    const data = await response.json()
+    const translatedTitle = data.choices[0]?.message?.content?.trim() || text.substring(0, 100)
+    console.log(`📝 Translated title: "${translatedTitle}"`)
+    return translatedTitle.substring(0, 100)
+  } catch (error) {
+    console.error('❌ Translation error:', error)
+    return text.substring(0, 100)
+  }
 }
 
 /**
