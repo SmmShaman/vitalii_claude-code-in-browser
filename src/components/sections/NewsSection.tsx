@@ -229,7 +229,7 @@ const NewsSectionComponent = ({
                 border: 2px solid yellow; /* DEBUG */
               }
 
-              /* Desktop: Grid layout with media on left, content on right */
+              /* Desktop: Grid layout with media on left, content wrapping below */
               @media (min-width: 640px) {
                 .news-section-detail-grid {
                   display: grid;
@@ -238,7 +238,7 @@ const NewsSectionComponent = ({
                   grid-template-areas:
                     "media title"
                     "media meta"
-                    "media content"
+                    "content content"
                     "links links";
                   border: 2px solid lime; /* DEBUG - grid active */
                 }
