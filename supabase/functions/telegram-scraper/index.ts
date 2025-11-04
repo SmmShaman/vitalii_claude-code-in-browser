@@ -1,6 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts'
+import {
+  getYouTubeAccessToken,
+  uploadVideoToYouTube,
+  downloadTelegramVideo
+} from '../_shared/youtube-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +16,11 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
+
+// YouTube API credentials
+const YOUTUBE_CLIENT_ID = Deno.env.get('YOUTUBE_CLIENT_ID')
+const YOUTUBE_CLIENT_SECRET = Deno.env.get('YOUTUBE_CLIENT_SECRET')
+const YOUTUBE_REFRESH_TOKEN = Deno.env.get('YOUTUBE_REFRESH_TOKEN')
 
 interface TelegramSource {
   id: string
@@ -477,16 +487,91 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
         let videoUrl: string | null = null
         let videoType: string | null = null
 
-        // PRIORITY 1: Always use Telegram embed for videos (more reliable than CDN URLs with tokens)
+        // Check if YouTube upload is configured
+        const youtubeConfigured = !!(YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET && YOUTUBE_REFRESH_TOKEN && TELEGRAM_BOT_TOKEN)
+
         const videoElement = message.querySelector('video')
         const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player')
 
         if (videoElement || videoWrap) {
-          // Found video - create Telegram embed URL
-          const messageId = dataPost.split('/')[1]
-          videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
-          videoType = 'telegram_embed'
-          console.log(`🎥 Found video - using Telegram embed: ${videoUrl}`)
+          console.log(`🎥 Found video in post`)
+
+          if (youtubeConfigured) {
+            // OPTION 1: Upload to YouTube (preferred - no branding, reliable)
+            try {
+              console.log('🚀 YouTube configured - will upload video to YouTube')
+
+              // Extract CDN URL from video element
+              const cdnUrl = videoElement?.getAttribute('src')
+
+              if (cdnUrl) {
+                console.log(`📥 Downloading video from: ${cdnUrl}`)
+
+                // Download video from Telegram CDN
+                const videoBuffer = await downloadTelegramVideo(cdnUrl, TELEGRAM_BOT_TOKEN!)
+
+                if (videoBuffer) {
+                  console.log('✅ Video downloaded, uploading to YouTube...')
+
+                  // Get YouTube access token
+                  const accessToken = await getYouTubeAccessToken({
+                    clientId: YOUTUBE_CLIENT_ID!,
+                    clientSecret: YOUTUBE_CLIENT_SECRET!,
+                    refreshToken: YOUTUBE_REFRESH_TOKEN!
+                  })
+
+                  // Upload to YouTube
+                  const uploadResult = await uploadVideoToYouTube(accessToken, {
+                    videoBuffer,
+                    title: text.substring(0, 100) || 'News Video', // First 100 chars as title
+                    description: `Source: https://t.me/${channelUsername}/${dataPost.split('/')[1]}\n\n${text.substring(0, 500)}`,
+                    tags: ['news', 'ai', 'technology'],
+                    categoryId: '25' // News & Politics
+                  })
+
+                  if (uploadResult.success && uploadResult.embedUrl) {
+                    videoUrl = uploadResult.embedUrl
+                    videoType = 'youtube'
+                    console.log(`✅ Video uploaded to YouTube: ${videoUrl}`)
+                  } else {
+                    console.error(`❌ YouTube upload failed: ${uploadResult.error}`)
+                    // Fallback to Telegram embed
+                    const messageId = dataPost.split('/')[1]
+                    videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+                    videoType = 'telegram_embed'
+                    console.log(`⚠️ Falling back to Telegram embed: ${videoUrl}`)
+                  }
+                } else {
+                  console.error('❌ Failed to download video')
+                  // Fallback to Telegram embed
+                  const messageId = dataPost.split('/')[1]
+                  videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+                  videoType = 'telegram_embed'
+                  console.log(`⚠️ Falling back to Telegram embed: ${videoUrl}`)
+                }
+              } else {
+                console.warn('⚠️ No CDN URL found in video element, using Telegram embed')
+                // Fallback to Telegram embed
+                const messageId = dataPost.split('/')[1]
+                videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+                videoType = 'telegram_embed'
+              }
+            } catch (error) {
+              console.error('❌ Error processing video for YouTube:', error)
+              // Fallback to Telegram embed
+              const messageId = dataPost.split('/')[1]
+              videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+              videoType = 'telegram_embed'
+              console.log(`⚠️ Falling back to Telegram embed: ${videoUrl}`)
+            }
+          } else {
+            // OPTION 2: Use Telegram embed (fallback if YouTube not configured)
+            console.log('⚠️ YouTube not configured, using Telegram embed')
+            const messageId = dataPost.split('/')[1]
+            videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+            videoType = 'telegram_embed'
+            console.log(`🎥 Using Telegram embed: ${videoUrl}`)
+          }
         }
 
         // Extract date
