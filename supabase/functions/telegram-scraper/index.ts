@@ -16,7 +16,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
+const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
+const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // YouTube API credentials
 const YOUTUBE_CLIENT_ID = Deno.env.get('YOUTUBE_CLIENT_ID')
@@ -646,25 +647,28 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
 }
 
 /**
- * Translate title to English using OpenAI (for YouTube upload)
+ * Translate title to English using Azure OpenAI (for YouTube upload)
  */
 async function translateTitleToEnglish(text: string): Promise<string> {
-  if (!OPENAI_API_KEY) {
-    console.warn('⚠️ OPENAI_API_KEY not configured, using original text')
+  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
+    console.warn('⚠️ Azure OpenAI not configured, using original text')
     return text.substring(0, 100)
   }
 
   try {
     const titleText = text.substring(0, 200) // Take first 200 chars
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Azure OpenAI endpoint format: {endpoint}/openai/deployments/{deployment-name}/chat/completions?api-version=2024-02-15-preview
+    // Use deployment name 'gpt-4' (adjust if your deployment has different name)
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview`
+
+    const response = await fetch(azureUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'api-key': AZURE_OPENAI_API_KEY
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -681,7 +685,8 @@ async function translateTitleToEnglish(text: string): Promise<string> {
     })
 
     if (!response.ok) {
-      console.error('❌ OpenAI API error:', response.status)
+      const errorText = await response.text()
+      console.error('❌ Azure OpenAI API error:', response.status, errorText)
       return text.substring(0, 100)
     }
 
