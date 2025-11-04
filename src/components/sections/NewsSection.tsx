@@ -125,9 +125,20 @@ const NewsSectionComponent = ({
   const getTranslatedContent = (newsItem: LatestNews | NewsItem) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
     const description = newsItem[`description_${lang}` as keyof typeof newsItem] || newsItem.description_en || '';
-    const content = 'content_en' in newsItem ? newsItem[`content_${lang}` as keyof typeof newsItem] || newsItem.content_en : description;
+
+    // Fallback chain for content: translated -> english -> original content
+    const content = 'content_en' in newsItem
+      ? newsItem[`content_${lang}` as keyof typeof newsItem] || newsItem.content_en || (newsItem as any).original_content || description
+      : description;
+
+    // Fallback chain for title: translated -> english -> original title
+    const title = newsItem[`title_${lang}` as keyof typeof newsItem]
+      || newsItem.title_en
+      || (newsItem as any).original_title
+      || '';
+
     return {
-      title: newsItem[`title_${lang}` as keyof typeof newsItem] || newsItem.title_en || '',
+      title: title as string,
       content: content as string,
       summary: description as string,
     };
@@ -264,8 +275,8 @@ const NewsSectionComponent = ({
             `}</style>
 
             <div className="news-section-detail-grid">
-              {/* Video Player or Image - Only show if translation exists */}
-              {content.title && ((selectedNews as any).video_url || selectedNews.image_url) && (
+              {/* Video Player or Image */}
+              {((selectedNews as any).video_url || selectedNews.image_url) && (
                 <div className="news-section-media-container rounded-xl overflow-hidden shadow-lg">
                   {(selectedNews as any).video_url ? (
                     <div className="bg-black">
