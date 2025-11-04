@@ -307,34 +307,67 @@ const NewsSectionComponent = ({
                 <div className="news-section-media-container rounded-xl overflow-hidden shadow-lg">
                   {(selectedNews as any).video_url ? (
                     <div className="bg-black">
-                      {(selectedNews as any).video_type === 'youtube' ? (
-                        <iframe
-                          src={(selectedNews as any).video_url}
-                          className="w-full aspect-video"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          title="Video"
-                        />
-                      ) : (selectedNews as any).video_type === 'telegram_embed' ? (
-                        <iframe
-                          src={(selectedNews as any).video_url}
-                          className="w-full aspect-video"
-                          frameBorder="0"
-                          scrolling="no"
-                          title="Telegram Video"
-                        />
-                      ) : (
-                        <video
-                          src={(selectedNews as any).video_url}
-                          controls
-                          className="w-full aspect-video"
-                          playsInline
-                          preload="metadata"
-                        >
-                          <source src={(selectedNews as any).video_url} type="video/mp4" />
-                          Your browser does not support the video tag.
-                        </video>
-                      )}
+                      {(() => {
+                        const videoUrl = (selectedNews as any).video_url;
+                        const videoType = (selectedNews as any).video_type;
+
+                        console.log('🎥 VIDEO DEBUG:');
+                        console.log('📹 Video URL:', videoUrl);
+                        console.log('🏷️ Video Type:', videoType);
+                        console.log('🔍 URL contains telesco.pe?', videoUrl.includes('telesco.pe'));
+                        console.log('🔍 URL contains youtube?', videoUrl.includes('youtube') || videoUrl.includes('youtu.be'));
+
+                        if (videoType === 'youtube') {
+                          console.log('▶️ Rendering YouTube iframe');
+                          return (
+                            <iframe
+                              src={videoUrl}
+                              className="w-full aspect-video"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              title="Video"
+                            />
+                          );
+                        } else if (videoType === 'telegram_embed') {
+                          console.log('▶️ Rendering Telegram iframe embed');
+                          return (
+                            <iframe
+                              src={videoUrl}
+                              className="w-full aspect-video"
+                              frameBorder="0"
+                              scrolling="no"
+                              title="Telegram Video"
+                            />
+                          );
+                        } else {
+                          console.log('▶️ Rendering HTML5 video player');
+                          return (
+                            <video
+                              src={videoUrl}
+                              controls
+                              controlsList="nodownload"
+                              className="w-full aspect-video"
+                              playsInline
+                              preload="metadata"
+                              onError={(e) => {
+                                console.error('❌ VIDEO ERROR:', e);
+                                console.error('❌ Video element:', e.currentTarget);
+                                console.error('❌ Error code:', e.currentTarget.error?.code);
+                                console.error('❌ Error message:', e.currentTarget.error?.message);
+                              }}
+                              onLoadedMetadata={() => {
+                                console.log('✅ Video metadata loaded successfully');
+                              }}
+                              onCanPlay={() => {
+                                console.log('✅ Video can play');
+                              }}
+                            >
+                              <source src={videoUrl} type="video/mp4" />
+                              Your browser does not support the video tag.
+                            </video>
+                          );
+                        }
+                      })()}
                     </div>
                   ) : selectedNews.image_url && (
                     <img
