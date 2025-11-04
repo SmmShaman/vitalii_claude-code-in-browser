@@ -76,9 +76,22 @@ const NewsSectionComponent = ({
       const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
       const slug = (selectedNews as any)[`slug_${lang}`] || (selectedNews as any).slug_en;
 
+      console.log('🔗 URL SLUG DEBUG:');
+      console.log('📰 Selected news:', selectedNews);
+      console.log('🌍 Current language:', lang);
+      console.log('🔗 Slug for language:', slug);
+      console.log('🔗 All slugs:', {
+        slug_en: (selectedNews as any).slug_en,
+        slug_no: (selectedNews as any).slug_no,
+        slug_ua: (selectedNews as any).slug_ua
+      });
+
       if (slug) {
         // Replace URL with slug instead of ID for SEO
+        console.log('✅ Replacing URL with slug:', `/news/${slug}`);
         window.history.replaceState({}, '', `/news/${slug}`);
+      } else {
+        console.warn('⚠️ No slug found for this news article!');
       }
     }
   }, [selectedNews, selectedNewsId, currentLanguage]);
