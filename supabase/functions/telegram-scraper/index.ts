@@ -257,6 +257,8 @@ serve(async (req) => {
               .maybeSingle()
 
             if (existingPost) {
+              console.log(`🔍 Duplicate check: existing.video_type='${existingPost.video_type}', post.videoType='${post.videoType}', post.videoUrl='${post.videoUrl}'`)
+
               // If post exists with telegram_embed and we have YouTube URL, update it
               if (existingPost.video_type === 'telegram_embed' && post.videoType === 'youtube') {
                 console.log(`🔄 Updating existing post with YouTube video: ${existingPost.id}`)
