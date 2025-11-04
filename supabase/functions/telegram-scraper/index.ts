@@ -251,13 +251,31 @@ serve(async (req) => {
 
             const { data: existingPost } = await supabase
               .from('news')
-              .select('id, original_url, pre_moderation_status')
+              .select('id, original_url, pre_moderation_status, video_type, video_url')
               .in('original_url', [urlVariant1, urlVariant2])
               .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
               .maybeSingle()
 
             if (existingPost) {
-              console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (found in DB as ${existingPost.original_url}, status: ${existingPost.pre_moderation_status})`)
+              // If post exists with telegram_embed and we have YouTube URL, update it
+              if (existingPost.video_type === 'telegram_embed' && post.videoType === 'youtube') {
+                console.log(`🔄 Updating existing post with YouTube video: ${existingPost.id}`)
+                const { error: updateError } = await supabase
+                  .from('news')
+                  .update({
+                    video_url: post.videoUrl,
+                    video_type: post.videoType
+                  })
+                  .eq('id', existingPost.id)
+
+                if (updateError) {
+                  console.error(`❌ Failed to update post: ${updateError.message}`)
+                } else {
+                  console.log(`✅ Updated post ${existingPost.id} with YouTube URL: ${post.videoUrl}`)
+                }
+              } else {
+                console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (found in DB as ${existingPost.original_url}, status: ${existingPost.pre_moderation_status})`)
+              }
               continue
             }
 
