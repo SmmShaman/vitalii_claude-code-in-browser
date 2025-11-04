@@ -658,9 +658,9 @@ async function translateTitleToEnglish(text: string): Promise<string> {
   try {
     const titleText = text.substring(0, 200) // Take first 200 chars
 
-    // Azure OpenAI endpoint format: {endpoint}/openai/deployments/{deployment-name}/chat/completions?api-version=2024-02-15-preview
-    // Use deployment name 'gpt-4' (adjust if your deployment has different name)
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview`
+    // Azure OpenAI endpoint format: {endpoint}/openai/deployments/{deployment-name}/chat/completions?api-version=YYYY-MM-DD
+    // Using deployment: Jobbot-gpt-4.1-mini
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview`
 
     const response = await fetch(azureUrl, {
       method: 'POST',
