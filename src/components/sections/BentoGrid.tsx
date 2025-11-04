@@ -208,6 +208,10 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
 
   const selectNewsItem = (newsId: string) => {
     console.log('📰 selectNewsItem CALLED with newsId:', newsId);
+
+    // Update URL with news ID (will be replaced with slug once news data loads)
+    window.history.pushState({}, '', `/news/${newsId}`);
+
     // Calculate heights of all windows for expansion
     const aboutEl = cardRefs.current['about'];
     const servicesEl = cardRefs.current['services'];
@@ -241,6 +245,9 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   };
 
   const handleNewsItemBack = () => {
+    // Clear URL - return to home
+    window.history.pushState({}, '', '/');
+
     setSelectedNewsId(null);
     setTotalGridHeight(0);
     setIsHidingAllForNews(false);

@@ -70,6 +70,19 @@ const NewsSectionComponent = ({
     }
   }, [selectedNewsId]);
 
+  // Update URL with SEO-friendly slug when news data loads
+  useEffect(() => {
+    if (selectedNews && selectedNewsId) {
+      const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+      const slug = (selectedNews as any)[`slug_${lang}`] || (selectedNews as any).slug_en;
+
+      if (slug) {
+        // Replace URL with slug instead of ID for SEO
+        window.history.replaceState({}, '', `/news/${slug}`);
+      }
+    }
+  }, [selectedNews, selectedNewsId, currentLanguage]);
+
   const loadNewsDetail = async (id: string) => {
     try {
       setLoadingDetail(true);
