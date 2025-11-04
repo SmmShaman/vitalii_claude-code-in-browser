@@ -477,27 +477,16 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
         let videoUrl: string | null = null
         let videoType: string | null = null
 
-        // Try to find video element
+        // PRIORITY 1: Always use Telegram embed for videos (more reliable than CDN URLs with tokens)
         const videoElement = message.querySelector('video')
-        if (videoElement) {
-          const videoSrc = videoElement.getAttribute('src')
-          if (videoSrc) {
-            videoUrl = videoSrc
-            videoType = 'direct_url'
-            console.log(`🎥 Found direct video: ${videoUrl}`)
-          }
-        }
+        const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player')
 
-        // If no direct video, try to get Telegram embed URL
-        if (!videoUrl) {
-          const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player')
-          if (videoWrap) {
-            // Use Telegram embed as video URL
-            const messageId = dataPost.split('/')[1]
-            videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
-            videoType = 'telegram_embed'
-            console.log(`🎥 Found Telegram video embed: ${videoUrl}`)
-          }
+        if (videoElement || videoWrap) {
+          // Found video - create Telegram embed URL
+          const messageId = dataPost.split('/')[1]
+          videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+          videoType = 'telegram_embed'
+          console.log(`🎥 Found video - using Telegram embed: ${videoUrl}`)
         }
 
         // Extract date
