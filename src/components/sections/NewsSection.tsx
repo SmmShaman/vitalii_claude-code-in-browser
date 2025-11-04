@@ -215,44 +215,16 @@ const NewsSectionComponent = ({
             animate={{ opacity: 1, x: 0 }}
             className="flex-1"
           >
-            {(() => {
-              console.log('🔍 NEWS SECTION LAYOUT DEBUG:');
-              console.log('📱 Window width:', window.innerWidth);
-              console.log('📱 Window height:', window.innerHeight);
-              console.log('🖥️ Is Desktop (≥640px)?', window.innerWidth >= 640);
-              console.log('📰 Selected news:', selectedNews);
-              console.log('🎥 Has video?', !!(selectedNews as any).video_url);
-              console.log('🖼️ Has image?', !!selectedNews.image_url);
-              return null;
-            })()}
             <style>{`
               /* Mobile: Stack layout */
               .news-section-detail-grid {
                 display: flex;
                 flex-direction: column;
                 gap: 1rem;
-                border: 2px solid red; /* DEBUG */
               }
 
               .news-section-media-container {
                 width: 100%;
-                border: 2px solid blue; /* DEBUG */
-              }
-
-              .news-section-title {
-                border: 2px solid green; /* DEBUG */
-              }
-
-              .news-section-meta {
-                border: 2px solid orange; /* DEBUG */
-              }
-
-              .news-section-content {
-                border: 2px solid purple; /* DEBUG */
-              }
-
-              .news-section-links {
-                border: 2px solid yellow; /* DEBUG */
               }
 
               /* Desktop: Grid layout with media on left, content wrapping below */
@@ -266,44 +238,34 @@ const NewsSectionComponent = ({
                     "media meta"
                     "content content"
                     "links links";
-                  border: 2px solid lime; /* DEBUG - grid active */
                 }
 
                 .news-section-media-container {
                   grid-area: media;
                   width: 448px;
-                  border: 2px solid cyan; /* DEBUG */
                 }
 
                 .news-section-title {
                   grid-area: title;
-                  border: 2px solid magenta; /* DEBUG */
                 }
 
                 .news-section-meta {
                   grid-area: meta;
-                  border: 2px solid pink; /* DEBUG */
                 }
 
                 .news-section-content {
                   grid-area: content;
-                  border: 2px solid brown; /* DEBUG */
                 }
 
                 .news-section-links {
                   grid-area: links;
-                  border: 2px solid teal; /* DEBUG */
                 }
               }
             `}</style>
 
-            <div className="news-section-detail-grid" onClick={() => {
-              console.log('🖱️ CLICKED on NewsSection grid container');
-              console.log('📐 Grid container width:', document.querySelector('.news-section-detail-grid')?.clientWidth);
-              console.log('📐 Grid computed style:', window.getComputedStyle(document.querySelector('.news-section-detail-grid')!).display);
-            }}>
-              {/* Video Player or Image */}
-              {((selectedNews as any).video_url || selectedNews.image_url) && (
+            <div className="news-section-detail-grid">
+              {/* Video Player or Image - Only show if translation exists */}
+              {content.title && ((selectedNews as any).video_url || selectedNews.image_url) && (
                 <div className="news-section-media-container rounded-xl overflow-hidden shadow-lg">
                   {(selectedNews as any).video_url ? (
                     <div className="bg-black">
@@ -311,14 +273,7 @@ const NewsSectionComponent = ({
                         const videoUrl = (selectedNews as any).video_url;
                         const videoType = (selectedNews as any).video_type;
 
-                        console.log('🎥 VIDEO DEBUG:');
-                        console.log('📹 Video URL:', videoUrl);
-                        console.log('🏷️ Video Type:', videoType);
-                        console.log('🔍 URL contains telesco.pe?', videoUrl.includes('telesco.pe'));
-                        console.log('🔍 URL contains youtube?', videoUrl.includes('youtube') || videoUrl.includes('youtu.be'));
-
                         if (videoType === 'youtube') {
-                          console.log('▶️ Rendering YouTube iframe');
                           return (
                             <iframe
                               src={videoUrl}
@@ -329,7 +284,6 @@ const NewsSectionComponent = ({
                             />
                           );
                         } else if (videoType === 'telegram_embed') {
-                          console.log('▶️ Rendering Telegram iframe embed');
                           return (
                             <iframe
                               src={videoUrl}
@@ -340,7 +294,6 @@ const NewsSectionComponent = ({
                             />
                           );
                         } else {
-                          console.log('▶️ Rendering HTML5 video player');
                           return (
                             <video
                               src={videoUrl}
@@ -349,18 +302,6 @@ const NewsSectionComponent = ({
                               className="w-full aspect-video"
                               playsInline
                               preload="metadata"
-                              onError={(e) => {
-                                console.error('❌ VIDEO ERROR:', e);
-                                console.error('❌ Video element:', e.currentTarget);
-                                console.error('❌ Error code:', e.currentTarget.error?.code);
-                                console.error('❌ Error message:', e.currentTarget.error?.message);
-                              }}
-                              onLoadedMetadata={() => {
-                                console.log('✅ Video metadata loaded successfully');
-                              }}
-                              onCanPlay={() => {
-                                console.log('✅ Video can play');
-                              }}
                             >
                               <source src={videoUrl} type="video/mp4" />
                               Your browser does not support the video tag.
