@@ -198,14 +198,14 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
 
           <h4
             ref={titleRef}
-            className="font-bold text-white mb-2 mt-1"
+            className="font-bold text-gray-900 mb-2 mt-1"
             style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
           >
             {currentProject?.title}
           </h4>
           <p
             ref={descriptionRef}
-            className="text-white/80"
+            className="text-gray-800"
             style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
           >
             {currentProject?.short}
