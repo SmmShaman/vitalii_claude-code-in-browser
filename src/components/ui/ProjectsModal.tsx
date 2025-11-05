@@ -116,7 +116,7 @@ export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex
             {/* Project Details */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
               <div className="prose prose-invert max-w-none">
-                <p className="text-base sm:text-lg text-white/90 leading-relaxed whitespace-pre-line">
+                <p className="text-base sm:text-lg text-cyan-50 leading-relaxed whitespace-pre-line">
                   {selectedProject?.full}
                 </p>
               </div>
