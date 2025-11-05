@@ -62,7 +62,7 @@ export const Footer = () => {
   const { userLocation, weather, distance, error } = footerData;
 
   return (
-    <footer className="h-full w-full px-2 sm:px-4 flex items-center overflow-y-auto">
+    <footer className="h-full w-full px-4 flex items-center overflow-y-auto">
       <div
         className="max-w-6xl mx-auto rounded-xl sm:rounded-2xl shadow-2xl border border-black/20 w-full"
         style={{

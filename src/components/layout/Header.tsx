@@ -12,7 +12,7 @@ export const Header = ({ isCompact = false }: HeaderProps) => {
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
   return (
-    <header className="w-full h-full flex items-center px-2 sm:px-4">
+    <header className="w-full h-full flex items-center px-4">
       {/* Container wrapper for consistent width with BentoGrid */}
       <motion.div
         className="max-w-7xl mx-auto w-full flex items-center justify-between"
