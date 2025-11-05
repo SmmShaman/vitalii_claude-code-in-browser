@@ -92,6 +92,7 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const [isSkillsExploding, setIsSkillsExploding] = useState(false);
   const [isAboutExploding, setIsAboutExploding] = useState(false);
   const [isServicesDetailOpen, setIsServicesDetailOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
@@ -107,6 +108,16 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
     news: { primary: '#ff6b6b', secondary: '#ff5252' }, // Red/Pink Red
     blog: { primary: '#9c27b0', secondary: '#ba68c8' }, // Purple/Light Purple
   };
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Log state changes for debugging
   useEffect(() => {
@@ -532,8 +543,8 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
               ref={gridContainerRef}
               className="grid relative w-full h-full"
               style={{
-                gridTemplateColumns: `repeat(${COLUMNS_COUNT}, 1fr)`,
-                gridTemplateRows: `repeat(2, 1fr)`,
+                gridTemplateColumns: isMobile ? '1fr' : `repeat(${COLUMNS_COUNT}, 1fr)`,
+                gridTemplateRows: isMobile ? 'auto' : `repeat(2, 1fr)`,
                 gap: `${GAP_SIZE}px`,
               }}
             >
@@ -846,16 +857,21 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                       // Row 1: About(1,1), Services(2,1), Projects(3,1)
                       // Row 2: Skills(1,2), News(2,2), Blog(3,2)
                       // ВИНЯТОК: News та Blog займають ОБИДВА ряди (1-2) коли розширені
-                      gridColumn: section.id === 'about' ? '1' :
+                      // On mobile: all sections use auto positioning to stack vertically
+                      gridColumn: isMobile ? 'auto' : (
+                                  section.id === 'about' ? '1' :
                                   section.id === 'services' ? '2' :
                                   section.id === 'projects' ? '3' :
                                   section.id === 'skills' ? '1' :
                                   section.id === 'news' ? '2' :
-                                  section.id === 'blog' ? '3' : 'auto',
-                      gridRow: section.id === 'about' || section.id === 'services' || section.id === 'projects' ? '1' :
+                                  section.id === 'blog' ? '3' : 'auto'
+                      ),
+                      gridRow: isMobile ? 'auto' : (
+                               section.id === 'about' || section.id === 'services' || section.id === 'projects' ? '1' :
                                section.id === 'news' && isNewsExpanded ? '1 / 3' : // News займає ряди 1-2 (обидва ряди)
                                section.id === 'blog' && isBlogExpanded ? '1 / 3' : // Blog займає ряди 1-2 (обидва ряди)
-                               '2',
+                               '2'
+                      ),
                       // Expand to full grid when news/blog item is selected (override positions)
                       ...(section.id === 'news' && selectedNewsId ? {
                         gridColumn: '1 / -1',
