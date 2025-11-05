@@ -46,7 +46,7 @@ serve(async (req) => {
 
     if (promptError || !prompts || prompts.length === 0) {
       console.error('No active blog rewrite prompt found')
-      throw new Error('Blog rewrite prompt not configured')
+      throw new Error('Blog rewrite prompt not configured. Please add a prompt with type "blog_rewrite" in the admin panel.')
     }
 
     const blogPrompt = prompts[0]
@@ -56,10 +56,7 @@ serve(async (req) => {
       throw new Error('Azure OpenAI not configured')
     }
 
-    // Prepare content for rewriting
-    const originalContent = `Title: ${requestData.title}\n\nContent: ${requestData.content}`
-
-    // Build prompt
+    // Build prompt with placeholders
     const systemPrompt = blogPrompt.prompt_text
       .replace('{title}', requestData.title)
       .replace('{content}', requestData.content)
@@ -67,62 +64,57 @@ serve(async (req) => {
 
     console.log('📝 Rewriting blog post with AI...')
 
-    // Call Azure OpenAI for each language
-    const languages = ['en', 'ua', 'no']
-    const rewrittenContent: { [key: string]: { title: string; content: string; description: string } } = {}
+    // Call Azure OpenAI - ONE REQUEST for all languages
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-    for (const lang of languages) {
-      const langName = lang === 'en' ? 'English' : lang === 'ua' ? 'Ukrainian' : 'Norwegian'
-      const langPrompt = `${systemPrompt}\n\nPlease rewrite this content in ${langName}. Return ONLY a JSON object with this structure:\n{\n  "title": "blog post title (max 120 chars)",\n  "content": "full blog post content from first-person perspective",\n  "description": "short summary for SEO (max 200 chars)"\n}`
-
-      const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-      const response = await fetch(azureUrl, {
-        method: 'POST',
-        headers: {
-          'api-key': AZURE_OPENAI_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional blog writer. Rewrite content from first-person perspective, as if you are sharing personal insights and experiences. Make it engaging and authentic.'
-            },
-            {
-              role: 'user',
-              content: langPrompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
+    const response = await fetch(azureUrl, {
+      method: 'POST',
+      headers: {
+        'api-key': AZURE_OPENAI_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a professional blog writer. Rewrite content from first-person perspective, as if you are sharing personal insights and experiences. Make it engaging and authentic. Return ONLY valid JSON.'
+          },
+          {
+            role: 'user',
+            content: systemPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 3000
       })
+    })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`Azure OpenAI error for ${lang}:`, errorText)
-        throw new Error(`AI rewrite failed for ${lang}`)
-      }
-
-      const data = await response.json()
-      const aiContent = data.choices[0]?.message?.content?.trim()
-
-      // Parse JSON response
-      const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
-        throw new Error(`Failed to parse AI response for ${lang}`)
-      }
-
-      const parsed = JSON.parse(jsonMatch[0])
-      rewrittenContent[lang] = {
-        title: parsed.title || requestData.title,
-        content: parsed.content || requestData.content,
-        description: parsed.description || parsed.content.substring(0, 200)
-      }
-
-      console.log(`✅ Rewritten for ${langName}`)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Azure OpenAI error:', errorText)
+      throw new Error(`AI rewrite failed: ${response.status}`)
     }
+
+    const data = await response.json()
+    const aiContent = data.choices[0]?.message?.content?.trim()
+
+    console.log('AI response received, parsing JSON...')
+
+    // Parse JSON response
+    const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.error('Failed to parse AI response:', aiContent.substring(0, 500))
+      throw new Error('Failed to parse AI response')
+    }
+
+    const rewrittenContent = JSON.parse(jsonMatch[0])
+
+    // Validate structure
+    if (!rewrittenContent.en || !rewrittenContent.no || !rewrittenContent.ua) {
+      throw new Error('AI response missing required language fields (en, no, ua)')
+    }
+
+    console.log('✅ Blog post rewritten for all languages')
 
     // Generate slugs
     const generateSlug = (text: string): string => {
@@ -157,7 +149,7 @@ serve(async (req) => {
         reading_time: readingTime,
         is_published: true,
         published_at: new Date().toISOString(),
-        tags: ['ai', 'technology'], // Default tags, can be customized
+        tags: ['ai', 'technology'], // Default tags
         category: 'Tech' // Default category
       })
       .select()

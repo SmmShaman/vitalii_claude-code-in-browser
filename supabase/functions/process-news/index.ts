@@ -45,152 +45,28 @@ serve(async (req) => {
       .limit(1)
 
     if (promptError || !prompts || prompts.length === 0) {
-      console.warn('⚠️ No active news rewrite prompt found, using default behavior')
-      // If no prompt, just publish as-is
-      await supabase
-        .from('news')
-        .update({
-          is_published: true,
-          is_rewritten: false,
-          published_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', requestData.newsId)
+      console.warn('⚠️ No active news_rewrite prompt found, trying fallback to "rewrite" type')
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'News published without AI rewrite (no prompt configured)'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      // Fallback to existing "rewrite" prompt
+      const { data: fallbackPrompts } = await supabase
+        .from('ai_prompts')
+        .select('*')
+        .eq('is_active', true)
+        .eq('prompt_type', 'rewrite')
+        .limit(1)
+
+      if (!fallbackPrompts || fallbackPrompts.length === 0) {
+        throw new Error('No rewrite prompt configured')
+      }
+
+      console.log('Using fallback rewrite prompt:', fallbackPrompts[0].name)
+      return await processWithPrompt(fallbackPrompts[0], requestData, supabase, 'news')
     }
 
     const newsPrompt = prompts[0]
     console.log('Using news rewrite prompt:', newsPrompt.name)
 
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      throw new Error('Azure OpenAI not configured')
-    }
-
-    // Build prompt
-    const systemPrompt = newsPrompt.prompt_text
-      .replace('{title}', requestData.title)
-      .replace('{content}', requestData.content)
-      .replace('{url}', requestData.url || '')
-
-    console.log('📝 Rewriting news with AI...')
-
-    // Call Azure OpenAI for each language
-    const languages = ['en', 'ua', 'no']
-    const rewrittenContent: { [key: string]: { title: string; content: string; description: string } } = {}
-
-    for (const lang of languages) {
-      const langName = lang === 'en' ? 'English' : lang === 'ua' ? 'Ukrainian' : 'Norwegian'
-      const langPrompt = `${systemPrompt}\n\nPlease rewrite this content in ${langName} in objective journalistic style. Return ONLY a JSON object with this structure:\n{\n  "title": "news title (max 120 chars)",\n  "content": "full news article content",\n  "description": "short summary for SEO (max 200 chars)"\n}`
-
-      const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-      const response = await fetch(azureUrl, {
-        method: 'POST',
-        headers: {
-          'api-key': AZURE_OPENAI_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional news editor. Rewrite content in objective, factual journalistic style. Be clear, concise, and informative.'
-            },
-            {
-              role: 'user',
-              content: langPrompt
-            }
-          ],
-          temperature: 0.5,
-          max_tokens: 2000
-        })
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`Azure OpenAI error for ${lang}:`, errorText)
-        throw new Error(`AI rewrite failed for ${lang}`)
-      }
-
-      const data = await response.json()
-      const aiContent = data.choices[0]?.message?.content?.trim()
-
-      // Parse JSON response
-      const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
-        throw new Error(`Failed to parse AI response for ${lang}`)
-      }
-
-      const parsed = JSON.parse(jsonMatch[0])
-      rewrittenContent[lang] = {
-        title: parsed.title || requestData.title,
-        content: parsed.content || requestData.content,
-        description: parsed.description || parsed.content.substring(0, 200)
-      }
-
-      console.log(`✅ Rewritten for ${langName}`)
-    }
-
-    // Generate slugs
-    const generateSlug = (text: string): string => {
-      return text
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .substring(0, 100)
-    }
-
-    // Update news item with rewritten content
-    const { error: updateError } = await supabase
-      .from('news')
-      .update({
-        title_en: rewrittenContent.en.title,
-        content_en: rewrittenContent.en.content,
-        description_en: rewrittenContent.en.description,
-        slug_en: generateSlug(rewrittenContent.en.title),
-        title_ua: rewrittenContent.ua.title,
-        content_ua: rewrittenContent.ua.content,
-        description_ua: rewrittenContent.ua.description,
-        slug_ua: generateSlug(rewrittenContent.ua.title),
-        title_no: rewrittenContent.no.title,
-        content_no: rewrittenContent.no.content,
-        description_no: rewrittenContent.no.description,
-        slug_no: generateSlug(rewrittenContent.no.title),
-        is_rewritten: true,
-        is_published: true,
-        published_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', requestData.newsId)
-
-    if (updateError) {
-      console.error('Failed to update news:', updateError)
-      throw updateError
-    }
-
-    console.log('✅ News published:', requestData.newsId)
-
-    // Update AI prompt usage count
-    await supabase
-      .from('ai_prompts')
-      .update({ usage_count: newsPrompt.usage_count + 1 })
-      .eq('id', newsPrompt.id)
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        newsId: requestData.newsId,
-        message: 'News published successfully'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return await processWithPrompt(newsPrompt, requestData, supabase, 'news')
 
   } catch (error: any) {
     console.error('❌ Error processing news:', error)
@@ -206,3 +82,128 @@ serve(async (req) => {
     )
   }
 })
+
+async function processWithPrompt(
+  prompt: any,
+  requestData: NewsRewriteRequest,
+  supabase: any,
+  type: 'news' | 'blog'
+) {
+  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
+    throw new Error('Azure OpenAI not configured')
+  }
+
+  // Build prompt with placeholders
+  const systemPrompt = prompt.prompt_text
+    .replace('{title}', requestData.title)
+    .replace('{content}', requestData.content)
+    .replace('{url}', requestData.url || '')
+
+  console.log('📝 Rewriting with AI...')
+
+  // Call Azure OpenAI - ONE REQUEST for all languages
+  const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+
+  const response = await fetch(azureUrl, {
+    method: 'POST',
+    headers: {
+      'api-key': AZURE_OPENAI_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional content rewriter and translator. Return ONLY valid JSON.'
+        },
+        {
+          role: 'user',
+          content: systemPrompt
+        }
+      ],
+      temperature: 0.5,
+      max_tokens: 3000
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('Azure OpenAI error:', errorText)
+    throw new Error(`AI rewrite failed: ${response.status}`)
+  }
+
+  const data = await response.json()
+  const aiContent = data.choices[0]?.message?.content?.trim()
+
+  console.log('AI response received, parsing JSON...')
+
+  // Parse JSON response
+  const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    console.error('Failed to parse AI response:', aiContent.substring(0, 500))
+    throw new Error('Failed to parse AI response')
+  }
+
+  const rewrittenContent = JSON.parse(jsonMatch[0])
+
+  // Validate structure
+  if (!rewrittenContent.en || !rewrittenContent.no || !rewrittenContent.ua) {
+    throw new Error('AI response missing required language fields')
+  }
+
+  console.log('✅ Content rewritten for all languages')
+
+  // Generate slugs
+  const generateSlug = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .substring(0, 100)
+  }
+
+  // Update news item with rewritten content
+  const { error: updateError } = await supabase
+    .from('news')
+    .update({
+      title_en: rewrittenContent.en.title,
+      content_en: rewrittenContent.en.content,
+      description_en: rewrittenContent.en.description,
+      slug_en: generateSlug(rewrittenContent.en.title),
+      title_ua: rewrittenContent.ua.title,
+      content_ua: rewrittenContent.ua.content,
+      description_ua: rewrittenContent.ua.description,
+      slug_ua: generateSlug(rewrittenContent.ua.title),
+      title_no: rewrittenContent.no.title,
+      content_no: rewrittenContent.no.content,
+      description_no: rewrittenContent.no.description,
+      slug_no: generateSlug(rewrittenContent.no.title),
+      is_rewritten: true,
+      is_published: true,
+      published_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', requestData.newsId)
+
+  if (updateError) {
+    console.error('Failed to update news:', updateError)
+    throw updateError
+  }
+
+  console.log('✅ News published:', requestData.newsId)
+
+  // Update AI prompt usage count
+  await supabase
+    .from('ai_prompts')
+    .update({ usage_count: prompt.usage_count + 1 })
+    .eq('id', prompt.id)
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      newsId: requestData.newsId,
+      message: 'News published successfully'
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+}
