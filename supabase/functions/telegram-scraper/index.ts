@@ -659,8 +659,8 @@ async function translateTitleToEnglish(text: string): Promise<string> {
     const titleText = text.substring(0, 200) // Take first 200 chars
 
     // Azure OpenAI endpoint format: {endpoint}/openai/deployments/{deployment-name}/chat/completions?api-version=YYYY-MM-DD
-    // Using the same configuration as pre-moderate-news function
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview`
+    // Using actual deployment name from Azure Portal: Jobbot-gpt-4.1-mini
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
     const response = await fetch(azureUrl, {
       method: 'POST',
