@@ -292,9 +292,31 @@ serve(async (req) => {
 
       console.log('Callback received:', callbackData)
 
-      const parts = callbackData.split('_')
-      const action = parts[0]
-      const newsId = parts[1]
+      // Parse callback data: publish_news_<id>, publish_blog_<id>, or reject_<id>
+      let action: string
+      let publicationType: string | null = null
+      let newsId: string
+
+      if (callbackData.startsWith('publish_news_')) {
+        action = 'publish'
+        publicationType = 'news'
+        newsId = callbackData.replace('publish_news_', '')
+      } else if (callbackData.startsWith('publish_blog_')) {
+        action = 'publish'
+        publicationType = 'blog'
+        newsId = callbackData.replace('publish_blog_', '')
+      } else if (callbackData.startsWith('reject_')) {
+        action = 'reject'
+        newsId = callbackData.replace('reject_', '')
+      } else {
+        // Backward compatibility with old format "publish_<id>"
+        const parts = callbackData.split('_')
+        action = parts[0]
+        newsId = parts[1]
+        if (action === 'publish') {
+          publicationType = 'news' // Default to news for old callbacks
+        }
+      }
 
       if (!newsId) {
         console.error('No news ID in callback data')
@@ -304,7 +326,7 @@ serve(async (req) => {
       }
 
       if (action === 'publish') {
-        console.log('Publishing news with ID:', newsId)
+        console.log(`Publishing as ${publicationType} with ID:`, newsId)
 
         const { data: news, error: fetchError } = await supabase
           .from('news')
@@ -331,11 +353,15 @@ serve(async (req) => {
           })
         }
 
-        // Call process-news to translate, rewrite with AI, and publish
-        console.log('Calling process-news for AI rewriting...')
+        // Choose appropriate processing function based on publication type
+        const processingEndpoint = publicationType === 'blog'
+          ? 'process-blog-post'
+          : 'process-news'
+
+        console.log(`Calling ${processingEndpoint} for AI rewriting...`)
 
         const processResponse = await fetch(
-          `${SUPABASE_URL}/functions/v1/process-news`,
+          `${SUPABASE_URL}/functions/v1/${processingEndpoint}`,
           {
             method: 'POST',
             headers: {
@@ -346,14 +372,17 @@ serve(async (req) => {
               newsId: newsId,
               title: news.original_title || '',
               content: news.original_content || '',
-              url: news.original_url || ''
+              url: news.original_url || '',
+              imageUrl: news.image_url || null,
+              videoUrl: news.video_url || null,
+              videoType: news.video_type || null
             })
           }
         )
 
         if (!processResponse.ok) {
           const errorText = await processResponse.text()
-          console.error('Failed to process news:', errorText)
+          console.error('Failed to process:', errorText)
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
             {
@@ -371,7 +400,11 @@ serve(async (req) => {
           })
         }
 
-        console.log('✅ News processed successfully with AI')
+        const successMessage = publicationType === 'blog'
+          ? '✅ Published to blog!'
+          : '✅ Published to news!'
+
+        console.log(`✅ ${publicationType} processed successfully with AI`)
 
         // Success
         await fetch(
@@ -381,13 +414,14 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: '✅ News published successfully!',
+              text: successMessage,
               show_alert: false
             })
           }
         )
 
         // Edit message
+        const statusLabel = publicationType === 'blog' ? 'BLOG' : 'NEWS'
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -396,7 +430,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + '\n\n✅ <b>PUBLISHED</b>',
+              text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>`,
               parse_mode: 'HTML'
             })
           }

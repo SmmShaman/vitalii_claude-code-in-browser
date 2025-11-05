@@ -743,10 +743,15 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 ⏳ <i>Waiting for moderation...</i>`
 
     const keyboard = {
-      inline_keyboard: [[
-        { text: '✅ Publish', callback_data: `publish_${newsId}` },
-        { text: '❌ Reject', callback_data: `reject_${newsId}` }
-      ]]
+      inline_keyboard: [
+        [
+          { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
+          { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
+        ],
+        [
+          { text: '❌ Reject', callback_data: `reject_${newsId}` }
+        ]
+      ]
     }
 
     const response = await fetch(
