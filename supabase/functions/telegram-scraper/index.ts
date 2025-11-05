@@ -516,101 +516,145 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
         const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player')
 
         if (videoElement || videoWrap) {
-          console.log(`🎥 Found video in post`)
+          console.log(`🎥 [VIDEO DEBUG] Found video in post`)
+          console.log(`🎥 [VIDEO DEBUG] videoElement exists: ${!!videoElement}`)
+          console.log(`🎥 [VIDEO DEBUG] videoWrap exists: ${!!videoWrap}`)
 
           if (youtubeConfigured) {
             // OPTION 1: Upload to YouTube (preferred - no branding, reliable)
             try {
-              console.log('🚀 YouTube configured - will upload video to YouTube')
+              console.log('🚀 [VIDEO DEBUG] YouTube configured - will upload video to YouTube')
+              console.log(`🚀 [VIDEO DEBUG] YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID ? 'SET' : 'NOT SET'}`)
+              console.log(`🚀 [VIDEO DEBUG] YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET ? 'SET' : 'NOT SET'}`)
+              console.log(`🚀 [VIDEO DEBUG] YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN ? 'SET' : 'NOT SET'}`)
+              console.log(`🚀 [VIDEO DEBUG] TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN ? 'SET' : 'NOT SET'}`)
 
               // Extract CDN URL from video element or source element
               let cdnUrl = videoElement?.getAttribute('src')
+              console.log(`🔍 [VIDEO DEBUG] Step 1 - video.src: ${cdnUrl || 'NOT FOUND'}`)
 
               // If no src on video, check source elements
               if (!cdnUrl && videoElement) {
                 const sourceElement = videoElement.querySelector('source')
+                console.log(`🔍 [VIDEO DEBUG] Step 2 - source element exists: ${!!sourceElement}`)
                 cdnUrl = sourceElement?.getAttribute('src') || null
+                console.log(`🔍 [VIDEO DEBUG] Step 2 - source.src: ${cdnUrl || 'NOT FOUND'}`)
               }
 
               // Also check data-src attribute (lazy loading)
               if (!cdnUrl && videoElement) {
                 cdnUrl = videoElement.getAttribute('data-src') || null
+                console.log(`🔍 [VIDEO DEBUG] Step 3 - video[data-src]: ${cdnUrl || 'NOT FOUND'}`)
               }
 
-              console.log(`🔍 CDN URL found: ${cdnUrl ? 'Yes' : 'No'}`)
-              if (cdnUrl) console.log(`🔗 CDN URL: ${cdnUrl}`)
+              console.log(`🔍 [VIDEO DEBUG] FINAL CDN URL: ${cdnUrl ? 'FOUND' : 'NOT FOUND'}`)
+              if (cdnUrl) console.log(`🔗 [VIDEO DEBUG] CDN URL: ${cdnUrl}`)
 
               if (cdnUrl) {
-                console.log(`📥 Downloading video from: ${cdnUrl}`)
+                console.log(`📥 [VIDEO DEBUG] Starting download from CDN...`)
 
                 // Download video from Telegram CDN
                 const videoBuffer = await downloadTelegramVideo(cdnUrl, TELEGRAM_BOT_TOKEN!)
 
                 if (videoBuffer) {
-                  console.log('✅ Video downloaded, uploading to YouTube...')
+                  const videoSizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2)
+                  console.log(`✅ [VIDEO DEBUG] Video downloaded successfully: ${videoSizeMB} MB`)
 
                   // Translate title to English for YouTube
-                  console.log('🌐 Translating title to English...')
-                  const englishTitle = await translateTitleToEnglish(text)
+                  console.log('🌐 [VIDEO DEBUG] Starting title translation...')
+                  console.log(`🌐 [VIDEO DEBUG] Original text (first 100 chars): ${text.substring(0, 100)}`)
 
-                  // Get YouTube access token
-                  const accessToken = await getYouTubeAccessToken({
-                    clientId: YOUTUBE_CLIENT_ID!,
-                    clientSecret: YOUTUBE_CLIENT_SECRET!,
-                    refreshToken: YOUTUBE_REFRESH_TOKEN!
-                  })
+                  try {
+                    const englishTitle = await translateTitleToEnglish(text)
+                    console.log(`✅ [VIDEO DEBUG] Title translated: "${englishTitle}"`)
 
-                  // Upload to YouTube
-                  const uploadResult = await uploadVideoToYouTube(accessToken, {
-                    videoBuffer,
-                    title: englishTitle || 'News Video', // Translated English title
-                    description: `Source: https://t.me/${channelUsername}/${dataPost.split('/')[1]}\n\n${text.substring(0, 500)}`,
-                    tags: ['news', 'ai', 'technology'],
-                    categoryId: '25' // News & Politics
-                  })
+                    // Get YouTube access token
+                    console.log('🔑 [VIDEO DEBUG] Getting YouTube access token...')
+                    const accessToken = await getYouTubeAccessToken({
+                      clientId: YOUTUBE_CLIENT_ID!,
+                      clientSecret: YOUTUBE_CLIENT_SECRET!,
+                      refreshToken: YOUTUBE_REFRESH_TOKEN!
+                    })
+                    console.log(`✅ [VIDEO DEBUG] Access token obtained: ${accessToken.substring(0, 20)}...`)
 
-                  if (uploadResult.success && uploadResult.embedUrl) {
-                    videoUrl = uploadResult.embedUrl
-                    videoType = 'youtube'
-                    console.log(`✅ Video uploaded to YouTube: ${videoUrl}`)
-                  } else {
-                    console.error(`❌ YouTube upload failed: ${uploadResult.error}`)
+                    // Upload to YouTube
+                    console.log('📤 [VIDEO DEBUG] Starting YouTube upload...')
+                    const uploadResult = await uploadVideoToYouTube(accessToken, {
+                      videoBuffer,
+                      title: englishTitle || 'News Video',
+                      description: `Source: https://t.me/${channelUsername}/${dataPost.split('/')[1]}\n\n${text.substring(0, 500)}`,
+                      tags: ['news', 'ai', 'technology'],
+                      categoryId: '25'
+                    })
+
+                    console.log(`📤 [VIDEO DEBUG] Upload result - success: ${uploadResult.success}`)
+                    if (uploadResult.embedUrl) {
+                      console.log(`📤 [VIDEO DEBUG] Upload result - embedUrl: ${uploadResult.embedUrl}`)
+                    }
+                    if (uploadResult.error) {
+                      console.log(`📤 [VIDEO DEBUG] Upload result - error: ${uploadResult.error}`)
+                    }
+
+                    if (uploadResult.success && uploadResult.embedUrl) {
+                      videoUrl = uploadResult.embedUrl
+                      videoType = 'youtube'
+                      console.log(`✅ [VIDEO DEBUG] SUCCESS! Video uploaded to YouTube: ${videoUrl}`)
+                    } else {
+                      console.error(`❌ [VIDEO DEBUG] YouTube upload FAILED: ${uploadResult.error}`)
+                      // Fallback to Telegram embed
+                      const messageId = dataPost.split('/')[1]
+                      videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
+                      videoType = 'telegram_embed'
+                      console.log(`⚠️ [VIDEO DEBUG] Falling back to Telegram embed: ${videoUrl}`)
+                    }
+                  } catch (translationError: any) {
+                    console.error(`❌ [VIDEO DEBUG] Translation or upload error:`, translationError)
+                    console.error(`❌ [VIDEO DEBUG] Error message: ${translationError?.message}`)
+                    console.error(`❌ [VIDEO DEBUG] Error stack: ${translationError?.stack}`)
                     // Fallback to Telegram embed
                     const messageId = dataPost.split('/')[1]
                     videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
                     videoType = 'telegram_embed'
-                    console.log(`⚠️ Falling back to Telegram embed: ${videoUrl}`)
+                    console.log(`⚠️ [VIDEO DEBUG] Falling back to Telegram embed after translation error`)
                   }
                 } else {
-                  console.error('❌ Failed to download video')
+                  console.error('❌ [VIDEO DEBUG] Failed to download video - videoBuffer is null/empty')
                   // Fallback to Telegram embed
                   const messageId = dataPost.split('/')[1]
                   videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
                   videoType = 'telegram_embed'
-                  console.log(`⚠️ Falling back to Telegram embed: ${videoUrl}`)
+                  console.log(`⚠️ [VIDEO DEBUG] Falling back to Telegram embed: ${videoUrl}`)
                 }
               } else {
-                console.warn('⚠️ No CDN URL found in video element, using Telegram embed')
+                console.warn('⚠️ [VIDEO DEBUG] No CDN URL found in video element, using Telegram embed')
+                console.warn('⚠️ [VIDEO DEBUG] This means Telegram HTML structure may have changed')
                 // Fallback to Telegram embed
                 const messageId = dataPost.split('/')[1]
                 videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
                 videoType = 'telegram_embed'
               }
-            } catch (error) {
-              console.error('❌ Error processing video for YouTube:', error)
+            } catch (error: any) {
+              console.error('❌ [VIDEO DEBUG] CRITICAL ERROR processing video for YouTube:', error)
+              console.error(`❌ [VIDEO DEBUG] Error type: ${error?.constructor?.name}`)
+              console.error(`❌ [VIDEO DEBUG] Error message: ${error?.message}`)
+              console.error(`❌ [VIDEO DEBUG] Error stack: ${error?.stack}`)
               // Fallback to Telegram embed
               const messageId = dataPost.split('/')[1]
               videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
               videoType = 'telegram_embed'
-              console.log(`⚠️ Falling back to Telegram embed: ${videoUrl}`)
+              console.log(`⚠️ [VIDEO DEBUG] Falling back to Telegram embed: ${videoUrl}`)
             }
           } else {
             // OPTION 2: Use Telegram embed (fallback if YouTube not configured)
-            console.log('⚠️ YouTube not configured, using Telegram embed')
+            console.log('⚠️ [VIDEO DEBUG] YouTube NOT configured, using Telegram embed')
+            console.log(`⚠️ [VIDEO DEBUG] YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID ? 'SET' : 'MISSING'}`)
+            console.log(`⚠️ [VIDEO DEBUG] YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET ? 'SET' : 'MISSING'}`)
+            console.log(`⚠️ [VIDEO DEBUG] YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN ? 'SET' : 'MISSING'}`)
+            console.log(`⚠️ [VIDEO DEBUG] TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN ? 'SET' : 'MISSING'}`)
             const messageId = dataPost.split('/')[1]
             videoUrl = `https://t.me/${channelUsername}/${messageId}?embed=1&mode=tme`
             videoType = 'telegram_embed'
-            console.log(`🎥 Using Telegram embed: ${videoUrl}`)
+            console.log(`🎥 [VIDEO DEBUG] Using Telegram embed: ${videoUrl}`)
           }
         }
 
