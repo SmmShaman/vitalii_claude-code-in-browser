@@ -183,7 +183,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
           top: '50%',
         }}
       >
-        <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg pointer-events-auto relative overflow-hidden">
+        <div className="p-4 bg-white rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
           {/* === IMPROVEMENT 5: Progress indicator bar === */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
             <div
