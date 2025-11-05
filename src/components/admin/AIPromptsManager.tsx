@@ -228,10 +228,12 @@ Return ONLY valid JSON in this exact format:
       <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
         <h3 className="text-white font-semibold mb-2">How AI Prompts Work:</h3>
         <ul className="text-gray-300 text-sm space-y-1">
-          <li>• Create custom prompts for AI to rewrite and translate news articles</li>
+          <li>• Create custom prompts for AI to rewrite and translate articles</li>
           <li>• Use placeholders: {'{title}'}, {'{content}'}, {'{url}'}</li>
-          <li>• System will use active "rewrite" type prompt for news processing</li>
-          <li>• AI will return translated content in EN, NO, and UA languages</li>
+          <li>• <strong>news_rewrite:</strong> Used when publishing to News (objective style)</li>
+          <li>• <strong>blog_rewrite:</strong> Used when publishing to Blog (first-person style)</li>
+          <li>• <strong>rewrite:</strong> General rewriting (fallback for news if news_rewrite not found)</li>
+          <li>• AI will return translated content in EN, NO, and UA languages as JSON</li>
         </ul>
       </div>
 
@@ -413,6 +415,8 @@ Return ONLY valid JSON in this exact format:
                   className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="rewrite">Rewrite & Translate</option>
+                  <option value="news_rewrite">📰 News Rewrite (Journalistic Style)</option>
+                  <option value="blog_rewrite">📝 Blog Rewrite (Personal Perspective)</option>
                   <option value="translate">Translate Only</option>
                   <option value="summarize">Summarize</option>
                   <option value="pre_moderation">🤖 Pre-Moderation (AI Filter)</option>
@@ -422,6 +426,10 @@ Return ONLY valid JSON in this exact format:
                     'Pre-moderation filters posts before sending to Telegram bot (checks spam, ads, duplicates)'}
                   {formData.prompt_type === 'rewrite' &&
                     'Rewrite articles to avoid plagiarism and translate to multiple languages'}
+                  {formData.prompt_type === 'news_rewrite' &&
+                    'Rewrite for News section in objective journalistic style'}
+                  {formData.prompt_type === 'blog_rewrite' &&
+                    'Rewrite for Blog section from first-person perspective'}
                 </p>
               </div>
 
