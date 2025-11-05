@@ -571,6 +571,17 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
                   // Fixed gap for uniform spacing on all screen sizes
                   const gapSize = GAP_SIZE;
 
+                  // Mobile: use fixed minimum height for each section to allow scrolling
+                  if (isMobile) {
+                    // Fullscreen mode for news/blog items
+                    if ((section.id === 'news' && selectedNewsId) || (section.id === 'blog' && selectedBlogId)) {
+                      return '100vh';
+                    }
+                    // Default minimum height for mobile sections
+                    return '60vh';
+                  }
+
+                  // Desktop logic below (unchanged)
                   // News: full grid height when news item selected
                   if (section.id === 'news' && selectedNewsId && totalGridHeight > 0) {
                     return `${totalGridHeight}px`;
