@@ -1,0 +1,16 @@
+# robots.txt for Vitalii Berbeha Portfolio
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://vitalii-berbeha.com/sitemap.xml
+
+# Crawl-delay for bots (optional, helps with server load)
+Crawl-delay: 1
+
+# Block common bad bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
