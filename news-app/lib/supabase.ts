@@ -1,0 +1,85 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Types for news
+export interface NewsItem {
+  id: string
+  original_title: string
+  original_content: string
+  original_url: string
+  image_url: string | null
+
+  title_en: string | null
+  content_en: string | null
+  description_en: string | null
+  slug_en: string | null
+
+  title_ua: string | null
+  content_ua: string | null
+  description_ua: string | null
+  slug_ua: string | null
+
+  title_no: string | null
+  content_no: string | null
+  description_no: string | null
+  slug_no: string | null
+
+  tags: string[] | null
+  published_at: string | null
+  created_at: string
+  updated_at: string
+  is_published: boolean
+  views_count: number
+  video_url: string | null
+}
+
+export type Locale = 'en' | 'ua' | 'no'
+
+// Fetch all published news
+export async function getPublishedNews() {
+  const { data, error } = await supabase
+    .from('news')
+    .select('*')
+    .eq('is_published', true)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching news:', error)
+    return []
+  }
+
+  return data as NewsItem[]
+}
+
+// Fetch single news by slug
+export async function getNewsBySlug(slug: string, locale: Locale) {
+  const slugColumn = `slug_${locale}`
+
+  const { data, error } = await supabase
+    .from('news')
+    .select('*')
+    .eq(slugColumn, slug)
+    .eq('is_published', true)
+    .single()
+
+  if (error) {
+    console.error('Error fetching news:', error)
+    return null
+  }
+
+  return data as NewsItem
+}
+
+// Get locale-specific fields from news item
+export function getLocalizedNews(news: NewsItem, locale: Locale) {
+  return {
+    title: news[`title_${locale}`] || news.original_title,
+    content: news[`content_${locale}`] || news.original_content,
+    description: news[`description_${locale}`] || news.original_content?.substring(0, 160),
+    slug: news[`slug_${locale}`],
+  }
+}
