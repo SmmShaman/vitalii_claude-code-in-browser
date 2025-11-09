@@ -1,0 +1,31 @@
+# Headers for SEO and Performance
+/*
+  # Security headers
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Performance headers
+  Cache-Control: public, max-age=31536000, immutable
+
+  # SEO headers
+  Content-Language: en, uk, nb
+
+# HTML pages - no cache
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Static assets - long cache
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Images - medium cache
+/*.jpg
+  Cache-Control: public, max-age=604800, immutable
+/*.png
+  Cache-Control: public, max-age=604800, immutable
+/*.svg
+  Cache-Control: public, max-age=604800, immutable
+/*.webp
+  Cache-Control: public, max-age=604800, immutable
