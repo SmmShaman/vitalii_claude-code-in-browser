@@ -2,8 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- PWA and Icons -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Vitalii Berbeha" />
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" />
 
     <!-- SEO Meta Tags -->
     <meta name="description" content="Vitalii Berbeha - Expert in e-commerce and marketing. Professional in e-commerce, marketing, and project management helping businesses grow and achieve success." />
@@ -79,48 +92,53 @@
   </head>
   <body>
     <div id="root">
-      <!-- SEO-friendly content for crawlers -->
+      <!-- SEO-friendly content for crawlers with semantic HTML -->
       <noscript>
-        <header>
-          <h1>Vitalii Berbeha</h1>
-          <p>E-commerce & Marketing Expert</p>
-        </header>
-        <main>
-          <section>
-            <h2>About Me</h2>
-            <p>Professional in e-commerce, marketing, and project management helping businesses grow and achieve success.</p>
-          </section>
-          <section>
-            <h2>Expertise</h2>
-            <ul>
-              <li>E-commerce Management</li>
-              <li>Amazon Seller Central & Shopify</li>
-              <li>Digital Marketing & SMM</li>
-              <li>Project Management</li>
-              <li>Business Development</li>
-            </ul>
-          </section>
-          <section>
-            <h2>Skills</h2>
-            <ul>
-              <li>Amazon Seller Central</li>
-              <li>Shopify</li>
-              <li>Social Media Marketing</li>
-              <li>Digital Marketing</li>
-              <li>Project Management</li>
-              <li>Business Strategy</li>
-              <li>Team Leadership</li>
-              <li>Data Analysis</li>
-            </ul>
-          </section>
-          <section>
-            <h2>Contact</h2>
-            <p>Get in touch to discuss how I can help your business grow.</p>
-          </section>
-        </main>
-        <footer>
-          <p>&copy; 2025 Vitalii Berbeha. All rights reserved.</p>
-        </footer>
+        <article itemscope itemtype="https://schema.org/Person">
+          <header>
+            <h1 itemprop="name">Vitalii Berbeha</h1>
+            <p itemprop="jobTitle">E-commerce & Marketing Expert</p>
+          </header>
+          <main>
+            <section aria-labelledby="about-heading">
+              <h2 id="about-heading">About Me</h2>
+              <p itemprop="description">Professional in e-commerce, marketing, and project management helping businesses grow and achieve success.</p>
+            </section>
+            <section aria-labelledby="expertise-heading">
+              <h2 id="expertise-heading">Expertise</h2>
+              <ul role="list">
+                <li itemprop="knowsAbout">E-commerce Management</li>
+                <li itemprop="knowsAbout">Amazon Seller Central & Shopify</li>
+                <li itemprop="knowsAbout">Digital Marketing & SMM</li>
+                <li itemprop="knowsAbout">Project Management</li>
+                <li itemprop="knowsAbout">Business Development</li>
+              </ul>
+            </section>
+            <section aria-labelledby="skills-heading">
+              <h2 id="skills-heading">Skills</h2>
+              <ul role="list">
+                <li itemprop="knowsAbout">Amazon Seller Central</li>
+                <li itemprop="knowsAbout">Shopify</li>
+                <li itemprop="knowsAbout">Social Media Marketing</li>
+                <li itemprop="knowsAbout">Digital Marketing</li>
+                <li itemprop="knowsAbout">Project Management</li>
+                <li itemprop="knowsAbout">Business Strategy</li>
+                <li itemprop="knowsAbout">Team Leadership</li>
+                <li itemprop="knowsAbout">Data Analysis</li>
+              </ul>
+            </section>
+            <section aria-labelledby="contact-heading">
+              <h2 id="contact-heading">Contact</h2>
+              <p>Get in touch to discuss how I can help your business grow.</p>
+              <address itemprop="url">
+                <a href="https://vitalii-berbeha.com" rel="me">https://vitalii-berbeha.com</a>
+              </address>
+            </section>
+          </main>
+          <footer>
+            <p><small>&copy; <time datetime="2025">2025</time> <span itemprop="name">Vitalii Berbeha</span>. All rights reserved.</small></p>
+          </footer>
+        </article>
       </noscript>
     </div>
     <script type="module" src="/src/main.tsx"></script>
