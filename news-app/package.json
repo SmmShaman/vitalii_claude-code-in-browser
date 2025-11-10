@@ -10,9 +10,12 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",
+    "@types/three": "^0.181.0",
+    "lucide-react": "^0.553.0",
     "next": "^15.1.6",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "three": "^0.181.1"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.7.4",
