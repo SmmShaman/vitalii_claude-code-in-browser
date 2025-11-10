@@ -113,12 +113,12 @@ export default async function BlogPostPage({ params }: Props) {
       />
 
       <article className="max-w-4xl mx-auto px-4 py-12">
-        <Link
-          href={`/blog/${locale}`}
+        <a
+          href="https://vitalii.no"
           className="inline-flex items-center text-white/90 hover:text-white mb-6 transition hover:underline"
         >
-          ← Back to Blog
-        </Link>
+          ← Back to Portfolio
+        </a>
 
         <div className="mb-6 flex gap-4 flex-wrap">
           <span className="text-white/80 font-medium">Read in:</span>

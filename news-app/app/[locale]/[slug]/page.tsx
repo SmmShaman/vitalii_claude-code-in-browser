@@ -132,12 +132,12 @@ export default async function NewsArticlePage({ params }: Props) {
 
       <article className="max-w-4xl mx-auto px-4 py-12">
         {/* Back link */}
-        <Link
-          href="/"
+        <a
+          href="https://vitalii.no"
           className="inline-flex items-center text-white/90 hover:text-white mb-6 transition hover:underline"
         >
-          ← Back to News
-        </Link>
+          ← Back to Portfolio
+        </a>
 
         {/* Language switcher */}
         <div className="mb-6 flex gap-4 flex-wrap">
