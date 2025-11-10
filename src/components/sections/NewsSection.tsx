@@ -151,12 +151,17 @@ const NewsSectionComponent = ({
       return;
     }
 
-    // Section is expanded, stop bubbling and open fullscreen
+    // Section is expanded, stop bubbling and open on news site
     e.stopPropagation();
 
-    // Call the callback to notify parent
-    if (onNewsSelect) {
-      onNewsSelect(newsItem.id);
+    // Get the slug for current language
+    const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const slug = (newsItem as any)[`slug_${lang}`] || (newsItem as any).slug_en;
+
+    if (slug) {
+      // Open news article on dedicated news site
+      const newsUrl = `https://newsvitalii.netlify.app/${lang}/${slug}`;
+      window.open(newsUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
