@@ -7,9 +7,27 @@
   # Directory with built files
   publish = "dist"
 
-  # Node version
-  [build.environment]
-    NODE_VERSION = "18"
+# Node version
+[build.environment]
+  NODE_VERSION = "18"
+
+# Optimize build
+[build.processing]
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+[build.processing.html]
+  pretty_urls = true
+
+[build.processing.images]
+  compress = true
 
 # Redirects for Single Page Application (SPA)
 # All routes should redirect to index.html
@@ -48,21 +66,3 @@
   for = "*.svg"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-
-# Optimize build
-[build.processing]
-  skip_processing = false
-
-[build.processing.css]
-  bundle = true
-  minify = true
-
-[build.processing.js]
-  bundle = true
-  minify = true
-
-[build.processing.html]
-  pretty_urls = true
-
-[build.processing.images]
-  compress = true
