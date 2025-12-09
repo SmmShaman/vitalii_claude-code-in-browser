@@ -1,0 +1,24 @@
+{
+  "name": "Vitalii Berbeha - E-commerce & Marketing Expert",
+  "short_name": "Vitalii Berbeha",
+  "description": "Professional portfolio of Vitalii Berbeha - E-commerce and Marketing Expert",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "professional"],
+  "scope": "/",
+  "related_applications": [],
+  "prefer_related_applications": false
+}
