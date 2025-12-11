@@ -1,0 +1,415 @@
+export const translations = {
+  en: {
+    title: "Vitalii Berbeha an expert in e-commerce and marketing",
+    subtitle: "Professional in e-commerce, marketing, and project management",
+    description: "Helping businesses grow, optimize processes, and achieve success",
+
+    about: "About me",
+    about_title: "About me",
+    about_content: "Detailed information about me\n\nI am **Vitalii Berbeha** — AI project leader and entrepreneur who combines 20+ years of experience in business development with modern artificial intelligence technologies. I specialize in creating innovative EdTech solutions and automating business processes.\n\n**My flagship project — Elvarika** — is a revolutionary SaaS platform for language learning that uses personalized audio playlists and AI algorithms. The app combines B2B and B2C approaches, offering individual learning paths based on user data analysis. From concept to realization, I've conducted the full development cycle: market research, system architecture, programming (React/TypeScript, Supabase), localization, and market entry strategy.\n\n**Technical expertise:** Azure OpenAI, React, TypeScript, Python (FastAPI), Supabase, automation through Zapier/Make. Experience integrating AI into real business processes — from chatbots to predictive analytics.\n\n**Entrepreneurial experience:** Behind me lies successful leadership of my own company (2007-2017), product launches on Amazon Marketplace in the USA and Europe, development of strategies for entering the Norwegian market. Worked with companies from startups to corporations, specializing in digital transformation and business scaling.\n\n**Education and localization:** Master's degree in pedagogy with mathematics and economics. Fluent in Ukrainian, Norwegian, English, and Russian. Based in Norway, where I actively develop EdTech initiatives and consult local companies on AI integration.\n\n**My mission:** To create technological solutions that make learning and business processes more efficient, personalized, and accessible to a global audience.\n\nI specialize in:\n\n• AI solutions development and integration\n• Business process automation\n• Data analytics and BI solutions\n• Web development and UX/UI design\n• Digital transformation consulting",
+
+    projects: "Projects",
+    projects_title: "Projects",
+    projects_content: "Check out my latest work and achievements. I specialize in developing and optimizing e-commerce solutions, particularly focusing on Amazon marketplace integration and social media marketing campaigns.",
+
+    projects_list: [
+      {
+        title: "E-Commerce Platform",
+        short: "Comprehensive e-commerce platform with React, Node.js and MongoDB",
+        full: "A comprehensive e-commerce platform built with React, Node.js and MongoDB. Features include user authentication, product catalog, shopping cart, payment processing, and order management. The platform is fully responsive and optimized for mobile devices. Implemented ML-based recommendation engine that increased average order value by 28%.",
+        image: "https://images.unsplash.com/photo-1557821552-17105176677c"
+      },
+      {
+        title: "Portfolio Website",
+        short: "Modern portfolio website with smooth animations and interactive elements",
+        full: "A modern portfolio website designed to showcase projects and skills. Features a clean, minimalist design with smooth animations and interactive elements. Built with React and Tailwind CSS, optimized for all devices. Implemented custom 3D elements to highlight technical capabilities.",
+        image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d"
+      },
+      {
+        title: "Task Management App",
+        short: "Collaborative task management application for teams",
+        full: "A collaborative task management application that helps teams organize their work. Features include task creation, assignment, due dates, progress tracking, and team communication tools. Built with React, TypeScript, and a Firebase backend. Implemented real-time updates and notifications system.",
+        image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b"
+      },
+      {
+        title: "Weather Dashboard",
+        short: "Real-time weather information and forecasts dashboard",
+        full: "A weather dashboard that provides real-time weather information and forecasts. Features include current conditions, 7-day forecast, hourly updates, radar maps, and location-based services. Uses OpenWeatherMap API and built with React. Implemented historical data comparisons and climate trend analysis.",
+        image: "https://images.unsplash.com/photo-1592210454359-9043f067919b"
+      },
+      {
+        title: "Social Media App",
+        short: "Professional networking platform for tech industry",
+        full: "A social media application focused on connecting professionals in the tech industry. Features include user profiles, posts, comments, likes, and direct messaging. Built with React, Redux, and a Node.js/Express backend. Implemented AI-powered content moderation and spam detection.",
+        image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
+      },
+      {
+        title: "Fitness Tracker",
+        short: "Comprehensive fitness tracking application with AI recommendations",
+        full: "A comprehensive fitness tracking application that helps users monitor their health and wellness goals. Features include workout logging, nutrition tracking, progress visualization, and personalized recommendations. Built with React Native. Implemented machine learning algorithms to generate custom workout recommendations.",
+        image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b"
+      },
+      {
+        title: "Recipe Finder",
+        short: "Discover new dishes based on available ingredients",
+        full: "A recipe finder application that helps users discover new dishes based on ingredients they have. Features include recipe search, filtering by dietary restrictions, save favorites, and meal planning. Integrates with a recipe API and built with React. Implemented advanced filtering algorithms for dietary needs and preferences.",
+        image: "https://images.unsplash.com/photo-1495521821757-a1efb6729352"
+      },
+      {
+        title: "Virtual Learning Platform",
+        short: "E-learning platform for creating and consuming educational content",
+        full: "An e-learning platform designed for creating and consuming educational content. Features include course creation, video lectures, quizzes, progress tracking, and certificates. Built with React, Node.js, and MongoDB. Implemented advanced analytics dashboard for educators to track student progress and engagement.",
+        image: "https://images.unsplash.com/photo-1501504905252-473c47e087f8"
+      },
+      {
+        title: "AI Content Generator",
+        short: "AI-powered content generation tool for marketers",
+        full: "An AI-powered content generation tool that helps marketers create compelling copy for various channels. The system uses advanced NLP models to generate contextually relevant content based on minimal input. Features include tone adjustment, length control, and content type templates. Built with OpenAI API, React, and Node.js backend.",
+        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995"
+      },
+      {
+        title: "Data Visualization Dashboard",
+        short: "Real-time KPIs and metrics monitoring dashboard",
+        full: "A comprehensive data visualization dashboard for businesses to monitor KPIs and metrics in real-time. Features include customizable widgets, multiple data source integration, automated reporting, and trend analysis. Built with D3.js, React, and a Python/FastAPI backend that connects to various data sources including SQL databases and APIs.",
+        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71"
+      },
+      {
+        title: "IoT Home Automation",
+        short: "Smart home platform connecting various IoT devices",
+        full: "An Internet of Things (IoT) platform for home automation that connects and controls various smart devices through a single interface. Features include scheduled routines, energy usage monitoring, voice control integration, and remote access. Built with React Native for mobile, with a Node.js backend and MQTT protocol for device communication.",
+        image: "https://images.unsplash.com/photo-1558002038-1055907df827"
+      },
+      {
+        title: "Blockchain Wallet",
+        short: "Secure cryptocurrency wallet supporting multiple blockchains",
+        full: "A secure cryptocurrency wallet application supporting multiple blockchain networks. Features include transaction history, multi-wallet management, QR code scanning, and real-time price tracking. Implemented enhanced security features including biometric authentication and cold storage options. Built with React Native and blockchain-specific libraries.",
+        image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0"
+      },
+      {
+        title: "Augmented Reality Tour Guide",
+        short: "AR application enhancing historical sites and museum visits",
+        full: "An augmented reality application that enhances the experience of visiting historical sites and museums. Users can point their device at landmarks to see historical information, 3D reconstructions of past appearances, and interactive storytelling elements. Built with Unity, ARKit/ARCore, and a content management system for curators to update information.",
+        image: "https://images.unsplash.com/photo-1617802690658-1173a812650d"
+      }
+    ],
+
+    services: "Services",
+    services_title: "Services",
+    services_content: "**AI Integration**\nFrom concept to production using OpenAI, LangChain, and other cutting-edge AI technologies. I help businesses integrate artificial intelligence into their workflows, automate processes, and build intelligent systems that scale.\n\n**Workshops & Training**\nHands-on sessions for teams to upskill in modern technologies, AI tools, and digital transformation strategies. Tailored training programs designed to boost productivity and technical capabilities.\n\n**Data & BI Dashboards**\nPower BI, Supabase, SQL - creating comprehensive business intelligence solutions that turn raw data into actionable insights. Custom dashboards for real-time monitoring and data-driven decision making.\n\n**Growth Marketing & Analytics**\nConversion optimization, user behavior analysis, and data-driven marketing strategies. Implementing analytics frameworks that identify growth opportunities and maximize ROI.\n\n**Automation & Process Optimization**\nStreamline workflows through intelligent automation using Zapier, Make, and custom solutions. Eliminating repetitive tasks and optimizing business processes for maximum efficiency.\n\n**Strategic Consulting**\nDigital transformation guidance for businesses looking to modernize their operations, adopt new technologies, and stay competitive in the digital age. From strategy development to implementation support.",
+
+    services_list: [
+      {
+        title: "AI Integration",
+        description: "from concept to production (OpenAI, LangChain)"
+      },
+      {
+        title: "Workshops & Training",
+        description: "hands-on sessions for teams"
+      },
+      {
+        title: "Data & BI Dashboards",
+        description: "Power BI, Supabase, SQL"
+      },
+      {
+        title: "Growth Marketing & Analytics",
+        description: "conversion optimization"
+      },
+      {
+        title: "Automation & Process Optimization",
+        description: "streamline workflows"
+      },
+      {
+        title: "Strategic Consulting",
+        description: "digital transformation"
+      }
+    ],
+
+    skills: "Skills",
+    skills_title: "Skills",
+    skills_content: "Technologies and competencies I work with include e-commerce platforms (Amazon, Shopify, WooCommerce), digital marketing tools, analytics platforms, and project management methodologies.",
+
+    skills_list: [
+      { name: "React", category: "development" },
+      { name: "TypeScript", category: "development" },
+      { name: "Python", category: "development" },
+      { name: "FastAPI", category: "development" },
+      { name: "Docker", category: "development" },
+      { name: "Framer Motion", category: "ui" },
+      { name: "shadcn/ui", category: "ui" },
+      { name: "Bolt", category: "ui" },
+      { name: "Lucide", category: "ui" },
+      { name: "Azure OpenAI", category: "ai" },
+      { name: "Claude MCP", category: "ai" },
+      { name: "Firecrawl", category: "ai" },
+      { name: "Tavily", category: "ai" },
+      { name: "OCR.space", category: "ai" },
+      { name: "AI Integration", category: "ai" },
+      { name: "Make.com", category: "automation" },
+      { name: "Zapier", category: "automation" },
+      { name: "Helium10", category: "marketing" },
+      { name: "Meta Ads", category: "marketing" },
+      { name: "Google Ads", category: "marketing" },
+      { name: "HubSpot", category: "marketing" },
+      { name: "Marketing Tools", category: "marketing" },
+      { name: "Telegram API", category: "integration" },
+      { name: "Supabase", category: "integration" },
+      { name: "Weglot", category: "integration" },
+      { name: "Localize", category: "integration" },
+      { name: "i18n", category: "integration" },
+      { name: "AllOrigins", category: "integration" },
+      { name: "DOMParser", category: "integration" },
+      { name: "Cheerio", category: "integration" },
+    ],
+
+    testimonials: "Testimonials",
+    testimonials_title: "Testimonials",
+    testimonials_content: "What clients say about our collaboration. Read through the experiences of businesses I've helped succeed in the digital marketplace.",
+
+    contact: "Contact",
+    contact_title: "Contact",
+    contact_description: "Get in touch with me to discuss your project or business needs...",
+
+    name: "Name",
+    email: "Email",
+    message: "Message",
+    send_message: "Send Message",
+    sending: "Sending...",
+    message_sent: "Message sent successfully!",
+    message_error: "Error sending message. Please try again.",
+
+    name_required: "Name is required",
+    email_required: "Email is required",
+    email_invalid: "Invalid email address",
+    message_required: "Message is required",
+  },
+  no: {
+    title: "Vitalii Berbeha en ekspert innen e-handel og markedsføring",
+    subtitle: "Profesjonell innen e-handel, markedsføring og prosjektledelse",
+    description: "Hjelper bedrifter med å vokse, optimalisere prosesser og oppnå suksess",
+
+    about: "Om meg",
+    about_title: "Om meg",
+    about_content: "Detaljert informasjon om meg\n\nJeg er **Vitalii Berbeha** — AI-prosjektleder og gründer som kombinerer 20+ års erfaring innen forretningsutvikling med moderne kunstig intelligens-teknologier. Jeg spesialiserer meg på å skape innovative EdTech-løsninger og automatisere forretningsprosesser.\n\n**Mitt flaggskipprosjekt — Elvarika** — er en revolusjonerende SaaS-plattform for språklæring som bruker personaliserte lydspillelister og AI-algoritmer. Appen kombinerer B2B og B2C-tilnærminger, og tilbyr individuelle læringsstier basert på brukerdata-analyse. Fra konsept til realisering har jeg gjennomført hele utviklingssyklusen: markedsundersøkelser, systemarkitektur, programmering (React/TypeScript, Supabase), lokalisering og markedsinnføringsstrategi.\n\n**Teknisk ekspertise:** Azure OpenAI, React, TypeScript, Python (FastAPI), Supabase, automatisering gjennom Zapier/Make. Erfaring med å integrere AI i reelle forretningsprosesser — fra chatbots til prediktiv analyse.\n\n**Gründererfaring:** Bak meg ligger vellykket ledelse av mitt eget selskap (2007-2017), produktlanseringer på Amazon Marketplace i USA og Europa, utvikling av strategier for inntreden i det norske markedet. Jobbet med selskaper fra startups til bedrifter, spesialisert i digital transformasjon og forretningsskalering.\n\n**Utdanning og lokalisering:** Mastergrad i pedagogikk med matematikk og økonomi. Flytende i ukrainsk, norsk, engelsk og russisk. Basert i Norge, hvor jeg aktivt utvikler EdTech-initiativer og konsulterer lokale selskaper om AI-integrasjon.\n\n**Min misjon:** Å skape teknologiske løsninger som gjør læring og forretningsprosesser mer effektive, personaliserte og tilgjengelige for et globalt publikum.\n\nJeg spesialiserer meg på:\n\n• Utvikling og integrasjon av AI-løsninger\n• Automatisering av forretningsprosesser\n• Dataanalyse og BI-løsninger\n• Webutvikling og UX/UI-design\n• Digital transformasjonskonsultasjon",
+
+    projects: "Prosjekter",
+    projects_title: "Prosjekter",
+    projects_content: "Se mine siste arbeid og prestasjoner. Jeg spesialiserer meg på å utvikle og optimalisere e-handelsløsninger, spesielt med fokus på Amazon markedsplass integrasjon og sosiale medier markedsføringskampanjer.",
+
+    projects_list: [
+      {
+        title: "E-handelsplattform",
+        short: "Omfattende e-handelsplattform med React, Node.js og MongoDB",
+        full: "En omfattende e-handelsplattform bygget med React, Node.js og MongoDB. Funksjoner inkluderer brukerautentisering, produktkatalog, handlekurv, betalingsbehandling og ordrehåndtering. Plattformen er fullstendig responsiv og optimalisert for mobile enheter. Implementert ML-basert anbefalingsmotor som økte gjennomsnittlig ordreverdi med 28%."
+      },
+      {
+        title: "Porteføljenettsside",
+        short: "Moderne porteføljenettsside med glatte animasjoner og interaktive elementer",
+        full: "En moderne porteføljenettsside designet for å vise frem prosjekter og ferdigheter. Har et rent, minimalistisk design med glatte animasjoner og interaktive elementer. Bygget med React og Tailwind CSS, optimalisert for alle enheter. Implementerte tilpassede 3D-elementer for å fremheve tekniske ferdigheter."
+      },
+      {
+        title: "Oppgavehåndteringsapp",
+        short: "Samarbeidsbasert oppgavehåndteringsapplikasjon for team",
+        full: "En samarbeidsbasert oppgavehåndteringsapplikasjon som hjelper team med å organisere arbeidet sitt. Funksjoner inkluderer opprettelse av oppgaver, tildeling, frister, fremdriftssporing og teamkommunikasjonsverktøy. Bygget med React, TypeScript og Firebase backend. Implementerte sanntidsoppdateringer og varslingssystem.",
+        image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b"
+      },
+      {
+        title: "Værdashboard",
+        short: "Sanntidsinformasjon om vær og værmeldinger",
+        full: "Et værdashboard som gir sanntidsinformasjon om vær og værmeldinger. Funksjoner inkluderer nåværende forhold, 7-dagers værmelding, timebaserte oppdateringer, radarkart og lokasjonsbaserte tjenester. Bruker OpenWeatherMap API og bygget med React. Implementert historiske datasammenligninger og klimatrendanalyse.",
+        image: "https://images.unsplash.com/photo-1592210454359-9043f067919b"
+      },
+      {
+        title: "Sosial medieapp",
+        short: "Profesjonell nettverksplattform for teknologibransjen",
+        full: "En sosial medieapplikasjon fokusert på å koble profesjonelle i teknologibransjen. Funksjoner inkluderer brukerprofiler, innlegg, kommentarer, likes og direkte meldinger. Bygget med React, Redux og Node.js/Express backend. Implementerte AI-drevet innholdsmoderering og spam-deteksjon.",
+        image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
+      },
+      {
+        title: "Treningssporer",
+        short: "Omfattende treningssporingsapplikasjon med AI-anbefalinger",
+        full: "En omfattende treningssporingsapplikasjon som hjelper brukere med å overvåke helse- og velværemål. Funksjoner inkluderer treningslogging, ernæringssporing, fremdriftsvisualisering og personaliserte anbefalinger. Bygget med React Native. Implementerte maskinlæringsalgoritmer for å generere tilpassede treningsanbefalinger.",
+        image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b"
+      }
+    ],
+
+    services: "Tjenester",
+    services_title: "Tjenester",
+    services_content: "**AI-integrasjon**\nFra konsept til produksjon ved hjelp av OpenAI, LangChain og andre banebrytende AI-teknologier. Jeg hjelper bedrifter med å integrere kunstig intelligens i sine arbeidsflyter, automatisere prosesser og bygge intelligente systemer som skalerer.\n\n**Workshops & Opplæring**\nHåndson-økter for team for å oppgradere ferdigheter i moderne teknologier, AI-verktøy og digital transformasjon. Skreddersydde opplæringsprogrammer designet for å øke produktivitet og tekniske evner.\n\n**Data & BI Dashboards**\nPower BI, Supabase, SQL - skaper omfattende business intelligence-løsninger som gjør rådata om til handlingsrettet innsikt. Tilpassede dashboards for sanntidsovervåking og datadrevet beslutningstaking.",
+
+    services_list: [
+      {
+        title: "AI-integrasjon",
+        description: "fra konsept til produksjon (OpenAI, LangChain)"
+      },
+      {
+        title: "Workshops & Opplæring",
+        description: "praktiske sesjoner for team"
+      },
+      {
+        title: "Data & BI Dashboards",
+        description: "Power BI, Supabase, SQL"
+      },
+      {
+        title: "Vekstmarkedsføring & Analyse",
+        description: "konverteringsoptimalisering"
+      },
+      {
+        title: "Automatisering & Prosessoptimalisering",
+        description: "strømlinjeforme arbeidsflyter"
+      },
+      {
+        title: "Strategisk Konsultasjon",
+        description: "digital transformasjon"
+      }
+    ],
+
+    skills: "Ferdigheter",
+    skills_title: "Ferdigheter",
+    skills_content: "Teknologier og kompetanser jeg jobber med inkluderer e-handelsplattformer (Amazon, Shopify, WooCommerce), digitale markedsføringsverktøy, analyseplattformer og prosjektledelsesmetodikk.",
+
+    skills_list: [
+      { name: "React", category: "development" },
+      { name: "TypeScript", category: "development" },
+      { name: "Python", category: "development" },
+      { name: "FastAPI", category: "development" },
+      { name: "Docker", category: "development" },
+      { name: "Framer Motion", category: "ui" },
+      { name: "shadcn/ui", category: "ui" },
+      { name: "Bolt", category: "ui" },
+      { name: "Lucide", category: "ui" },
+      { name: "Azure OpenAI", category: "ai" },
+      { name: "Claude MCP", category: "ai" },
+      { name: "AI-integrasjon", category: "ai" },
+      { name: "Make.com", category: "automation" },
+      { name: "Zapier", category: "automation" },
+      { name: "Helium10", category: "marketing" },
+      { name: "Meta Ads", category: "marketing" },
+      { name: "Google Ads", category: "marketing" },
+      { name: "HubSpot", category: "marketing" },
+      { name: "Supabase", category: "integration" },
+      { name: "i18n", category: "integration" },
+    ],
+
+    testimonials: "Anmeldelser",
+    testimonials_title: "Anmeldelser",
+    testimonials_content: "Hva klienter sier om vårt samarbeid.",
+
+    contact: "Kontakt",
+    contact_title: "Kontakt",
+    contact_description: "Ta kontakt med meg for å diskutere prosjektet eller forretningsbehovene dine...",
+
+    name: "Navn",
+    email: "E-post",
+    message: "Melding",
+    send_message: "Send melding",
+    sending: "Sender...",
+    message_sent: "Melding sendt!",
+    message_error: "Feil ved sending av melding. Vennligst prøv igjen.",
+
+    name_required: "Navn er påkrevd",
+    email_required: "E-post er påkrevd",
+    email_invalid: "Ugyldig e-postadresse",
+    message_required: "Melding er påkrevd",
+  },
+  ua: {
+    title: "Віталій Бербега експерт з електронної комерції та маркетингу",
+    subtitle: "Професіонал у сфері електронної комерції, маркетингу та управління проєктами",
+    description: "Допомагаю бізнесу рости, оптимізувати процеси та досягати успіху",
+
+    about: "Про мене",
+    about_title: "Про мене",
+    about_content: "Детальна інформація про мене\n\nЯ **Віталій Бербега** — керівник AI-проєктів та підприємець, який поєднує понад 20 років досвіду в розвитку бізнесу з сучасними технологіями штучного інтелекту. Спеціалізуюся на створенні інноваційних EdTech рішень та автоматизації бізнес-процесів.\n\n**Мій флагманський проєкт — Elvarika** — революційна SaaS-платформа для вивчення мов, яка використовує персоналізовані аудіоплейлисти та AI-алгоритми.",
+
+    projects: "Проєкти",
+    projects_title: "Проєкти",
+    projects_content: "Ознайомтеся з моїми останніми роботами та досягненнями.",
+
+    projects_list: [
+      {
+        title: "E-Commerce платформа",
+        short: "Комплексна платформа електронної комерції на React, Node.js та MongoDB",
+        full: "Комплексна платформа електронної комерції, створена на React, Node.js та MongoDB."
+      },
+      {
+        title: "Портфоліо вебсайт",
+        short: "Сучасний сайт-портфоліо з плавними анімаціями та інтерактивними елементами",
+        full: "Сучасний сайт-портфоліо, розроблений для демонстрації проєктів та навичок."
+      }
+    ],
+
+    services: "Послуги",
+    services_title: "Послуги",
+    services_content: "**AI-інтеграція**\nВід концепції до продакшену з використанням OpenAI, LangChain та інших передових AI-технологій.",
+
+    services_list: [
+      {
+        title: "AI-інтеграція",
+        description: "від концепції до продакшену (OpenAI, LangChain)"
+      },
+      {
+        title: "Воркшопи та тренінги",
+        description: "практичні сесії для команд"
+      },
+      {
+        title: "Дашборди даних та BI",
+        description: "Power BI, Supabase, SQL"
+      },
+      {
+        title: "Маркетинг зростання та аналітика",
+        description: "оптимізація конверсій"
+      },
+      {
+        title: "Автоматизація та оптимізація процесів",
+        description: "оптимізація робочих процесів"
+      },
+      {
+        title: "Стратегічний консалтинг",
+        description: "цифрова трансформація"
+      }
+    ],
+
+    skills: "Навички",
+    skills_title: "Навички",
+    skills_content: "Технології та компетенції, з якими я працюю.",
+
+    skills_list: [
+      { name: "React", category: "development" },
+      { name: "TypeScript", category: "development" },
+      { name: "Python", category: "development" },
+      { name: "FastAPI", category: "development" },
+      { name: "Docker", category: "development" },
+      { name: "Framer Motion", category: "ui" },
+      { name: "shadcn/ui", category: "ui" },
+      { name: "Azure OpenAI", category: "ai" },
+      { name: "Claude MCP", category: "ai" },
+      { name: "AI Інтеграція", category: "ai" },
+      { name: "Make.com", category: "automation" },
+      { name: "Zapier", category: "automation" },
+      { name: "Supabase", category: "integration" },
+      { name: "i18n", category: "integration" },
+    ],
+
+    testimonials: "Відгуки",
+    testimonials_title: "Відгуки",
+    testimonials_content: "Що клієнти кажуть про нашу співпрацю.",
+
+    contact: "Контакти",
+    contact_title: "Контакти",
+    contact_description: "Зв'яжіться зі мною, щоб обговорити ваш проєкт або бізнес-потреби...",
+
+    name: "Ім'я",
+    email: "Email",
+    message: "Повідомлення",
+    send_message: "Надіслати повідомлення",
+    sending: "Надсилання...",
+    message_sent: "Повідомлення надіслано успішно!",
+    message_error: "Помилка при надсиланні повідомлення. Будь ласка, спробуйте ще раз.",
+
+    name_required: "Ім'я обов'язкове",
+    email_required: "Email обов'язковий",
+    email_invalid: "Невірна email адреса",
+    message_required: "Повідомлення обов'язкове",
+  },
+}
+
+export type TranslationKey = keyof typeof translations.en

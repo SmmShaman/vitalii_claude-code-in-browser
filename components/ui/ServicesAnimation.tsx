@@ -1,0 +1,140 @@
+'use client'
+
+import { useEffect, useRef } from 'react'
+import { createTimeline, stagger } from 'animejs'
+
+interface Service {
+  title: string
+  description: string
+}
+
+interface ServicesAnimationProps {
+  services: Service[]
+  backgroundText: string
+}
+
+export const ServicesAnimation = ({ services, backgroundText }: ServicesAnimationProps) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const timelineRef = useRef<any>(null)
+
+  const SQUARES_COUNT = 12
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    if (timelineRef.current) {
+      timelineRef.current.pause()
+    }
+
+    timelineRef.current = createTimeline({
+      loop: true,
+      defaults: { duration: 500 },
+      delay: 500,
+      loopDelay: 500
+    })
+
+    const staggerPatterns = [
+      { from: 7 },
+      { from: 'first' },
+      { from: 'center' },
+      { from: 'last' },
+      { from: 0 },
+      { from: 'random' },
+    ]
+
+    services.forEach((_, index) => {
+      const rowIndex = index + 1
+      const pattern = staggerPatterns[index] || { from: 'center' }
+
+      if (typeof pattern.from === 'number') {
+        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:nth-child(${pattern.from + 1})`, {
+          color: '#FFF',
+          scale: 1.2
+        })
+      } else if (pattern.from === 'first') {
+        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:first-child`, {
+          color: '#FFF',
+          scale: 1.2
+        })
+      } else if (pattern.from === 'last') {
+        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:last-child`, {
+          color: '#FFF',
+          scale: 1.2
+        })
+      } else if (pattern.from === 'center') {
+        timelineRef.current.add(`.row:nth-child(${rowIndex}) .square:nth-child(${Math.floor(SQUARES_COUNT / 2)})`, {
+          color: '#FFF',
+          scale: 1.2
+        })
+      }
+
+      timelineRef.current.add(`.row:nth-child(${rowIndex}) .square`, {
+        scale: 0,
+        delay: stagger(25, pattern as any),
+      }, '<')
+    })
+
+    timelineRef.current.set('.row .square', { color: 'currentColor' })
+
+    timelineRef.current.add('.row .square', {
+      scale: 1,
+      delay: stagger(25, { from: 'random' }),
+    })
+
+    return () => {
+      if (timelineRef.current) {
+        timelineRef.current.pause()
+      }
+    }
+  }, [services])
+
+  return (
+    <div className="h-full w-full overflow-hidden relative">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+        <h2
+          className="font-bold text-white/10 select-none"
+          style={{ fontSize: 'clamp(3rem, 8vw, 6.5rem)' }}
+        >
+          {backgroundText}
+        </h2>
+      </div>
+
+      <div
+        ref={containerRef}
+        className="relative h-full w-full flex flex-col items-center justify-center gap-0 z-10"
+      >
+        {services.map((service, index) => {
+          return (
+            <div
+              key={index}
+              className="row relative py-1 w-full"
+            >
+              <h4
+                className="font-bold text-white text-center relative px-4"
+                style={{ fontSize: 'clamp(0.7rem, 1.4vw, 0.95rem)' }}
+              >
+                {service.title}
+              </h4>
+
+              <div className="absolute inset-0 flex items-center justify-center z-20">
+                <div className="flex gap-1 w-full justify-center px-2">
+                  {Array.from({ length: SQUARES_COUNT }).map((_, squareIndex) => (
+                    <div
+                      key={squareIndex}
+                      className="square bg-orange-400 flex-1"
+                      style={{
+                        maxWidth: 'clamp(10px, 2.5vw, 30px)',
+                        height: 'clamp(8px, 1.5vh, 16px)',
+                        borderRadius: '2px',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
