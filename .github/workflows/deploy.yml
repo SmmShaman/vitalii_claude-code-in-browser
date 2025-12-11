@@ -42,39 +42,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+
       - name: Run linting
         run: npm run lint
         continue-on-error: true
 
-      - name: Build Next.js application
-        run: npm run build
+      - name: Deploy to Netlify (Preview)
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'preview')
+        run: |
+          netlify deploy \
+            --build \
+            --site=${{ secrets.NETLIFY_SITE_ID }} \
+            --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} \
+            --message="Preview deploy from GitHub Actions - ${{ github.sha }}"
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-      - name: Deploy to Netlify (Preview)
-        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'preview')
-        uses: nwtgck/actions-netlify@v3
-        with:
-          publish-dir: '.next'
-          production-deploy: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Preview deploy from GitHub Actions - ${{ github.sha }}"
-          enable-pull-request-comment: true
-          enable-commit-comment: true
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-
       - name: Deploy to Netlify (Production)
         if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/claude/clean-seo-build-') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
-        uses: nwtgck/actions-netlify@v3
-        with:
-          publish-dir: '.next'
-          production-deploy: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Production deploy from GitHub Actions - ${{ github.sha }}"
-          enable-commit-comment: true
+        run: |
+          netlify deploy \
+            --build \
+            --prod \
+            --site=${{ secrets.NETLIFY_SITE_ID }} \
+            --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} \
+            --message="Production deploy from GitHub Actions - ${{ github.sha }}"
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
