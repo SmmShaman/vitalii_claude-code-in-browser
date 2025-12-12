@@ -9,7 +9,7 @@
 
   # Node version
   [build.environment]
-    NODE_VERSION = "18"
+    NODE_VERSION = "20"
 
 # No special plugins needed for Vite static build
 
