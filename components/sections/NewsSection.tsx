@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink, Video, Image } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getLatestNews, getNewsById } from '@/lib/supabase';
-import type { LatestNews, NewsItem } from '@/integrations/supabase/types';
+import type { LatestNews, NewsItem } from '@/lib/supabase';
 
 interface NewsSectionProps {
   isExpanded?: boolean;

@@ -48,13 +48,7 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
   const loadTags = async () => {
     try {
       const tags = await getAllTags();
-      const uniqueTags = Array.from(new Set(tags.flatMap(t => t.tags || [])));
-      setAllTags(uniqueTags);
-
-      // Extract unique categories from blog posts
-      const { data } = await getAllBlogPosts({ limit: 1000 });
-      const categories = Array.from(new Set(data.map(p => p.category).filter(Boolean))) as string[];
-      setAllCategories(categories);
+      setAllTags(tags);
     } catch (error) {
       console.error('Failed to load tags:', error);
     }
@@ -63,16 +57,28 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
   const loadAllPosts = async () => {
     try {
       setLoading(true);
-      const filters = {
-        search: searchQuery || undefined,
-        tags: selectedTag ? [selectedTag] : undefined,
-        category: selectedCategory || undefined,
-        page: currentPage,
-        limit: itemsPerPage,
-      };
-      const { data, count } = await getAllBlogPosts(filters);
-      setPosts(data);
-      setTotalPages(Math.ceil(count / itemsPerPage));
+      let allPosts = await getAllBlogPosts();
+
+      // Client-side filtering
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        allPosts = allPosts.filter((p: any) =>
+          (p.title_en?.toLowerCase().includes(query)) ||
+          (p.description_en?.toLowerCase().includes(query))
+        );
+      }
+
+      if (selectedTag) {
+        allPosts = allPosts.filter((p: any) => p.tags?.includes(selectedTag));
+      }
+
+      // Pagination
+      const total = allPosts.length;
+      const start = (currentPage - 1) * itemsPerPage;
+      const paginatedPosts = allPosts.slice(start, start + itemsPerPage);
+
+      setPosts(paginatedPosts as LatestBlogPost[]);
+      setTotalPages(Math.ceil(total / itemsPerPage));
     } catch (error) {
       console.error('Failed to load blog posts:', error);
     } finally {
@@ -100,7 +106,6 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
       title: post[`title_${lang}` as keyof typeof post] || post.title_en || '',
       content: content as string,
       excerpt: description as string,
-      category: post.category || '',
     };
   };
 
@@ -209,13 +214,6 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                       className="w-full h-full object-cover"
                     />
                   </div>
-                )}
-
-                {/* Category Badge */}
-                {getTranslatedContent(selectedPost).category && (
-                  <span className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
-                    {getTranslatedContent(selectedPost).category}
-                  </span>
                 )}
 
                 {/* Title */}
@@ -388,11 +386,6 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                                     alt={String(content.title)}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
-                                  {content.category && (
-                                    <span className="absolute top-3 left-3 px-2 py-1 bg-primary text-primary-foreground rounded-full text-xs font-medium">
-                                      {content.category}
-                                    </span>
-                                  )}
                                 </div>
                               )}
 
