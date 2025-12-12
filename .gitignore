@@ -16,6 +16,33 @@ dist-ssr
 .next/
 out/
 
+# Old source (backup during migration)
+src_old/
+
+# Utility scripts and SQL files
+*.sql
+*.mjs
+telegram-auth.js
+deploy-*.sh
+
+# Documentation files (not part of build)
+DAILY_DOODLE_SETUP.md
+DEPLOY_INSTRUCTIONS.md
+HOW_*.md
+NEWS_PUBLICATION_WORKFLOW.md
+PROBLEM_ANALYSIS.md
+TELEGRAM_*.md
+LICENSE
+
+# Old Vite config files
+vite.config.ts
+tsconfig.app.json
+tsconfig.node.json
+
+# Supabase and Netlify functions
+supabase/
+netlify/
+
 # Environment variables
 .env
 .env.local
