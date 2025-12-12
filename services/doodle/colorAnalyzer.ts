@@ -3,8 +3,8 @@ import type { ColorPalette } from '@/types/doodle';
 // Note: Vibrant.js is only imported client-side
 let Vibrant: any = null;
 if (typeof window !== 'undefined') {
-  import('node-vibrant/browser').then(module => {
-    Vibrant = module.Vibrant;
+  import('node-vibrant').then(module => {
+    Vibrant = module.default;
   });
 }
 
