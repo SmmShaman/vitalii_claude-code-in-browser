@@ -1,9 +1,17 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Support both NEXT_PUBLIC_* and VITE_* env vars for flexibility
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create client only if env vars are available (prevents build errors)
+let supabase: SupabaseClient | null = null
+
+if (supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+}
+
+export { supabase }
 
 // Types for news
 export interface NewsItem {
@@ -41,6 +49,11 @@ export type Locale = 'en' | 'ua' | 'no'
 
 // Fetch all published news
 export async function getPublishedNews() {
+  if (!supabase) {
+    console.warn('Supabase client not initialized - env vars missing')
+    return []
+  }
+
   const { data, error } = await supabase
     .from('news')
     .select('*')
@@ -57,6 +70,11 @@ export async function getPublishedNews() {
 
 // Fetch single news by slug
 export async function getNewsBySlug(slug: string, locale: Locale) {
+  if (!supabase) {
+    console.warn('Supabase client not initialized - env vars missing')
+    return null
+  }
+
   const slugColumn = `slug_${locale}`
 
   const { data, error } = await supabase
@@ -116,6 +134,11 @@ export interface BlogPost {
 
 // Fetch all published blog posts
 export async function getPublishedBlogPosts() {
+  if (!supabase) {
+    console.warn('Supabase client not initialized - env vars missing')
+    return []
+  }
+
   const { data, error } = await supabase
     .from('blog_posts')
     .select('*')
@@ -132,6 +155,11 @@ export async function getPublishedBlogPosts() {
 
 // Fetch single blog post by slug
 export async function getBlogPostBySlug(slug: string, locale: Locale) {
+  if (!supabase) {
+    console.warn('Supabase client not initialized - env vars missing')
+    return null
+  }
+
   const slugColumn = `slug_${locale}`
 
   const { data, error } = await supabase
