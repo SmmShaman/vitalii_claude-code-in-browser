@@ -24,6 +24,7 @@ src_old/
 *.mjs
 telegram-auth.js
 deploy-*.sh
+check-*.js
 
 # Documentation files (not part of build)
 DAILY_DOODLE_SETUP.md
