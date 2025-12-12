@@ -5,7 +5,7 @@
   command = "npm run build"
 
   # Vite uses dist directory
-  publish = "dist"
+  publish = ".next"
 
   # Node version
   [build.environment]
