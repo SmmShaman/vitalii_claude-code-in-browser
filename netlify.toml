@@ -1,6 +1,9 @@
 # Netlify Configuration for Vitalii Berbeha Portfolio (Next.js)
 
 [build]
+  # Use news-app as the base directory
+  base = "news-app"
+
   # Build command for Next.js
   command = "npm run build"
 
