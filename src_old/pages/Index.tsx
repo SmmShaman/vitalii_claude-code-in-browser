@@ -1,0 +1,38 @@
+import { Header } from '../components/layout/Header';
+import { Footer } from '../components/layout/Footer';
+import { BentoGrid } from '../components/sections/BentoGrid';
+import { DailyBackground } from '../components/background/DailyBackground';
+
+export const Index = () => {
+  const handleFullscreenChange = (fullscreen: boolean) => {
+    console.log('🎬 Fullscreen change:', fullscreen);
+  };
+
+  return (
+    <div className="h-screen w-screen overflow-hidden flex flex-col relative">
+      {/* Daily Background - Image of the day as background */}
+      <DailyBackground />
+
+      {/* Header - Fixed 120px (doubled from 60px) */}
+      <div className="flex-shrink-0 h-[120px] relative z-50">
+        <Header isCompact={false} />
+      </div>
+
+      {/* Spacing after header - 21px (16px + 5px) */}
+      <div className="flex-shrink-0 h-[21px]" />
+
+      {/* Main Content - Takes remaining space */}
+      <main className="flex-1 relative z-10 overflow-hidden">
+        <BentoGrid onFullscreenChange={handleFullscreenChange} />
+      </main>
+
+      {/* Spacing before footer - 21px (16px + 5px) */}
+      <div className="flex-shrink-0 h-[21px]" />
+
+      {/* Footer - Fixed 60px */}
+      <div className="flex-shrink-0 h-[60px] relative z-50">
+        <Footer />
+      </div>
+    </div>
+  );
+};
