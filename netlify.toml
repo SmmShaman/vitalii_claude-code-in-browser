@@ -1,22 +1,17 @@
-# Netlify Configuration for Vitalii Berbeha Portfolio (Next.js)
+# Netlify Configuration for Vitalii Berbeha Portfolio
 
 [build]
-  # Use news-app as the base directory
-  base = "news-app"
-
-  # Build command for Next.js
+  # Build command for Vite
   command = "npm run build"
 
-  # Next.js uses .next directory
-  publish = ".next"
+  # Vite uses dist directory
+  publish = "dist"
 
   # Node version
   [build.environment]
     NODE_VERSION = "18"
 
-# Use Netlify's Next.js plugin for full Next.js support
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# No special plugins needed for Vite static build
 
 # Headers for security and performance
 [[headers]]
