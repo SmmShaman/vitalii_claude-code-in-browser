@@ -1,0 +1,63 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+    inputs:
+      function_name:
+        description: 'Function to deploy (leave empty for all)'
+        required: false
+        default: ''
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Supabase CLI
+        run: |
+          npm install -g supabase
+
+      - name: Login to Supabase
+        run: |
+          supabase login --token ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Link Supabase project
+        run: |
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Deploy specific function
+        if: ${{ github.event.inputs.function_name != '' }}
+        run: |
+          supabase functions deploy ${{ github.event.inputs.function_name }} --no-verify-jwt
+
+      - name: Deploy all functions
+        if: ${{ github.event.inputs.function_name == '' || github.event_name == 'push' }}
+        run: |
+          # Deploy each function
+          for dir in supabase/functions/*/; do
+            if [ -d "$dir" ] && [ "$(basename $dir)" != "_shared" ]; then
+              func_name=$(basename $dir)
+              echo "Deploying function: $func_name"
+              supabase functions deploy $func_name --no-verify-jwt || echo "Failed to deploy $func_name"
+            fi
+          done
+
+      - name: Run database migrations
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          supabase db push
+        continue-on-error: true
