@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
+import { debugLog, debugWarn, debugError } from '@/utils/debug';
 
 // Register GSAP plugins
 gsap.registerPlugin(SplitText);
@@ -72,7 +73,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
     const animateService = (index: number) => {
       if (!serviceElements || serviceElements.length === 0) return;
 
-      console.log(`🎯 Starting animation for service ${index}`);
+      debugLog(`🎯 Starting animation for service ${index}`);
 
       // Hide all services first
       gsap.set(serviceElements, { autoAlpha: 0 });
@@ -131,7 +132,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
   // Main initialization effect - runs when services change (language change)
   useEffect(() => {
     if (!containerRef.current) {
-      console.warn('ServicesAnimation: Container not ready');
+      debugWarn('ServicesAnimation: Container not ready');
       return;
     }
 
@@ -156,12 +157,12 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
       const serviceElements = container.querySelectorAll('.service-item');
 
       if (!serviceElements || serviceElements.length === 0) {
-        console.warn('ServicesAnimation: No service elements found');
+        debugWarn('ServicesAnimation: No service elements found');
         return false;
       }
 
       if (!hasTextContent(serviceElements)) {
-        console.warn('ServicesAnimation: Text elements are empty, retrying...');
+        debugWarn('ServicesAnimation: Text elements are empty, retrying...');
         return false;
       }
 
@@ -179,7 +180,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
 
             splitTextsRef.current.push(split);
           } catch (error) {
-            console.error('ServicesAnimation: Error creating SplitText:', error);
+            debugError('ServicesAnimation: Error creating SplitText:', error);
           }
         }
       });
@@ -199,7 +200,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
           retryCountRef.current++;
           setTimeout(tryInit, 100);
         } else {
-          console.error(`❌ ServicesAnimation: Failed after ${maxRetries} attempts`);
+          debugError(`❌ ServicesAnimation: Failed after ${maxRetries} attempts`);
           retryCountRef.current = 0;
         }
       });
@@ -227,7 +228,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
 
       if (!serviceElements || serviceElements.length === 0) return;
 
-      console.log('🔄 ANIMATION CYCLE - Starting transition to index:', currentIndex);
+      debugLog('🔄 ANIMATION CYCLE - Starting transition to index:', currentIndex);
 
       // Hide all services
       gsap.set(serviceElements, { autoAlpha: 0 });
@@ -241,7 +242,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
       const chars = currentElement.querySelectorAll('.char');
       if (!chars || chars.length === 0) return;
 
-      console.log(`✨ Animating service ${currentIndex} with ${chars.length} chars`);
+      debugLog(`✨ Animating service ${currentIndex} with ${chars.length} chars`);
 
       // IMPORTANT: Set initial scattered positions for chars
       gsap.set(chars, {
@@ -259,7 +260,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
 
       const tl = gsap.timeline({
         onComplete: () => {
-          console.log('✅ Animation complete for service', currentIndex);
+          debugLog('✅ Animation complete for service', currentIndex);
         }
       });
 
@@ -329,7 +330,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
       });
     } else {
       // IMPORTANT: ANIMATE scatter of all chars BEFORE resuming rotation to prevent piling
-      console.log('🌪️ Mouse left - scattering all chars before rotation');
+      debugLog('🌪️ Mouse left - scattering all chars before rotation');
 
       // Kill any ongoing timelines
       if (timelineRef.current) {
@@ -358,7 +359,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
             from: 'random',
           },
           onComplete: () => {
-            console.log('✅ Scatter complete - starting rotation');
+            debugLog('✅ Scatter complete - starting rotation');
             startRotation();
           }
         });

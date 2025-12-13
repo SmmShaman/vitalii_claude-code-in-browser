@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSkillLogo } from '@/utils/skillLogos';
+import { debugLog, debugError } from '@/utils/debug';
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -67,7 +68,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
   // Shuffle skills once on mount
   const shuffledSkills = useMemo(() => shuffleArray(skills), []);
 
-  console.log('🎨 SkillsAnimation render:', {
+  debugLog('🎨 SkillsAnimation render:', {
     isExploding,
     hasGridRef: !!gridContainerRef?.current,
     skillsCount: shuffledSkills.length,
@@ -76,10 +77,10 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
 
   // Get grid bounds when exploding
   useEffect(() => {
-    console.log('🔄 useEffect triggered:', { isExploding, hasGridRef: !!gridContainerRef?.current });
+    debugLog('🔄 useEffect triggered:', { isExploding, hasGridRef: !!gridContainerRef?.current });
     if (isExploding && gridContainerRef?.current) {
       const bounds = gridContainerRef.current.getBoundingClientRect();
-      console.log('📐 Grid bounds calculated:', bounds);
+      debugLog('📐 Grid bounds calculated:', bounds);
       setGridBounds(bounds);
     }
   }, [isExploding, gridContainerRef]);
@@ -92,7 +93,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
   // Fixed 5x5 grid layout (25 positions for up to 25 skills)
   const getLogoPosition = (index: number, _total: number) => {
     if (!gridBounds) {
-      console.log(`⚠️ Logo ${index}: No gridBounds, using center`);
+      debugLog(`⚠️ Logo ${index}: No gridBounds, using center`);
       return { left: '50%', top: '50%' };
     }
 
@@ -110,7 +111,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
     const top = gridBounds.top + (gridBounds.height * yPercent * 0.9) + (gridBounds.height * 0.05);
 
     const position = { left: `${left}px`, top: `${top}px` };
-    if (index === 0) console.log(`📍 Logo ${index} position:`, position, { col, row, xPercent, yPercent });
+    if (index === 0) debugLog(`📍 Logo ${index} position:`, position, { col, row, xPercent, yPercent });
     return position;
   };
 
@@ -135,14 +136,14 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            onAnimationStart={() => console.log('💥 Explosion container animation started')}
+            onAnimationStart={() => debugLog('💥 Explosion container animation started')}
           >
             {(() => {
-              console.log('🎯 Rendering logos:', { count: shuffledSkills.length, hasGridBounds: !!gridBounds });
+              debugLog('🎯 Rendering logos:', { count: shuffledSkills.length, hasGridBounds: !!gridBounds });
 
               // Don't render logos until we have gridBounds
               if (!gridBounds) {
-                console.log('⏳ Waiting for gridBounds...');
+                debugLog('⏳ Waiting for gridBounds...');
                 return null;
               }
 
@@ -155,7 +156,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                 const targetLeft = parseFloat(pos.left);
                 const targetTop = parseFloat(pos.top);
 
-                if (index === 0) console.log('🚀 First logo data:', {
+                if (index === 0) debugLog('🚀 First logo data:', {
                   skill: skill.name,
                   centerX,
                   centerY,
@@ -163,7 +164,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                   targetTop
                 });
 
-                if (index === 0) console.log('🎬 Animating logo 0 - MOTION CONFIG:', {
+                if (index === 0) debugLog('🎬 Animating logo 0 - MOTION CONFIG:', {
                   initialLeft: centerX,
                   initialTop: centerY,
                   animateLeft: targetLeft,
@@ -204,8 +205,8 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     delay: index * 0.05,
                     ease: 'easeOut'
                   }}
-                  onAnimationStart={() => index === 0 && console.log('🎬 ANIMATION STARTED for logo 0')}
-                  onAnimationComplete={() => index === 0 && console.log('✅ ANIMATION COMPLETE for logo 0')}
+                  onAnimationStart={() => index === 0 && debugLog('🎬 ANIMATION STARTED for logo 0')}
+                  onAnimationComplete={() => index === 0 && debugLog('✅ ANIMATION COMPLETE for logo 0')}
                 >
                   <img
                     src={getSkillLogo(skill.name)}
@@ -214,8 +215,8 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     style={{
                       filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
                     }}
-                    onLoad={() => index === 0 && console.log('✅ First logo image loaded')}
-                    onError={() => console.error(`❌ Logo failed to load: ${skill.name}`)}
+                    onLoad={() => index === 0 && debugLog('✅ First logo image loaded')}
+                    onError={() => debugError(`❌ Logo failed to load: ${skill.name}`)}
                   />
                 </motion.div>
               );
