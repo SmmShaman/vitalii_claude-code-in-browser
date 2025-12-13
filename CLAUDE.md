@@ -1,105 +1,170 @@
-# CLAUDE.md
-
-This file provides context for Claude Code when working with this repository.
+# CLAUDE.md - Project Documentation
 
 ## Project Overview
 
-A full-stack portfolio and content management platform for Vitalii Berbeha (e-commerce/marketing expert). Combines an interactive portfolio website with a powerful admin dashboard for content aggregation and AI-powered processing.
+**Vitalii Berbeha Portfolio** - професійне портфоліо з блогом та новинним розділом. Побудовано на Next.js 15 з Supabase як бекендом.
 
 ## Tech Stack
 
-- **Framework**: Next.js 15.1 with App Router, React 19, TypeScript
-- **Styling**: Tailwind CSS, Framer Motion, GSAP, Three.js
-- **UI**: Radix UI components, Lucide icons
-- **Forms**: React Hook Form + Zod validation
-- **State**: TanStack React Query
-- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions with Deno)
-- **Deployment**: Netlify
+- **Frontend:** Next.js 15, React, TypeScript, Tailwind CSS
+- **Backend:** Supabase (PostgreSQL)
+- **Deployment:** Netlify
+- **Languages:** Мультимовна підтримка (EN, NO, UA)
 
 ## Project Structure
 
 ```
-app/                    # Next.js App Router
-├── page.tsx            # Home page (Bento Grid)
-├── layout.tsx          # Root layout
-├── admin/              # Admin section (login, dashboard)
-├── blog/[slug]/        # Dynamic blog pages
-└── news/[slug]/        # Dynamic news pages
-
-components/
-├── admin/              # Admin dashboard components
-├── sections/           # Page sections (BentoGrid, NewsSection, etc.)
-├── ui/                 # Reusable UI components
-├── layout/             # Header, Footer
-└── background/         # Particles background
-
-integrations/supabase/  # Supabase client and types
-contexts/               # React contexts (TranslationContext)
-hooks/                  # Custom hooks (useScreenSize)
-lib/                    # Utilities (cn function)
-utils/                  # Translations, constants
-
-supabase/
-├── functions/          # Edge Functions (Deno)
-│   ├── fetch-news/     # RSS/web feed fetcher
-│   ├── telegram-monitor/
-│   ├── process-news/   # AI content processing
-│   └── process-blog-post/
-└── migrations/         # Database migrations
+├── app/                    # Next.js App Router
+│   ├── blog/[slug]/       # Динамічні сторінки блогу
+│   ├── news/[slug]/       # Динамічні сторінки новин
+│   ├── admin/             # Адмін-панель
+│   ├── layout.tsx         # Root layout
+│   ├── sitemap.ts         # Динамічний sitemap
+│   └── robots.ts          # robots.txt
+├── components/
+│   ├── sections/          # Секції головної сторінки
+│   └── admin/             # Компоненти адмін-панелі
+├── integrations/supabase/ # Supabase клієнт та типи
+├── utils/
+│   ├── seo.ts             # SEO утиліти
+│   └── translations.ts    # Переклади
+└── supabase/functions/    # Edge Functions
 ```
 
-## Common Commands
+## Content Management
 
-```bash
-npm run dev      # Start development server
-npm run build    # Production build
-npm run start    # Start production server
-npm run lint     # Run ESLint
+### Blog Posts (`blog_posts` table)
+- Мультимовний контент (title_en, title_no, title_ua)
+- SEO-friendly slugs для кожної мови
+- Категорії, теги, reading_time
+- is_published, is_featured флаги
+
+### News (`news` table)
+- Мультимовний контент
+- Система пре-модерації (pre_moderation_status)
+- Підтримка відео (YouTube, Telegram)
+- is_rewritten, is_published флаги
+
+### Moderation Workflow
+1. Новини збираються з RSS/Telegram джерел
+2. AI переписує контент (is_rewritten)
+3. Пре-модерація (pending → approved/rejected)
+4. Публікація (is_published)
+
+---
+
+## SEO Optimization (December 2024)
+
+### Виконані роботи
+
+#### 1. SEO Utilities (`utils/seo.ts`)
+Створено централізований модуль для SEO:
+
+```typescript
+// JSON-LD Schema generators
+- generateBlogPostSchema()    // BlogPosting schema
+- generateNewsArticleSchema() // NewsArticle schema
+- generateBreadcrumbSchema()  // BreadcrumbList schema
+- generatePersonSchema()      // Person schema (author)
+- generateWebsiteSchema()     // WebSite schema
+
+// Metadata helpers
+- generateAlternates()        // canonical + hreflang
+- generateOpenGraph()         // Full OG metadata
+- generateTwitterCard()       // Twitter Cards
+- generateRobots()            // Robots meta
+- truncateDescription()       // Meta description helper
+- formatDate()                // Date formatting
+- calculateReadingTime()      // Reading time calculation
 ```
 
-## Key Entry Points
+#### 2. Blog Pages (`app/blog/[slug]/`)
+**page.tsx:**
+- Canonical URLs
+- Hreflang теги (en, no, uk, x-default)
+- Повний Open Graph (publishedTime, modifiedTime, authors, tags, section)
+- Twitter Cards (summary_large_image)
+- Keywords meta tag
+- Robots meta (index, follow, googleBot settings)
 
-| File | Purpose |
-|------|---------|
-| `app/page.tsx` | Main portfolio page |
-| `app/admin/dashboard/page.tsx` | Admin management panel |
-| `app/layout.tsx` | Root layout with providers |
-| `integrations/supabase/client.ts` | Supabase client setup |
+**BlogArticle.tsx:**
+- JSON-LD `BlogPosting` schema
+- JSON-LD `BreadcrumbList` schema
+- `next/image` оптимізація зображень
+- Семантична HTML розмітка:
+  - `<article>`, `<header>`, `<footer>`, `<aside>`
+  - `<time dateTime="...">`
+  - `<nav aria-label="Breadcrumb">`
+  - Schema.org microdata (itemScope, itemProp)
+- Author info section з Person schema
 
-## Configuration Files
+#### 3. News Pages (`app/news/[slug]/`)
+**page.tsx:**
+- Ідентичні SEO покращення як для блогу
 
-- `next.config.ts` - Next.js configuration
-- `netlify.toml` - Netlify deployment settings
-- `tsconfig.json` - TypeScript config (path alias: `@/*` → root)
-- `.env.example` - Environment variables template
+**NewsArticle.tsx:**
+- JSON-LD `NewsArticle` schema
+- Breadcrumb навігація
+- YouTube embed підтримка
+- Оптимізовані зображення
+- rel="noopener noreferrer" для зовнішніх посилань
+
+#### 4. Sitemap (`app/sitemap.ts`)
+- Мультимовна підтримка з alternates
+- Окремі URL для EN, NO, UK версій
+- Правильні пріоритети (1.0 для homepage, 0.8 для primary lang, 0.7 для alternates)
+- changeFrequency налаштування
+
+#### 5. Robots (`app/robots.ts`)
+- Специфічні правила для Googlebot та Bingbot
+- Заблоковані маршрути: /api/, /_next/, /admin/, /@modal/, /private/
+- Host директива
+- Sitemap посилання
+
+### SEO Checklist
+
+- [x] JSON-LD Schema (BlogPosting, NewsArticle, BreadcrumbList)
+- [x] Canonical URLs
+- [x] Hreflang tags (en, no, uk)
+- [x] Open Graph metadata (full)
+- [x] Twitter Cards
+- [x] Image optimization (next/image)
+- [x] Semantic HTML (<article>, <time>, <nav>)
+- [x] Schema.org microdata
+- [x] Multilingual sitemap
+- [x] Enhanced robots.txt
+- [x] Author/Person schema
+- [x] Reading time calculation
+- [x] Meta description truncation (160 chars)
+
+### Testing SEO
+
+1. **JSON-LD:** [Google Rich Results Test](https://search.google.com/test/rich-results)
+2. **Open Graph:** [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+3. **Twitter Cards:** [Twitter Card Validator](https://cards-dev.twitter.com/validator)
+4. **Lighthouse:** Chrome DevTools → Lighthouse → SEO Audit
+5. **Sitemap:** `https://your-site.com/sitemap.xml`
+6. **Robots:** `https://your-site.com/robots.txt`
+
+---
 
 ## Environment Variables
 
-Required variables (see `.env.example`):
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SITE_URL=https://vitalii-berbeha.netlify.app
+```
 
-## Database Tables (Supabase)
+## Commands
 
-- `contact_forms` - Visitor contact submissions
-- `news_sources` - News source configurations
-- `news` - Aggregated news articles
-- `blog_posts` - Blog content
-- `ai_prompts` - AI prompts for content transformation
-- `news_queue` - Articles awaiting processing
+```bash
+npm run dev      # Development server
+npm run build    # Production build
+npm run start    # Start production server
+npx tsc --noEmit # TypeScript check
+```
 
-## Features
+## Deployment
 
-- Multi-language support (English/Ukrainian) via `TranslationContext`
-- Dynamic neon color theming on section hover
-- Particles background animation
-- News aggregation from RSS, Telegram, web sources
-- AI-powered content rewriting
-- SEO optimization (metadata, sitemap, robots.txt)
-
-## Code Conventions
-
-- Use TypeScript strict mode
-- Path imports via `@/` alias (e.g., `@/components/ui/Button`)
-- Tailwind CSS for styling with `cn()` utility for class merging
-- React Server Components by default, `"use client"` directive when needed
+Автоматичний деплой через Netlify при пуші в main branch.
