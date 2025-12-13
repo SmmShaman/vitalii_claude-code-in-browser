@@ -23,5 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "news-app", "src_old", "netlify", "supabase", "vite.config.ts"]
+  "exclude": ["node_modules", "src", "netlify", "supabase", "vite.config.ts"]
 }
