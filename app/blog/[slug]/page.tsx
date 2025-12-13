@@ -1,6 +1,14 @@
 import { Metadata } from 'next'
 import { getBlogPostBySlug, getLatestBlogPosts } from '@/integrations/supabase/client'
 import { BlogArticle } from './BlogArticle'
+import {
+  BASE_URL,
+  generateAlternates,
+  generateOpenGraph,
+  generateTwitterCard,
+  generateRobots,
+  truncateDescription,
+} from '@/utils/seo'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -12,20 +20,42 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!post) {
     return {
-      title: 'Blog Post Not Found',
+      title: 'Blog Post Not Found | Vitalii Berbeha',
       description: 'The requested blog post could not be found.',
+      robots: generateRobots(false, true),
     }
   }
 
+  const title = post.title_en || 'Blog Post'
+  const description = truncateDescription(post.description_en)
+  const url = `${BASE_URL}/blog/${slug}`
+
   return {
-    title: `${post.title_en} | Vitalii Berbeha Blog`,
-    description: post.description_en?.substring(0, 160) || '',
-    openGraph: {
-      title: post.title_en,
-      description: post.description_en?.substring(0, 160) || '',
-      type: 'article',
-      images: post.image_url ? [post.image_url] : [],
-    },
+    title: `${title} | Vitalii Berbeha Blog`,
+    description,
+    keywords: post.tags?.join(', ') || '',
+    authors: [{ name: 'Vitalii Berbeha', url: BASE_URL }],
+    alternates: generateAlternates('blog', {
+      en: post.slug_en,
+      no: post.slug_no,
+      ua: post.slug_ua,
+    }, slug),
+    openGraph: generateOpenGraph(
+      title,
+      description,
+      post.image_url || post.cover_image_url,
+      url,
+      'article',
+      {
+        publishedTime: post.published_at,
+        modifiedTime: post.updated_at,
+        authors: ['Vitalii Berbeha'],
+        tags: post.tags,
+        section: post.category,
+      }
+    ),
+    twitter: generateTwitterCard(title, description, post.image_url || post.cover_image_url),
+    robots: generateRobots(true, true),
   }
 }
 
