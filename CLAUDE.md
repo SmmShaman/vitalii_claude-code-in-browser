@@ -122,6 +122,12 @@
 - Host директива
 - Sitemap посилання
 
+#### 6. BlogModal SEO Navigation (`components/sections/BlogModal.tsx`)
+- Додано `<Link>` компонент для переходу на окрему сторінку блог-посту
+- Функція `getBlogSlug()` для мультимовних slug-ів
+- Кнопка "View full article" з правильним URL
+- Тепер BlogModal працює ідентично NewsModal
+
 ### SEO Checklist
 
 - [x] JSON-LD Schema (BlogPosting, NewsArticle, BreadcrumbList)
@@ -137,6 +143,7 @@
 - [x] Author/Person schema
 - [x] Reading time calculation
 - [x] Meta description truncation (160 chars)
+- [x] BlogModal SEO navigation link
 
 ### Testing SEO
 
