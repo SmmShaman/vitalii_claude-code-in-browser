@@ -1,24 +1,17 @@
-# Netlify Configuration for Vitalii Berbeha Portfolio
+# Netlify Configuration for Next.js Portfolio
 
 [build]
-  # Build command
   command = "npm run build"
+  publish = ".next"
 
-  # Directory with built files
-  publish = "dist"
+[build.environment]
+  NODE_VERSION = "20"
 
-  # Node version - updated to 22 for react-helmet-async compatibility
-  [build.environment]
-    NODE_VERSION = "22"
+# Next.js plugin handles routing automatically
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
-# Redirects for Single Page Application (SPA)
-# All routes should redirect to index.html
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# Headers for security and performance
+# Headers for security
 [[headers]]
   for = "/*"
   [headers.values]
@@ -29,40 +22,6 @@
 
 # Cache static assets
 [[headers]]
-  for = "/assets/*"
+  for = "/_next/static/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-
-# Cache images
-[[headers]]
-  for = "*.jpg"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "*.png"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "*.svg"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Optimize build
-[build.processing]
-  skip_processing = false
-
-[build.processing.css]
-  bundle = true
-  minify = true
-
-[build.processing.js]
-  bundle = true
-  minify = true
-
-[build.processing.html]
-  pretty_urls = true
-
-[build.processing.images]
-  compress = true
