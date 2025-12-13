@@ -14,7 +14,7 @@
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-yellow-400 to-orange-500 text-foreground;
+    @apply bg-gray-200 text-foreground;
     margin: 0;
     padding: 0;
     height: 100vh;

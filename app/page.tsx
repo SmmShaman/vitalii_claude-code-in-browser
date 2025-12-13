@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import dynamic from 'next/dynamic'
+import { sectionNeonColors } from '@/components/sections/BentoGrid'
 
 const Header = dynamic(
   () => import('@/components/layout/Header').then(mod => mod.Header),
@@ -23,8 +25,22 @@ const ParticlesBackground = dynamic(
 )
 
 export default function HomePage() {
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null)
+
+  // Get the current neon color based on hovered section
+  const currentNeonColor = hoveredSection ? sectionNeonColors[hoveredSection]?.primary : null
+
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col relative">
+      {/* Dynamic Background Color Overlay */}
+      <div
+        className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
+        style={{
+          backgroundColor: currentNeonColor || 'transparent',
+          opacity: currentNeonColor ? 0.4 : 0,
+        }}
+      />
+
       {/* Animated Background */}
       <ParticlesBackground />
 
@@ -35,7 +51,7 @@ export default function HomePage() {
 
       {/* Main Content - Takes remaining space */}
       <main className="flex-1 relative z-10 overflow-hidden">
-        <BentoGrid />
+        <BentoGrid onHoveredSectionChange={setHoveredSection} />
       </main>
 
       {/* Compact Footer - 8vh */}

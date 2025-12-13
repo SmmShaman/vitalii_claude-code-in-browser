@@ -68,9 +68,20 @@ const sections: Section[] = [
 
 interface BentoGridProps {
   onFullscreenChange?: (fullscreen: boolean) => void;
+  onHoveredSectionChange?: (sectionId: string | null) => void;
 }
 
-export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
+// Neon colors for each section - exported for use in background
+export const sectionNeonColors: { [key: string]: { primary: string; secondary: string } } = {
+  about: { primary: '#fc51c9', secondary: '#e707f7' }, // Pink/Magenta
+  services: { primary: '#05ddfa', secondary: '#00bfff' }, // Cyan/Blue
+  projects: { primary: '#ffeb3b', secondary: '#ffc107' }, // Yellow/Amber
+  skills: { primary: '#4caf50', secondary: '#8bc34a' }, // Green/Light Green
+  news: { primary: '#ff6b6b', secondary: '#ff5252' }, // Red/Pink Red
+  blog: { primary: '#9c27b0', secondary: '#ba68c8' }, // Purple/Light Purple
+};
+
+export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoGridProps = {}) => {
   const { t, currentLanguage } = useTranslations();
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -101,15 +112,13 @@ export const BentoGrid = ({ onFullscreenChange }: BentoGridProps = {}) => {
   const skillsTimeoutRef = useRef<number | null>(null);
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
 
-  // Neon colors for each section
-  const neonColors: { [key: string]: { primary: string; secondary: string } } = {
-    about: { primary: '#fc51c9', secondary: '#e707f7' }, // Pink/Magenta
-    services: { primary: '#05ddfa', secondary: '#00bfff' }, // Cyan/Blue
-    projects: { primary: '#ffeb3b', secondary: '#ffc107' }, // Yellow/Amber
-    skills: { primary: '#4caf50', secondary: '#8bc34a' }, // Green/Light Green
-    news: { primary: '#ff6b6b', secondary: '#ff5252' }, // Red/Pink Red
-    blog: { primary: '#9c27b0', secondary: '#ba68c8' }, // Purple/Light Purple
-  };
+  // Use the exported neonColors
+  const neonColors = sectionNeonColors;
+
+  // Notify parent when hovered section changes
+  useEffect(() => {
+    onHoveredSectionChange?.(hoveredSection);
+  }, [hoveredSection, onHoveredSectionChange]);
 
   // Detect mobile screen size
   useEffect(() => {
