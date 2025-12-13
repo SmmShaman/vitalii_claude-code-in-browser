@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --radius: 0.75rem;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-foreground;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    font-family: 'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+}
+
+/* Custom Animations */
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+}
+
+@keyframes expandCard {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  50% {
+    transform: translateY(-100px) translateX(50px);
+  }
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+}
+
+.animate-fadeOut {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
+.animate-expandCard {
+  animation: expandCard 0.6s ease-in-out;
+}
+
+.animate-slide-right {
+  animation: slide-right 0.5s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 10s ease-in-out infinite;
+}
+
+/* Snake Animation for Card Expansion */
+.snake-animation {
+  position: fixed;
+  z-index: 50;
+  transition: all 0.4s ease-in-out;
+  will-change: transform;
+}
+
+.snake-expanded {
+  width: 100%;
+  height: 100%;
+  max-width: 56rem;
+  margin: 0 auto;
+  border-radius: 2rem;
+  transform: none !important;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.7);
+}
+
+/* 3D Text Animation Styles */
+.char-3d-container {
+  transform-style: preserve-3d;
+}
+
+.char-3d {
+  display: inline-block;
+  position: relative;
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  margin: 0 0.05em;
+  will-change: transform; /* Performance optimization */
+}
+
+.face {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  font-style: normal;
+  display: block;
+  will-change: opacity; /* Performance optimization */
+}
+
+.face-top {
+  transform: rotateX(90deg) translateZ(0.5em);
+}
+
+.face-front {
+  transform: rotateX(0deg) translateZ(0.5em);
+}
+
+.face-bottom {
+  transform: rotateX(-90deg) translateZ(0.5em);
+}
+
+/* Services Animation Performance */
+.service-item {
+  will-change: opacity, transform;
+}
+
+.service-item .char {
+  will-change: transform, opacity;
+}

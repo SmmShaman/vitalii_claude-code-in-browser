@@ -65,15 +65,6 @@ export function BlogArticleClient({ post }: Props) {
 
           {/* Article Body */}
           <div className="p-6 md:p-8">
-            {/* Category Badge */}
-            {post.category && (
-              <div className="mb-4">
-                <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">
-                  {post.category}
-                </span>
-              </div>
-            )}
-
             {/* Title */}
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
               {post.title_en}

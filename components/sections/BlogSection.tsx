@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Tag, ExternalLink, Clock, ChevronLeft } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getLatestBlogPosts, getBlogPostById } from '@/lib/supabase';
-import type { LatestBlogPost, BlogPost } from '@/integrations/supabase/types';
+import type { LatestBlogPost, BlogPost } from '@/lib/supabase';
 
 interface BlogSectionProps {
   isExpanded?: boolean;
@@ -70,7 +70,6 @@ const BlogSectionComponent = ({
       title: post[`title_${lang}` as keyof typeof post] || post.title_en || '',
       content: content as string,
       excerpt: description as string,
-      category: post.category || '',
     };
   };
 
@@ -157,15 +156,6 @@ const BlogSectionComponent = ({
             animate={{ opacity: 1, x: 0 }}
             className="flex-1"
           >
-            {/* Category Badge */}
-            {content.category && (
-              <div className="mb-4">
-                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                  {content.category}
-                </span>
-              </div>
-            )}
-
             {/* Title */}
             <h1 className="text-4xl font-bold mb-4 text-foreground">
               {content.title}
@@ -249,13 +239,6 @@ const BlogSectionComponent = ({
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </div>
-                    )}
-
-                    {/* Category Badge */}
-                    {content.category && (
-                      <span className="inline-block px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium mb-2">
-                        {content.category}
-                      </span>
                     )}
 
                     {/* Title */}

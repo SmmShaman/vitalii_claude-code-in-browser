@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Calendar, Tag, ExternalLink, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
-import { getLatestNews, getNewsById } from '@/lib/supabase';
-import type { NewsItem } from '@/lib/supabase';
+import { getAllNews, getNewsById, getAllTags } from '@/lib/supabase';
+import type { NewsItem, LatestNews } from '@/lib/supabase';
 
 interface NewsModalProps {
   isOpen: boolean;
@@ -49,8 +49,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
   const loadTags = async () => {
     try {
       const tags = await getAllTags();
-      const uniqueTags = Array.from(new Set(tags.flatMap(t => t.tags || [])));
-      setAllTags(uniqueTags);
+      setAllTags(tags);
     } catch (error) {
       console.error('Failed to load tags:', error);
     }
@@ -59,17 +58,36 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
   const loadAllNews = async () => {
     try {
       setLoading(true);
-      const filters = {
-        search: searchQuery || undefined,
-        tags: selectedTag ? [selectedTag] : undefined,
-        dateFrom: selectedDateFrom || undefined,
-        dateTo: selectedDateTo || undefined,
-        page: currentPage,
-        limit: itemsPerPage,
-      };
-      const { data, count } = await getAllNews(filters);
-      setNews(data);
-      setTotalPages(Math.ceil(count / itemsPerPage));
+      let allNewsData = await getAllNews();
+
+      // Client-side filtering
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        allNewsData = allNewsData.filter((n: any) =>
+          (n.title_en?.toLowerCase().includes(query)) ||
+          (n.description_en?.toLowerCase().includes(query))
+        );
+      }
+
+      if (selectedTag) {
+        allNewsData = allNewsData.filter((n: any) => n.tags?.includes(selectedTag));
+      }
+
+      if (selectedDateFrom) {
+        allNewsData = allNewsData.filter((n: any) => new Date(n.published_at || n.created_at) >= new Date(selectedDateFrom));
+      }
+
+      if (selectedDateTo) {
+        allNewsData = allNewsData.filter((n: any) => new Date(n.published_at || n.created_at) <= new Date(selectedDateTo));
+      }
+
+      // Pagination
+      const total = allNewsData.length;
+      const start = (currentPage - 1) * itemsPerPage;
+      const paginatedNews = allNewsData.slice(start, start + itemsPerPage);
+
+      setNews(paginatedNews as LatestNews[]);
+      setTotalPages(Math.ceil(total / itemsPerPage));
     } catch (error) {
       console.error('Failed to load news:', error);
     } finally {
@@ -392,7 +410,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                         return (
                           <div className="mt-6 pt-6 border-t border-border">
                             <Link
-                              to={`/news/${slug}`}
+                              href={`/news/${slug}`}
                               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
                             >
                               {t('news_view_full_article')}
@@ -548,7 +566,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                             className="group"
                           >
                             <Link
-                              to={slug ? `/news/${slug}` : '#'}
+                              href={slug ? `/news/${slug}` : '#'}
                               onClick={(e) => {
                                 if (!slug) {
                                   e.preventDefault();
