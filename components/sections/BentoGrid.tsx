@@ -73,12 +73,12 @@ interface BentoGridProps {
 
 // Neon colors for each section - exported for use in background
 export const sectionNeonColors: { [key: string]: { primary: string; secondary: string } } = {
-  about: { primary: '#fc51c9', secondary: '#e707f7' }, // Pink/Magenta
-  services: { primary: '#05ddfa', secondary: '#00bfff' }, // Cyan/Blue
-  projects: { primary: '#ffeb3b', secondary: '#ffc107' }, // Yellow/Amber
-  skills: { primary: '#4caf50', secondary: '#8bc34a' }, // Green/Light Green
-  news: { primary: '#ff6b6b', secondary: '#ff5252' }, // Red/Pink Red
-  blog: { primary: '#9c27b0', secondary: '#ba68c8' }, // Purple/Light Purple
+  about: { primary: '#AF601A', secondary: '#c97a2e' }, // Насичений коричнево-оранжевий
+  services: { primary: '#EC008C', secondary: '#ff33a8' }, // Яскравий фуксієвий рожевий
+  projects: { primary: '#009B77', secondary: '#00c49a' }, // Emerald
+  skills: { primary: '#955251', secondary: '#b06867' }, // Marsala
+  news: { primary: '#88B04B', secondary: '#a3c96a' }, // Greenery
+  blog: { primary: '#0F4C81', secondary: '#1a6bb3' }, // Classic Blue
 };
 
 export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoGridProps = {}) => {
