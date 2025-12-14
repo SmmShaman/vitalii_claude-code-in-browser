@@ -793,6 +793,11 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
           { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
         ],
         [
+          { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+          { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+          { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+        ],
+        [
           { text: '❌ Reject', callback_data: `reject_${newsId}` }
         ]
       ]

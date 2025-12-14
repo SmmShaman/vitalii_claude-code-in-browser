@@ -3,13 +3,25 @@
 import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '@/contexts/TranslationContext';
+import { sectionNeonColors, oppositeSections } from '@/components/sections/BentoGrid';
 
 interface HeaderProps {
   isCompact?: boolean;
+  hoveredSection?: string | null;
 }
 
-export const Header = ({ isCompact = false }: HeaderProps) => {
+export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps) => {
   const { t, currentLanguage, setCurrentLanguage } = useTranslations();
+
+  // Get the opposite section's color for text fill effect
+  const getOppositeColor = () => {
+    if (!hoveredSection) return null;
+    const oppositeSection = oppositeSections[hoveredSection];
+    return oppositeSection ? sectionNeonColors[oppositeSection]?.primary : null;
+  };
+
+  const fillColor = getOppositeColor();
+  const fillPercentage = hoveredSection ? 100 : 0;
 
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
@@ -58,26 +70,62 @@ export const Header = ({ isCompact = false }: HeaderProps) => {
                   {t('title')}
                 </h1>
                 <p
-                  className="font-semibold text-white/90"
+                  className="font-semibold relative"
                   style={{
                     fontSize: 'clamp(0.875rem, 1.5vw, 1.25rem)',
                     textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
                     lineHeight: '1.3'
                   }}
                 >
-                  {t('subtitle')}
+                  {/* Base text layer - white */}
+                  <span className="text-white/90">{t('subtitle')}</span>
+                  {/* Colored overlay - fills RIGHT to LEFT */}
+                  <span
+                    className="absolute inset-0 transition-all duration-700 ease-in-out overflow-hidden"
+                    style={{
+                      clipPath: `inset(0 0 0 ${100 - fillPercentage}%)`,
+                      direction: 'rtl',
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: fillColor || 'transparent',
+                        direction: 'ltr',
+                        display: 'block',
+                      }}
+                    >
+                      {t('subtitle')}
+                    </span>
+                  </span>
                 </p>
               </div>
               {/* Second line: Description */}
               <p
-                className="text-white/80"
+                className="relative"
                 style={{
                   fontSize: 'clamp(0.875rem, 1.2vw, 1.125rem)',
                   textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
                   lineHeight: '1.4'
                 }}
               >
-                {t('description')}
+                {/* Base text layer - white */}
+                <span className="text-white/80">{t('description')}</span>
+                {/* Colored overlay - fills LEFT to RIGHT */}
+                <span
+                  className="absolute inset-0 transition-all duration-700 ease-in-out overflow-hidden"
+                  style={{
+                    clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: fillColor || 'transparent',
+                      display: 'block',
+                    }}
+                  >
+                    {t('description')}
+                  </span>
+                </span>
               </p>
             </div>
           )}

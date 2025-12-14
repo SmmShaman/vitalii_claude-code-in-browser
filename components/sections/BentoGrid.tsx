@@ -77,9 +77,19 @@ export const sectionNeonColors: { [key: string]: { primary: string; secondary: s
   about: { primary: '#AF601A', secondary: '#c97a2e' }, // Насичений коричнево-оранжевий
   services: { primary: '#EC008C', secondary: '#ff33a8' }, // Яскравий фуксієвий рожевий
   projects: { primary: '#009B77', secondary: '#00c49a' }, // Emerald
-  skills: { primary: '#955251', secondary: '#b06867' }, // Marsala
+  skills: { primary: '#fde5e5', secondary: '#fdd5d5' }, // Light Pink
   news: { primary: '#88B04B', secondary: '#a3c96a' }, // Greenery
   blog: { primary: '#0F4C81', secondary: '#1a6bb3' }, // Classic Blue
+};
+
+// Opposite section mapping for text fill effect
+export const oppositeSections: { [key: string]: string } = {
+  about: 'blog',
+  services: 'news',
+  projects: 'skills',
+  skills: 'projects',
+  news: 'services',
+  blog: 'about',
 };
 
 export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoGridProps = {}) => {

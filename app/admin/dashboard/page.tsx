@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List } from 'lucide-react'
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Linkedin } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { NewsManager } from '@/components/admin/NewsManager'
 import { BlogManager } from '@/components/admin/BlogManager'
@@ -14,8 +14,9 @@ import { AutoPublishSettings } from '@/components/admin/AutoPublishSettings'
 import { CronScheduleSettings } from '@/components/admin/CronScheduleSettings'
 import { NewsQueueManager } from '@/components/admin/NewsQueueManager'
 import { DebugSettings } from '@/components/admin/DebugSettings'
+import { LinkedInPostsManager } from '@/components/admin/LinkedInPostsManager'
 
-type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'settings'
+type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'linkedin' | 'settings'
 type SettingsSubTab = 'sources' | 'prompts' | 'schedule' | 'automation' | 'debug'
 
 export default function AdminDashboardPage() {
@@ -41,6 +42,7 @@ export default function AdminDashboardPage() {
     { id: 'queue' as TabType, label: 'Queue', icon: List },
     { id: 'news' as TabType, label: 'News', icon: Newspaper },
     { id: 'blog' as TabType, label: 'Blog', icon: BookOpen },
+    { id: 'linkedin' as TabType, label: 'LinkedIn', icon: Linkedin },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ]
 
@@ -175,6 +177,7 @@ export default function AdminDashboardPage() {
           {activeTab === 'queue' && <NewsQueueManager />}
           {activeTab === 'news' && <NewsManager />}
           {activeTab === 'blog' && <BlogManager />}
+          {activeTab === 'linkedin' && <LinkedInPostsManager />}
           {activeTab === 'settings' && (
             <>
               {settingsSubTab === 'sources' && <NewsSourcesManager />}
