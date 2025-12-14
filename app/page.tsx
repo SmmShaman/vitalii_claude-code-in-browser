@@ -31,7 +31,7 @@ export default function HomePage() {
   const currentNeonColor = hoveredSection ? sectionNeonColors[hoveredSection]?.primary : null
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col relative p-5 pb-4 gap-5">
+    <div className="h-screen w-screen overflow-hidden flex flex-col relative p-5 pb-4 gap-[22px]">
       {/* Dynamic Background Color Overlay */}
       <div
         className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
