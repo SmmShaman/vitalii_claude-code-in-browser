@@ -958,14 +958,18 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
                 ) : section.id === 'projects' ? (
                   <>
-                    {/* White background layer - bottom */}
-                    <div className="absolute inset-0 bg-white/85 z-0" />
-                    {/* Project image layer - middle */}
+                    {/* White background layer - bottom - fades out when exploding */}
+                    <div
+                      className="absolute inset-0 bg-white/85 z-0 transition-opacity duration-500"
+                      style={{ opacity: isProjectsExploding ? 0 : 1 }}
+                    />
+                    {/* Project image layer - middle - fades out when exploding */}
                     <div
                       className="absolute inset-0 bg-no-repeat bg-right transition-all duration-500 z-10"
                       style={{
                         backgroundImage: `url(${currentProjectImage})`,
                         backgroundSize: '70%',
+                        opacity: isProjectsExploding ? 0 : 1,
                       }}
                     />
                   </>
