@@ -192,9 +192,49 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
         </h2>
       </div>
 
-      <AnimatePresence mode="wait">
-        {isExploding ? (
-          /* Exploding Grid View - shows all projects as small blocks */
+      {/* Normal Carousel View - single project card with GSAP animation */}
+      <div
+        ref={projectRef}
+        className="absolute w-full px-4 pointer-events-none z-50 transition-opacity duration-300"
+        style={{
+          top: '50%',
+          opacity: isExploding ? 0 : 1,
+          pointerEvents: isExploding ? 'none' : 'auto',
+        }}
+      >
+        <div className="p-4 bg-white rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
+          {/* === IMPROVEMENT 5: Progress indicator bar === */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
+            <div
+              ref={progressRef}
+              className="h-full"
+              style={{
+                width: '0%',
+                background: `linear-gradient(to right, ${currentColor.from}, ${currentColor.via}, ${currentColor.to})`
+              }}
+            />
+          </div>
+
+          <h4
+            ref={titleRef}
+            className="font-bold text-gray-900 mb-2 mt-1"
+            style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
+          >
+            {currentProject?.title}
+          </h4>
+          <p
+            ref={descriptionRef}
+            className="text-gray-800"
+            style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
+          >
+            {currentProject?.short}
+          </p>
+        </div>
+      </div>
+
+      {/* Exploding Grid View - shows all projects as small blocks */}
+      <AnimatePresence>
+        {isExploding && (
           <motion.div
             key="explosion-grid"
             className="absolute inset-0 p-2 z-50"
@@ -276,49 +316,6 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
                   </motion.div>
                 );
               })}
-            </div>
-          </motion.div>
-        ) : (
-          /* Normal Carousel View - single project card */
-          <motion.div
-            key="carousel"
-            ref={projectRef}
-            className="absolute w-full px-4 pointer-events-none z-50"
-            style={{
-              top: '50%',
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="p-4 bg-white rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
-              {/* === IMPROVEMENT 5: Progress indicator bar === */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  ref={progressRef}
-                  className="h-full"
-                  style={{
-                    width: '0%',
-                    background: `linear-gradient(to right, ${currentColor.from}, ${currentColor.via}, ${currentColor.to})`
-                  }}
-                />
-              </div>
-
-              <h4
-                ref={titleRef}
-                className="font-bold text-gray-900 mb-2 mt-1"
-                style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
-              >
-                {currentProject?.title}
-              </h4>
-              <p
-                ref={descriptionRef}
-                className="text-gray-800"
-                style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
-              >
-                {currentProject?.short}
-              </p>
             </div>
           </motion.div>
         )}
