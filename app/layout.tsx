@@ -69,6 +69,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Comfortaa font - rounded geometric with excellent Cyrillic support */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <Providers>
           {children}
