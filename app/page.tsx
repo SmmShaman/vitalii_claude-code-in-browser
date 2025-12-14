@@ -31,7 +31,7 @@ export default function HomePage() {
   const currentNeonColor = hoveredSection ? sectionNeonColors[hoveredSection]?.primary : null
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col relative">
+    <div className="h-screen w-screen overflow-hidden flex flex-col relative p-5 pb-4 gap-3">
       {/* Dynamic Background Color Overlay */}
       <div
         className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
@@ -50,7 +50,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content - Takes remaining space */}
-      <main className="flex-1 relative z-10 overflow-hidden">
+      <main className="flex-1 min-h-0 relative z-10 overflow-hidden">
         <BentoGrid onHoveredSectionChange={setHoveredSection} />
       </main>
 
