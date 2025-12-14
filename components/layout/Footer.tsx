@@ -1,11 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { Twitter, Facebook, Send, Instagram, Linkedin, Github } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Twitter, Facebook, Send, Instagram, Linkedin, Github, X, Copy, ExternalLink, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fetchFooterData } from '@/utils/footerApi';
 import type { FooterData } from '@/utils/footerApi';
 import { useTranslations } from '@/contexts/TranslationContext';
+
+interface SocialLink {
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  label: string;
+  username: string;
+}
 
 // TikTok icon component
 const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
@@ -22,6 +29,8 @@ const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
 export const Footer = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedSocial, setSelectedSocial] = useState<string | null>(null);
+  const [modalSocial, setModalSocial] = useState<SocialLink | null>(null);
+  const [copied, setCopied] = useState(false);
   const [footerData, setFooterData] = useState<FooterData>({
     userLocation: null,
     weather: null,
@@ -51,7 +60,27 @@ export const Footer = () => {
     loadData();
   }, [currentLanguage]);
 
-  const socialLinks = [
+  const handleCopyLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleSocialClick = (social: SocialLink) => {
+    setModalSocial(social);
+    setCopied(false);
+  };
+
+  const closeModal = () => {
+    setModalSocial(null);
+    setCopied(false);
+  };
+
+  const socialLinks: SocialLink[] = [
     { icon: Instagram, href: 'https://instagram.com/smmshaman', label: 'Instagram', username: '@smmshaman' },
     { icon: Send, href: 'https://t.me/smmshaman', label: 'Telegram', username: 'SmmShaman' },
     { icon: Facebook, href: 'https://facebook.com/smm.shaman', label: 'Facebook', username: 'smm.shaman' },
@@ -77,32 +106,32 @@ export const Footer = () => {
           <div className="flex items-center justify-between gap-4 mb-2">
             {/* Left: Clock */}
             <div
-              className="text-white/80 font-mono flex-shrink-0"
+              className="text-white/80 font-mono flex-shrink-0 flex items-center"
               style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
             >
-              {currentTime.toLocaleTimeString()}
+              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
             </div>
 
             {/* Center: Weather & Location Info */}
             <motion.div
-              className="flex-1 flex items-center justify-center gap-3 overflow-hidden"
+              className="flex-1 flex items-center justify-center gap-3 overflow-hidden min-h-[24px]"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
               {isLoading ? (
-                <div className="text-white/60 text-xs sm:text-sm">{t('footer_loading' as any)}</div>
+                <div className="text-white/60 text-xs sm:text-sm flex items-center">{t('footer_loading' as any)}</div>
               ) : error ? (
-                <div className="text-white/60 text-xs sm:text-sm">{error}</div>
+                <div className="text-white/60 text-xs sm:text-sm flex items-center">{error}</div>
               ) : (
                 <div className="flex items-center gap-3 flex-wrap justify-center">
                   {/* Weather text */}
                   {weather && userLocation && (
                     <div
-                      className="text-white/90 text-center"
+                      className="text-white/90 text-center flex items-center"
                       style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
                     >
-                      {t('footer_weather_in' as any)} <span className="font-semibold">{userLocation.city}</span>{' '}
+                      {t('footer_weather_in' as any)} <span className="font-semibold ml-1">{userLocation.city}</span>{' '}
                       {weather.temperature > 0 ? '+' : ''}
                       {weather.temperature}°C, {weather.description} {weather.emoji}
                     </div>
@@ -111,7 +140,7 @@ export const Footer = () => {
                   {/* Distance */}
                   {distance !== null && (
                     <div
-                      className="text-white/90"
+                      className="text-white/90 flex items-center"
                       style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
                     >
                       {distance.toLocaleString()} {t('footer_distance_from_me' as any)}
@@ -123,20 +152,21 @@ export const Footer = () => {
 
             {/* Right: Social Icons */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {socialLinks.map(({ icon: Icon, href, label }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/80 hover:text-white transition-colors duration-300"
-                  aria-label={label}
-                  onMouseEnter={() => setSelectedSocial(label)}
-                  onMouseLeave={() => setSelectedSocial(null)}
-                >
-                  <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
-                </a>
-              ))}
+              {socialLinks.map((social) => {
+                const Icon = social.icon;
+                return (
+                  <button
+                    key={social.label}
+                    onClick={() => handleSocialClick(social)}
+                    className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer"
+                    aria-label={social.label}
+                    onMouseEnter={() => setSelectedSocial(social.label)}
+                    onMouseLeave={() => setSelectedSocial(null)}
+                  >
+                    <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -153,6 +183,86 @@ export const Footer = () => {
           )}
         </div>
       </div>
+
+      {/* Social Link Modal */}
+      <AnimatePresence>
+        {modalSocial && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={closeModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                    <modalSocial.icon className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{modalSocial.label}</h3>
+                    <p className="text-sm text-gray-500">{modalSocial.username}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* URL Display */}
+              <div className="bg-gray-100 rounded-lg p-3 mb-4">
+                <p className="text-xs text-gray-500 mb-1">URL</p>
+                <p className="text-sm text-gray-800 font-mono break-all">{modalSocial.href}</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleCopyLink(modalSocial.href)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+                    copied
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Copy Link
+                    </>
+                  )}
+                </button>
+                <a
+                  href={modalSocial.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </footer>
   );
 };
