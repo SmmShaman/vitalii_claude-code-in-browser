@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Project {
   title: string;
   short: string;
   full: string;
+  image?: string;
 }
 
 interface ProjectsCarouselProps {
@@ -14,9 +16,10 @@ interface ProjectsCarouselProps {
   onCardClick: (activeProjectIndex: number) => void;
   backgroundText: string;
   onIndexChange?: (index: number) => void;
+  isExploding?: boolean;
 }
 
-export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onIndexChange }: ProjectsCarouselProps) => {
+export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onIndexChange, isExploding = false }: ProjectsCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const projectRef = useRef<HTMLDivElement>(null);
@@ -131,16 +134,16 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
     };
   }, [currentIndex, projects.length]);
 
-  // Handle pause/resume on hover
+  // Handle pause/resume on hover or explosion
   useEffect(() => {
     if (!timelineRef.current) return;
 
-    if (isPaused) {
+    if (isPaused || isExploding) {
       timelineRef.current.pause();
     } else {
       timelineRef.current.resume();
     }
-  }, [isPaused]);
+  }, [isPaused, isExploding]);
 
   const handleMouseEnter = () => {
     setIsPaused(true);
@@ -159,12 +162,24 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
   const currentProject = projects[currentIndex];
   const currentColor = projectColors[currentIndex % projectColors.length];
 
+  // Calculate grid layout based on number of projects
+  const getGridLayout = () => {
+    const count = projects.length;
+    if (count <= 4) return { cols: 2, rows: 2 };
+    if (count <= 6) return { cols: 3, rows: 2 };
+    if (count <= 9) return { cols: 3, rows: 3 };
+    if (count <= 12) return { cols: 4, rows: 3 };
+    return { cols: 4, rows: 4 }; // Max 16 projects displayed
+  };
+
+  const gridLayout = getGridLayout();
+
   return (
     <div
       className="h-full w-full overflow-hidden relative cursor-pointer"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
+      onClick={!isExploding ? handleClick : undefined}
       style={{ position: 'relative', zIndex: 1 }}
     >
       {/* Background text "Projects" */}
@@ -177,43 +192,137 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
         </h2>
       </div>
 
-      {/* Current Project - ONLY ONE VISIBLE */}
-      <div
-        ref={projectRef}
-        className="absolute w-full px-4 pointer-events-none z-50"
-        style={{
-          top: '50%',
-        }}
-      >
-        <div className="p-4 bg-white rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
-          {/* === IMPROVEMENT 5: Progress indicator bar === */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
+      <AnimatePresence mode="wait">
+        {isExploding ? (
+          /* Exploding Grid View - shows all projects as small blocks */
+          <motion.div
+            key="explosion-grid"
+            className="absolute inset-0 p-2 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             <div
-              ref={progressRef}
-              className="h-full"
+              className="w-full h-full grid gap-1.5"
               style={{
-                width: '0%',
-                background: `linear-gradient(to right, ${currentColor.from}, ${currentColor.via}, ${currentColor.to})`
+                gridTemplateColumns: `repeat(${gridLayout.cols}, 1fr)`,
+                gridTemplateRows: `repeat(${gridLayout.rows}, 1fr)`,
               }}
-            />
-          </div>
+            >
+              {projects.slice(0, gridLayout.cols * gridLayout.rows).map((project, index) => {
+                const color = projectColors[index % projectColors.length];
+                return (
+                  <motion.div
+                    key={`block-${index}`}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={{
+                      duration: 0.4,
+                      delay: index * 0.05,
+                      ease: 'backOut'
+                    }}
+                    whileHover={{
+                      scale: 1.05,
+                      zIndex: 10,
+                      transition: { duration: 0.2 }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCardClick(index);
+                    }}
+                    className="relative rounded-lg overflow-hidden shadow-md cursor-pointer group"
+                    style={{
+                      background: `linear-gradient(135deg, ${color.from}20, ${color.to}30)`,
+                      border: `1px solid ${color.via}40`,
+                    }}
+                  >
+                    {/* Project Image Background */}
+                    {project.image && (
+                      <div
+                        className="absolute inset-0 opacity-30 group-hover:opacity-50 transition-opacity duration-300"
+                        style={{
+                          backgroundImage: `url(${project.image})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      />
+                    )}
 
-          <h4
-            ref={titleRef}
-            className="font-bold text-gray-900 mb-2 mt-1"
-            style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
+                    {/* Gradient overlay */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: `linear-gradient(to top, ${color.to}90 0%, transparent 60%)`,
+                      }}
+                    />
+
+                    {/* Content */}
+                    <div className="relative h-full flex flex-col justify-end p-1.5 sm:p-2">
+                      <h5
+                        className="font-bold text-white leading-tight line-clamp-2 drop-shadow-md"
+                        style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)' }}
+                      >
+                        {project.title}
+                      </h5>
+                    </div>
+
+                    {/* Hover indicator */}
+                    <div
+                      className="absolute top-1 right-1 w-2 h-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: color.from }}
+                    />
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        ) : (
+          /* Normal Carousel View - single project card */
+          <motion.div
+            key="carousel"
+            ref={projectRef}
+            className="absolute w-full px-4 pointer-events-none z-50"
+            style={{
+              top: '50%',
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            {currentProject?.title}
-          </h4>
-          <p
-            ref={descriptionRef}
-            className="text-gray-800"
-            style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
-          >
-            {currentProject?.short}
-          </p>
-        </div>
-      </div>
+            <div className="p-4 bg-white rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
+              {/* === IMPROVEMENT 5: Progress indicator bar === */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  ref={progressRef}
+                  className="h-full"
+                  style={{
+                    width: '0%',
+                    background: `linear-gradient(to right, ${currentColor.from}, ${currentColor.via}, ${currentColor.to})`
+                  }}
+                />
+              </div>
+
+              <h4
+                ref={titleRef}
+                className="font-bold text-gray-900 mb-2 mt-1"
+                style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
+              >
+                {currentProject?.title}
+              </h4>
+              <p
+                ref={descriptionRef}
+                className="text-gray-800"
+                style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
+              >
+                {currentProject?.short}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
