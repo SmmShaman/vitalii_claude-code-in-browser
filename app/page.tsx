@@ -44,9 +44,9 @@ export default function HomePage() {
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Header - Auto height based on content */}
-      <div className="flex-shrink-0 relative z-20">
-        <Header />
+      {/* Compact Header - Language switcher only */}
+      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 6vh, 70px)' }}>
+        <Header hoveredSection={hoveredSection} />
       </div>
 
       {/* Main Content - Takes remaining space */}
