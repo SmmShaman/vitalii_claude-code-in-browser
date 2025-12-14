@@ -18,7 +18,7 @@ import { translations } from '@/utils/translations';
 import { debugLog } from '@/utils/debug';
 
 // Grid layout constants
-const GAP_SIZE = 16; // Fixed gap between windows in pixels
+const GAP_SIZE = 20; // Fixed gap between windows in pixels (UI design standard: 16-24px)
 const COLUMNS_COUNT = 3; // Always 3 columns (fluid width with 1fr)
 
 interface Section {
@@ -549,7 +549,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   return (
     <>
       <div className={`h-full w-full ${selectedNewsId || selectedBlogId ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'} flex items-start justify-start`}>
-        <div className="flex flex-col w-full h-full p-4">
+        <div className="flex flex-col w-full h-full p-5">
           <LayoutGroup>
             <div
               ref={gridContainerRef}
