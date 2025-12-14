@@ -31,7 +31,7 @@ export default function HomePage() {
   const currentNeonColor = hoveredSection ? sectionNeonColors[hoveredSection]?.primary : null
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col relative p-5 pb-4 gap-[22px]">
+    <div className="h-screen w-screen overflow-hidden flex flex-col relative p-5 pb-4">
       {/* Dynamic Background Color Overlay */}
       <div
         className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
@@ -44,9 +44,9 @@ export default function HomePage() {
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Compact Header - Language switcher only */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 6vh, 70px)' }}>
-        <Header hoveredSection={hoveredSection} />
+      {/* Header - Auto height based on content with bottom margin */}
+      <div className="flex-shrink-0 relative z-20 mb-5">
+        <Header />
       </div>
 
       {/* Main Content - Takes remaining space */}
@@ -55,7 +55,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <div className="flex-shrink-0 relative z-20">
+      <div className="flex-shrink-0 relative z-20 mt-4">
         <Footer />
       </div>
     </div>
