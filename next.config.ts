@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Optimize for Netlify
   output: 'standalone',
-  // Disable ESLint during builds (not installed)
+  // Ignore ESLint during builds (prevents build failures on Netlify)
   eslint: {
     ignoreDuringBuilds: true,
   },
