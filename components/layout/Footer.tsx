@@ -162,7 +162,7 @@ export const Footer = () => {
       >
         <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
           {/* Top row: Clock, Weather Info, Social Icons */}
-          <div className="flex items-center justify-between gap-4 mb-2">
+          <div className="flex items-center justify-between gap-4">
             {/* Left: Clock */}
             <div
               className="text-white/80 font-mono flex-shrink-0 flex items-center"
@@ -244,19 +244,25 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Bottom row: Selected social info */}
-          {selectedSocial && (
-            <motion.div
-              className="text-center text-white/70 text-xs"
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-            >
-              {selectedSocial === 'Email'
-                ? CONTACT_EMAIL
-                : socialLinks.find((s) => s.label === selectedSocial)?.username}
-            </motion.div>
-          )}
+          {/* Bottom row: Selected social info - fixed height to prevent layout shift */}
+          <div className="h-4 flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              {selectedSocial && (
+                <motion.div
+                  key={selectedSocial}
+                  className="text-center text-white/70 text-xs"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {selectedSocial === 'Email'
+                    ? CONTACT_EMAIL
+                    : socialLinks.find((s) => s.label === selectedSocial)?.username}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -295,6 +301,19 @@ export const Footer = () => {
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* QR Code */}
+              <div className="flex justify-center mb-4">
+                <div className="bg-white p-3 rounded-xl shadow-inner border border-gray-100">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(modalSocial.href)}&format=svg`}
+                    alt={`QR Code for ${modalSocial.label}`}
+                    width={150}
+                    height={150}
+                    className="rounded-lg"
+                  />
+                </div>
               </div>
 
               {/* URL Display */}
