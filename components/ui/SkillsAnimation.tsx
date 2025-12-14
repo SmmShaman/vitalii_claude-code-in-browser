@@ -5,6 +5,7 @@ import { getSkillLogo } from '@/utils/skillLogos';
 import { debugLog, debugError } from '@/utils/debug';
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage';
 
 interface Skill {
   name: string;
@@ -64,9 +65,20 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, gridContainerRef }: SkillsAnimationProps) => {
   const [gridBounds, setGridBounds] = useState<DOMRect | null>(null);
+  const [storedSkills, setStoredSkills] = useState<Skill[]>([]);
 
-  // Shuffle skills once on mount
-  const shuffledSkills = useMemo(() => shuffleArray(skills), []);
+  // Load skills from localStorage on mount
+  useEffect(() => {
+    const stored = getStoredSkills();
+    const converted = convertSkillsForAnimation(stored);
+    setStoredSkills(converted);
+  }, []);
+
+  // Use stored skills if available, otherwise use provided skills, then shuffle
+  const shuffledSkills = useMemo(() => {
+    const skillsToUse = storedSkills.length > 0 ? storedSkills : skills;
+    return shuffleArray(skillsToUse);
+  }, [storedSkills, skills]);
 
   debugLog('🎨 SkillsAnimation render:', {
     isExploding,
