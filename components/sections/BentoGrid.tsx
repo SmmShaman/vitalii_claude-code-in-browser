@@ -115,12 +115,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   const [totalGridHeight, setTotalGridHeight] = useState<number>(0);
   const [isSkillsExploding, setIsSkillsExploding] = useState(false);
   const [isAboutExploding, setIsAboutExploding] = useState(false);
+  const [isProjectsExploding, setIsProjectsExploding] = useState(false);
   const [isServicesDetailOpen, setIsServicesDetailOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
   const skillsTimeoutRef = useRef<number | null>(null);
+  const projectsHoverTimeoutRef = useRef<number | null>(null);
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
 
   // Use the exported neonColors
@@ -150,6 +152,10 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   useEffect(() => {
     debugLog('🔔 BentoGrid: isSkillsExploding state changed to:', isSkillsExploding);
   }, [isSkillsExploding]);
+
+  useEffect(() => {
+    debugLog('🔔 BentoGrid: isProjectsExploding state changed to:', isProjectsExploding);
+  }, [isProjectsExploding]);
 
   const handleAboutClick = () => {
     debugLog('🎯 BentoGrid: handleAboutClick CALLED');
@@ -815,6 +821,21 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                     onMouseEnter={() => {
                       debugLog(`🐭 MOUSE ENTER: ${section.id}`);
                       setHoveredSection(section.id);
+
+                      // Projects: Start 3-second timer for explosion animation
+                      if (section.id === 'projects') {
+                        debugLog(`⏱️ PROJECTS: Запускаю таймер 3 секунди для explosion`);
+                        // Clear any existing timer
+                        if (projectsHoverTimeoutRef.current) {
+                          clearTimeout(projectsHoverTimeoutRef.current);
+                        }
+                        projectsHoverTimeoutRef.current = window.setTimeout(() => {
+                          debugLog(`💥 PROJECTS: 3 секунди минуло - explosion!`);
+                          setIsProjectsExploding(true);
+                          projectsHoverTimeoutRef.current = null;
+                        }, 3000);
+                      }
+
                       // Cancel collapse timeout ONLY if mouse returns to the SAME expanded window
                       if (mouseLeaveTimeoutRef.current) {
                         // Only cancel if returning to News when News is expanded
@@ -843,8 +864,22 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         isProjectsHiding,
                         selectedNewsId,
                         selectedBlogId,
+                        isProjectsExploding,
                       });
                       setHoveredSection(null);
+
+                      // Projects: Cancel timer and return from explosion
+                      if (section.id === 'projects') {
+                        debugLog(`⏹️ PROJECTS: Скасовую таймер та повертаю з explosion`);
+                        if (projectsHoverTimeoutRef.current) {
+                          clearTimeout(projectsHoverTimeoutRef.current);
+                          projectsHoverTimeoutRef.current = null;
+                        }
+                        // Return from explosion state
+                        if (isProjectsExploding) {
+                          setIsProjectsExploding(false);
+                        }
+                      }
 
                       // News/Blog: longer timeout to prevent accidental collapse
                       // Give user time to move cursor around the expanded window
@@ -974,6 +1009,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         onCardClick={handleProjectsCardClick}
                         backgroundText={t('projects_title') as string}
                         onIndexChange={handleProjectIndexChange}
+                        isExploding={isProjectsExploding}
                       />
                     </div>
                   ) : section.id === 'services' ? (
