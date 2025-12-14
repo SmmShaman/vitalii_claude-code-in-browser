@@ -216,6 +216,107 @@ Debug mode зберігається в `localStorage` під ключем `vital
 
 ---
 
+## Background Highlight & Hero Text Animation (December 2024)
+
+### Опис
+
+Динамічна зміна кольору фону та анімація заливки тексту Hero секції при наведенні курсора на кожне з 6 вікон BentoGrid.
+
+### Файли
+
+```
+├── app/page.tsx                      # Background overlay + hoveredSection state
+├── app/globals.css                   # Body background (light gray)
+├── components/layout/Header.tsx      # Hero text fill animation
+├── components/sections/BentoGrid.tsx # Section colors + opposite mapping
+```
+
+### Кольори секцій
+
+| Секція | Назва кольору | HEX | RGB |
+|--------|---------------|-----|-----|
+| About | Насичений коричнево-оранжевий | `#AF601A` | (175, 96, 26) |
+| Services | Яскравий фуксієвий рожевий | `#EC008C` | (236, 0, 140) |
+| Projects | Emerald | `#009B77` | (0, 155, 119) |
+| Skills | Light Pink | `#fde5e5` | (253, 229, 229) |
+| News | Greenery | `#88B04B` | (136, 176, 75) |
+| Blog | Classic Blue | `#0F4C81` | (15, 76, 129) |
+
+### Маппінг протилежних секцій
+
+Для анімації тексту Hero використовується колір **протилежної** секції:
+
+```typescript
+export const oppositeSections: { [key: string]: string } = {
+  about: 'blog',      // About hover → Blog color (Classic Blue)
+  services: 'news',   // Services hover → News color (Greenery)
+  projects: 'skills', // Projects hover → Skills color (Light Pink)
+  skills: 'projects', // Skills hover → Projects color (Emerald)
+  news: 'services',   // News hover → Services color (Fuchsia)
+  blog: 'about',      // Blog hover → About color (Brown-Orange)
+};
+```
+
+### Background Overlay
+
+```typescript
+// app/page.tsx
+<div
+  className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out"
+  style={{
+    backgroundColor: currentNeonColor || 'transparent',
+    opacity: currentNeonColor ? 0.4 : 0,
+  }}
+/>
+```
+
+- Фон: світло-сірий (`bg-gray-200`)
+- При hover: overlay з кольором секції (opacity 40%)
+- Transition: 700ms ease-in-out
+
+### Hero Text Fill Animation
+
+**Subtitle** ("Marketing & Analytics Expert | Creator of Elvarika"):
+- Напрямок заливки: **справа наліво**
+- Використовує `clipPath: inset(0 0 0 ${100 - fillPercentage}%)`
+
+**Description** ("I help organisations grow..."):
+- Напрямок заливки: **зліва направо**
+- Використовує `clipPath: inset(0 ${100 - fillPercentage}% 0 0)`
+
+### Debounce для плавних переходів
+
+При швидкому переміщенні курсора між секціями використовується debounce:
+
+```typescript
+// components/layout/Header.tsx
+const [debouncedSection, setDebouncedSection] = useState<string | null>(null);
+const [isTransitioning, setIsTransitioning] = useState(false);
+
+// При переході між секціями: 150ms затримка
+// При виході з усіх секцій: 300ms затримка
+```
+
+### Transitions
+
+| Властивість | Тривалість | Призначення |
+|-------------|------------|-------------|
+| `clip-path` | 700ms | Анімація заливки тексту |
+| `color` | 400ms | Плавна зміна кольору |
+| `background-color` | 700ms | Зміна фону |
+
+### Як це працює
+
+1. Користувач наводить курсор на вікно (напр. Services)
+2. `BentoGrid` викликає `onHoveredSectionChange('services')`
+3. `page.tsx` оновлює background overlay кольором Services (`#EC008C`)
+4. `Header.tsx` отримує `hoveredSection='services'`
+5. Знаходить протилежну секцію: `oppositeSections['services'] = 'news'`
+6. Заливає текст Hero кольором News (`#88B04B`)
+7. При швидкому переході - debounce забезпечує плавність
+
+---
+
 ## LinkedIn Integration (December 2024)
 
 ### Опис

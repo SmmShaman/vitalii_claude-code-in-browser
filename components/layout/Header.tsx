@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '@/contexts/TranslationContext';
@@ -13,15 +14,56 @@ interface HeaderProps {
 export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps) => {
   const { t, currentLanguage, setCurrentLanguage } = useTranslations();
 
+  // Debounced state for smooth transitions between sections
+  const [debouncedSection, setDebouncedSection] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const previousSectionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    if (hoveredSection === null) {
+      // When leaving all sections, start fade out immediately
+      setIsTransitioning(true);
+      timeoutRef.current = setTimeout(() => {
+        setDebouncedSection(null);
+        setIsTransitioning(false);
+      }, 300); // Short delay for fade out
+    } else if (previousSectionRef.current !== null && previousSectionRef.current !== hoveredSection) {
+      // When switching between sections, briefly reset then apply new color
+      setIsTransitioning(true);
+      timeoutRef.current = setTimeout(() => {
+        setDebouncedSection(hoveredSection);
+        setIsTransitioning(false);
+      }, 150); // Quick transition between sections
+    } else {
+      // First hover or same section
+      setDebouncedSection(hoveredSection);
+      setIsTransitioning(false);
+    }
+
+    previousSectionRef.current = hoveredSection;
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [hoveredSection]);
+
   // Get the opposite section's color for text fill effect
   const getOppositeColor = () => {
-    if (!hoveredSection) return null;
-    const oppositeSection = oppositeSections[hoveredSection];
+    if (!debouncedSection) return null;
+    const oppositeSection = oppositeSections[debouncedSection];
     return oppositeSection ? sectionNeonColors[oppositeSection]?.primary : null;
   };
 
   const fillColor = getOppositeColor();
-  const fillPercentage = hoveredSection ? 100 : 0;
+  const fillPercentage = (debouncedSection && !isTransitioning) ? 100 : 0;
 
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
@@ -81,10 +123,11 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   <span className="text-white/90">{t('subtitle')}</span>
                   {/* Colored overlay - fills RIGHT to LEFT */}
                   <span
-                    className="absolute inset-0 transition-all duration-700 ease-in-out overflow-hidden"
+                    className="absolute inset-0 overflow-hidden"
                     style={{
                       clipPath: `inset(0 0 0 ${100 - fillPercentage}%)`,
                       direction: 'rtl',
+                      transition: 'clip-path 700ms ease-in-out',
                     }}
                   >
                     <span
@@ -92,6 +135,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                         color: fillColor || 'transparent',
                         direction: 'ltr',
                         display: 'block',
+                        transition: 'color 400ms ease-in-out',
                       }}
                     >
                       {t('subtitle')}
@@ -112,15 +156,17 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 <span className="text-white/80">{t('description')}</span>
                 {/* Colored overlay - fills LEFT to RIGHT */}
                 <span
-                  className="absolute inset-0 transition-all duration-700 ease-in-out overflow-hidden"
+                  className="absolute inset-0 overflow-hidden"
                   style={{
                     clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
+                    transition: 'clip-path 700ms ease-in-out',
                   }}
                 >
                   <span
                     style={{
                       color: fillColor || 'transparent',
                       display: 'block',
+                      transition: 'color 400ms ease-in-out',
                     }}
                   >
                     {t('description')}
