@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { Twitter, Facebook, Send, Instagram, Linkedin, Github, X, Copy, ExternalLink, Check } from 'lucide-react';
+import { Twitter, Facebook, Send, Instagram, Linkedin, Github, X, Copy, ExternalLink, Check, Mail, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchFooterData } from '@/utils/footerApi';
 import type { FooterData } from '@/utils/footerApi';
@@ -26,6 +26,8 @@ const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const CONTACT_EMAIL = 'vitalii@berbeha.com';
+
 export const Footer = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedSocial, setSelectedSocial] = useState<string | null>(null);
@@ -38,6 +40,17 @@ export const Footer = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const { t, currentLanguage } = useTranslations();
+
+  // Email modal state
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailForm, setEmailForm] = useState({
+    senderEmail: '',
+    subject: '',
+    message: '',
+  });
+  const [isSending, setIsSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
 
   // Update clock
   useEffect(() => {
@@ -78,6 +91,52 @@ export const Footer = () => {
   const closeModal = () => {
     setModalSocial(null);
     setCopied(false);
+  };
+
+  // Email modal handlers
+  const openEmailModal = () => {
+    setIsEmailModalOpen(true);
+    setEmailSent(false);
+    setEmailCopied(false);
+  };
+
+  const closeEmailModal = () => {
+    setIsEmailModalOpen(false);
+    setEmailForm({ senderEmail: '', subject: '', message: '' });
+    setEmailSent(false);
+    setEmailCopied(false);
+  };
+
+  const handleEmailFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEmailForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTACT_EMAIL);
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy email:', err);
+    }
+  };
+
+  const handleSendEmail = () => {
+    setIsSending(true);
+
+    // Create mailto link with form data
+    const mailtoLink = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(emailForm.subject)}&body=${encodeURIComponent(
+      `From: ${emailForm.senderEmail}\n\n${emailForm.message}`
+    )}`;
+
+    // Open default email client
+    window.location.href = mailtoLink;
+
+    setTimeout(() => {
+      setIsSending(false);
+      setEmailSent(true);
+    }, 500);
   };
 
   const socialLinks: SocialLink[] = [
@@ -150,8 +209,23 @@ export const Footer = () => {
               )}
             </motion.div>
 
-            {/* Right: Social Icons */}
+            {/* Right: Email + Social Icons */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Email Button */}
+              <button
+                onClick={openEmailModal}
+                className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer"
+                aria-label="Send Email"
+                onMouseEnter={() => setSelectedSocial('Email')}
+                onMouseLeave={() => setSelectedSocial(null)}
+              >
+                <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
+              </button>
+
+              {/* Divider */}
+              <div className="w-px h-3 sm:h-4 bg-white/30" />
+
+              {/* Social Icons */}
               {socialLinks.map((social) => {
                 const Icon = social.icon;
                 return (
@@ -178,7 +252,9 @@ export const Footer = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
             >
-              {socialLinks.find((s) => s.label === selectedSocial)?.username}
+              {selectedSocial === 'Email'
+                ? CONTACT_EMAIL
+                : socialLinks.find((s) => s.label === selectedSocial)?.username}
             </motion.div>
           )}
         </div>
@@ -259,6 +335,161 @@ export const Footer = () => {
                   Open
                 </a>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Email Compose Modal */}
+      <AnimatePresence>
+        {isEmailModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={closeEmailModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {emailSent ? (
+                // Success state
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                    <Check className="w-8 h-8 text-green-500" />
+                  </div>
+                  <h3 className="font-bold text-gray-900 text-lg mb-2">Email Client Opened!</h3>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Your default email app should open with the message ready to send.
+                  </p>
+                  <button
+                    onClick={closeEmailModal}
+                    className="px-6 py-2.5 rounded-lg font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                // Form state
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                        <Mail className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">Send Email</h3>
+                        <p className="text-sm text-gray-500">Contact Vitalii</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={closeEmailModal}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Email Address Display */}
+                  <div className="bg-gray-100 rounded-lg p-3 mb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">To:</p>
+                      <p className="text-sm text-gray-800 font-mono">{CONTACT_EMAIL}</p>
+                    </div>
+                    <button
+                      onClick={handleCopyEmail}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        emailCopied
+                          ? 'bg-green-500 text-white'
+                          : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                      }`}
+                    >
+                      {emailCopied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Form */}
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Your Email</label>
+                      <input
+                        type="email"
+                        name="senderEmail"
+                        value={emailForm.senderEmail}
+                        onChange={handleEmailFormChange}
+                        placeholder="your@email.com"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Subject</label>
+                      <input
+                        type="text"
+                        name="subject"
+                        value={emailForm.subject}
+                        onChange={handleEmailFormChange}
+                        placeholder="What's this about?"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Message</label>
+                      <textarea
+                        name="message"
+                        value={emailForm.message}
+                        onChange={handleEmailFormChange}
+                        placeholder="Write your message here..."
+                        rows={4}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={closeEmailModal}
+                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={isSending || !emailForm.message.trim()}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Opening...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Open Email App
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}
