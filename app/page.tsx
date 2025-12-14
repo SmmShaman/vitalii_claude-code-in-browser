@@ -46,7 +46,7 @@ export default function HomePage() {
 
       {/* Header - Auto height based on content with bottom margin */}
       <div className="flex-shrink-0 relative z-20 mb-5">
-        <Header />
+        <Header hoveredSection={hoveredSection} />
       </div>
 
       {/* Main Content - Takes remaining space */}
