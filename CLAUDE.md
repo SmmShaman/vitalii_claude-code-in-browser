@@ -225,11 +225,30 @@ Debug mode зберігається в `localStorage` під ключем `vital
 ### Файли
 
 ```
-├── app/page.tsx                      # Background overlay + hoveredSection state
-├── app/globals.css                   # Body background (light gray)
-├── components/layout/Header.tsx      # Hero text fill animation
-├── components/sections/BentoGrid.tsx # Section colors + opposite mapping
+├── app/page.tsx                          # Background overlay + hoveredSection state
+├── app/layout.tsx                        # Comfortaa font import
+├── app/globals.css                       # Body background (light gray)
+├── components/layout/Header.tsx          # Hero text fill animation
+├── components/ui/HeroTextAnimation.tsx   # Liquid fill component with wave effect
+├── components/sections/BentoGrid.tsx     # Section colors + opposite mapping
+├── tailwind.config.ts                    # font-comfortaa class
 ```
+
+### Шрифт Comfortaa
+
+Округлий геометричний шрифт з відмінною підтримкою кирилиці:
+
+```html
+<!-- app/layout.tsx -->
+<link
+  href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+```
+
+- **Підтримка:** Latin, Cyrillic (Ukrainian)
+- **Tailwind клас:** `font-comfortaa`
+- **Особливість:** Однакове відображення латиниці та кирилиці
 
 ### Кольори секцій
 
@@ -276,13 +295,43 @@ export const oppositeSections: { [key: string]: string } = {
 
 ### Hero Text Fill Animation
 
+#### Компонент `HeroTextAnimation`
+
+Ефект "наливання фарби в прозорий стакан":
+
+```typescript
+// components/ui/HeroTextAnimation.tsx
+interface HeroTextAnimationProps {
+  text: string;
+  fillColor: string | null;
+  isActive: boolean;
+  direction?: 'ltr' | 'rtl';  // напрямок заливки
+  fontSize?: string;
+  fontWeight?: string;
+}
+```
+
+#### Glass Effect (базовий стан)
+
+- Текст повністю **прозорий** (`color: 'transparent'`)
+- Тонка **чорна кайомка** (`WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.4)'`)
+- Шрифт: **Comfortaa**
+
+#### Liquid Fill (при hover)
+
+- **Хвилеподібний край** заливки (polygon clip-path з синусоїдою)
+- Анімована хвиля під час заповнення
+- Легке світіння кольору (`textShadow`)
+
+#### Напрямки заливки
+
 **Subtitle** ("Marketing & Analytics Expert | Creator of Elvarika"):
-- Напрямок заливки: **справа наліво**
-- Використовує `clipPath: inset(0 0 0 ${100 - fillPercentage}%)`
+- Напрямок: **справа наліво** (RTL)
+- Розмір: `clamp(1rem, 1.7vw, 1.5rem)`
 
 **Description** ("I help organisations grow..."):
-- Напрямок заливки: **зліва направо**
-- Використовує `clipPath: inset(0 ${100 - fillPercentage}% 0 0)`
+- Напрямок: **зліва направо** (LTR)
+- Розмір: `clamp(0.95rem, 1.4vw, 1.35rem)`
 
 ### Debounce для плавних переходів
 
