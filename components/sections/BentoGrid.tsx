@@ -15,9 +15,10 @@ import { NewsSection } from '@/components/sections/NewsSection';
 import { BlogSection } from '@/components/sections/BlogSection';
 import { NeonVerticalLabel } from '@/components/ui/NeonVerticalLabel';
 import { translations } from '@/utils/translations';
+import { debugLog } from '@/utils/debug';
 
 // Grid layout constants
-const GAP_SIZE = 16; // Fixed gap between windows in pixels
+const GAP_SIZE = 20; // Fixed gap between windows in pixels (UI design standard: 16-24px)
 const COLUMNS_COUNT = 3; // Always 3 columns (fluid width with 1fr)
 
 interface Section {
@@ -142,32 +143,32 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
   // Log state changes for debugging
   useEffect(() => {
-    console.log('🔔 BentoGrid: isAboutExploding state changed to:', isAboutExploding);
-    console.log('🕐 BentoGrid: Current timestamp:', new Date().toISOString());
+    debugLog('🔔 BentoGrid: isAboutExploding state changed to:', isAboutExploding);
+    debugLog('🕐 BentoGrid: Current timestamp:', new Date().toISOString());
   }, [isAboutExploding]);
 
   useEffect(() => {
-    console.log('🔔 BentoGrid: isSkillsExploding state changed to:', isSkillsExploding);
+    debugLog('🔔 BentoGrid: isSkillsExploding state changed to:', isSkillsExploding);
   }, [isSkillsExploding]);
 
   const handleAboutClick = () => {
-    console.log('🎯 BentoGrid: handleAboutClick CALLED');
-    console.log('🕐 BentoGrid: Click timestamp:', new Date().toISOString());
-    console.log('📦 BentoGrid: Grid ref:', gridContainerRef.current);
-    console.log('📊 BentoGrid: Current isAboutExploding state:', isAboutExploding);
+    debugLog('🎯 BentoGrid: handleAboutClick CALLED');
+    debugLog('🕐 BentoGrid: Click timestamp:', new Date().toISOString());
+    debugLog('📦 BentoGrid: Grid ref:', gridContainerRef.current);
+    debugLog('📊 BentoGrid: Current isAboutExploding state:', isAboutExploding);
 
     // Start explosion animation (no timeout - stays until user closes)
-    console.log('💥 BentoGrid: Setting isAboutExploding = true');
+    debugLog('💥 BentoGrid: Setting isAboutExploding = true');
     setIsAboutExploding(true);
-    console.log('✅ BentoGrid: setIsAboutExploding(true) called');
+    debugLog('✅ BentoGrid: setIsAboutExploding(true) called');
   };
 
   const handleAboutClose = () => {
-    console.log('❌ BentoGrid: handleAboutClose CALLED');
-    console.log('🕐 BentoGrid: Close timestamp:', new Date().toISOString());
-    console.log('📊 BentoGrid: Current isAboutExploding state before close:', isAboutExploding);
+    debugLog('❌ BentoGrid: handleAboutClose CALLED');
+    debugLog('🕐 BentoGrid: Close timestamp:', new Date().toISOString());
+    debugLog('📊 BentoGrid: Current isAboutExploding state before close:', isAboutExploding);
     setIsAboutExploding(false);
-    console.log('✅ BentoGrid: setIsAboutExploding(false) called');
+    debugLog('✅ BentoGrid: setIsAboutExploding(false) called');
   };
 
   const handleNewsClick = () => {
@@ -239,7 +240,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   };
 
   const selectNewsItem = (newsId: string) => {
-    console.log('📰 selectNewsItem CALLED with newsId:', newsId);
+    debugLog('📰 selectNewsItem CALLED with newsId:', newsId);
 
     // Update URL with news ID (will be replaced with slug once news data loads)
     window.history.pushState({}, '', `/news/${newsId}`);
@@ -268,11 +269,11 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
     // Step 2: After 0.5s, show the selected news (News will expand to fullscreen)
     setTimeout(() => {
-      console.log('✅ setSelectedNewsId CALLED - setting newsId:', newsId);
+      debugLog('✅ setSelectedNewsId CALLED - setting newsId:', newsId);
       setSelectedNewsId(newsId);
       setIsHidingAllForNews(false);
       onFullscreenChange?.(true); // ← Notify parent about fullscreen
-      console.log('✅ Fullscreen change notified (true)');
+      debugLog('✅ Fullscreen change notified (true)');
     }, 500);
   };
 
@@ -359,7 +360,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   };
 
   const handleBlogClick = () => {
-    console.log('🔴 handleBlogClick викликано, поточний стан:', {
+    debugLog('🔴 handleBlogClick викликано, поточний стан:', {
       isBlogExpanded,
       selectedBlogId,
       isProjectsHiding,
@@ -367,12 +368,12 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
     // Don't toggle if a blog item is currently selected
     if (selectedBlogId) {
-      console.log('⚠️ Blog item вибраний, ігноруємо клік');
+      debugLog('⚠️ Blog item вибраний, ігноруємо клік');
       return;
     }
 
     if (!isBlogExpanded) {
-      console.log('🟢 Розширюємо Blog...');
+      debugLog('🟢 Розширюємо Blog...');
       // Get both Blog and Projects heights before animation
       const blogEl = cardRefs.current['blog'];
       const projectsEl = cardRefs.current['projects'];
@@ -380,22 +381,22 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
       if (blogEl && projectsEl) {
         const blogH = blogEl.offsetHeight;
         const projectsH = projectsEl.offsetHeight;
-        console.log('📏 Blog висота:', blogH, 'Projects висота:', projectsH);
+        debugLog('📏 Blog висота:', blogH, 'Projects висота:', projectsH);
         setBlogHeight(blogH);
         setProjectsHeight(projectsH);
       }
 
       // Start hiding Projects first
-      console.log('🟡 Починаємо ховати Projects (setIsProjectsHiding(true))');
+      debugLog('🟡 Починаємо ховати Projects (setIsProjectsHiding(true))');
       setIsProjectsHiding(true);
       // After 0.5s, expand Blog
       setTimeout(() => {
-        console.log('🟢 Розширюємо Blog зараз (setIsBlogExpanded(true))');
+        debugLog('🟢 Розширюємо Blog зараз (setIsBlogExpanded(true))');
         setIsBlogExpanded(true);
         setIsProjectsHiding(false);
       }, 500);
     } else {
-      console.log('🔵 Згортаємо Blog...');
+      debugLog('🔵 Згортаємо Blog...');
       setIsBlogExpanded(false);
       setProjectsHeight(0);
       setBlogHeight(0);
@@ -407,36 +408,36 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   };
 
   const handleSkillsClick = () => {
-    console.log('🎯 Skills clicked! Starting explosion animation');
-    console.log('📦 Grid ref:', gridContainerRef.current);
+    debugLog('🎯 Skills clicked! Starting explosion animation');
+    debugLog('📦 Grid ref:', gridContainerRef.current);
 
     // Clear any existing timeout
     if (skillsTimeoutRef.current) {
-      console.log('⏱️ Clearing existing timeout');
+      debugLog('⏱️ Clearing existing timeout');
       clearTimeout(skillsTimeoutRef.current);
       skillsTimeoutRef.current = null;
     }
 
     // Start explosion animation
-    console.log('💥 Setting isSkillsExploding = true');
+    debugLog('💥 Setting isSkillsExploding = true');
     setIsSkillsExploding(true);
 
     // After 5 seconds, return to normal
     skillsTimeoutRef.current = window.setTimeout(() => {
-      console.log('⏰ 5 seconds elapsed, returning to normal');
+      debugLog('⏰ 5 seconds elapsed, returning to normal');
       setIsSkillsExploding(false);
       skillsTimeoutRef.current = null;
     }, 5000);
   };
 
   const handleServicesClick = () => {
-    console.log('🎯 Services clicked! Opening detail view');
+    debugLog('🎯 Services clicked! Opening detail view');
     setIsServicesDetailOpen(true);
     onFullscreenChange?.(true);
   };
 
   const handleServicesDetailClose = () => {
-    console.log('❌ Services detail closed');
+    debugLog('❌ Services detail closed');
     setIsServicesDetailOpen(false);
     onFullscreenChange?.(false);
   };
@@ -558,7 +559,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   return (
     <>
       <div className={`h-full w-full ${selectedNewsId || selectedBlogId ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'} flex items-start justify-start`}>
-        <div className="flex flex-col w-full h-full p-4">
+        <div className="flex flex-col w-full h-full">
           <LayoutGroup>
             <div
               ref={gridContainerRef}
@@ -575,15 +576,15 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                   .filter((section) => {
                     // Ховаємо Services коли News розширений
                     if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
-                      console.log('🚫 FILTER: Services ВИДАЛЕНО з DOM');
+                      debugLog('🚫 FILTER: Services ВИДАЛЕНО з DOM');
                       return false;
                     }
                     // Ховаємо Projects коли Blog розширений
                     if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
-                      console.log('🚫 FILTER: Projects ВИДАЛЕНО з DOM');
+                      debugLog('🚫 FILTER: Projects ВИДАЛЕНО з DOM');
                       return false;
                     }
-                    console.log('✅ FILTER: ', section.id, 'залишається в DOM');
+                    debugLog('✅ FILTER: ', section.id, 'залишається в DOM');
                     return true;
                   })
                   .map((section) => {
@@ -642,7 +643,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                 // Get animated properties for each section
                 const getAnimatedProps = () => {
-                  console.log(`🎬 getAnimatedProps для ${section.id}:`, {
+                  debugLog(`🎬 getAnimatedProps для ${section.id}:`, {
                     isSkillsExploding,
                     isServicesDetailOpen,
                     selectedNewsId,
@@ -655,7 +656,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Hide ALL 6 windows when Skills is exploding (logos will show on top)
                   if (isSkillsExploding) {
-                    console.log(`💥 ${section.id}: Skills exploding - opacity: 0`);
+                    debugLog(`💥 ${section.id}: Skills exploding - opacity: 0`);
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -664,7 +665,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Hide ALL 6 windows when About is exploding (text will show on top)
                   if (isAboutExploding) {
-                    console.log(`💥 ${section.id}: About exploding - opacity: 0`);
+                    debugLog(`💥 ${section.id}: About exploding - opacity: 0`);
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -673,7 +674,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Hide ALL 6 windows when Services detail is open
                   if (isServicesDetailOpen) {
-                    console.log(`📋 ${section.id}: Services detail open - opacity: 0`);
+                    debugLog(`📋 ${section.id}: Services detail open - opacity: 0`);
                     return {
                       opacity: 0,
                       scale: 0.95,
@@ -684,31 +685,31 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Skills: НІКОЛИ не рухається - ПЕРША УМОВА!
                   if (section.id === 'skills' && !selectedNewsId && !selectedBlogId) {
-                    console.log(`🔒 Skills LOCK спрацював: opacity: 1, y: 0`);
+                    debugLog(`🔒 Skills LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // News: НІКОЛИ не рухається (окрім fullscreen)
                   if (section.id === 'news' && !selectedNewsId && !selectedBlogId) {
-                    console.log(`🔒 News LOCK спрацював: opacity: 1, y: 0`);
+                    debugLog(`🔒 News LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Blog: НЕ рухається ОКРІМ коли сам розширений (тоді піднімається вгору)
                   if (section.id === 'blog' && !selectedNewsId && !selectedBlogId && !isBlogExpanded) {
-                    console.log(`🔒 Blog LOCK спрацював: opacity: 1, y: 0`);
+                    debugLog(`🔒 Blog LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // About: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'about' && !selectedNewsId && !selectedBlogId) {
-                    console.log(`🔒 About LOCK спрацював: opacity: 1, y: 0`);
+                    debugLog(`🔒 About LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
                   // Projects: ЗАВЖДИ видимий, окрім fullscreen режимів (БЕЗ перевірки isHidingAllForNews!)
                   if (section.id === 'projects' && !selectedNewsId && !selectedBlogId) {
-                    console.log(`🔒 Projects LOCK спрацював: opacity: 1, y: 0`);
+                    debugLog(`🔒 Projects LOCK спрацював: opacity: 1, y: 0`);
                     return { opacity: 1, y: 0, scaleY: 1 };
                   }
 
@@ -716,7 +717,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Hide all windows except News when news item is being selected
                   if (section.id !== 'news' && (isHidingAllForNews || selectedNewsId)) {
-                    console.log(`❌ ${section.id}: HIDING для News fullscreen - opacity: 0`);
+                    debugLog(`❌ ${section.id}: HIDING для News fullscreen - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -726,7 +727,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Hide all windows except Blog when blog item is being selected
                   if (section.id !== 'blog' && (isHidingAllForBlog || selectedBlogId)) {
-                    console.log(`❌ ${section.id}: HIDING для Blog fullscreen - opacity: 0`);
+                    debugLog(`❌ ${section.id}: HIDING для Blog fullscreen - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -736,7 +737,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Services: scale to 0 height when hiding (0fr grid trick)
                   if (section.id === 'services' && (isServicesHiding || isNewsExpanded)) {
-                    console.log(`❌ Services: HIDING (News розширений) - opacity: 0`);
+                    debugLog(`❌ Services: HIDING (News розширений) - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -746,7 +747,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Projects: scale to 0 height when hiding
                   if (section.id === 'projects' && (isProjectsHiding || isBlogExpanded)) {
-                    console.log(`❌ Projects: HIDING (Blog розширений) - opacity: 0`);
+                    debugLog(`❌ Projects: HIDING (Blog розширений) - opacity: 0`);
                     return {
                       opacity: 0,
                       scaleY: 0,
@@ -756,7 +757,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // News: fullscreen mode - reset transform when news item is selected
                   if (section.id === 'news' && selectedNewsId) {
-                    console.log(`📰 News FULLSCREEN: opacity: 1`);
+                    debugLog(`📰 News FULLSCREEN: opacity: 1`);
                     return {
                       opacity: 1,
                       y: 0,
@@ -765,7 +766,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // News: НЕ рухається вгору, просто стає вищим на своєму місці
                   if (section.id === 'news' && isNewsExpanded) {
-                    console.log(`📰 News РОЗШИРЕНИЙ: opacity: 1, y: 0`);
+                    debugLog(`📰 News РОЗШИРЕНИЙ: opacity: 1, y: 0`);
                     return {
                       opacity: 1,
                       y: 0,  // Залишається на місці, НЕ рухається вгору!
@@ -774,7 +775,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Blog: fullscreen mode - reset transform when blog item is selected
                   if (section.id === 'blog' && selectedBlogId) {
-                    console.log(`📝 Blog FULLSCREEN: opacity: 1`);
+                    debugLog(`📝 Blog FULLSCREEN: opacity: 1`);
                     return {
                       opacity: 1,
                       y: 0,
@@ -783,14 +784,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                   // Blog: піднімається вгору на місце Projects коли розширений
                   if (section.id === 'blog' && isBlogExpanded) {
-                    console.log(`📝 Blog РОЗШИРЕНИЙ (піднімається вгору): opacity: 1, y: 0`);
+                    debugLog(`📝 Blog РОЗШИРЕНИЙ (піднімається вгору): opacity: 1, y: 0`);
                     return {
                       opacity: 1,
                       y: 0,  // Grid position change handled by gridRow, не потрібен y transform
                     };
                   }
 
-                  console.log(`✨ ${section.id}: DEFAULT стан - opacity: 1, y: 0`);
+                  debugLog(`✨ ${section.id}: DEFAULT стан - opacity: 1, y: 0`);
                   return {
                     opacity: 1,
                     y: 0,
@@ -812,30 +813,30 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                     }}
                     onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                     onMouseEnter={() => {
-                      console.log(`🐭 MOUSE ENTER: ${section.id}`);
+                      debugLog(`🐭 MOUSE ENTER: ${section.id}`);
                       setHoveredSection(section.id);
                       // Cancel collapse timeout ONLY if mouse returns to the SAME expanded window
                       if (mouseLeaveTimeoutRef.current) {
                         // Only cancel if returning to News when News is expanded
                         if (section.id === 'news' && isNewsExpanded) {
-                          console.log(`⏹️ СКАСОВАНО таймер - курсор повернувся в News`);
+                          debugLog(`⏹️ СКАСОВАНО таймер - курсор повернувся в News`);
                           clearTimeout(mouseLeaveTimeoutRef.current);
                           mouseLeaveTimeoutRef.current = null;
                         }
                         // Only cancel if returning to Blog when Blog is expanded
                         else if (section.id === 'blog' && isBlogExpanded) {
-                          console.log(`⏹️ СКАСОВАНО таймер - курсор повернувся в Blog`);
+                          debugLog(`⏹️ СКАСОВАНО таймер - курсор повернувся в Blog`);
                           clearTimeout(mouseLeaveTimeoutRef.current);
                           mouseLeaveTimeoutRef.current = null;
                         }
                         // Do NOT cancel if entering other windows
                         else {
-                          console.log(`⚠️ НЕ скасовуємо таймер - це інше вікно (${section.id})`);
+                          debugLog(`⚠️ НЕ скасовуємо таймер - це інше вікно (${section.id})`);
                         }
                       }
                     }}
                     onMouseLeave={() => {
-                      console.log(`🐭 MOUSE LEAVE: ${section.id}`, {
+                      debugLog(`🐭 MOUSE LEAVE: ${section.id}`, {
                         isNewsExpanded,
                         isBlogExpanded,
                         isServicesHiding,
@@ -848,9 +849,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                       // News/Blog: longer timeout to prevent accidental collapse
                       // Give user time to move cursor around the expanded window
                       if (section.id === 'news' && isNewsExpanded && !isServicesHiding && !selectedNewsId) {
-                        console.log(`⏰ NEWS: Встановлюю таймер згортання (1.5s)`);
+                        debugLog(`⏰ NEWS: Встановлюю таймер згортання (1.5s)`);
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
-                          console.log(`✅ NEWS: Таймер спрацював - згортаю News`);
+                          debugLog(`✅ NEWS: Таймер спрацював - згортаю News`);
                           setIsNewsExpanded(false);
                           setNewsHeight(0);
                           setSkillsNormalHeight(0);
@@ -858,20 +859,20 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                           mouseLeaveTimeoutRef.current = null;
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
                       } else if (section.id === 'news') {
-                        console.log(`❌ NEWS: Умова НЕ виконалась - таймер НЕ встановлено`);
+                        debugLog(`❌ NEWS: Умова НЕ виконалась - таймер НЕ встановлено`);
                       }
 
                       if (section.id === 'blog' && isBlogExpanded && !isProjectsHiding && !selectedBlogId) {
-                        console.log(`⏰ BLOG: Встановлюю таймер згортання (1.5s)`);
+                        debugLog(`⏰ BLOG: Встановлюю таймер згортання (1.5s)`);
                         mouseLeaveTimeoutRef.current = window.setTimeout(() => {
-                          console.log(`✅ BLOG: Таймер спрацював - згортаю Blog`);
+                          debugLog(`✅ BLOG: Таймер спрацював - згортаю Blog`);
                           setIsBlogExpanded(false);
                           setBlogHeight(0);
                           setProjectsHeight(0);
                           mouseLeaveTimeoutRef.current = null;
                         }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
                       } else if (section.id === 'blog') {
-                        console.log(`❌ BLOG: Умова НЕ виконалась - таймер НЕ встановлено`);
+                        debugLog(`❌ BLOG: Умова НЕ виконалась - таймер НЕ встановлено`);
                       }
                     }}
                     className={`relative rounded-lg transition-all duration-300 hover:shadow-2xl w-full cursor-pointer ${
@@ -956,8 +957,8 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                 {/* Content */}
                 <div className={`relative h-full max-h-full flex items-start justify-center z-30 ${
                   section.id === 'about'
-                    ? 'p-4 pl-12 sm:p-5 sm:pl-14 md:p-6 md:pl-16'
-                    : 'p-4 pl-12 sm:p-5 sm:pl-14 md:p-6 md:pl-16'
+                    ? 'p-5 pl-12 sm:p-6 sm:pl-14 md:p-8 md:pl-16'
+                    : 'p-5 pl-12 sm:p-6 sm:pl-14 md:p-8 md:pl-16'
                 } overflow-hidden`}>
                   {section.id === 'about' ? (
                     <div className="w-full h-full max-h-full flex flex-col">

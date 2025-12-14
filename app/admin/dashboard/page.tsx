@@ -13,9 +13,10 @@ import { AIPromptsManager } from '@/components/admin/AIPromptsManager'
 import { AutoPublishSettings } from '@/components/admin/AutoPublishSettings'
 import { CronScheduleSettings } from '@/components/admin/CronScheduleSettings'
 import { NewsQueueManager } from '@/components/admin/NewsQueueManager'
+import { DebugSettings } from '@/components/admin/DebugSettings'
 
 type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'settings'
-type SettingsSubTab = 'sources' | 'prompts' | 'schedule' | 'automation'
+type SettingsSubTab = 'sources' | 'prompts' | 'schedule' | 'automation' | 'debug'
 
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -146,6 +147,16 @@ export default function AdminDashboardPage() {
             >
               Cron Schedule
             </button>
+            <button
+              onClick={() => setSettingsSubTab('debug')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                settingsSubTab === 'debug'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Debug
+            </button>
           </div>
         </div>
       )}
@@ -170,6 +181,7 @@ export default function AdminDashboardPage() {
               {settingsSubTab === 'prompts' && <AIPromptsManager />}
               {settingsSubTab === 'schedule' && <AutoPublishSettings />}
               {settingsSubTab === 'automation' && <CronScheduleSettings />}
+              {settingsSubTab === 'debug' && <DebugSettings />}
             </>
           )}
         </motion.div>

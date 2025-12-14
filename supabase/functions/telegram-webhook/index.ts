@@ -297,6 +297,8 @@ serve(async (req) => {
       let publicationType: string | null = null
       let newsId: string
 
+      let linkedinLanguage: string | null = null
+
       if (callbackData.startsWith('publish_news_')) {
         action = 'publish'
         publicationType = 'news'
@@ -305,6 +307,18 @@ serve(async (req) => {
         action = 'publish'
         publicationType = 'blog'
         newsId = callbackData.replace('publish_blog_', '')
+      } else if (callbackData.startsWith('linkedin_en_')) {
+        action = 'linkedin'
+        linkedinLanguage = 'en'
+        newsId = callbackData.replace('linkedin_en_', '')
+      } else if (callbackData.startsWith('linkedin_no_')) {
+        action = 'linkedin'
+        linkedinLanguage = 'no'
+        newsId = callbackData.replace('linkedin_no_', '')
+      } else if (callbackData.startsWith('linkedin_ua_')) {
+        action = 'linkedin'
+        linkedinLanguage = 'ua'
+        newsId = callbackData.replace('linkedin_ua_', '')
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
@@ -431,6 +445,130 @@ serve(async (req) => {
               chat_id: chatId,
               message_id: messageId,
               text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>`,
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
+      } else if (action === 'linkedin' && linkedinLanguage) {
+        // =================================================================
+        // 🔗 LinkedIn Posting Handler
+        // =================================================================
+        console.log(`Posting to LinkedIn (${linkedinLanguage}) with ID:`, newsId)
+
+        // First check if news is already published (has rewritten content)
+        const { data: news, error: fetchError } = await supabase
+          .from('news')
+          .select('*')
+          .eq('id', newsId)
+          .single()
+
+        if (fetchError || !news) {
+          console.error('Failed to fetch news:', fetchError)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Error: News not found',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if content is rewritten (has translations)
+        const titleField = `title_${linkedinLanguage}`
+        if (!news[titleField]) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: `❌ News not published yet. Publish to News/Blog first!`,
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Post to LinkedIn
+        console.log('Calling post-to-linkedin...')
+
+        const linkedinResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId: newsId,
+              language: linkedinLanguage,
+              contentType: 'news'
+            })
+          }
+        )
+
+        const linkedinResult = await linkedinResponse.json()
+
+        if (!linkedinResponse.ok || !linkedinResult.success) {
+          console.error('Failed to post to LinkedIn:', linkedinResult)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: `❌ LinkedIn error: ${linkedinResult.error || 'Unknown error'}`,
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        console.log('✅ Posted to LinkedIn successfully')
+
+        // Success callback
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: `✅ Posted to LinkedIn (${linkedinLanguage.toUpperCase()})!`,
+              show_alert: false
+            })
+          }
+        )
+
+        // Edit message to show LinkedIn status
+        const langLabel = linkedinLanguage.toUpperCase()
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n🔗 <b>POSTED TO LINKEDIN (${langLabel})</b>`,
               parse_mode: 'HTML'
             })
           }

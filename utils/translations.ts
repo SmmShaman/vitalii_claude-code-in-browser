@@ -201,6 +201,7 @@ export const translations = {
     blog_filter_by_tag: "Filter by tag",
     blog_filter_by_category: "Filter by category",
     blog_reading_time: "min read",
+    blog_view_full_article: "View full article",
 
     contact: "Contact",
     contact_title: "Contact",
@@ -443,6 +444,7 @@ export const translations = {
     blog_filter_by_tag: "Filtrer etter tag",
     blog_filter_by_category: "Filtrer etter kategori",
     blog_reading_time: "min lesing",
+    blog_view_full_article: "Se hele artikkelen",
 
     contact: "Kontakt",
     contact_title: "Kontakt",
@@ -685,6 +687,7 @@ export const translations = {
     blog_filter_by_tag: "Фільтр за тегом",
     blog_filter_by_category: "Фільтр за категорією",
     blog_reading_time: "хв читання",
+    blog_view_full_article: "Переглянути повну статтю",
 
     contact: "Контакти",
     contact_title: "Контакти",

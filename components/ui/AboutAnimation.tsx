@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
+import { debugLog, debugWarn, debugError } from '@/utils/debug';
 
 // Register GSAP plugins
 gsap.registerPlugin(SplitText);
@@ -25,43 +26,43 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
 
   // Log component lifecycle
   useEffect(() => {
-    console.log('🎭 AboutAnimation: Component MOUNTED');
+    debugLog('🎭 AboutAnimation: Component MOUNTED');
     return () => {
-      console.log('🎭 AboutAnimation: Component UNMOUNTED');
+      debugLog('🎭 AboutAnimation: Component UNMOUNTED');
     };
   }, []);
 
   // Log prop changes
   useEffect(() => {
-    console.log('🔄 AboutAnimation: isExploding changed to:', isExploding);
+    debugLog('🔄 AboutAnimation: isExploding changed to:', isExploding);
   }, [isExploding]);
 
   // Update text when it changes
   useEffect(() => {
-    console.log('🌐 AboutAnimation: text changed, updating currentText');
+    debugLog('🌐 AboutAnimation: text changed, updating currentText');
     setCurrentText(text);
   }, [text]);
 
   // Calculate grid bounds when explosion starts
   useEffect(() => {
-    console.log('📍 AboutAnimation: useEffect[isExploding] triggered. isExploding:', isExploding);
+    debugLog('📍 AboutAnimation: useEffect[isExploding] triggered. isExploding:', isExploding);
     if (isExploding && gridContainerRef.current) {
       const bounds = gridContainerRef.current.getBoundingClientRect();
       setGridBounds(bounds);
-      console.log('📐 About: Grid bounds calculated:', bounds);
+      debugLog('📐 About: Grid bounds calculated:', bounds);
     } else {
-      console.log('🚫 About: Clearing grid bounds (isExploding:', isExploding, ')');
+      debugLog('🚫 About: Clearing grid bounds (isExploding:', isExploding, ')');
       setGridBounds(null);
     }
   }, [isExploding, gridContainerRef]);
 
   // Animate text when exploding
   useEffect(() => {
-    console.log('🎬 AboutAnimation: Animation useEffect triggered. isExploding:', isExploding, 'textRef:', !!textRef.current, 'gridBounds:', !!gridBounds, 'currentText length:', currentText.length);
+    debugLog('🎬 AboutAnimation: Animation useEffect triggered. isExploding:', isExploding, 'textRef:', !!textRef.current, 'gridBounds:', !!gridBounds, 'currentText length:', currentText.length);
 
     if (!isExploding || !textRef.current || !gridBounds) {
       // Cleanup
-      console.log('🧹 About: Cleaning up animation (isExploding:', isExploding, ')');
+      debugLog('🧹 About: Cleaning up animation (isExploding:', isExploding, ')');
       if (splitTextRef.current) {
         splitTextRef.current.revert();
         splitTextRef.current = null;
@@ -73,7 +74,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
       return;
     }
 
-    console.log('🎬 About: Starting chaotic cloud animation');
+    debugLog('🎬 About: Starting chaotic cloud animation');
 
     // Wait for next frame to ensure DOM is ready
     requestAnimationFrame(() => {
@@ -90,11 +91,11 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
         const chars = textRef.current.querySelectorAll('.char');
 
         if (!chars || chars.length === 0) {
-          console.warn('⚠️ About: No characters found');
+          debugWarn('⚠️ About: No characters found');
           return;
         }
 
-        console.log(`✅ About: Found ${chars.length} characters`);
+        debugLog(`✅ About: Found ${chars.length} characters`);
 
         // Create timeline
         const tl = gsap.timeline();
@@ -126,12 +127,12 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
 
         timelineRef.current = tl;
       } catch (error) {
-        console.error('❌ About: Error creating animation:', error);
+        debugError('❌ About: Error creating animation:', error);
       }
     });
 
     return () => {
-      console.log('🧹 About: Cleanup function called from animation useEffect');
+      debugLog('🧹 About: Cleanup function called from animation useEffect');
       if (splitTextRef.current) {
         splitTextRef.current.revert();
         splitTextRef.current = null;
@@ -143,19 +144,19 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
     };
   }, [isExploding, gridBounds, currentText]);
 
-  console.log('🖼️ AboutAnimation: Render called. isExploding:', isExploding, 'gridBounds:', !!gridBounds);
+  debugLog('🖼️ AboutAnimation: Render called. isExploding:', isExploding, 'gridBounds:', !!gridBounds);
 
   if (!isExploding || !gridBounds) {
-    console.log('⏹️ AboutAnimation: Returning null (not rendering)');
+    debugLog('⏹️ AboutAnimation: Returning null (not rendering)');
     return null;
   }
 
-  console.log('✅ AboutAnimation: Rendering portal');
+  debugLog('✅ AboutAnimation: Rendering portal');
 
   // Process text: remove ** markdown and split into paragraphs
   const cleanText = currentText.replace(/\*\*/g, '');
   const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
-  console.log('📝 AboutAnimation: Paragraphs count:', paragraphs.length);
+  debugLog('📝 AboutAnimation: Paragraphs count:', paragraphs.length);
 
   // Function to split paragraph into bold start and rest
   const renderParagraph = (text: string, index: number) => {
@@ -198,7 +199,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
           {/* Close button */}
           <button
             onClick={() => {
-              console.log('❌ AboutAnimation: Close button CLICKED');
+              debugLog('❌ AboutAnimation: Close button CLICKED');
               onClose();
             }}
             className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full transition-colors z-10"

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Calendar, Tag, ChevronLeft, ChevronRight, Filter, Clock, BookOpen } from 'lucide-react';
+import { X, Search, Calendar, Tag, ChevronLeft, ChevronRight, Filter, Clock, BookOpen, ExternalLink } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getAllBlogPosts, getAllTags, getBlogPostById } from '@/integrations/supabase/client';
 import type { BlogPost, LatestBlogPost } from '@/integrations/supabase/types';
@@ -120,6 +121,14 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
     const wordsPerMinute = 200;
     const wordCount = content.split(/\s+/).length;
     return Math.ceil(wordCount / wordsPerMinute);
+  };
+
+  const getBlogSlug = (post: LatestBlogPost | BlogPost): string | null => {
+    const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const slugKey = `slug_${lang}`;
+    const slug = post[slugKey as keyof typeof post] as string | null;
+    const fallbackSlug = (post as any).slug_en;
+    return slug || fallbackSlug || null;
   };
 
   const handleClose = () => {
@@ -256,6 +265,25 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                     {getTranslatedContent(selectedPost).content}
                   </p>
                 </div>
+
+                {/* SEO Link - View full article on separate page */}
+                {(() => {
+                  const slug = getBlogSlug(selectedPost);
+                  if (slug) {
+                    return (
+                      <div className="mt-6 pt-6 border-t border-border">
+                        <Link
+                          href={`/blog/${slug}`}
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                        >
+                          {t('blog_view_full_article') || 'View full article'}
+                          <ExternalLink className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </motion.div>
             ) : (
               // List View

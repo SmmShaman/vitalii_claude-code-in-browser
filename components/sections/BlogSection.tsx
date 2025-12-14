@@ -38,6 +38,17 @@ const BlogSectionComponent = ({
     }
   }, [selectedBlogId]);
 
+  // Update URL with SEO-friendly slug when blog post is selected
+  useEffect(() => {
+    if (selectedPost && selectedBlogId) {
+      const slug = getBlogSlug(selectedPost);
+      if (slug) {
+        // Replace URL with slug instead of ID for SEO
+        window.history.replaceState({}, '', `/blog/${slug}`);
+      }
+    }
+  }, [selectedPost, selectedBlogId, currentLanguage]);
+
   const loadBlogDetail = async (id: string) => {
     try {
       setLoadingDetail(true);
@@ -72,6 +83,14 @@ const BlogSectionComponent = ({
       excerpt: description as string,
       category: post.category || '',
     };
+  };
+
+  const getBlogSlug = (post: LatestBlogPost | BlogPost): string | null => {
+    const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+    const slugKey = `slug_${lang}`;
+    const slug = (post as any)[slugKey] as string | null;
+    const fallbackSlug = (post as any).slug_en;
+    return slug || fallbackSlug || null;
   };
 
   const handlePostClick = (post: LatestBlogPost, e: React.MouseEvent) => {
