@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '@/contexts/TranslationContext';
 import { sectionNeonColors, oppositeSections } from '@/components/sections/BentoGrid';
+import { HeroTextAnimation } from '@/components/ui/HeroTextAnimation';
 
 interface HeaderProps {
   isCompact?: boolean;
@@ -63,7 +64,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
   };
 
   const fillColor = getOppositeColor();
-  const fillPercentage = (debouncedSection && !isTransitioning) ? 100 : 0;
+  const isActive = !!(debouncedSection && !isTransitioning);
 
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
@@ -102,7 +103,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {/* First line: Name + Subtitle */}
               <div className="flex flex-wrap items-baseline gap-2">
                 <h1
-                  className="font-bold text-amber-400"
+                  className="font-bold text-amber-400 font-comfortaa"
                   style={{
                     fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
                     textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
@@ -111,68 +112,25 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 >
                   {t('title')}
                 </h1>
-                <p
-                  className="font-semibold relative"
-                  style={{
-                    fontSize: 'clamp(0.875rem, 1.5vw, 1.25rem)',
-                    textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
-                    lineHeight: '1.3'
-                  }}
-                >
-                  {/* Base text layer - white */}
-                  <span className="text-white/90">{t('subtitle')}</span>
-                  {/* Colored overlay - fills RIGHT to LEFT */}
-                  <span
-                    className="absolute inset-0 overflow-hidden"
-                    style={{
-                      clipPath: `inset(0 0 0 ${100 - fillPercentage}%)`,
-                      direction: 'rtl',
-                      transition: 'clip-path 700ms ease-in-out',
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: fillColor || 'transparent',
-                        direction: 'ltr',
-                        display: 'block',
-                        transition: 'color 400ms ease-in-out',
-                      }}
-                    >
-                      {t('subtitle')}
-                    </span>
-                  </span>
-                </p>
+                {/* Subtitle with liquid fill animation - RIGHT to LEFT */}
+                <HeroTextAnimation
+                  text={t('subtitle') as string}
+                  fillColor={fillColor}
+                  isActive={isActive}
+                  direction="rtl"
+                  fontSize="clamp(0.875rem, 1.5vw, 1.25rem)"
+                  fontWeight="600"
+                />
               </div>
-              {/* Second line: Description */}
-              <p
-                className="relative"
-                style={{
-                  fontSize: 'clamp(0.875rem, 1.2vw, 1.125rem)',
-                  textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
-                  lineHeight: '1.4'
-                }}
-              >
-                {/* Base text layer - white */}
-                <span className="text-white/80">{t('description')}</span>
-                {/* Colored overlay - fills LEFT to RIGHT */}
-                <span
-                  className="absolute inset-0 overflow-hidden"
-                  style={{
-                    clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
-                    transition: 'clip-path 700ms ease-in-out',
-                  }}
-                >
-                  <span
-                    style={{
-                      color: fillColor || 'transparent',
-                      display: 'block',
-                      transition: 'color 400ms ease-in-out',
-                    }}
-                  >
-                    {t('description')}
-                  </span>
-                </span>
-              </p>
+              {/* Second line: Description with liquid fill - LEFT to RIGHT */}
+              <HeroTextAnimation
+                text={t('description') as string}
+                fillColor={fillColor}
+                isActive={isActive}
+                direction="ltr"
+                fontSize="clamp(0.875rem, 1.2vw, 1.125rem)"
+                fontWeight="400"
+              />
             </div>
           )}
         </motion.div>
