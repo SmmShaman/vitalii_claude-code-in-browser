@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, memo } from 'react';
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Tag, ExternalLink, Clock, ChevronLeft } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
@@ -38,6 +37,17 @@ const BlogSectionComponent = ({
       setSelectedPost(null);
     }
   }, [selectedBlogId]);
+
+  // Update URL with SEO-friendly slug when blog post is selected
+  useEffect(() => {
+    if (selectedPost && selectedBlogId) {
+      const slug = getBlogSlug(selectedPost);
+      if (slug) {
+        // Replace URL with slug instead of ID for SEO
+        window.history.replaceState({}, '', `/blog/${slug}`);
+      }
+    }
+  }, [selectedPost, selectedBlogId, currentLanguage]);
 
   const loadBlogDetail = async (id: string) => {
     try {
@@ -209,25 +219,6 @@ const BlogSectionComponent = ({
             <div className="prose prose-lg dark:prose-invert max-w-none mb-6 text-foreground">
               <p className="whitespace-pre-wrap leading-relaxed">{content.content}</p>
             </div>
-
-            {/* SEO Link to Full Article Page */}
-            {(() => {
-              const slug = getBlogSlug(selectedPost);
-              if (slug) {
-                return (
-                  <div className="mb-6">
-                    <Link
-                      href={`/blog/${slug}`}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
-                    >
-                      {t('blog_view_full_article') || 'View full article'}
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </div>
-                );
-              }
-              return null;
-            })()}
 
             {/* Source Link */}
             {(selectedPost as any).original_url && (
