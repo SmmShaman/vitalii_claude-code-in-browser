@@ -31,7 +31,7 @@ export default function HomePage() {
   const currentNeonColor = hoveredSection ? sectionNeonColors[hoveredSection]?.primary : null
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col relative p-5 pb-4 gap-3">
+    <div className="h-screen w-screen overflow-hidden flex flex-col relative p-5 pb-4 gap-5">
       {/* Dynamic Background Color Overlay */}
       <div
         className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
@@ -44,8 +44,8 @@ export default function HomePage() {
       {/* Animated Background */}
       <ParticlesBackground />
 
-      {/* Compact Header - Language switcher only */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 6vh, 70px)' }}>
+      {/* Header - Auto height based on content */}
+      <div className="flex-shrink-0 relative z-20">
         <Header />
       </div>
 
@@ -54,8 +54,8 @@ export default function HomePage() {
         <BentoGrid onHoveredSectionChange={setHoveredSection} />
       </main>
 
-      {/* Compact Footer - 8vh */}
-      <div className="flex-shrink-0 relative z-20" style={{ height: 'clamp(50px, 7vh, 90px)' }}>
+      {/* Footer */}
+      <div className="flex-shrink-0 relative z-20">
         <Footer />
       </div>
     </div>
