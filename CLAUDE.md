@@ -127,6 +127,13 @@
 - Кнопка "View full article" з правильним URL
 - Тепер BlogModal працює ідентично NewsModal
 
+#### 7. BlogSection SEO Navigation (`components/sections/BlogSection.tsx`)
+- Додано `<Link>` компонент до BlogSection (Bento Grid на головній сторінці)
+- Функція `getBlogSlug()` для мультимовних slug-ів
+- Кнопка "View full article" в детальному вигляді блог-посту
+- Дозволяє користувачам перейти на окрему сторінку з повним SEO URL
+- Тепер URL в браузері відображає повний шлях `/blog/[slug]`
+
 ### SEO Checklist
 
 - [x] JSON-LD Schema (BlogPosting, NewsArticle, BreadcrumbList)
@@ -143,6 +150,7 @@
 - [x] Reading time calculation
 - [x] Meta description truncation (160 chars)
 - [x] BlogModal SEO navigation link
+- [x] BlogSection SEO navigation link (Bento Grid)
 
 ### Testing SEO
 
