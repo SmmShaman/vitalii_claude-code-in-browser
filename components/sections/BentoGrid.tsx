@@ -82,7 +82,17 @@ export const sectionNeonColors: { [key: string]: { primary: string; secondary: s
   blog: { primary: '#0F4C81', secondary: '#1a6bb3' }, // Classic Blue
 };
 
-// Opposite section mapping for text fill effect
+// Контрастні кольори для Hero тексту (комплементарні пари для максимального контрасту)
+export const heroContrastColors: { [key: string]: string } = {
+  about: '#009B77',      // Teal/Cyan для коричнево-оранжевого
+  services: '#00FF80',   // Lime Green для фуксії
+  projects: '#FF4040',   // Vibrant Red для смарагдового
+  skills: '#0F4C81',     // Navy Blue для світло-рожевого
+  news: '#734BB0',       // Royal Purple для зеленого
+  blog: '#AF601A',       // Warm Orange для синього
+};
+
+// Opposite section mapping (kept for reference)
 export const oppositeSections: { [key: string]: string } = {
   about: 'blog',
   services: 'news',

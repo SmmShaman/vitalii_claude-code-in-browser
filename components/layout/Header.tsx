@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '@/contexts/TranslationContext';
-import { sectionNeonColors, oppositeSections } from '@/components/sections/BentoGrid';
+import { heroContrastColors } from '@/components/sections/BentoGrid';
 import { HeroTextAnimation } from '@/components/ui/HeroTextAnimation';
 
 interface HeaderProps {
@@ -56,14 +56,13 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
     };
   }, [hoveredSection]);
 
-  // Get the opposite section's color for text fill effect
-  const getOppositeColor = () => {
+  // Get the contrasting color for Hero text fill effect
+  const getContrastColor = () => {
     if (!debouncedSection) return null;
-    const oppositeSection = oppositeSections[debouncedSection];
-    return oppositeSection ? sectionNeonColors[oppositeSection]?.primary : null;
+    return heroContrastColors[debouncedSection] || null;
   };
 
-  const fillColor = getOppositeColor();
+  const fillColor = getContrastColor();
   const isActive = !!(debouncedSection && !isTransitioning);
 
   const languages: Language[] = ['NO', 'EN', 'UA'];
