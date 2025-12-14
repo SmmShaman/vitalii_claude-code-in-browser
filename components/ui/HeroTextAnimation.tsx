@@ -109,15 +109,14 @@ export const HeroTextAnimation = ({
 
   return (
     <span className={`relative inline-block ${className}`}>
-      {/* Base text - outline only (glass effect) */}
+      {/* Base text - transparent with thin black outline (glass effect) */}
       <span
         className="font-comfortaa"
         style={{
           fontSize,
           fontWeight,
           color: 'transparent',
-          WebkitTextStroke: '1px rgba(255, 255, 255, 0.6)',
-          textShadow: '0 0 20px rgba(255, 255, 255, 0.2)',
+          WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.4)',
         }}
       >
         {text}
@@ -130,8 +129,9 @@ export const HeroTextAnimation = ({
           fontSize,
           fontWeight,
           color: fillColor || 'transparent',
+          WebkitTextStroke: fillColor ? '0.5px rgba(0, 0, 0, 0.3)' : 'none',
           clipPath: getWaveClipPath(),
-          textShadow: fillColor ? `0 0 15px ${fillColor}40, 0 0 30px ${fillColor}20` : 'none',
+          textShadow: fillColor ? `0 0 10px ${fillColor}50` : 'none',
           transition: 'color 300ms ease-out',
         }}
       >

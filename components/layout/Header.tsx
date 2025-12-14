@@ -107,7 +107,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   style={{
                     fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
                     textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
-                    lineHeight: '1.2'
+                    lineHeight: '1.1'
                   }}
                 >
                   {t('title')}
@@ -118,7 +118,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   fillColor={fillColor}
                   isActive={isActive}
                   direction="rtl"
-                  fontSize="clamp(0.875rem, 1.5vw, 1.25rem)"
+                  fontSize="clamp(1rem, 1.7vw, 1.5rem)"
                   fontWeight="600"
                 />
               </div>
@@ -128,7 +128,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 fillColor={fillColor}
                 isActive={isActive}
                 direction="ltr"
-                fontSize="clamp(0.875rem, 1.2vw, 1.125rem)"
+                fontSize="clamp(0.95rem, 1.4vw, 1.35rem)"
                 fontWeight="400"
               />
             </div>
