@@ -261,20 +261,29 @@ Debug mode зберігається в `localStorage` під ключем `vital
 | News | Greenery | `#88B04B` | (136, 176, 75) |
 | Blog | Classic Blue | `#0F4C81` | (15, 76, 129) |
 
-### Маппінг протилежних секцій
+### Контрастні кольори для Hero тексту
 
-Для анімації тексту Hero використовується колір **протилежної** секції:
+Для анімації тексту Hero використовуються **комплементарні кольори** на основі теорії кольору для максимального контрасту:
 
 ```typescript
-export const oppositeSections: { [key: string]: string } = {
-  about: 'blog',      // About hover → Blog color (Classic Blue)
-  services: 'news',   // Services hover → News color (Greenery)
-  projects: 'skills', // Projects hover → Skills color (Light Pink)
-  skills: 'projects', // Skills hover → Projects color (Emerald)
-  news: 'services',   // News hover → Services color (Fuchsia)
-  blog: 'about',      // Blog hover → About color (Brown-Orange)
+export const heroContrastColors: { [key: string]: string } = {
+  about: '#009B77',      // Teal/Cyan для коричнево-оранжевого
+  services: '#00FF80',   // Lime Green для фуксії
+  projects: '#FF4040',   // Vibrant Red для смарагдового
+  skills: '#0F4C81',     // Navy Blue для світло-рожевого
+  news: '#734BB0',       // Royal Purple для зеленого
+  blog: '#AF601A',       // Warm Orange для синього
 };
 ```
+
+| Секція | Колір секції | Контрастний колір Hero | Принцип |
+|--------|--------------|------------------------|---------|
+| About | #AF601A (Brown-Orange) | #009B77 (Teal) | Тепла vs холодна |
+| Services | #EC008C (Fuchsia) | #00FF80 (Lime Green) | Магента vs зелений |
+| Projects | #009B77 (Emerald) | #FF4040 (Red) | Зелений vs червоний |
+| Skills | #fde5e5 (Light Pink) | #0F4C81 (Navy Blue) | Рожевий vs синій |
+| News | #88B04B (Greenery) | #734BB0 (Purple) | Зелений vs фіолетовий |
+| Blog | #0F4C81 (Classic Blue) | #AF601A (Orange) | Синій vs оранжевий |
 
 ### Background Overlay
 
