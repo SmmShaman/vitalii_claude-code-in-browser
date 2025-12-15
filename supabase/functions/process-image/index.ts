@@ -163,7 +163,7 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Gemini 2.5 Flash Image API (Nano Banana)
+ * Process image with Google Gemini 3.0 Pro Image API (Nano Banana Pro)
  * Uses the Gemini image editing capabilities for LinkedIn optimization
  */
 async function processImageWithAI(imageBase64: string, prompt: string): Promise<string | null> {
@@ -173,8 +173,8 @@ async function processImageWithAI(imageBase64: string, prompt: string): Promise<
   }
 
   try {
-    // Gemini 2.5 Flash Image API endpoint (Nano Banana)
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GOOGLE_API_KEY}`
+    // Gemini 3.0 Pro Image API endpoint (Nano Banana Pro)
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`
 
     // Request body for image editing with Gemini
     const requestBody = {
@@ -195,7 +195,7 @@ async function processImageWithAI(imageBase64: string, prompt: string): Promise<
       }
     }
 
-    console.log('📤 Sending to Google Gemini API (Nano Banana)...')
+    console.log('📤 Sending to Google Gemini 3.0 Pro Image API (Nano Banana Pro)...')
 
     const response = await fetch(endpoint, {
       method: 'POST',
