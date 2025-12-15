@@ -10,7 +10,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const LINKEDIN_ACCESS_TOKEN = Deno.env.get('LINKEDIN_ACCESS_TOKEN')
 const LINKEDIN_PERSON_URN = Deno.env.get('LINKEDIN_PERSON_URN') // Format: urn:li:person:xxxxx
-const SITE_URL = Deno.env.get('NEXT_PUBLIC_SITE_URL') || 'https://vitalii-berbeha.netlify.app'
+// Use the actual site URL - vitalii.no is the production domain
+const SITE_URL = Deno.env.get('NEXT_PUBLIC_SITE_URL') || 'https://vitalii.no'
 
 /**
  * Sanitize text for LinkedIn API
@@ -165,18 +166,24 @@ async function fetchNewsContent(
   const slugField = `slug_${language}`
 
   const title = sanitizeText(news[titleField] || news.title_en || news.original_title, 200)
-  const description = sanitizeText(news[descriptionField] || news.description_en || '', 500)
+  // Use full content for LinkedIn (up to 2500 chars to fit within LinkedIn's 3000 limit)
+  const contentField = `content_${language}`
+  const fullContent = news[contentField] || news[descriptionField] || news.description_en || ''
+  const description = sanitizeText(fullContent, 2500)
   const slug = news[slugField] || news.slug_en
 
   // Build URL based on language
   const langPrefix = language === 'en' ? '' : `/${language === 'ua' ? 'uk' : language}`
   const url = `${SITE_URL}${langPrefix}/news/${slug}`
 
+  // Use processed image if available, otherwise original
+  const imageUrl = news.processed_image_url || news.image_url
+
   return {
     title,
     description,
     url,
-    imageUrl: news.image_url
+    imageUrl
   }
 }
 
@@ -204,18 +211,24 @@ async function fetchBlogContent(
   const slugField = `slug_${language}`
 
   const title = sanitizeText(post[titleField] || post.title_en, 200)
-  const description = sanitizeText(post[descriptionField] || post.description_en || '', 500)
+  // Use full content for LinkedIn (up to 2500 chars to fit within LinkedIn's 3000 limit)
+  const contentField = `content_${language}`
+  const fullContent = post[contentField] || post[descriptionField] || post.description_en || ''
+  const description = sanitizeText(fullContent, 2500)
   const slug = post[slugField] || post.slug_en
 
   // Build URL based on language
   const langPrefix = language === 'en' ? '' : `/${language === 'ua' ? 'uk' : language}`
   const url = `${SITE_URL}${langPrefix}/blog/${slug}`
 
+  // Use processed image if available, otherwise original
+  const imageUrl = post.processed_image_url || post.image_url
+
   return {
     title,
     description,
     url,
-    imageUrl: post.image_url
+    imageUrl
   }
 }
 
