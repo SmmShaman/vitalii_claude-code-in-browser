@@ -554,7 +554,18 @@ serve(async (req) => {
 
         console.log('✅ Posted to LinkedIn successfully')
 
+        // Get the title in the appropriate language for the success message
+        const titleField = `title_${linkedinLanguage}`
+        const newsTitle = news[titleField] || news.title_en || news.original_title || 'Untitled'
+        const shortTitle = newsTitle.length > 50 ? newsTitle.substring(0, 47) + '...' : newsTitle
+
+        // Build LinkedIn post URL (if we have post ID)
+        const linkedinPostUrl = linkedinResult.postId
+          ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
+          : null
+
         // Success callback
+        const langLabel = linkedinLanguage.toUpperCase()
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -562,14 +573,20 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: `✅ Posted to LinkedIn (${linkedinLanguage.toUpperCase()})!`,
+              text: `✅ Опубліковано в LinkedIn (${langLabel})!`,
               show_alert: false
             })
           }
         )
 
-        // Edit message to show LinkedIn status
-        const langLabel = linkedinLanguage.toUpperCase()
+        // Edit message to show LinkedIn status with details
+        let linkedinStatusText = `\n\n✅ <b>LINKEDIN ${langLabel}</b>\n`
+        linkedinStatusText += `📰 «${shortTitle}»\n`
+        linkedinStatusText += `🆔 ID: <code>${newsId.substring(0, 8)}</code>\n`
+        if (linkedinPostUrl) {
+          linkedinStatusText += `🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`
+        }
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -578,8 +595,9 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n🔗 <b>POSTED TO LINKEDIN (${langLabel})</b>`,
-              parse_mode: 'HTML'
+              text: messageText + linkedinStatusText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
             })
           }
         )
