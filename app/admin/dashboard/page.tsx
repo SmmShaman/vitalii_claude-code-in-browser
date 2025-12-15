@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Linkedin, Sparkles } from 'lucide-react'
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Linkedin, Sparkles, Image } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { NewsManager } from '@/components/admin/NewsManager'
 import { BlogManager } from '@/components/admin/BlogManager'
@@ -16,9 +16,10 @@ import { NewsQueueManager } from '@/components/admin/NewsQueueManager'
 import { DebugSettings } from '@/components/admin/DebugSettings'
 import { LinkedInPostsManager } from '@/components/admin/LinkedInPostsManager'
 import { SkillsManager } from '@/components/admin/SkillsManager'
+import { ImageProcessingSettings } from '@/components/admin/ImageProcessingSettings'
 
 type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'linkedin' | 'skills' | 'settings'
-type SettingsSubTab = 'sources' | 'prompts' | 'schedule' | 'automation' | 'debug'
+type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'schedule' | 'automation' | 'debug'
 
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -132,6 +133,17 @@ export default function AdminDashboardPage() {
               AI Prompts
             </button>
             <button
+              onClick={() => setSettingsSubTab('images')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                settingsSubTab === 'images'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Image className="h-4 w-4" />
+              Зображення
+            </button>
+            <button
               onClick={() => setSettingsSubTab('schedule')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 settingsSubTab === 'schedule'
@@ -185,6 +197,7 @@ export default function AdminDashboardPage() {
             <>
               {settingsSubTab === 'sources' && <NewsSourcesManager />}
               {settingsSubTab === 'prompts' && <AIPromptsManager />}
+              {settingsSubTab === 'images' && <ImageProcessingSettings />}
               {settingsSubTab === 'schedule' && <AutoPublishSettings />}
               {settingsSubTab === 'automation' && <CronScheduleSettings />}
               {settingsSubTab === 'debug' && <DebugSettings />}
