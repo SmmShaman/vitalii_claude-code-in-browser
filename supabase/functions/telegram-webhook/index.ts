@@ -434,8 +434,17 @@ serve(async (req) => {
           }
         )
 
-        // Edit message
+        // Edit message with LinkedIn buttons
         const statusLabel = publicationType === 'blog' ? 'BLOG' : 'NEWS'
+        const linkedinKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+            ]
+          ]
+        }
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -445,7 +454,8 @@ serve(async (req) => {
               chat_id: chatId,
               message_id: messageId,
               text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>`,
-              parse_mode: 'HTML'
+              parse_mode: 'HTML',
+              reply_markup: linkedinKeyboard
             })
           }
         )
