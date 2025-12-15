@@ -174,7 +174,7 @@ async function processImageWithAI(imageBase64: string, prompt: string): Promise<
 
   try {
     // Gemini 3.0 Pro Image API endpoint (Nano Banana Pro)
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GOOGLE_API_KEY}`
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`
 
     // Request body for image editing with Gemini
     const requestBody = {
