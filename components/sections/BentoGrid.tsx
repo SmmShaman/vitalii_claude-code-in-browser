@@ -18,7 +18,8 @@ import { translations } from '@/utils/translations';
 import { debugLog } from '@/utils/debug';
 
 // Grid layout constants
-const GAP_SIZE = 20; // Fixed gap between windows in pixels (UI design standard: 16-24px)
+const GAP_SIZE_DESKTOP = 20; // Desktop gap between windows in pixels
+const GAP_SIZE_MOBILE = 12; // Mobile gap - smaller for better space usage
 const COLUMNS_COUNT = 3; // Always 3 columns (fluid width with 1fr)
 
 interface Section {
@@ -270,7 +271,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     const blogEl = cardRefs.current['blog'];
 
     if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
-      const gapSize = GAP_SIZE;
+      const gapSize = isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP;
 
       // Calculate total height: all 6 windows + 5 gaps (between rows)
       const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
@@ -346,7 +347,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     const blogEl = cardRefs.current['blog'];
 
     if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
-      const gapSize = GAP_SIZE;
+      const gapSize = isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP;
 
       // Calculate total height: all 6 windows + 5 gaps (between rows)
       const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
@@ -583,7 +584,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
               style={{
                 gridTemplateColumns: isMobile ? '1fr' : `repeat(${COLUMNS_COUNT}, 1fr)`,
                 gridTemplateRows: isMobile ? 'auto' : `repeat(2, 1fr)`,
-                gap: `${GAP_SIZE}px`,
+                gap: `${isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP}px`,
               }}
             >
               <AnimatePresence mode="sync">
@@ -606,17 +607,17 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                   .map((section) => {
                 // Calculate expanded height: original + target + gap
                 const getExpandedHeight = () => {
-                  // Fixed gap for uniform spacing on all screen sizes
-                  const gapSize = GAP_SIZE;
+                  // Responsive gap for different screen sizes
+                  const gapSize = isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP;
 
                   // Mobile: use fixed minimum height for each section to allow scrolling
                   if (isMobile) {
-                    // Fullscreen mode for news/blog items
+                    // Fullscreen mode for news/blog items - use calc with dvh for address bar
                     if ((section.id === 'news' && selectedNewsId) || (section.id === 'blog' && selectedBlogId)) {
-                      return '100vh';
+                      return 'calc(100dvh - 120px)'; // Account for header/footer on mobile
                     }
-                    // Default minimum height for mobile sections
-                    return '60vh';
+                    // Default minimum height for mobile sections - better proportions
+                    return 'min(50vh, 400px)';
                   }
 
                   // Desktop logic below (unchanged)
