@@ -12,6 +12,37 @@ const LINKEDIN_ACCESS_TOKEN = Deno.env.get('LINKEDIN_ACCESS_TOKEN')
 const LINKEDIN_PERSON_URN = Deno.env.get('LINKEDIN_PERSON_URN') // Format: urn:li:person:xxxxx
 const SITE_URL = Deno.env.get('NEXT_PUBLIC_SITE_URL') || 'https://vitalii-berbeha.netlify.app'
 
+/**
+ * Sanitize text for LinkedIn API
+ * - Strips HTML tags
+ * - Normalizes whitespace
+ * - Limits length
+ * - Removes problematic characters
+ */
+function sanitizeText(text: string, maxLength: number = 1000): string {
+  if (!text) return ''
+
+  return text
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Decode HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&[a-z]+;/gi, ' ')
+    // Normalize whitespace - replace multiple spaces/newlines with single space
+    .replace(/\s+/g, ' ')
+    // Remove control characters except newlines
+    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Trim
+    .trim()
+    // Limit length
+    .substring(0, maxLength)
+}
+
 interface LinkedInPostRequest {
   newsId?: string
   blogPostId?: string
@@ -58,8 +89,11 @@ serve(async (req) => {
 
     console.log('📝 Content to post:', {
       title: content.title.substring(0, 50) + '...',
+      descriptionLength: content.description.length,
       url: content.url
     })
+    console.log('📋 Full title:', content.title)
+    console.log('📋 Full description:', content.description)
 
     // Post to LinkedIn
     const result = await postToLinkedIn(content)
@@ -130,8 +164,8 @@ async function fetchNewsContent(
   const descriptionField = `description_${language}`
   const slugField = `slug_${language}`
 
-  const title = news[titleField] || news.title_en || news.original_title
-  const description = news[descriptionField] || news.description_en || ''
+  const title = sanitizeText(news[titleField] || news.title_en || news.original_title, 200)
+  const description = sanitizeText(news[descriptionField] || news.description_en || '', 500)
   const slug = news[slugField] || news.slug_en
 
   // Build URL based on language
@@ -169,8 +203,8 @@ async function fetchBlogContent(
   const descriptionField = `description_${language}`
   const slugField = `slug_${language}`
 
-  const title = post[titleField] || post.title_en
-  const description = post[descriptionField] || post.description_en || ''
+  const title = sanitizeText(post[titleField] || post.title_en, 200)
+  const description = sanitizeText(post[descriptionField] || post.description_en || '', 500)
   const slug = post[slugField] || post.slug_en
 
   // Build URL based on language
@@ -195,6 +229,13 @@ async function postToLinkedIn(content: {
   imageUrl?: string
 }): Promise<{ success: boolean; postId?: string; error?: string }> {
   try {
+    // Build the share commentary (LinkedIn limit is 3000 chars)
+    // Keep it concise for better engagement
+    const commentary = `${content.title}\n\n${content.description}\n\n🔗 Read more: ${content.url}`
+    const safeCommentary = commentary.substring(0, 2900)
+
+    console.log('📤 Commentary length:', safeCommentary.length)
+
     // Build the share content
     // Use UGC Post API (User Generated Content)
     const postBody: any = {
@@ -203,7 +244,7 @@ async function postToLinkedIn(content: {
       specificContent: {
         'com.linkedin.ugc.ShareContent': {
           shareCommentary: {
-            text: `${content.title}\n\n${content.description}\n\n🔗 Read more: ${content.url}`
+            text: safeCommentary
           },
           shareMediaCategory: 'ARTICLE',
           media: [
