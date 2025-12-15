@@ -28,6 +28,11 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
   const progressRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
+  // Touch/swipe support
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const SWIPE_THRESHOLD = 50; // Minimum distance for swipe detection
+  const SWIPE_TIME_THRESHOLD = 300; // Maximum time for swipe (ms)
+
   // Unique neon colors for each project
   const projectColors = [
     { from: '#fc51c9', via: '#e707f7', to: '#9c27b0' }, // Pink/Magenta/Purple
@@ -159,6 +164,58 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
     onCardClick(currentIndex);
   };
 
+  // Touch event handlers for swipe navigation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now(),
+    };
+    setIsPaused(true); // Pause animation while touching
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Prevent default only for horizontal swipes to allow vertical scrolling
+    if (!touchStartRef.current) return;
+
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+
+    // If horizontal movement is greater, prevent default (swiping)
+    if (deltaX > deltaY && deltaX > 10) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+
+    // Check if it's a valid horizontal swipe
+    if (
+      Math.abs(deltaX) > SWIPE_THRESHOLD &&
+      Math.abs(deltaX) > Math.abs(deltaY) &&
+      deltaTime < SWIPE_TIME_THRESHOLD
+    ) {
+      if (deltaX < 0) {
+        // Swipe left - next project
+        setCurrentIndex((prev) => (prev + 1) % projects.length);
+      } else {
+        // Swipe right - previous project
+        setCurrentIndex((prev) => (prev - 1 + projects.length) % projects.length);
+      }
+    }
+
+    touchStartRef.current = null;
+    setIsPaused(false); // Resume animation after touch ends
+  };
+
   const currentProject = projects[currentIndex];
   const currentColor = projectColors[currentIndex % projectColors.length];
 
@@ -176,10 +233,13 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
 
   return (
     <div
-      className="h-full w-full overflow-hidden relative cursor-pointer"
+      className="h-full w-full overflow-hidden relative cursor-pointer touch-pan-y"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={!isExploding ? handleClick : undefined}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       style={{ position: 'relative', zIndex: 1 }}
     >
       {/* Background text "Projects" */}

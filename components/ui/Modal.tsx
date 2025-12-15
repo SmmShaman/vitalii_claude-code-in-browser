@@ -46,12 +46,19 @@ export function Modal({ children }: ModalProps) {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed inset-4 md:inset-10 lg:inset-20 bg-slate-900 rounded-2xl overflow-hidden shadow-2xl"
+          className="fixed inset-2 sm:inset-4 md:inset-10 lg:inset-20 bg-slate-900 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl"
+          style={{
+            // Safe area insets for notched devices
+            paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+            paddingRight: 'max(0.5rem, env(safe-area-inset-right))',
+            paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+            paddingLeft: 'max(0.5rem, env(safe-area-inset-left))',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={onDismiss}
-            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 transition-colors text-white"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 p-2 sm:p-2 min-w-[44px] min-h-[44px] rounded-full bg-slate-800/80 hover:bg-slate-700 transition-colors text-white flex items-center justify-center"
           >
             <X className="w-6 h-6" />
           </button>

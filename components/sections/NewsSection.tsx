@@ -211,10 +211,11 @@ const NewsSectionComponent = ({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={onBack}
-            className="pointer-events-auto m-4 w-10 h-10 rounded-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 border border-slate-200 dark:border-slate-700"
+            className="pointer-events-auto m-2 sm:m-4 w-11 h-11 sm:w-12 sm:h-12 min-w-[44px] min-h-[44px] rounded-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 border border-slate-200 dark:border-slate-700 active:scale-95"
             title="Back to news"
+            aria-label="Back to news list"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
           </motion.button>
         </div>
 
@@ -233,18 +234,39 @@ const NewsSectionComponent = ({
               .news-section-detail-grid {
                 display: flex;
                 flex-direction: column;
-                gap: 1rem;
+                gap: 0.75rem;
               }
 
               .news-section-media-container {
                 width: 100%;
+                max-width: 100%;
               }
 
-              /* Desktop: Grid layout with media on left, content wrapping below */
+              /* Tablet: Responsive grid layout */
               @media (min-width: 640px) {
                 .news-section-detail-grid {
                   display: grid;
-                  grid-template-columns: 448px 1fr;
+                  grid-template-columns: 1fr;
+                  gap: 1rem;
+                  grid-template-areas:
+                    "media"
+                    "title"
+                    "meta"
+                    "content"
+                    "links";
+                }
+
+                .news-section-media-container {
+                  grid-area: media;
+                  width: 100%;
+                  max-width: 100%;
+                }
+              }
+
+              /* Medium screens: Side-by-side layout */
+              @media (min-width: 768px) {
+                .news-section-detail-grid {
+                  grid-template-columns: minmax(280px, 45%) 1fr;
                   gap: 1.5rem;
                   grid-template-areas:
                     "media title"
@@ -255,7 +277,7 @@ const NewsSectionComponent = ({
 
                 .news-section-media-container {
                   grid-area: media;
-                  width: 448px;
+                  width: 100%;
                 }
 
                 .news-section-title {
@@ -272,6 +294,17 @@ const NewsSectionComponent = ({
 
                 .news-section-links {
                   grid-area: links;
+                }
+              }
+
+              /* Large screens: Fixed media width */
+              @media (min-width: 1024px) {
+                .news-section-detail-grid {
+                  grid-template-columns: 400px 1fr;
+                }
+
+                .news-section-media-container {
+                  width: 400px;
                 }
               }
             `}</style>

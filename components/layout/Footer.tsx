@@ -210,20 +210,20 @@ export const Footer = () => {
             </motion.div>
 
             {/* Right: Email + Social Icons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {/* Email Button */}
               <button
                 onClick={openEmailModal}
-                className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer"
+                className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20"
                 aria-label="Send Email"
                 onMouseEnter={() => setSelectedSocial('Email')}
                 onMouseLeave={() => setSelectedSocial(null)}
               >
-                <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
+                <Mail className="w-4 h-4 sm:w-4 sm:h-4" />
               </button>
 
               {/* Divider */}
-              <div className="w-px h-3 sm:h-4 bg-white/30" />
+              <div className="w-px h-4 sm:h-5 bg-white/30 mx-1" />
 
               {/* Social Icons */}
               {socialLinks.map((social) => {
@@ -232,12 +232,12 @@ export const Footer = () => {
                   <button
                     key={social.label}
                     onClick={() => handleSocialClick(social)}
-                    className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer"
+                    className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20"
                     aria-label={social.label}
                     onMouseEnter={() => setSelectedSocial(social.label)}
                     onMouseLeave={() => setSelectedSocial(null)}
                   >
-                    <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <Icon className="w-4 h-4 sm:w-4 sm:h-4" />
                   </button>
                 );
               })}
