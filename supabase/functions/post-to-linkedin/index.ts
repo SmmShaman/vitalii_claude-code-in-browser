@@ -22,6 +22,7 @@ interface LinkedInPostRequest {
 /**
  * Post content to LinkedIn
  * Supports both news and blog posts in multiple languages
+ * Deployed: December 2024
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
