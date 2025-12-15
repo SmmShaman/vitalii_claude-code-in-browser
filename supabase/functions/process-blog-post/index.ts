@@ -116,13 +116,15 @@ serve(async (req) => {
 
     console.log('✅ Blog post rewritten for all languages')
 
-    // Generate slugs
+    // Generate slugs with unique suffix to prevent duplicates
+    const uniqueSuffix = Date.now().toString(36).substring(-6)
     const generateSlug = (text: string): string => {
-      return text
+      const baseSlug = text
         .toLowerCase()
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-')
-        .substring(0, 100)
+        .substring(0, 80)
+      return `${baseSlug}-${uniqueSuffix}`
     }
 
     // Calculate reading time (words per minute = 200)

@@ -153,13 +153,15 @@ async function processWithPrompt(
 
   console.log('✅ Content rewritten for all languages')
 
-  // Generate slugs
+  // Generate slugs with unique suffix to prevent duplicates
+  const uniqueSuffix = requestData.newsId.substring(0, 8)
   const generateSlug = (text: string): string => {
-    return text
+    const baseSlug = text
       .toLowerCase()
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-')
-      .substring(0, 100)
+      .substring(0, 80)
+    return `${baseSlug}-${uniqueSuffix}`
   }
 
   // Update news item with rewritten content
