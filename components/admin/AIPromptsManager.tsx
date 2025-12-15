@@ -206,15 +206,27 @@ Return ONLY valid JSON in this exact format:
 
       {/* Info Box */}
       <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-        <h3 className="text-white font-semibold mb-2">How AI Prompts Work:</h3>
-        <ul className="text-gray-300 text-sm space-y-1">
-          <li>- Create custom prompts for AI to rewrite and translate articles</li>
-          <li>- Use placeholders: {'{title}'}, {'{content}'}, {'{url}'}</li>
-          <li>- <strong>news_rewrite:</strong> Used when publishing to News (objective style)</li>
-          <li>- <strong>blog_rewrite:</strong> Used when publishing to Blog (first-person style)</li>
-          <li>- <strong>rewrite:</strong> General rewriting (fallback for news if news_rewrite not found)</li>
-          <li>- AI will return translated content in EN, NO, and UA languages as JSON</li>
-        </ul>
+        <h3 className="text-white font-semibold mb-2">Як працюють AI промпти:</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="text-purple-300 font-medium mb-1">📝 Текстовий контент:</h4>
+            <ul className="text-gray-300 text-sm space-y-1">
+              <li>- Використовуйте плейсхолдери: {'{title}'}, {'{content}'}, {'{url}'}</li>
+              <li>- <strong>news_rewrite:</strong> Публікація в Новини (об'єктивний стиль)</li>
+              <li>- <strong>blog_rewrite:</strong> Публікація в Блог (від першої особи)</li>
+              <li>- AI поверне контент на EN, NO, UA як JSON</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-cyan-300 font-medium mb-1">🖼️ Обробка зображень:</h4>
+            <ul className="text-gray-300 text-sm space-y-1">
+              <li>- <strong>image_linkedin_optimize:</strong> Оптимізація для LinkedIn</li>
+              <li>- <strong>image_enhance:</strong> Загальне покращення якості</li>
+              <li>- Зображення обробляються через Google AI</li>
+              <li>- Автоматично при завантаженні з Telegram</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* Default Prompt Preview */}
@@ -394,12 +406,19 @@ Return ONLY valid JSON in this exact format:
                   onChange={(e) => setFormData({ ...formData, prompt_type: e.target.value })}
                   className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="rewrite">Rewrite & Translate</option>
-                  <option value="news_rewrite">News Rewrite (Journalistic Style)</option>
-                  <option value="blog_rewrite">Blog Rewrite (Personal Perspective)</option>
-                  <option value="translate">Translate Only</option>
-                  <option value="summarize">Summarize</option>
-                  <option value="pre_moderation">Pre-Moderation (AI Filter)</option>
+                  <optgroup label="📝 Текстовий контент">
+                    <option value="rewrite">Rewrite & Translate</option>
+                    <option value="news_rewrite">News Rewrite (Journalistic Style)</option>
+                    <option value="blog_rewrite">Blog Rewrite (Personal Perspective)</option>
+                    <option value="translate">Translate Only</option>
+                    <option value="summarize">Summarize</option>
+                    <option value="pre_moderation">Pre-Moderation (AI Filter)</option>
+                  </optgroup>
+                  <optgroup label="🖼️ Обробка зображень">
+                    <option value="image_linkedin_optimize">Image: LinkedIn Optimization</option>
+                    <option value="image_enhance">Image: General Enhancement</option>
+                    <option value="image_custom">Image: Custom Processing</option>
+                  </optgroup>
                 </select>
               </div>
 

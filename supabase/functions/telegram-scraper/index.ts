@@ -18,6 +18,7 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
 
 // YouTube API credentials
 const YOUTUBE_CLIENT_ID = Deno.env.get('YOUTUBE_CLIENT_ID')
@@ -285,6 +286,7 @@ serve(async (req) => {
 
             // Download and upload photo if exists
             let photoUrl = post.photoUrl
+            let processedPhotoUrl: string | null = null
             if (photoUrl) {
               try {
                 // Download photo
@@ -307,6 +309,13 @@ serve(async (req) => {
                       .getPublicUrl(fileName)
                     photoUrl = urlData.publicUrl
                     console.log(`📸 Photo uploaded: ${photoUrl}`)
+
+                    // Process image with AI for LinkedIn optimization
+                    const processedUrl = await processImageForLinkedIn(photoUrl)
+                    if (processedUrl) {
+                      processedPhotoUrl = processedUrl
+                      console.log(`🖼️ Image processed for LinkedIn: ${processedPhotoUrl}`)
+                    }
                   }
                 }
               } catch (photoError) {
@@ -324,6 +333,8 @@ serve(async (req) => {
                 original_content: post.text,
                 original_url: post.originalUrl,
                 image_url: photoUrl,
+                processed_image_url: processedPhotoUrl,
+                image_processed_at: processedPhotoUrl ? new Date().toISOString() : null,
                 video_url: post.videoUrl,
                 video_type: post.videoType,
                 source_id: source.id,
@@ -875,5 +886,45 @@ async function preModerate(
       is_duplicate: false,
       quality_score: 5
     }
+  }
+}
+
+/**
+ * Process image for LinkedIn using AI enhancement
+ */
+async function processImageForLinkedIn(imageUrl: string): Promise<string | null> {
+  try {
+    console.log('🖼️ Processing image for LinkedIn...')
+
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/process-image`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          imageUrl,
+          promptType: 'linkedin_optimize'
+        })
+      }
+    )
+
+    if (!response.ok) {
+      console.warn('⚠️ Image processing failed, using original')
+      return null
+    }
+
+    const result = await response.json()
+
+    if (result.success && result.processedImageUrl) {
+      return result.processedImageUrl
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error in processImageForLinkedIn:', error)
+    return null
   }
 }
