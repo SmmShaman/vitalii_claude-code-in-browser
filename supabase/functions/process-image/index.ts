@@ -163,8 +163,8 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Imagen API (or alternative)
- * This function can be adapted for different AI services
+ * Process image with Google Gemini 2.5 Flash Image API (Nano Banana)
+ * Uses the Gemini image editing capabilities for LinkedIn optimization
  */
 async function processImageWithAI(imageBase64: string, prompt: string): Promise<string | null> {
   if (!GOOGLE_API_KEY) {
@@ -173,33 +173,33 @@ async function processImageWithAI(imageBase64: string, prompt: string): Promise<
   }
 
   try {
-    // Google Imagen API endpoint
-    // Note: Replace with actual Imagen/Vertex AI endpoint when available
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict`
+    // Gemini 2.5 Flash Image API endpoint (Nano Banana)
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GOOGLE_API_KEY}`
 
+    // Request body for image editing with Gemini
     const requestBody = {
-      instances: [
-        {
-          prompt: prompt,
-          image: {
-            bytesBase64Encoded: imageBase64
+      contents: [{
+        parts: [
+          { text: prompt },
+          {
+            inline_data: {
+              mime_type: 'image/jpeg',
+              data: imageBase64
+            }
           }
-        }
-      ],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: '16:9', // LinkedIn optimal ratio
-        safetyFilterLevel: 'block_some',
-        personGeneration: 'allow_adult'
+        ]
+      }],
+      generationConfig: {
+        responseModalities: ['image', 'text'],
+        responseMimeType: 'image/jpeg'
       }
     }
 
-    console.log('📤 Sending to Google Imagen API...')
+    console.log('📤 Sending to Google Gemini API (Nano Banana)...')
 
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GOOGLE_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
@@ -207,24 +207,30 @@ async function processImageWithAI(imageBase64: string, prompt: string): Promise<
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Google API error:', response.status, errorText)
+      console.error('Gemini API error:', response.status, errorText)
       return null
     }
 
     const result = await response.json()
-    console.log('📥 Google API response received')
+    console.log('📥 Gemini API response received')
 
     // Extract processed image from response
-    if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
-      // Upload processed image to Supabase Storage
-      const processedImageUrl = await uploadProcessedImage(result.predictions[0].bytesBase64Encoded)
-      return processedImageUrl
+    // Gemini returns images in candidates[0].content.parts[].inline_data
+    if (result.candidates && result.candidates[0]?.content?.parts) {
+      for (const part of result.candidates[0].content.parts) {
+        if (part.inline_data && part.inline_data.data) {
+          // Upload processed image to Supabase Storage
+          const processedImageUrl = await uploadProcessedImage(part.inline_data.data)
+          return processedImageUrl
+        }
+      }
     }
 
+    console.log('⚠️ No image in Gemini response')
     return null
 
   } catch (error: any) {
-    console.error('Error calling Google API:', error)
+    console.error('Error calling Gemini API:', error)
     return null
   }
 }
