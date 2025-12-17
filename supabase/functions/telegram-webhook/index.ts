@@ -367,6 +367,55 @@ serve(async (req) => {
           })
         }
 
+        // 🛡️ DUPLICATE CHECK: Prevent republishing already published content
+        if (news.is_published || news.is_rewritten) {
+          console.log(`⚠️ News ${newsId} is already published, preventing duplicate`)
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '⚠️ Ця новина вже опублікована!',
+                show_alert: true
+              })
+            }
+          )
+
+          // Remove publish buttons, show only LinkedIn buttons if content exists
+          const hasContent = news.title_en || news.title_no || news.title_ua
+          const updatedKeyboard = hasContent ? {
+            inline_keyboard: [
+              [
+                { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+                { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+                { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+              ]
+            ]
+          } : undefined
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + '\n\n⚠️ <b>ВЖЕ ОПУБЛІКОВАНО</b>',
+                parse_mode: 'HTML',
+                reply_markup: updatedKeyboard
+              })
+            }
+          )
+
+          return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
         // Choose appropriate processing function based on publication type
         const processingEndpoint = publicationType === 'blog'
           ? 'process-blog-post'
@@ -508,6 +557,48 @@ serve(async (req) => {
             }
           )
           return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // 🛡️ DUPLICATE CHECK: Prevent republishing to LinkedIn
+        if (news.linkedin_post_id) {
+          const existingLang = (news.linkedin_language || 'unknown').toUpperCase()
+          console.log(`⚠️ News ${newsId} already posted to LinkedIn (${existingLang}), preventing duplicate`)
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: `⚠️ Вже опубліковано в LinkedIn (${existingLang})!`,
+                show_alert: true
+              })
+            }
+          )
+
+          // Build LinkedIn post URL
+          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${news.linkedin_post_id}`
+
+          // Remove LinkedIn buttons, show link to existing post
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + `\n\n✅ <b>LINKEDIN ${existingLang}</b>\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+              })
+            }
+          )
+
+          return new Response(JSON.stringify({ ok: true, duplicate: true }), {
             headers: { 'Content-Type': 'application/json' }
           })
         }
