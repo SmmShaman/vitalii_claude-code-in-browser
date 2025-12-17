@@ -286,7 +286,6 @@ serve(async (req) => {
 
             // Download and upload photo if exists
             let photoUrl = post.photoUrl
-            let processedPhotoUrl: string | null = null
             if (photoUrl) {
               try {
                 // Download photo
@@ -310,12 +309,8 @@ serve(async (req) => {
                     photoUrl = urlData.publicUrl
                     console.log(`📸 Photo uploaded: ${photoUrl}`)
 
-                    // Process image with AI for LinkedIn optimization
-                    const processedUrl = await processImageForLinkedIn(photoUrl)
-                    if (processedUrl) {
-                      processedPhotoUrl = processedUrl
-                      console.log(`🖼️ Image processed for LinkedIn: ${processedPhotoUrl}`)
-                    }
+                    // NOTE: Image processing for LinkedIn is done separately
+                    // after GOOGLE_API_KEY is configured. See process-image function.
                   }
                 }
               } catch (photoError) {
@@ -333,8 +328,6 @@ serve(async (req) => {
                 original_content: post.text,
                 original_url: post.originalUrl,
                 image_url: photoUrl,
-                processed_image_url: processedPhotoUrl,
-                image_processed_at: processedPhotoUrl ? new Date().toISOString() : null,
                 video_url: post.videoUrl,
                 video_type: post.videoType,
                 source_id: source.id,
