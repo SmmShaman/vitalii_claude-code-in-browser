@@ -504,7 +504,7 @@ const projectColors = [
 
 ```
 ├── supabase/functions/post-to-linkedin/index.ts  # LinkedIn API edge function
-├── supabase/functions/telegram-webhook/index.ts  # Callback handlers
+├── supabase/functions/telegram-webhook/index.ts  # Callback handlers + duplicate checks
 ├── supabase/functions/telegram-scraper/index.ts  # Кнопки модерації
 ```
 
@@ -531,21 +531,42 @@ const projectColors = [
 └───────────────────────────────────────────┘
 ```
 
+### 🛡️ Захист від дублікатів (Duplicate Safeguards)
+
+Система запобігає повторній публікації:
+
+**Для News/Blog:**
+```typescript
+if (news.is_published || news.is_rewritten) {
+  // Показує: "⚠️ Ця новина вже опублікована!"
+  // Прибирає кнопки публікації, залишає тільки LinkedIn
+}
+```
+
+**Для LinkedIn:**
+```typescript
+if (news.linkedin_post_id) {
+  // Показує: "⚠️ Вже опубліковано в LinkedIn (EN/NO/UA)!"
+  // Прибирає LinkedIn кнопки, показує посилання на пост
+}
+```
+
 ### LinkedIn API
 
 Використовується **UGC Post API** (User Generated Content):
 - Endpoint: `https://api.linkedin.com/v2/ugcPosts`
 - Метод: POST
 - Формат: Article share з preview
+- URL: `https://vitalii.no/news/{slug}` (реальний домен)
 
 ### Що публікується
 
 ```
 {Заголовок статті}
 
-{Опис статті}
+{Повний опис статті - до 2500 символів}
 
-🔗 Read more: {URL статті на сайті}
+🔗 Read more: https://vitalii.no/news/{slug}
 ```
 
 ### Database Fields
@@ -582,11 +603,178 @@ LINKEDIN_PERSON_URN=urn:li:person:your_person_id
 # Deploy LinkedIn function
 cd supabase
 supabase functions deploy post-to-linkedin
+supabase functions deploy telegram-webhook
 
 # Set secrets
 supabase secrets set LINKEDIN_ACCESS_TOKEN="your_token"
 supabase secrets set LINKEDIN_PERSON_URN="urn:li:person:xxxxx"
 ```
+
+---
+
+## Video Handling & YouTube Integration (December 2024)
+
+### Опис
+
+Автоматичне завантаження відео з Telegram каналів на YouTube для надійного вбудовування на сайті. Fallback на красивий Telegram плейсхолдер якщо YouTube недоступний.
+
+### Файли
+
+```
+├── supabase/functions/telegram-scraper/index.ts  # Video extraction + YouTube upload
+├── supabase/functions/_shared/youtube-helpers.ts # YouTube API helpers
+├── supabase/functions/test-youtube-auth/index.ts # OAuth тестування
+├── components/sections/NewsSection.tsx           # Video player + Telegram fallback
+├── components/sections/NewsModal.tsx             # Video player + Telegram fallback
+├── app/news/[slug]/NewsArticle.tsx               # Standalone news page with video
+```
+
+### Video Types
+
+| Type | Опис | Джерело |
+|------|------|---------|
+| `youtube` | YouTube embed URL | Завантажено на YouTube |
+| `telegram_embed` | Telegram post URL | Fallback коли YouTube недоступний |
+| `direct_url` | Пряме посилання на .mp4 | Рідко використовується |
+
+### Workflow обробки відео
+
+```
+1. Scraper знаходить відео в Telegram пості
+   ↓
+2. YouTube credentials налаштовані?
+   ├─ ТАК → Завантажити відео з Telegram CDN
+   │        → Перекласти заголовок на англійську (Azure OpenAI)
+   │        → Отримати YouTube access token
+   │        → Завантажити на YouTube (unlisted)
+   │        → video_type = 'youtube'
+   │        → video_url = 'https://youtube.com/embed/...'
+   │
+   └─ НІ (або помилка) → Fallback на Telegram embed
+                        → video_type = 'telegram_embed'
+                        → video_url = 'https://t.me/channel/123?embed=1'
+```
+
+### YouTube OAuth Setup
+
+**Потрібні credentials:**
+```env
+YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+YOUTUBE_CLIENT_SECRET=GOCSPX-...
+YOUTUBE_REFRESH_TOKEN=1//04...
+```
+
+**Отримання Refresh Token:**
+1. Відкрити [Google OAuth Playground](https://developers.google.com/oauthplayground/)
+2. ⚙️ → "Use your own OAuth credentials" → ввести Client ID та Secret
+3. Вибрати scope: `https://www.googleapis.com/auth/youtube.upload`
+4. Authorize APIs → Exchange authorization code for tokens
+5. Скопіювати Refresh Token
+
+**⚠️ Важливо:** Refresh Token прив'язаний до Client Secret! Якщо створили новий Secret, потрібен новий Token.
+
+**Тестування:**
+```bash
+curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/test-youtube-auth" \
+  -H "Authorization: Bearer YOUR_ANON_KEY"
+```
+
+### Telegram Video Fallback UI
+
+Коли `video_type = 'telegram_embed'`, замість зламаного iframe показується красивий плейсхолдер:
+
+```
+┌─────────────────────────────────────────┐
+│     [Gradient: #2AABEE → #229ED9]       │
+│                                         │
+│           [Telegram Logo]               │
+│                                         │
+│          @channelname                   │
+│                                         │
+│    ▶ Дивитись в Telegram                │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+- Кнопка відкриває оригінальний пост в Telegram
+- Працює в NewsSection, NewsModal та NewsArticle
+
+### Environment Variables (YouTube)
+
+```env
+# YouTube API (для завантаження відео)
+YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+YOUTUBE_CLIENT_SECRET=GOCSPX-...
+YOUTUBE_REFRESH_TOKEN=1//04...
+
+# Azure OpenAI (для перекладу заголовків)
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your_key
+```
+
+---
+
+## News Article Page (December 2024)
+
+### Опис
+
+Окрема сторінка для новин (`/news/[slug]`) з білим фоном та підтримкою всіх типів відео. Використовується для прямих посилань (LinkedIn, SEO).
+
+### Файл
+
+```
+app/news/[slug]/NewsArticle.tsx
+```
+
+### Дизайн
+
+- **Фон:** Білий (`bg-white`)
+- **Текст:** Темно-сірий (`text-gray-900`, `text-gray-700`)
+- **Посилання:** Синій (`text-blue-600`)
+- **Tags:** Світло-сірий бейдж (`bg-gray-100`)
+- **Author block:** Світло-сірий з рамкою (`bg-gray-50 border-gray-100`)
+
+### Структура сторінки
+
+```
+┌─────────────────────────────────────────────────┐
+│  Home / News / Article Title...                 │
+│  ← Back to Home                                 │
+│                                                 │
+│  [Featured Image або Video]                     │
+│                                                 │
+│  Meta Unveils SAM Audio: A Breakthrough...      │
+│  📅 December 17, 2025  👁 2 views               │
+│                                                 │
+│  [Article content - description_en]             │
+│                                                 │
+│  #ai #technology #meta                          │
+│                                                 │
+│  [Read Original Article] ← кнопка              │
+│                                                 │
+│  ┌─────────────────────────────────────────┐   │
+│  │ Curated by                               │   │
+│  │ Vitalii Berbeha                          │   │
+│  │ E-commerce & Marketing Expert            │   │
+│  └─────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────┘
+```
+
+### Video Support
+
+Підтримуються всі типи відео:
+- **YouTube:** Нативний iframe player
+- **Telegram embed:** Красивий fallback з кнопкою "Дивитись в Telegram"
+- **Direct URL:** HTML5 video player
+
+### SEO Features
+
+- JSON-LD `NewsArticle` schema
+- JSON-LD `BreadcrumbList` schema
+- Open Graph metadata
+- Twitter Cards
+- Canonical URLs
+- Hreflang tags
 
 ---
 
