@@ -555,7 +555,7 @@ serve(async (req) => {
         console.log('✅ Posted to LinkedIn successfully')
 
         // Get the title in the appropriate language for the success message
-        const titleField = `title_${linkedinLanguage}`
+        // Note: titleField is already declared above on line 496
         const newsTitle = news[titleField] || news.title_en || news.original_title || 'Untitled'
         const shortTitle = newsTitle.length > 50 ? newsTitle.substring(0, 47) + '...' : newsTitle
 
