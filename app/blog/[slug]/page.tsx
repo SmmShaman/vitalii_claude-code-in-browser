@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { getBlogPostBySlug, getLatestBlogPosts } from '@/integrations/supabase/client'
 import { BlogArticle } from './BlogArticle'
+import { ArticleLayout } from '@/components/ArticleLayout'
 import {
   BASE_URL,
   generateAlternates,
@@ -69,5 +70,9 @@ export async function generateStaticParams() {
 export default async function BlogPage({ params }: Props) {
   const { slug } = await params
 
-  return <BlogArticle slug={slug} />
+  return (
+    <ArticleLayout type="blog" slug={slug}>
+      <BlogArticle slug={slug} />
+    </ArticleLayout>
+  )
 }
