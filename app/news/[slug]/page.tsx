@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { getNewsBySlug, getLatestNews } from '@/integrations/supabase/client'
 import { NewsArticle } from './NewsArticle'
+import { ArticleLayout } from '@/components/ArticleLayout'
 import {
   BASE_URL,
   generateAlternates,
@@ -69,5 +70,9 @@ export async function generateStaticParams() {
 export default async function NewsPage({ params }: Props) {
   const { slug } = await params
 
-  return <NewsArticle slug={slug} />
+  return (
+    <ArticleLayout type="news" slug={slug}>
+      <NewsArticle slug={slug} />
+    </ArticleLayout>
+  )
 }
