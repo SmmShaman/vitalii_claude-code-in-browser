@@ -330,14 +330,48 @@ const NewsSectionComponent = ({
                             />
                           );
                         } else if (videoType === 'telegram_embed') {
+                          // Extract channel name from URL like https://t.me/channel/123?embed=1
+                          const channelMatch = videoUrl.match(/t\.me\/([^/]+)\/(\d+)/);
+                          const channelName = channelMatch ? channelMatch[1] : 'Telegram';
+                          const messageId = channelMatch ? channelMatch[2] : '';
+                          // Direct link to Telegram post (without embed params)
+                          const telegramDirectUrl = `https://t.me/${channelName}/${messageId}`;
+
                           return (
-                            <iframe
-                              src={videoUrl}
-                              className="w-full aspect-video"
-                              frameBorder="0"
-                              scrolling="no"
-                              title="Telegram Video"
-                            />
+                            <div className="w-full aspect-video bg-gradient-to-br from-[#2AABEE] to-[#229ED9] flex flex-col items-center justify-center relative overflow-hidden">
+                              {/* Background pattern */}
+                              <div className="absolute inset-0 opacity-10">
+                                <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-white/20" />
+                                <div className="absolute bottom-8 right-8 w-32 h-32 rounded-full bg-white/10" />
+                                <div className="absolute top-1/2 left-1/4 w-16 h-16 rounded-full bg-white/15" />
+                              </div>
+
+                              {/* Telegram logo */}
+                              <div className="relative z-10 mb-4">
+                                <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                                </svg>
+                              </div>
+
+                              {/* Channel name */}
+                              <p className="relative z-10 text-white/90 text-sm mb-4 font-medium">
+                                @{channelName}
+                              </p>
+
+                              {/* Watch button */}
+                              <a
+                                href={telegramDirectUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative z-10 inline-flex items-center gap-2 px-6 py-3 bg-white text-[#2AABEE] font-semibold rounded-full hover:bg-white/90 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Дивитись в Telegram
+                              </a>
+                            </div>
                           );
                         } else {
                           return (
