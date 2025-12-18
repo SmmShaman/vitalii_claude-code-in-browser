@@ -1049,12 +1049,18 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                     <div className="w-full h-full overflow-hidden">
                       <NewsSection
                         isExpanded={isNewsExpanded}
+                        selectedNewsId={selectedNewsId}
+                        onNewsSelect={handleNewsItemSelect}
+                        onBack={handleNewsItemBack}
                       />
                     </div>
                   ) : section.id === 'blog' ? (
                     <div className="w-full h-full overflow-hidden">
                       <BlogSection
                         isExpanded={isBlogExpanded}
+                        selectedBlogId={selectedBlogId}
+                        onBlogSelect={handleBlogItemSelect}
+                        onBack={handleBlogItemBack}
                       />
                     </div>
                   ) : null}
