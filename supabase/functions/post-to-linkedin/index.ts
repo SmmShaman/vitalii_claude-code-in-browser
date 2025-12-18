@@ -172,9 +172,8 @@ async function fetchNewsContent(
   const description = sanitizeText(fullContent, 2500)
   const slug = news[slugField] || news.slug_en
 
-  // Build URL based on language
-  const langPrefix = language === 'en' ? '' : `/${language === 'ua' ? 'uk' : language}`
-  const url = `${SITE_URL}${langPrefix}/news/${slug}`
+  // Build URL - no language prefix in URL (language is handled client-side)
+  const url = `${SITE_URL}/news/${slug}`
 
   // Use processed image if available, otherwise original
   const imageUrl = news.processed_image_url || news.image_url
@@ -217,9 +216,8 @@ async function fetchBlogContent(
   const description = sanitizeText(fullContent, 2500)
   const slug = post[slugField] || post.slug_en
 
-  // Build URL based on language
-  const langPrefix = language === 'en' ? '' : `/${language === 'ua' ? 'uk' : language}`
-  const url = `${SITE_URL}${langPrefix}/blog/${slug}`
+  // Build URL - no language prefix in URL (language is handled client-side)
+  const url = `${SITE_URL}/blog/${slug}`
 
   // Use processed image if available, otherwise original
   const imageUrl = post.processed_image_url || post.image_url
