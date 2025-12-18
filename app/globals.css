@@ -17,25 +17,24 @@
     @apply bg-gray-200 text-foreground;
     margin: 0;
     padding: 0;
-    /* Use dvh (dynamic viewport height) to account for mobile address bar */
-    height: 100dvh;
-    height: 100vh; /* Fallback for older browsers */
+    /* Allow body to grow with content - min-height instead of fixed height */
+    min-height: 100dvh;
+    min-height: 100vh; /* Fallback for older browsers */
     width: 100%;
     max-width: 100vw;
-    overflow: hidden;
+    /* Allow vertical scroll for article pages, horizontal scroll disabled */
     overflow-x: hidden;
+    overflow-y: auto;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Prevent iOS bounce/overscroll */
-    overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
   }
 
   /* Support for dvh - modern browsers */
-  @supports (height: 100dvh) {
+  @supports (min-height: 100dvh) {
     body {
-      height: 100dvh;
+      min-height: 100dvh;
     }
   }
 }
