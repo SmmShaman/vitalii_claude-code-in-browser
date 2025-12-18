@@ -71,7 +71,7 @@ export default async function BlogPage({ params }: Props) {
   const { slug } = await params
 
   return (
-    <ArticleLayout type="blog" slug={slug}>
+    <ArticleLayout>
       <BlogArticle slug={slug} />
     </ArticleLayout>
   )

@@ -71,7 +71,7 @@ export default async function NewsPage({ params }: Props) {
   const { slug } = await params
 
   return (
-    <ArticleLayout type="news" slug={slug}>
+    <ArticleLayout>
       <NewsArticle slug={slug} />
     </ArticleLayout>
   )

@@ -246,8 +246,8 @@ export const translations = {
   },
   no: {
     title: "Vitalii Berbeha",
-    subtitle: "Markedsførings- og analyseekspert | Skaperen av Elvarika",
-    description: "Jeg hjelper organisasjoner å vokse ved å kombinere datadrevet markedsføring med moderne teknologi.",
+    subtitle: "Marketing & Analytics Expert | Creator of Elvarika",
+    description: "Jeg hjelper organisasjoner vokse med datadrevet markedsføring og moderne teknologi.",
 
     about: "Om meg",
     about_title: "Om meg",
@@ -489,8 +489,8 @@ export const translations = {
   },
   ua: {
     title: "Віталій Бербега",
-    subtitle: "Експерт з маркетингу та аналітики | Творець Elvarika",
-    description: "Допомагаю організаціям рости, поєднуючи маркетинг на основі даних з сучасними технологіями.",
+    subtitle: "Marketing & Analytics Expert | Creator of Elvarika",
+    description: "Допомагаю організаціям рости через дані, автоматизацію та сучасні технології.",
 
     about: "Про мене",
     about_title: "Про мене",
