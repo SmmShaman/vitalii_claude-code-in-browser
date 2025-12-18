@@ -148,6 +148,8 @@ serve(async (req) => {
         description_no: rewrittenContent.no.description,
         slug_no: generateSlug(rewrittenContent.no.title),
         image_url: requestData.imageUrl,
+        video_url: requestData.videoUrl,
+        video_type: requestData.videoType,
         reading_time: readingTime,
         is_published: true,
         published_at: new Date().toISOString(),
