@@ -85,7 +85,7 @@ serve(async (req) => {
       )
     }
 
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview`
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
     console.log('🤖 Calling Azure OpenAI for pre-moderation...')
 
