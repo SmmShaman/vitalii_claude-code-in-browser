@@ -1,6 +1,37 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+/**
+ * Extract external source links from text content
+ * Returns the first non-Telegram URL found in the text
+ */
+function extractSourceLink(text: string): string | null {
+  if (!text) return null
+
+  // Regular expression to match URLs
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
+  const matches = text.match(urlRegex)
+
+  if (!matches) return null
+
+  // Filter out Telegram URLs and return the first external source
+  for (const url of matches) {
+    // Skip Telegram URLs
+    if (url.includes('t.me/') || url.includes('telegram.me/') || url.includes('telegram.org/')) {
+      continue
+    }
+    // Skip common social media share URLs
+    if (url.includes('twitter.com/intent/') || url.includes('facebook.com/sharer/')) {
+      continue
+    }
+    // Clean up URL (remove trailing punctuation)
+    const cleanUrl = url.replace(/[.,;:!?)]+$/, '')
+    return cleanUrl
+  }
+
+  return null
+}
+
 serve(async (req) => {
   try {
     const update = await req.json()
@@ -67,10 +98,14 @@ serve(async (req) => {
         }
       }
 
-      // URL оригінального поста
+      // URL оригінального поста в Telegram
       const originalUrl = post.chat.username
         ? `https://t.me/${post.chat.username}/${post.message_id}`
         : null
+
+      // Extract external source link from post content
+      const sourceLink = extractSourceLink(text)
+      console.log('📎 Extracted source link:', sourceLink)
 
       // Викликати process-news для обробки
       try {
@@ -86,6 +121,7 @@ serve(async (req) => {
               content: text,
               imageUrl: photoUrl,
               sourceUrl: originalUrl,
+              sourceLink: sourceLink, // External source link from text
               sourceType: 'telegram_channel',
               channelUsername: channelUsername
             })
@@ -144,6 +180,10 @@ serve(async (req) => {
           ? `https://t.me/${channelUsername}/${message.forward_from_message_id}`
           : null
 
+        // Extract external source link from forwarded content
+        const sourceLink = extractSourceLink(text)
+        console.log('📎 Extracted source link from forward:', sourceLink)
+
         // Обробити
         try {
           await fetch(
@@ -158,6 +198,7 @@ serve(async (req) => {
                 content: text,
                 imageUrl: photoUrl,
                 sourceUrl: originalUrl,
+                sourceLink: sourceLink, // External source link from text
                 sourceType: 'telegram_forward',
                 channelUsername: channelUsername,
                 chatId: chatId // Для відправки результату назад
@@ -438,7 +479,8 @@ serve(async (req) => {
               url: news.original_url || '',
               imageUrl: news.image_url || null,
               videoUrl: news.video_url || null,
-              videoType: news.video_type || null
+              videoType: news.video_type || null,
+              sourceLink: news.source_link || null // External source link
             })
           }
         )
@@ -541,9 +583,28 @@ serve(async (req) => {
           })
         }
 
-        // Check if content is rewritten (has translations)
-        const titleField = `title_${linkedinLanguage}`
-        if (!news[titleField]) {
+        // Check if there's a blog post created from this news item
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        // Determine content type and ID to use
+        let contentType: 'news' | 'blog' = 'news'
+        let contentId = newsId
+        let titleField = `title_${linkedinLanguage}`
+        let checkRecord = news
+
+        if (blogPost) {
+          console.log('📝 Found blog post for this news, using blog content for LinkedIn')
+          contentType = 'blog'
+          contentId = blogPost.id
+          checkRecord = blogPost
+        }
+
+        // Check if content has translations
+        if (!checkRecord[titleField]) {
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
             {
@@ -551,7 +612,7 @@ serve(async (req) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 callback_query_id: callbackId,
-                text: `❌ News not published yet. Publish to News/Blog first!`,
+                text: `❌ Content not published yet. Publish to News/Blog first!`,
                 show_alert: true
               })
             }
@@ -562,9 +623,9 @@ serve(async (req) => {
         }
 
         // 🛡️ DUPLICATE CHECK: Prevent republishing to LinkedIn
-        if (news.linkedin_post_id) {
-          const existingLang = (news.linkedin_language || 'unknown').toUpperCase()
-          console.log(`⚠️ News ${newsId} already posted to LinkedIn (${existingLang}), preventing duplicate`)
+        if (checkRecord.linkedin_post_id) {
+          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
+          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), preventing duplicate`)
 
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -580,7 +641,7 @@ serve(async (req) => {
           )
 
           // Build LinkedIn post URL
-          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${news.linkedin_post_id}`
+          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
 
           // Remove LinkedIn buttons, show link to existing post
           await fetch(
@@ -603,8 +664,20 @@ serve(async (req) => {
           })
         }
 
-        // Post to LinkedIn
-        console.log('Calling post-to-linkedin...')
+        // Post to LinkedIn with correct content type and ID
+        console.log(`Calling post-to-linkedin for ${contentType} ${contentId}...`)
+
+        const linkedinRequestBody: any = {
+          language: linkedinLanguage,
+          contentType: contentType
+        }
+
+        // Use the correct ID field based on content type
+        if (contentType === 'blog') {
+          linkedinRequestBody.blogPostId = contentId
+        } else {
+          linkedinRequestBody.newsId = contentId
+        }
 
         const linkedinResponse = await fetch(
           `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
@@ -614,11 +687,7 @@ serve(async (req) => {
               'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              newsId: newsId,
-              language: linkedinLanguage,
-              contentType: 'news'
-            })
+            body: JSON.stringify(linkedinRequestBody)
           }
         )
 

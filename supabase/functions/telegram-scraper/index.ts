@@ -43,6 +43,38 @@ interface ScrapedPost {
   videoType: string | null
   date: Date
   originalUrl: string
+  sourceLink: string | null  // External source link extracted from text
+}
+
+/**
+ * Extract external source links from text content
+ * Returns the first non-Telegram URL found in the text
+ */
+function extractSourceLink(text: string): string | null {
+  if (!text) return null
+
+  // Regular expression to match URLs
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi
+  const matches = text.match(urlRegex)
+
+  if (!matches) return null
+
+  // Filter out Telegram URLs and return the first external source
+  for (const url of matches) {
+    // Skip Telegram URLs
+    if (url.includes('t.me/') || url.includes('telegram.me/') || url.includes('telegram.org/')) {
+      continue
+    }
+    // Skip common social media share URLs
+    if (url.includes('twitter.com/intent/') || url.includes('facebook.com/sharer/')) {
+      continue
+    }
+    // Clean up URL (remove trailing punctuation)
+    const cleanUrl = url.replace(/[.,;:!?)]+$/, '')
+    return cleanUrl
+  }
+
+  return null
 }
 
 serve(async (req) => {
@@ -320,6 +352,12 @@ serve(async (req) => {
               }
             }
 
+            // Extract source link from post text
+            const sourceLink = extractSourceLink(post.text)
+            if (sourceLink) {
+              console.log(`📎 Extracted source link: ${sourceLink}`)
+            }
+
             // Save to database with pending status (waiting for moderation)
             const { data: newsEntry, error: insertError} = await supabase
               .from('news')
@@ -327,6 +365,7 @@ serve(async (req) => {
                 original_title: post.text.substring(0, 200), // First 200 chars as title
                 original_content: post.text,
                 original_url: post.originalUrl,
+                source_link: sourceLink, // External source link from text
                 image_url: photoUrl,
                 video_url: post.videoUrl,
                 video_type: post.videoType,

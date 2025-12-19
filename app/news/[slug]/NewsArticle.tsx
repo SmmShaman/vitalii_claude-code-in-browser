@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getNewsBySlug } from '@/integrations/supabase/client'
+import { getNewsBySlug, getRelatedNews } from '@/integrations/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, ExternalLink } from 'lucide-react'
@@ -19,6 +19,7 @@ interface NewsArticleProps {
 export function NewsArticle({ slug }: NewsArticleProps) {
   const { currentLanguage } = useTranslations()
   const [news, setNews] = useState<any>(null)
+  const [relatedNews, setRelatedNews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,6 +27,12 @@ export function NewsArticle({ slug }: NewsArticleProps) {
       const data = await getNewsBySlug(slug)
       setNews(data)
       setLoading(false)
+
+      // Fetch related news based on tags
+      if (data?.id && data?.tags?.length > 0) {
+        const related = await getRelatedNews(data.id, data.tags, 3)
+        setRelatedNews(related || [])
+      }
     }
     fetchNews()
   }, [slug])
@@ -176,23 +183,24 @@ export function NewsArticle({ slug }: NewsArticleProps) {
           <div className="mb-8">
             <div className="flex flex-wrap gap-2" role="list" aria-label="Article tags">
               {news.tags.map((tag: string) => (
-                <span
+                <Link
                   key={tag}
+                  href={`/news?tag=${encodeURIComponent(tag)}`}
                   role="listitem"
-                  className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                  className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-blue-100 hover:text-blue-700 transition-colors"
                 >
                   #{tag}
-                </span>
+                </Link>
               ))}
             </div>
           </div>
         )}
 
-        {/* Original Source Link */}
-        {news.original_url && (
-          <footer>
+        {/* Original Source Link - prefer source_link over original_url */}
+        {(news.source_link || news.original_url) && (
+          <div className="mb-8">
             <a
-              href={news.original_url}
+              href={news.source_link || news.original_url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-colors shadow-md font-medium"
@@ -200,6 +208,61 @@ export function NewsArticle({ slug }: NewsArticleProps) {
               <ExternalLink className="w-4 h-4" />
               Read Original Article
             </a>
+          </div>
+        )}
+
+        {/* Related News */}
+        {relatedNews.length > 0 && (
+          <footer className="border-t border-gray-200 pt-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Related News</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {relatedNews.map((relatedItem) => {
+                const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
+                const relatedTitle = relatedItem[`title_${lang}`] || relatedItem.title_en
+                const relatedSlug = relatedItem[`slug_${lang}`] || relatedItem.slug_en
+                const relatedDescription = relatedItem[`description_${lang}`] || relatedItem.description_en
+
+                return (
+                  <Link
+                    key={relatedItem.id}
+                    href={`/news/${relatedSlug}`}
+                    className="block p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    {relatedItem.image_url && (
+                      <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3">
+                        <Image
+                          src={relatedItem.image_url}
+                          alt={relatedTitle}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                      {relatedTitle}
+                    </h3>
+                    {relatedDescription && (
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {relatedDescription}
+                      </p>
+                    )}
+                    {relatedItem.tags && relatedItem.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {relatedItem.tags.slice(0, 3).map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
           </footer>
         )}
       </article>
