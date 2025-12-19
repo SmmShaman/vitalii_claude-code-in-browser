@@ -556,7 +556,11 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
         const youtubeConfigured = !!(YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET && YOUTUBE_REFRESH_TOKEN && TELEGRAM_BOT_TOKEN)
 
         const videoElement = message.querySelector('video')
-        const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player')
+        // Updated selectors to match current Telegram HTML structure
+        // - tgme_widget_message_video: main video class
+        // - tgme_widget_message_roundvideo: round video messages
+        // - message_media_not_supported: placeholder when video can't load in browser
+        const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player, .tgme_widget_message_video, .tgme_widget_message_roundvideo, .message_media_not_supported')
 
         if (videoElement || videoWrap) {
           console.log(`🎥 [VIDEO DEBUG] Found video in post`)
