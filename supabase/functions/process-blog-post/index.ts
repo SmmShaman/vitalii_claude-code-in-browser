@@ -19,6 +19,7 @@ interface BlogRewriteRequest {
   imageUrl?: string | null
   videoUrl?: string | null
   videoType?: string | null
+  sourceLink?: string | null  // External source link from Telegram post content
 }
 
 /**
@@ -131,7 +132,11 @@ serve(async (req) => {
     const wordCount = rewrittenContent.en.content.split(/\s+/).length
     const readingTime = Math.ceil(wordCount / 200)
 
-    // Create blog post
+    // Extract tags from AI response or use defaults
+    const extractedTags = rewrittenContent.tags || rewrittenContent.en.tags || ['ai', 'technology']
+    const category = rewrittenContent.category || rewrittenContent.en.category || 'Tech'
+
+    // Create blog post with all fields
     const { data: blogPost, error: insertError } = await supabase
       .from('blog_posts')
       .insert({
@@ -150,11 +155,13 @@ serve(async (req) => {
         image_url: requestData.imageUrl,
         video_url: requestData.videoUrl,
         video_type: requestData.videoType,
+        original_url: requestData.sourceLink || requestData.url, // Source link or Telegram URL
+        source_news_id: requestData.newsId, // Reference to original news
         reading_time: readingTime,
         is_published: true,
         published_at: new Date().toISOString(),
-        tags: ['ai', 'technology'], // Default tags
-        category: 'Tech' // Default category
+        tags: extractedTags,
+        category: category
       })
       .select()
       .single()

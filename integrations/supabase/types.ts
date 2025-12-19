@@ -101,6 +101,10 @@ export interface Database {
           moderation_checked_at: string | null;
           video_url: string | null;
           video_type: string | null;
+          source_link: string | null;
+          linkedin_post_id: string | null;
+          linkedin_posted_at: string | null;
+          linkedin_language: string | null;
         };
         Insert: {
           id?: string;
@@ -133,6 +137,10 @@ export interface Database {
           moderation_checked_at?: string | null;
           video_url?: string | null;
           video_type?: string | null;
+          source_link?: string | null;
+          linkedin_post_id?: string | null;
+          linkedin_posted_at?: string | null;
+          linkedin_language?: string | null;
         };
         Update: {
           id?: string;
@@ -164,6 +172,10 @@ export interface Database {
           moderation_checked_at?: string | null;
           video_url?: string | null;
           video_type?: string | null;
+          source_link?: string | null;
+          linkedin_post_id?: string | null;
+          linkedin_posted_at?: string | null;
+          linkedin_language?: string | null;
         };
       };
       blog_posts: {
@@ -184,6 +196,10 @@ export interface Database {
           slug_ua: string | null;
           image_url: string | null;
           cover_image_url: string | null;
+          video_url: string | null;
+          video_type: string | null;
+          original_url: string | null;
+          source_news_id: string | null;
           tags: string[] | null;
           category: string | null;
           reading_time: number | null;
@@ -193,6 +209,9 @@ export interface Database {
           updated_at: string;
           is_published: boolean;
           is_featured: boolean;
+          linkedin_post_id: string | null;
+          linkedin_posted_at: string | null;
+          linkedin_language: string | null;
         };
         Insert: {
           id?: string;
@@ -211,6 +230,10 @@ export interface Database {
           slug_ua?: string | null;
           image_url?: string | null;
           cover_image_url?: string | null;
+          video_url?: string | null;
+          video_type?: string | null;
+          original_url?: string | null;
+          source_news_id?: string | null;
           tags?: string[] | null;
           category?: string | null;
           reading_time?: number | null;
@@ -220,6 +243,9 @@ export interface Database {
           updated_at?: string;
           is_published?: boolean;
           is_featured?: boolean;
+          linkedin_post_id?: string | null;
+          linkedin_posted_at?: string | null;
+          linkedin_language?: string | null;
         };
         Update: {
           id?: string;
@@ -238,6 +264,10 @@ export interface Database {
           slug_ua?: string | null;
           image_url?: string | null;
           cover_image_url?: string | null;
+          video_url?: string | null;
+          video_type?: string | null;
+          original_url?: string | null;
+          source_news_id?: string | null;
           tags?: string[] | null;
           category?: string | null;
           reading_time?: number | null;
@@ -246,6 +276,9 @@ export interface Database {
           updated_at?: string;
           is_published?: boolean;
           is_featured?: boolean;
+          linkedin_post_id?: string | null;
+          linkedin_posted_at?: string | null;
+          linkedin_language?: string | null;
         };
       };
       ai_prompts: {
@@ -357,6 +390,7 @@ export interface Database {
           description_ua: string | null;
           image_url: string | null;
           original_url: string | null;
+          source_link: string | null;
           tags: string[] | null;
           published_at: string | null;
           views_count: number;
@@ -376,6 +410,9 @@ export interface Database {
           description_no: string | null;
           description_ua: string | null;
           image_url: string | null;
+          video_url: string | null;
+          video_type: string | null;
+          original_url: string | null;
           slug_en: string | null;
           slug_no: string | null;
           slug_ua: string | null;

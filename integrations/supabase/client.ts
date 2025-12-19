@@ -86,6 +86,7 @@ export const getLatestNews = async (limit: number = 3) => {
       description_ua,
       image_url,
       original_url,
+      source_link,
       tags,
       published_at,
       views_count,
@@ -114,6 +115,7 @@ export const getLatestNews = async (limit: number = 3) => {
     description_ua: item.description_ua,
     image_url: item.image_url,
     original_url: item.original_url,
+    source_link: item.source_link,
     tags: item.tags,
     published_at: item.published_at,
     views_count: item.views_count,
@@ -363,6 +365,62 @@ export const getBlogPostById = async (id: string) => {
   }
 
   return data;
+};
+
+/**
+ * Get related blog posts based on shared tags
+ * Returns posts that share at least one tag with the current post
+ */
+export const getRelatedBlogPosts = async (
+  currentPostId: string,
+  tags: string[],
+  limit: number = 3
+) => {
+  if (!supabase || !tags || tags.length === 0) return [];
+
+  // Get posts that share any of the same tags, excluding the current post
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('id, title_en, title_no, title_ua, description_en, description_no, description_ua, slug_en, slug_no, slug_ua, image_url, tags, published_at')
+    .eq('is_published', true)
+    .neq('id', currentPostId)
+    .overlaps('tags', tags)
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching related blog posts:', error);
+    return [];
+  }
+
+  return data || [];
+};
+
+/**
+ * Get related news articles based on shared tags
+ */
+export const getRelatedNews = async (
+  currentNewsId: string,
+  tags: string[],
+  limit: number = 3
+) => {
+  if (!supabase || !tags || tags.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('news')
+    .select('id, title_en, title_no, title_ua, description_en, description_no, description_ua, slug_en, slug_no, slug_ua, image_url, tags, published_at')
+    .eq('is_published', true)
+    .neq('id', currentNewsId)
+    .overlaps('tags', tags)
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching related news:', error);
+    return [];
+  }
+
+  return data || [];
 };
 
 // ============================================
