@@ -63,6 +63,8 @@ export function NewsArticle({ slug }: NewsArticleProps) {
   const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
   const title = news[`title_${lang}`] || news.title_en
   const description = news[`description_${lang}`] || news.description_en
+  // Use full content for article body, fallback to description if content not available
+  const content = news[`content_${lang}`] || news.content_en || description
 
   return (
     <>
@@ -73,19 +75,43 @@ export function NewsArticle({ slug }: NewsArticleProps) {
       />
 
       <article className="flex-1">
-        {/* Featured Image */}
-        {news.image_url && !news.video_url && (
+        {/* Image Gallery - supports multiple images */}
+        {!news.video_url && (news.images?.length > 0 || news.image_url) && (
           <figure className="mb-6">
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden">
-              <Image
-                src={news.image_url}
-                alt={title}
-                fill
-                priority
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 800px"
-                className="object-cover"
-              />
-            </div>
+            {news.images?.length > 1 ? (
+              // Multiple images - show grid gallery
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
+                {news.images.map((imageUrl: string, index: number) => (
+                  <div
+                    key={index}
+                    className={`relative rounded-xl overflow-hidden ${
+                      index === 0 && news.images.length === 3 ? 'col-span-2' : ''
+                    } ${news.images.length === 1 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
+                  >
+                    <Image
+                      src={imageUrl}
+                      alt={`${title} - Image ${index + 1}`}
+                      fill
+                      priority={index === 0}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
+                      className="object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Single image - full width
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden">
+                <Image
+                  src={news.images?.[0] || news.image_url}
+                  alt={title}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 800px"
+                  className="object-cover"
+                />
+              </div>
+            )}
           </figure>
         )}
 
@@ -174,7 +200,7 @@ export function NewsArticle({ slug }: NewsArticleProps) {
         {/* Article Content */}
         <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
           <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-            {description}
+            {content}
           </p>
         </div>
 

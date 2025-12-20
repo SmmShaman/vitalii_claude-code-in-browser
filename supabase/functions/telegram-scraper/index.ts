@@ -38,7 +38,8 @@ interface ScrapedPost {
   channelUsername: string
   messageId: string
   text: string
-  photoUrl: string | null
+  photoUrl: string | null      // Main/first image (backwards compatibility)
+  images: string[]             // All images from post
   videoUrl: string | null
   videoType: string | null
   date: Date
@@ -316,40 +317,56 @@ serve(async (req) => {
               continue
             }
 
-            // Download and upload photo if exists
+            // Download and upload ALL photos (multiple images support)
             let photoUrl = post.photoUrl
-            if (photoUrl) {
-              try {
-                // Download photo
-                const photoResponse = await fetch(photoUrl)
-                if (photoResponse.ok) {
-                  const photoBuffer = await photoResponse.arrayBuffer()
+            const uploadedImages: string[] = []
 
-                  // Upload to Supabase Storage
-                  const fileName = `telegram/${channelUsername}/${post.messageId}.jpg`
-                  const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('news-images')
-                    .upload(fileName, photoBuffer, {
-                      contentType: 'image/jpeg',
-                      upsert: true,
-                    })
+            if (post.images && post.images.length > 0) {
+              console.log(`📸 Processing ${post.images.length} image(s)...`)
 
-                  if (!uploadError && uploadData) {
-                    const { data: urlData } = supabase.storage
+              for (let i = 0; i < post.images.length; i++) {
+                const imageUrl = post.images[i]
+                try {
+                  // Download photo
+                  const photoResponse = await fetch(imageUrl)
+                  if (photoResponse.ok) {
+                    const photoBuffer = await photoResponse.arrayBuffer()
+
+                    // Upload to Supabase Storage with index for multiple images
+                    const fileName = post.images.length === 1
+                      ? `telegram/${channelUsername}/${post.messageId}.jpg`
+                      : `telegram/${channelUsername}/${post.messageId}_${i + 1}.jpg`
+
+                    const { data: uploadData, error: uploadError } = await supabase.storage
                       .from('news-images')
-                      .getPublicUrl(fileName)
-                    photoUrl = urlData.publicUrl
-                    console.log(`📸 Photo uploaded: ${photoUrl}`)
+                      .upload(fileName, photoBuffer, {
+                        contentType: 'image/jpeg',
+                        upsert: true,
+                      })
 
-                    // NOTE: Image processing for LinkedIn is done separately
-                    // after GOOGLE_API_KEY is configured. See process-image function.
+                    if (!uploadError && uploadData) {
+                      const { data: urlData } = supabase.storage
+                        .from('news-images')
+                        .getPublicUrl(fileName)
+                      const publicUrl = urlData.publicUrl
+                      uploadedImages.push(publicUrl)
+
+                      // Set first image as main photoUrl for backwards compatibility
+                      if (i === 0) {
+                        photoUrl = publicUrl
+                      }
+                      console.log(`📸 Photo ${i + 1}/${post.images.length} uploaded: ${publicUrl}`)
+                    }
                   }
+                } catch (photoError) {
+                  console.error(`❌ Failed to process photo ${i + 1}: ${photoError}`)
                 }
-              } catch (photoError) {
-                console.error(`❌ Failed to process photo: ${photoError}`)
-                // Continue without photo
-                photoUrl = null
               }
+            }
+
+            // Fallback: if no images uploaded, keep original photoUrl as null
+            if (uploadedImages.length === 0) {
+              photoUrl = null
             }
 
             // Log source link if found (already extracted in parseChannelPosts)
@@ -366,6 +383,7 @@ serve(async (req) => {
                 original_url: post.originalUrl,
                 source_link: post.sourceLink, // External source link from text
                 image_url: photoUrl,
+                images: uploadedImages.length > 0 ? uploadedImages : null, // All images array
                 video_url: post.videoUrl,
                 video_type: post.videoType,
                 source_id: source.id,
@@ -536,15 +554,25 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
         const textElement = message.querySelector('.tgme_widget_message_text')
         const text = textElement?.textContent?.trim() || ''
 
-        // Extract photo URL
+        // Extract ALL photo URLs (multiple images support)
+        const images: string[] = []
         let photoUrl: string | null = null
-        const photoElement = message.querySelector('.tgme_widget_message_photo_wrap')
-        if (photoElement) {
+        const photoElements = message.querySelectorAll('.tgme_widget_message_photo_wrap')
+
+        for (const photoElement of photoElements) {
           const style = photoElement.getAttribute('style') || ''
           const match = style.match(/background-image:url\('([^']+)'\)/)
           if (match && match[1]) {
-            photoUrl = match[1]
+            images.push(match[1])
+            // Set first image as main photoUrl for backwards compatibility
+            if (!photoUrl) {
+              photoUrl = match[1]
+            }
           }
+        }
+
+        if (images.length > 0) {
+          console.log(`📸 Found ${images.length} image(s) in post`)
         }
 
         // Extract video URL and type
@@ -722,6 +750,7 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
           messageId,
           text,
           photoUrl,
+          images,
           videoUrl,
           videoType,
           date,
