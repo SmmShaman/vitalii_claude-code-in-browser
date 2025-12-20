@@ -63,6 +63,8 @@ export function NewsArticle({ slug }: NewsArticleProps) {
   const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
   const title = news[`title_${lang}`] || news.title_en
   const description = news[`description_${lang}`] || news.description_en
+  // Use full content for article body, fallback to description if content not available
+  const content = news[`content_${lang}`] || news.content_en || description
 
   return (
     <>
@@ -174,7 +176,7 @@ export function NewsArticle({ slug }: NewsArticleProps) {
         {/* Article Content */}
         <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
           <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-            {description}
+            {content}
           </p>
         </div>
 

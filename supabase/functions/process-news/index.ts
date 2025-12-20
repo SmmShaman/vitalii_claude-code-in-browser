@@ -151,7 +151,9 @@ async function processWithPrompt(
     throw new Error('AI response missing required language fields')
   }
 
-  console.log('✅ Content rewritten for all languages')
+  // Extract tags from AI response (if available)
+  const tags = rewrittenContent.tags || rewrittenContent.en?.tags || []
+  console.log(`✅ Content rewritten for all languages, tags: ${tags.length > 0 ? tags.join(', ') : 'none'}`)
 
   // Generate slugs with unique suffix to prevent duplicates
   const uniqueSuffix = requestData.newsId.substring(0, 8)
@@ -180,6 +182,7 @@ async function processWithPrompt(
       content_no: rewrittenContent.no.content,
       description_no: rewrittenContent.no.description,
       slug_no: generateSlug(rewrittenContent.no.title),
+      tags: tags.length > 0 ? tags : null, // Save tags if available
       is_rewritten: true,
       is_published: true,
       published_at: new Date().toISOString(),
