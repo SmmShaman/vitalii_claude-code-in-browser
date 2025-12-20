@@ -105,6 +105,8 @@ export interface Database {
           linkedin_post_id: string | null;
           linkedin_posted_at: string | null;
           linkedin_language: string | null;
+          processed_image_url: string | null;
+          image_processed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -141,6 +143,8 @@ export interface Database {
           linkedin_post_id?: string | null;
           linkedin_posted_at?: string | null;
           linkedin_language?: string | null;
+          processed_image_url?: string | null;
+          image_processed_at?: string | null;
         };
         Update: {
           id?: string;
@@ -176,6 +180,8 @@ export interface Database {
           linkedin_post_id?: string | null;
           linkedin_posted_at?: string | null;
           linkedin_language?: string | null;
+          processed_image_url?: string | null;
+          image_processed_at?: string | null;
         };
       };
       blog_posts: {
@@ -212,6 +218,8 @@ export interface Database {
           linkedin_post_id: string | null;
           linkedin_posted_at: string | null;
           linkedin_language: string | null;
+          processed_image_url: string | null;
+          image_processed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -246,6 +254,8 @@ export interface Database {
           linkedin_post_id?: string | null;
           linkedin_posted_at?: string | null;
           linkedin_language?: string | null;
+          processed_image_url?: string | null;
+          image_processed_at?: string | null;
         };
         Update: {
           id?: string;
@@ -279,6 +289,8 @@ export interface Database {
           linkedin_post_id?: string | null;
           linkedin_posted_at?: string | null;
           linkedin_language?: string | null;
+          processed_image_url?: string | null;
+          image_processed_at?: string | null;
         };
       };
       ai_prompts: {

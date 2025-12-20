@@ -210,17 +210,38 @@ export const getNewsById = async (id: string) => {
 export const getNewsBySlug = async (slug: string, language: 'en' | 'no' | 'ua' = 'en') => {
   if (!supabase) return null;
 
+  // First try the specified language slug
   const slugColumn = `slug_${language}`;
-
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('news')
     .select('*')
     .eq(slugColumn, slug)
     .eq('is_published', true)
     .single();
 
-  if (error) {
-    console.error('Error fetching news by slug:', error);
+  // If not found, try other slug columns
+  if (error || !data) {
+    const otherLanguages = ['en', 'no', 'ua'].filter(l => l !== language);
+
+    for (const lang of otherLanguages) {
+      const { data: foundData, error: foundError } = await supabase
+        .from('news')
+        .select('*')
+        .eq(`slug_${lang}`, slug)
+        .eq('is_published', true)
+        .single();
+
+      if (!foundError && foundData) {
+        data = foundData;
+        error = null;
+        console.log(`News found with slug_${lang}:`, slug);
+        break;
+      }
+    }
+  }
+
+  if (error || !data) {
+    console.error('Error fetching news by slug:', slug, error);
     return null;
   }
 
@@ -319,20 +340,41 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
 
 /**
  * Get single blog post by slug
+ * Searches all slug columns (slug_en, slug_no, slug_ua) to find the post
  */
 export const getBlogPostBySlug = async (slug: string, language: 'en' | 'no' | 'ua' = 'en') => {
   if (!supabase) return null;
 
+  // First try the specified language slug
   const slugColumn = `slug_${language}`;
-
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('blog_posts')
     .select('*')
     .eq(slugColumn, slug)
     .single();
 
-  if (error) {
-    console.error('Error fetching blog post by slug:', error);
+  // If not found, try other slug columns
+  if (error || !data) {
+    const otherLanguages = ['en', 'no', 'ua'].filter(l => l !== language);
+
+    for (const lang of otherLanguages) {
+      const { data: foundData, error: foundError } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq(`slug_${lang}`, slug)
+        .single();
+
+      if (!foundError && foundData) {
+        data = foundData;
+        error = null;
+        console.log(`Blog post found with slug_${lang}:`, slug);
+        break;
+      }
+    }
+  }
+
+  if (error || !data) {
+    console.error('Error fetching blog post by slug:', slug, error);
     return null;
   }
 

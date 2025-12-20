@@ -286,16 +286,28 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Gemini 2.0 Flash Image API
- * Uses the Gemini image editing capabilities for LinkedIn optimization
+ * Process image with Google Gemini 2.0 Flash Image Generation API
+ * Uses the Gemini image generation capabilities for LinkedIn optimization
+ *
+ * Note: Gemini 2.0 Flash with image generation requires specific model variant
  */
 async function processImageWithAI(imageBase64: string, prompt: string, apiKey: string): Promise<string | null> {
   try {
-    // Gemini 2.0 Flash - supports image generation/editing
+    // Try Imagen 3 first for pure image generation
+    const imagenResult = await tryImagenGeneration(prompt, apiKey)
+    if (imagenResult) {
+      console.log('✅ Image generated with Imagen 3')
+      return imagenResult
+    }
+
+    // Fallback: Try Gemini 2.0 Flash with image generation
+    console.log('📤 Trying Gemini 2.0 Flash for image generation...')
+
+    // Gemini 2.0 Flash experimental with image generation
     // See: https://ai.google.dev/gemini-api/docs/image-generation
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`
 
-    // Request body for image editing with Gemini
+    // Request body - include reference image for context
     const requestBody = {
       contents: [{
         parts: [
@@ -309,12 +321,11 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
         ]
       }],
       generationConfig: {
-        responseModalities: ['image', 'text'],
-        responseMimeType: 'image/jpeg'
+        responseModalities: ['IMAGE', 'TEXT'],
+        temperature: 0.7,
+        maxOutputTokens: 8192
       }
     }
-
-    console.log('📤 Sending to Google Gemini 2.0 Flash API...')
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -327,29 +338,95 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Gemini API error:', response.status, errorText)
+
+      // Log detailed error for debugging
+      try {
+        const errorJson = JSON.parse(errorText)
+        console.error('Error details:', errorJson.error?.message || errorJson)
+      } catch {
+        console.error('Raw error:', errorText.substring(0, 500))
+      }
       return null
     }
 
     const result = await response.json()
     console.log('📥 Gemini API response received')
+    console.log('Response structure:', JSON.stringify(result, null, 2).substring(0, 1000))
 
     // Extract processed image from response
     // Gemini returns images in candidates[0].content.parts[].inline_data
     if (result.candidates && result.candidates[0]?.content?.parts) {
       for (const part of result.candidates[0].content.parts) {
         if (part.inline_data && part.inline_data.data) {
+          console.log('✅ Found generated image in response')
           // Upload processed image to Supabase Storage
           const processedImageUrl = await uploadProcessedImage(part.inline_data.data)
           return processedImageUrl
         }
+        if (part.text) {
+          console.log('📝 Text response from Gemini:', part.text.substring(0, 200))
+        }
       }
     }
 
-    console.log('⚠️ No image in Gemini response')
+    console.log('⚠️ No image in Gemini response - model may not support image generation')
     return null
 
   } catch (error: any) {
     console.error('Error calling Gemini API:', error)
+    return null
+  }
+}
+
+/**
+ * Try to generate image using Google Imagen 3 API
+ * Imagen 3 is specifically designed for image generation
+ */
+async function tryImagenGeneration(prompt: string, apiKey: string): Promise<string | null> {
+  try {
+    console.log('📤 Trying Imagen 3 for image generation...')
+
+    // Imagen 3 endpoint
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`
+
+    const requestBody = {
+      instances: [{
+        prompt: prompt
+      }],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: '16:9',
+        personGeneration: 'allow_adult',
+        safetySetting: 'block_few'
+      }
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.log('Imagen 3 not available:', response.status)
+      // Don't log as error - Imagen might not be enabled for this API key
+      return null
+    }
+
+    const result = await response.json()
+
+    if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
+      console.log('✅ Imagen 3 generated image successfully')
+      const processedImageUrl = await uploadProcessedImage(result.predictions[0].bytesBase64Encoded)
+      return processedImageUrl
+    }
+
+    return null
+  } catch (error) {
+    console.log('Imagen 3 generation failed:', error)
     return null
   }
 }
