@@ -100,7 +100,12 @@ serve(async (req) => {
     // Process image with AI if available and not already processed
     if (content.imageUrl && !content.imageUrl.includes('/processed/')) {
       console.log('🖼️ Processing image for LinkedIn...')
-      const processedImageUrl = await processImageForLinkedIn(content.imageUrl)
+      // Pass news context to generate relevant illustration
+      const processedImageUrl = await processImageForLinkedIn(content.imageUrl, {
+        title: content.title,
+        description: content.description,
+        url: content.url
+      })
       if (processedImageUrl) {
         content.imageUrl = processedImageUrl
         console.log('✅ Image processed:', processedImageUrl)
@@ -360,11 +365,16 @@ async function postToLinkedIn(content: {
 }
 
 /**
- * Process image for LinkedIn using AI enhancement (Gemini)
+ * Process image for LinkedIn using AI generation (Gemini)
+ * Creates a NEW illustration based on news content
  */
-async function processImageForLinkedIn(imageUrl: string): Promise<string | null> {
+async function processImageForLinkedIn(
+  imageUrl: string,
+  newsContext?: { title: string; description: string; url: string }
+): Promise<string | null> {
   try {
-    console.log('🖼️ Calling process-image function...')
+    console.log('🖼️ Calling process-image function with news context...')
+    console.log('📰 Title:', newsContext?.title?.substring(0, 50))
 
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/process-image`,
@@ -376,7 +386,11 @@ async function processImageForLinkedIn(imageUrl: string): Promise<string | null>
         },
         body: JSON.stringify({
           imageUrl,
-          promptType: 'linkedin_optimize'
+          promptType: 'linkedin_optimize',
+          // Pass news context for AI image generation
+          newsTitle: newsContext?.title,
+          newsDescription: newsContext?.description,
+          newsUrl: newsContext?.url
         })
       }
     )

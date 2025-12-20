@@ -359,14 +359,46 @@ export const ImageProcessingSettings = () => {
         {showCustomEditor && (
           <div className="space-y-4">
             <p className="text-gray-400 text-sm">
-              Напишіть власні інструкції для Gemini AI. Цей промпт буде відправлятися разом з кожним зображенням.
+              Напишіть інструкції для Gemini AI. Цей промпт буде відправлятися при кожній генерації зображення для LinkedIn.
             </p>
+
+            {/* Placeholders Info */}
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+              <h4 className="text-purple-300 font-medium mb-2">🔤 Доступні плейсхолдери:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                <div className="bg-black/20 rounded p-2">
+                  <code className="text-green-400">{'{title}'}</code>
+                  <p className="text-gray-400 text-xs mt-1">Заголовок статті</p>
+                </div>
+                <div className="bg-black/20 rounded p-2">
+                  <code className="text-green-400">{'{description}'}</code>
+                  <p className="text-gray-400 text-xs mt-1">Опис/контент статті</p>
+                </div>
+                <div className="bg-black/20 rounded p-2">
+                  <code className="text-green-400">{'{url}'}</code>
+                  <p className="text-gray-400 text-xs mt-1">URL статті</p>
+                </div>
+              </div>
+            </div>
 
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="Edit this image to..."
-              className="w-full h-48 px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+              placeholder={`Based on this reference image and the article context below, create a NEW professional illustration for LinkedIn.
+
+ARTICLE CONTEXT:
+Title: {title}
+Description: {description}
+
+INSTRUCTIONS:
+1. Create a completely NEW illustration that represents the article theme
+2. Style: Modern, professional, suitable for LinkedIn
+3. Use vibrant but professional colors
+4. NO text on the image
+5. Landscape orientation (16:9)
+
+Generate a high-quality illustration.`}
+              className="w-full h-64 px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
             />
 
             <div className="flex items-center gap-3">
@@ -393,23 +425,36 @@ export const ImageProcessingSettings = () => {
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
               <h4 className="text-blue-300 font-medium mb-2">💡 Поради для промпту:</h4>
               <ul className="text-gray-300 text-sm space-y-1">
-                <li>• Починайте з "Edit this image to..." для редагування</li>
-                <li>• Вказуйте конкретний стиль: lighting, colors, atmosphere</li>
-                <li>• Додайте "Keep professional for LinkedIn"</li>
-                <li>• Закінчуйте з "Output a high-quality version"</li>
+                <li>• Використовуйте <code className="text-green-400">{'{title}'}</code> та <code className="text-green-400">{'{description}'}</code> щоб AI розумів контекст статті</li>
+                <li>• Вказуйте конкретний стиль: modern, professional, minimalist</li>
+                <li>• Описуйте що має бути на зображенні: visual metaphors, symbols, icons</li>
+                <li>• Вкажіть що НЕ має бути: NO text, NO logos, NO faces</li>
+                <li>• Landscape (16:9) - найкращий формат для LinkedIn</li>
               </ul>
             </div>
           </div>
         )}
       </div>
 
-      {/* Info about multiple images */}
+      {/* How it works */}
+      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+        <h4 className="text-green-300 font-medium mb-2">🔄 Як працює генерація:</h4>
+        <ol className="text-gray-300 text-sm space-y-2 list-decimal list-inside">
+          <li>При публікації в LinkedIn беремо <strong>оригінальне зображення</strong> з поста</li>
+          <li>Беремо <strong>заголовок</strong> та <strong>опис</strong> новини</li>
+          <li>Відправляємо в <strong>Gemini AI</strong> разом з промптом</li>
+          <li>AI генерує <strong>нове зображення</strong> на основі контексту статті</li>
+          <li>Згенероване зображення публікується в LinkedIn</li>
+        </ol>
+      </div>
+
+      {/* Info */}
       <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-        <h4 className="text-yellow-300 font-medium mb-2">⚠️ Обмеження:</h4>
+        <h4 className="text-yellow-300 font-medium mb-2">⚠️ Важливо:</h4>
         <ul className="text-gray-300 text-sm space-y-1">
-          <li>• Зараз обробляється тільки <strong>перше зображення</strong> з поста</li>
-          <li>• Обробка відбувається автоматично при завантаженні з Telegram</li>
-          <li>• Оброблене зображення використовується для LinkedIn публікацій</li>
+          <li>• Потрібен <strong>GOOGLE_API_KEY</strong> - налаштуйте в <strong>API Keys</strong></li>
+          <li>• Генерація відбувається тільки при публікації в LinkedIn</li>
+          <li>• Оброблене зображення зберігається для повторного використання</li>
         </ul>
       </div>
 

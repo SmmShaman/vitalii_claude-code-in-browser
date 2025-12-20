@@ -41,8 +41,12 @@ async function getGoogleApiKey(supabase: any): Promise<string | null> {
 interface ProcessImageRequest {
   imageUrl: string
   newsId?: string
-  promptType?: 'enhance' | 'linkedin_optimize' | 'custom'
+  promptType?: 'enhance' | 'linkedin_optimize' | 'generate' | 'custom'
   customPrompt?: string
+  // News context for AI image generation
+  newsTitle?: string
+  newsDescription?: string
+  newsUrl?: string
 }
 
 interface ProcessImageResponse {
@@ -66,7 +70,8 @@ serve(async (req) => {
     console.log('🖼️ Image processing request:', {
       imageUrl: requestData.imageUrl?.substring(0, 50) + '...',
       newsId: requestData.newsId,
-      promptType: requestData.promptType
+      promptType: requestData.promptType,
+      hasNewsContext: !!(requestData.newsTitle || requestData.newsDescription)
     })
 
     if (!requestData.imageUrl) {
@@ -82,7 +87,16 @@ serve(async (req) => {
       prompt = requestData.customPrompt
     }
 
-    console.log('📝 Using prompt:', prompt.substring(0, 100) + '...')
+    // If we have news context, inject it into the prompt
+    if (requestData.newsTitle || requestData.newsDescription) {
+      prompt = buildContextualPrompt(prompt, {
+        title: requestData.newsTitle,
+        description: requestData.newsDescription,
+        url: requestData.newsUrl
+      })
+    }
+
+    console.log('📝 Using prompt:', prompt.substring(0, 200) + '...')
 
     // Download the original image
     const imageData = await downloadImage(requestData.imageUrl)
@@ -182,10 +196,76 @@ async function getImagePrompt(supabase: any, promptType: string): Promise<string
 function getDefaultPrompt(promptType: string): string {
   const prompts: Record<string, string> = {
     enhance: 'Enhance this image: improve clarity, adjust brightness and contrast for better visibility, sharpen details while maintaining natural look.',
-    linkedin_optimize: 'Optimize this image for LinkedIn: ensure professional appearance, good contrast, proper lighting, make colors vibrant but professional. The image should look great as a LinkedIn post thumbnail.',
+    linkedin_optimize: `Based on this reference image and the article context below, create a NEW professional illustration for LinkedIn.
+
+ARTICLE CONTEXT:
+{title}
+{description}
+
+INSTRUCTIONS:
+1. Analyze the reference image and understand the article topic
+2. Create a completely NEW, eye-catching illustration that represents the article theme
+3. Style: Modern, professional, suitable for LinkedIn audience
+4. Include visual metaphors or symbols related to the topic
+5. Use vibrant but professional colors
+6. Make it visually engaging to encourage clicks
+7. Aspect ratio: Landscape (16:9 or similar)
+8. No text on the image - the visual should speak for itself
+
+Generate a high-quality, professional illustration that will stand out in LinkedIn feed.`,
+    generate: `Create a NEW professional illustration based on this article:
+
+TITLE: {title}
+
+DESCRIPTION: {description}
+
+REFERENCE: Use the provided image as style/context reference only.
+
+REQUIREMENTS:
+- Modern, clean design suitable for LinkedIn
+- Visually represent the key theme of the article
+- Professional color palette
+- Eye-catching but not clickbait
+- No text overlays
+- Landscape orientation (16:9)
+
+Generate the illustration now.`,
     custom: 'Process this image to improve its quality.'
   }
   return prompts[promptType] || prompts.custom
+}
+
+/**
+ * Build prompt with news context placeholders replaced
+ */
+function buildContextualPrompt(
+  basePrompt: string,
+  context: { title?: string; description?: string; url?: string }
+): string {
+  let prompt = basePrompt
+
+  // Replace placeholders with actual content
+  if (context.title) {
+    prompt = prompt.replace(/\{title\}/g, context.title)
+  } else {
+    prompt = prompt.replace(/\{title\}/g, '[No title provided]')
+  }
+
+  if (context.description) {
+    // Truncate description if too long
+    const shortDesc = context.description.substring(0, 500)
+    prompt = prompt.replace(/\{description\}/g, shortDesc)
+  } else {
+    prompt = prompt.replace(/\{description\}/g, '[No description provided]')
+  }
+
+  if (context.url) {
+    prompt = prompt.replace(/\{url\}/g, context.url)
+  } else {
+    prompt = prompt.replace(/\{url\}/g, '')
+  }
+
+  return prompt
 }
 
 /**
