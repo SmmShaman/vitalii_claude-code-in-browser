@@ -143,19 +143,43 @@ export function BlogArticle({ slug }: BlogArticleProps) {
           </figure>
         )}
 
-        {/* Featured Image (only if no video) */}
-        {(post.image_url || post.cover_image_url) && !post.video_url && (
+        {/* Image Gallery (only if no video) - supports multiple images */}
+        {!post.video_url && (post.images?.length > 0 || post.image_url || post.cover_image_url) && (
           <figure className="mb-6">
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden">
-              <Image
-                src={post.image_url || post.cover_image_url}
-                alt={title}
-                fill
-                priority
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 800px"
-                className="object-cover"
-              />
-            </div>
+            {post.images?.length > 1 ? (
+              // Multiple images - show grid gallery
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
+                {post.images.map((imageUrl: string, index: number) => (
+                  <div
+                    key={index}
+                    className={`relative rounded-xl overflow-hidden ${
+                      index === 0 && post.images.length === 3 ? 'col-span-2' : ''
+                    } ${post.images.length === 1 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
+                  >
+                    <Image
+                      src={imageUrl}
+                      alt={`${title} - Image ${index + 1}`}
+                      fill
+                      priority={index === 0}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
+                      className="object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Single image - full width
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden">
+                <Image
+                  src={post.images?.[0] || post.image_url || post.cover_image_url}
+                  alt={title}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 800px"
+                  className="object-cover"
+                />
+              </div>
+            )}
           </figure>
         )}
 
