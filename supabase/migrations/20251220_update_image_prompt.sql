@@ -25,10 +25,11 @@ Generate a high-quality, professional illustration that will stand out in Linked
 WHERE prompt_type = 'image_linkedin_optimize';
 
 -- Add a new prompt type for pure image generation (without reference)
+-- First check if it exists, if not - insert
 INSERT INTO ai_prompts (prompt_type, prompt_text, description, is_active, name)
-VALUES
-  ('image_generate',
-   'Create a professional illustration for a LinkedIn article:
+SELECT
+  'image_generate',
+  'Create a professional illustration for a LinkedIn article:
 
 ARTICLE TITLE: {title}
 
@@ -45,12 +46,12 @@ REQUIREMENTS:
 - High quality, sharp details
 
 Create an engaging illustration that would make someone want to read this article.',
-   'Промпт для генерації нових зображень без референсу. Плейсхолдери: {title}, {description}',
-   false,
-   '🎨 Генерація без референсу')
-ON CONFLICT (prompt_type) DO UPDATE SET
-  prompt_text = EXCLUDED.prompt_text,
-  description = EXCLUDED.description;
+  'Промпт для генерації нових зображень без референсу. Плейсхолдери: {title}, {description}',
+  false,
+  '🎨 Генерація без референсу'
+WHERE NOT EXISTS (
+  SELECT 1 FROM ai_prompts WHERE prompt_type = 'image_generate'
+);
 
 -- Comment for documentation
 COMMENT ON COLUMN ai_prompts.prompt_text IS 'Промпт може містити плейсхолдери: {title}, {description}, {url} - вони будуть замінені реальним контентом статті';
