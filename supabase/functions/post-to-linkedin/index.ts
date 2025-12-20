@@ -91,10 +91,31 @@ serve(async (req) => {
     console.log('📝 Content to post:', {
       title: content.title.substring(0, 50) + '...',
       descriptionLength: content.description.length,
-      url: content.url
+      url: content.url,
+      imageUrl: content.imageUrl
     })
     console.log('📋 Full title:', content.title)
     console.log('📋 Full description:', content.description)
+
+    // Process image with AI if available and not already processed
+    if (content.imageUrl && !content.imageUrl.includes('/processed/')) {
+      console.log('🖼️ Processing image for LinkedIn...')
+      const processedImageUrl = await processImageForLinkedIn(content.imageUrl)
+      if (processedImageUrl) {
+        content.imageUrl = processedImageUrl
+        console.log('✅ Image processed:', processedImageUrl)
+
+        // Save processed image URL to database for future use
+        const updateTable = requestData.contentType === 'news' ? 'news' : 'blog_posts'
+        const updateId = requestData.contentType === 'news' ? requestData.newsId : requestData.blogPostId
+        await supabase
+          .from(updateTable)
+          .update({ processed_image_url: processedImageUrl })
+          .eq('id', updateId)
+      } else {
+        console.log('⚠️ Image processing failed, using original image')
+      }
+    }
 
     // Post to LinkedIn
     const result = await postToLinkedIn(content)
@@ -335,5 +356,47 @@ async function postToLinkedIn(content: {
       success: false,
       error: error.message
     }
+  }
+}
+
+/**
+ * Process image for LinkedIn using AI enhancement (Gemini)
+ */
+async function processImageForLinkedIn(imageUrl: string): Promise<string | null> {
+  try {
+    console.log('🖼️ Calling process-image function...')
+
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/process-image`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          imageUrl,
+          promptType: 'linkedin_optimize'
+        })
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('process-image error:', response.status, errorText)
+      return null
+    }
+
+    const result = await response.json()
+    console.log('process-image result:', result)
+
+    if (result.success && result.processedImageUrl) {
+      return result.processedImageUrl
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error in processImageForLinkedIn:', error)
+    return null
   }
 }

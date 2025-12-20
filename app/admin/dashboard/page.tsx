@@ -17,9 +17,10 @@ import { DebugSettings } from '@/components/admin/DebugSettings'
 import { LinkedInPostsManager } from '@/components/admin/LinkedInPostsManager'
 import { SkillsManager } from '@/components/admin/SkillsManager'
 import { ImageProcessingSettings } from '@/components/admin/ImageProcessingSettings'
+import { APIKeysSettings } from '@/components/admin/APIKeysSettings'
 
 type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'linkedin' | 'skills' | 'settings'
-type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'schedule' | 'automation' | 'debug'
+type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'schedule' | 'automation' | 'debug'
 
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -144,6 +145,16 @@ export default function AdminDashboardPage() {
               Зображення
             </button>
             <button
+              onClick={() => setSettingsSubTab('apikeys')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                settingsSubTab === 'apikeys'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              API Keys
+            </button>
+            <button
               onClick={() => setSettingsSubTab('schedule')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 settingsSubTab === 'schedule'
@@ -198,6 +209,7 @@ export default function AdminDashboardPage() {
               {settingsSubTab === 'sources' && <NewsSourcesManager />}
               {settingsSubTab === 'prompts' && <AIPromptsManager />}
               {settingsSubTab === 'images' && <ImageProcessingSettings />}
+              {settingsSubTab === 'apikeys' && <APIKeysSettings />}
               {settingsSubTab === 'schedule' && <AutoPublishSettings />}
               {settingsSubTab === 'automation' && <CronScheduleSettings />}
               {settingsSubTab === 'debug' && <DebugSettings />}

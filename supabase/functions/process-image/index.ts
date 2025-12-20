@@ -8,7 +8,35 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY')
+
+// Get Google API key from env or database
+async function getGoogleApiKey(supabase: any): Promise<string | null> {
+  // First try environment variable
+  const envKey = Deno.env.get('GOOGLE_API_KEY')
+  if (envKey) {
+    console.log('📍 Using GOOGLE_API_KEY from environment')
+    return envKey
+  }
+
+  // Fallback to database
+  try {
+    const { data, error } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', 'GOOGLE_API_KEY')
+      .eq('is_active', true)
+      .single()
+
+    if (!error && data?.key_value) {
+      console.log('📍 Using GOOGLE_API_KEY from database')
+      return data.key_value
+    }
+  } catch (e) {
+    console.log('⚠️ Could not read API key from database:', e)
+  }
+
+  return null
+}
 
 interface ProcessImageRequest {
   imageUrl: string
@@ -60,8 +88,23 @@ serve(async (req) => {
     const imageData = await downloadImage(requestData.imageUrl)
     console.log('📥 Downloaded image, size:', imageData.length, 'bytes')
 
+    // Get Google API key
+    const googleApiKey = await getGoogleApiKey(supabase)
+    if (!googleApiKey) {
+      console.log('⚠️ GOOGLE_API_KEY not configured (neither in env nor database)')
+      return new Response(
+        JSON.stringify({
+          success: true,
+          processedImageUrl: requestData.imageUrl,
+          originalImageUrl: requestData.imageUrl,
+          error: 'GOOGLE_API_KEY not configured. Please add it in Admin → Settings → API Keys'
+        } as ProcessImageResponse),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Process image with AI
-    const processedImageUrl = await processImageWithAI(imageData, prompt)
+    const processedImageUrl = await processImageWithAI(imageData, prompt, googleApiKey)
 
     if (!processedImageUrl) {
       // If AI processing fails, return original image
@@ -163,18 +206,14 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Gemini 3.0 Pro Image API (Nano Banana Pro)
+ * Process image with Google Gemini 2.0 Flash Image API
  * Uses the Gemini image editing capabilities for LinkedIn optimization
  */
-async function processImageWithAI(imageBase64: string, prompt: string): Promise<string | null> {
-  if (!GOOGLE_API_KEY) {
-    console.log('⚠️ GOOGLE_API_KEY not configured')
-    return null
-  }
-
+async function processImageWithAI(imageBase64: string, prompt: string, apiKey: string): Promise<string | null> {
   try {
-    // Gemini 3.0 Pro Image API endpoint (Nano Banana Pro)
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`
+    // Gemini 2.0 Flash - supports image generation/editing
+    // See: https://ai.google.dev/gemini-api/docs/image-generation
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`
 
     // Request body for image editing with Gemini
     const requestBody = {
@@ -195,7 +234,7 @@ async function processImageWithAI(imageBase64: string, prompt: string): Promise<
       }
     }
 
-    console.log('📤 Sending to Google Gemini 3.0 Pro Image API (Nano Banana Pro)...')
+    console.log('📤 Sending to Google Gemini 2.0 Flash API...')
 
     const response = await fetch(endpoint, {
       method: 'POST',
