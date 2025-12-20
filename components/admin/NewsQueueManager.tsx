@@ -88,31 +88,108 @@ export const NewsQueueManager = () => {
     try {
       setLoading(true)
 
-      // Load news with source info and blog posts relation
-      const { data, error } = await supabase
+      // Load news - simple query without relations first
+      const { data: newsData, error: newsError } = await supabase
         .from('news')
-        .select(`
-          *,
-          news_sources(name, channel_username),
-          blog_posts(id, slug_en)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(200)
 
-      if (error) throw error
+      if (newsError) {
+        console.error('News query error:', newsError)
+        throw newsError
+      }
 
-      const newsData = (data || []) as NewsItem[]
-      setNews(newsData)
+      console.log('Loaded news count:', newsData?.length || 0)
+
+      if (!newsData || newsData.length === 0) {
+        setNews([])
+        setStats({
+          total: 0,
+          pendingAI: 0,
+          rejectedAI: 0,
+          waitingApproval: 0,
+          published: 0,
+          linkedin: 0,
+          blog: 0
+        })
+        return
+      }
+
+      // Load sources separately
+      const sourceIds = [...new Set(newsData.filter(n => n.source_id).map(n => n.source_id))]
+      let sourcesMap: Record<string, { name: string; channel_username: string }> = {}
+
+      if (sourceIds.length > 0) {
+        const { data: sources, error: sourcesError } = await supabase
+          .from('news_sources')
+          .select('id, name, url, source_type')
+          .in('id', sourceIds)
+
+        if (sourcesError) {
+          console.warn('Sources query error:', sourcesError)
+        }
+
+        if (sources) {
+          sourcesMap = sources.reduce((acc, s) => {
+            // Extract channel username from URL for Telegram sources
+            let channelUsername = s.name
+            if (s.source_type === 'telegram' && s.url) {
+              const match = s.url.match(/t\.me\/([^\/]+)/)
+              if (match) channelUsername = match[1]
+            }
+            acc[s.id] = { name: s.name, channel_username: channelUsername }
+            return acc
+          }, {} as Record<string, { name: string; channel_username: string }>)
+        }
+      }
+
+      // Load blog posts that reference these news items
+      const newsIds = newsData.map(n => n.id)
+      let blogPostsMap: Record<string, { id: string; slug_en: string }[]> = {}
+
+      try {
+        const { data: blogPosts, error: blogError } = await supabase
+          .from('blog_posts')
+          .select('id, slug_en, source_news_id')
+          .in('source_news_id', newsIds)
+
+        if (blogError) {
+          console.warn('Blog posts query error:', blogError)
+        }
+
+        if (blogPosts) {
+          blogPosts.forEach(bp => {
+            if (bp.source_news_id) {
+              if (!blogPostsMap[bp.source_news_id]) {
+                blogPostsMap[bp.source_news_id] = []
+              }
+              blogPostsMap[bp.source_news_id].push({ id: bp.id, slug_en: bp.slug_en || '' })
+            }
+          })
+        }
+      } catch (e) {
+        console.warn('Blog posts query failed:', e)
+      }
+
+      // Merge all data
+      const enrichedNews = newsData.map(n => ({
+        ...n,
+        news_sources: n.source_id ? sourcesMap[n.source_id] : null,
+        blog_posts: blogPostsMap[n.id] || []
+      })) as NewsItem[]
+
+      setNews(enrichedNews)
 
       // Calculate stats
       setStats({
-        total: newsData.length,
-        pendingAI: newsData.filter(n => n.pre_moderation_status === 'pending').length,
-        rejectedAI: newsData.filter(n => n.pre_moderation_status === 'rejected').length,
-        waitingApproval: newsData.filter(n => n.pre_moderation_status === 'approved' && !n.is_published).length,
-        published: newsData.filter(n => n.is_published).length,
-        linkedin: newsData.filter(n => n.linkedin_post_id).length,
-        blog: newsData.filter(n => n.blog_posts && n.blog_posts.length > 0).length
+        total: enrichedNews.length,
+        pendingAI: enrichedNews.filter(n => n.pre_moderation_status === 'pending').length,
+        rejectedAI: enrichedNews.filter(n => n.pre_moderation_status === 'rejected').length,
+        waitingApproval: enrichedNews.filter(n => n.pre_moderation_status === 'approved' && !n.is_published).length,
+        published: enrichedNews.filter(n => n.is_published).length,
+        linkedin: enrichedNews.filter(n => n.linkedin_post_id).length,
+        blog: enrichedNews.filter(n => n.blog_posts && n.blog_posts.length > 0).length
       })
     } catch (error) {
       console.error('Failed to load news:', error)
