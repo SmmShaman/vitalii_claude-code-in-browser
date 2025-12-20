@@ -352,10 +352,9 @@ serve(async (req) => {
               }
             }
 
-            // Extract source link from post text
-            const sourceLink = extractSourceLink(post.text)
-            if (sourceLink) {
-              console.log(`📎 Extracted source link: ${sourceLink}`)
+            // Log source link if found (already extracted in parseChannelPosts)
+            if (post.sourceLink) {
+              console.log(`📎 Source link: ${post.sourceLink}`)
             }
 
             // Save to database with pending status (waiting for moderation)
@@ -365,7 +364,7 @@ serve(async (req) => {
                 original_title: post.text.substring(0, 200), // First 200 chars as title
                 original_content: post.text,
                 original_url: post.originalUrl,
-                source_link: sourceLink, // External source link from text
+                source_link: post.sourceLink, // External source link from text
                 image_url: photoUrl,
                 video_url: post.videoUrl,
                 video_type: post.videoType,
@@ -715,6 +714,9 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
           continue
         }
 
+        // Extract source link from text
+        const sourceLink = extractSourceLink(text)
+
         posts.push({
           channelUsername,
           messageId,
@@ -724,6 +726,7 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
           videoType,
           date,
           originalUrl: `https://t.me/${channelUsername}/${messageId}`,
+          sourceLink,
         })
       } catch (postError) {
         console.error('Error parsing post:', postError)
