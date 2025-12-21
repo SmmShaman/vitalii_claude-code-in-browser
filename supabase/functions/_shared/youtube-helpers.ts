@@ -2,7 +2,11 @@
  * YouTube API Helpers
  *
  * Helper functions for uploading videos to YouTube using OAuth 2.0
+ * Includes MTKruto integration for downloading large videos from Telegram
  */
+
+// MTKruto imports for Telegram MTProto
+import { Client } from "https://deno.land/x/mtkruto@0.1.190/mod.ts";
 
 interface YouTubeConfig {
   clientId: string;
@@ -227,5 +231,117 @@ export async function downloadTelegramVideo(
   } catch (error) {
     console.error('❌ Error downloading from Telegram:', error);
     return null;
+  }
+}
+
+/**
+ * Download video from Telegram using MTKruto (MTProto)
+ * Supports files up to 2GB (vs 20MB limit of Bot API)
+ */
+export async function downloadTelegramVideoMTKruto(
+  channelUsername: string,
+  messageId: number
+): Promise<Uint8Array | null> {
+  const apiId = Deno.env.get("TELEGRAM_API_ID");
+  const apiHash = Deno.env.get("TELEGRAM_API_HASH");
+  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+
+  if (!apiId || !apiHash || !botToken) {
+    console.error('❌ MTKruto credentials not configured');
+    console.error(`  TELEGRAM_API_ID: ${apiId ? 'SET' : 'MISSING'}`);
+    console.error(`  TELEGRAM_API_HASH: ${apiHash ? 'SET' : 'MISSING'}`);
+    console.error(`  TELEGRAM_BOT_TOKEN: ${botToken ? 'SET' : 'MISSING'}`);
+    return null;
+  }
+
+  console.log('🔌 Initializing MTKruto client...');
+
+  const client = new Client({
+    apiId: Number(apiId),
+    apiHash: apiHash,
+  });
+
+  try {
+    console.log('🚀 Starting MTKruto client with bot token...');
+    await client.start({ botToken });
+    console.log('✅ MTKruto client started');
+
+    // Get messages from channel
+    // Format channel username (remove @ if present)
+    const cleanUsername = channelUsername.startsWith('@')
+      ? channelUsername.slice(1)
+      : channelUsername;
+
+    console.log(`📥 Fetching message ${messageId} from @${cleanUsername}...`);
+
+    const messages = await client.getMessages(cleanUsername, { ids: [messageId] });
+
+    if (!messages || messages.length === 0 || !messages[0]) {
+      console.error('❌ Message not found');
+      return null;
+    }
+
+    const message = messages[0];
+    console.log(`✅ Message found, type: ${message.constructor.name}`);
+
+    // Check if message has video
+    if (!message.video && !message.document) {
+      console.error('❌ Message does not contain video');
+      return null;
+    }
+
+    const media = message.video || message.document;
+    const fileSize = media?.fileSize || 0;
+    const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+    console.log(`📊 Video size: ${fileSizeMB} MB`);
+
+    // Check if file is too large for /tmp (512 MB limit on Pro)
+    const maxSize = 500 * 1024 * 1024; // 500 MB safety margin
+    if (fileSize > maxSize) {
+      console.error(`❌ Video too large: ${fileSizeMB} MB (max 500 MB)`);
+      return null;
+    }
+
+    console.log('⬇️ Downloading video via MTKruto...');
+
+    // Download to memory
+    const chunks: Uint8Array[] = [];
+    let downloadedBytes = 0;
+
+    for await (const chunk of client.download(message)) {
+      chunks.push(chunk);
+      downloadedBytes += chunk.length;
+
+      // Log progress every 10 MB
+      if (downloadedBytes % (10 * 1024 * 1024) < chunk.length) {
+        const progressMB = (downloadedBytes / (1024 * 1024)).toFixed(2);
+        console.log(`📥 Downloaded: ${progressMB} MB / ${fileSizeMB} MB`);
+      }
+    }
+
+    // Combine chunks into single buffer
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const videoBuffer = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      videoBuffer.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    const downloadedMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
+    console.log(`✅ Download complete: ${downloadedMB} MB`);
+
+    return videoBuffer;
+
+  } catch (error) {
+    console.error('❌ MTKruto download error:', error);
+    return null;
+  } finally {
+    try {
+      await client.disconnect();
+      console.log('🔌 MTKruto client disconnected');
+    } catch (e) {
+      // Ignore disconnect errors
+    }
   }
 }

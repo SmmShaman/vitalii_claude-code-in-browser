@@ -43,7 +43,8 @@
 ### News (`news` table)
 - Мультимовний контент
 - Система пре-модерації (pre_moderation_status)
-- Підтримка відео (YouTube, Telegram)
+- Підтримка відео (YouTube, Telegram fallback)
+- Поля: `video_type`, `video_url`
 - is_rewritten, is_published флаги
 
 ### Moderation Workflow
@@ -605,6 +606,8 @@ async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
 - **IMAGE** - коли зображення успішно завантажено (з asset URN)
 - **ARTICLE** - fallback коли зображення немає або upload не вдався
 
+> **Примітка:** Native video upload в LinkedIn потребує MP4 файл. YouTube не надає прямий MP4 URL, тому поки що відео публікуються як посилання. Для native video потрібен буде альтернативний сховище (Bunny.net Stream тощо).
+
 ### LinkedIn API
 
 Використовується **UGC Post API** (User Generated Content):
@@ -671,17 +674,26 @@ supabase secrets set LINKEDIN_PERSON_URN="urn:li:person:xxxxx"
 
 ### Опис
 
-Автоматичне завантаження відео з Telegram каналів на YouTube для надійного вбудовування на сайті. Fallback на красивий Telegram плейсхолдер якщо YouTube недоступний.
+Автоматичне завантаження відео з Telegram каналів на YouTube для надійного вбудовування на сайті. Використовується MTKruto (MTProto для Deno) для обходу ліміту 20 MB в Telegram Bot API.
+
+### Чому YouTube + MTKruto?
+
+| Критерій | YouTube | Альтернативи |
+|----------|---------|--------------|
+| Вартість | ✅ Безкоштовно | Bunny.net ~$1-3/міс |
+| Інфраструктура | ✅ Вже налаштовано | Нові сервіси |
+| Зміни в коді | ✅ Мінімальні | Значні |
+
+**Проблема була не в YouTube, а в Telegram Bot API (ліміт 20 MB).**
 
 ### Файли
 
 ```
-├── supabase/functions/telegram-scraper/index.ts  # Video extraction + YouTube upload
-├── supabase/functions/_shared/youtube-helpers.ts # YouTube API helpers
-├── supabase/functions/test-youtube-auth/index.ts # OAuth тестування
-├── components/sections/NewsSection.tsx           # Video player + Telegram fallback
-├── components/sections/NewsModal.tsx             # Video player + Telegram fallback
-├── app/news/[slug]/NewsArticle.tsx               # Standalone news page with video
+├── supabase/functions/telegram-scraper/index.ts   # Video extraction + YouTube upload
+├── supabase/functions/_shared/youtube-helpers.ts  # YouTube API helpers
+├── components/sections/NewsSection.tsx            # Video player (YouTube/fallback)
+├── components/sections/NewsModal.tsx              # Video player (YouTube/fallback)
+├── app/news/[slug]/NewsArticle.tsx                # Standalone news page with video
 ```
 
 ### Video Types
@@ -697,10 +709,10 @@ supabase secrets set LINKEDIN_PERSON_URN="urn:li:person:xxxxx"
 ```
 1. Scraper знаходить відео в Telegram пості
    ↓
-2. YouTube credentials налаштовані?
-   ├─ ТАК → Завантажити відео з Telegram CDN
-   │        → Перекласти заголовок на англійську (Azure OpenAI)
-   │        → Отримати YouTube access token
+2. MTKruto скачує відео в /tmp (до 512 MB на Pro)
+   ↓
+3. YouTube credentials налаштовані?
+   ├─ ТАК → Перекласти заголовок (Azure OpenAI)
    │        → Завантажити на YouTube (unlisted)
    │        → video_type = 'youtube'
    │        → video_url = 'https://youtube.com/embed/...'
@@ -708,11 +720,69 @@ supabase secrets set LINKEDIN_PERSON_URN="urn:li:person:xxxxx"
    └─ НІ (або помилка) → Fallback на Telegram embed
                         → video_type = 'telegram_embed'
                         → video_url = 'https://t.me/channel/123?embed=1'
+   ↓
+4. Файл в /tmp автоматично видаляється
+```
+
+### MTKruto (MTProto для Deno)
+
+Замінює Telegram Bot API для обходу ліміту 20 MB:
+
+```typescript
+import { Client } from "https://deno.land/x/mtkruto/mod.ts";
+
+const client = new Client({
+  apiId: Number(Deno.env.get("TELEGRAM_API_ID")),
+  apiHash: Deno.env.get("TELEGRAM_API_HASH")!,
+});
+
+async function downloadVideo(chatId: number, messageId: number): Promise<string> {
+  await client.start({ botToken: Deno.env.get("TELEGRAM_BOT_TOKEN")! });
+
+  const message = await client.getMessage(chatId, messageId);
+
+  // Скачати в /tmp (до 512 MB на Supabase Pro)
+  const tempPath = `/tmp/video_${messageId}.mp4`;
+  await client.downloadMedia(message, tempPath);
+
+  return tempPath;
+}
+```
+
+**Переваги MTKruto:**
+- ✅ Нативна Deno бібліотека — працює в Supabase Edge Functions
+- ✅ Ліміт 2 GB замість 20 MB
+- ✅ Використовує Bot Token — не потрібен user session
+- ✅ Активно підтримується
+
+### Supabase Edge Function ліміти
+
+| Ресурс | Free | Pro |
+|--------|------|-----|
+| Ephemeral storage (/tmp) | 256 MB | **512 MB** |
+| Wall clock time | 150 сек | **400 сек** |
+| Background tasks | ✅ | ✅ |
+
+> Типові відео 5-10 хв = 100-400 MB — влазить в /tmp
+
+### Fallback стратегія
+
+```typescript
+try {
+  // Спробувати MTKruto
+  videoPath = await downloadWithMTKruto(chatId, messageId);
+  youtubeUrl = await uploadToYouTube(videoPath, title);
+  return { video_type: 'youtube', video_url: youtubeUrl };
+} catch (error) {
+  console.error('Video processing failed:', error);
+  // Fallback на telegram_embed
+  return { video_type: 'telegram_embed', video_url: telegramPostUrl };
+}
 ```
 
 ### YouTube OAuth Setup
 
-**Потрібні credentials:**
+**Credentials (вже налаштовані):**
 ```env
 YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
 YOUTUBE_CLIENT_SECRET=GOCSPX-...
@@ -726,17 +796,27 @@ YOUTUBE_REFRESH_TOKEN=1//04...
 4. Authorize APIs → Exchange authorization code for tokens
 5. Скопіювати Refresh Token
 
-**⚠️ Важливо:** Refresh Token прив'язаний до Client Secret! Якщо створили новий Secret, потрібен новий Token.
+### Environment Variables
 
-**Тестування:**
-```bash
-curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/test-youtube-auth" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+```env
+# Telegram MTProto (MTKruto)
+TELEGRAM_API_ID=35388773
+TELEGRAM_API_HASH=aa3d654a6327701da78c0f44e1a47993
+TELEGRAM_BOT_TOKEN=existing_bot_token
+
+# YouTube API
+YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+YOUTUBE_CLIENT_SECRET=GOCSPX-...
+YOUTUBE_REFRESH_TOKEN=1//04...
+
+# Azure OpenAI (для перекладу заголовків)
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your_key
 ```
 
 ### Telegram Video Fallback UI
 
-Коли `video_type = 'telegram_embed'`, замість зламаного iframe показується красивий плейсхолдер:
+Коли `video_type = 'telegram_embed'`, показується плейсхолдер:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -751,21 +831,12 @@ curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/test-youtube-auth" \
 └─────────────────────────────────────────┘
 ```
 
-- Кнопка відкриває оригінальний пост в Telegram
-- Працює в NewsSection, NewsModal та NewsArticle
+### Документація
 
-### Environment Variables (YouTube)
-
-```env
-# YouTube API (для завантаження відео)
-YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=GOCSPX-...
-YOUTUBE_REFRESH_TOKEN=1//04...
-
-# Azure OpenAI (для перекладу заголовків)
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_API_KEY=your_key
-```
+- [MTKruto GitHub](https://github.com/MTKruto/MTKruto)
+- [MTKruto Deno](https://deno.land/x/mtkruto)
+- [YouTube Data API](https://developers.google.com/youtube/v3)
+- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
 
 ---
 
@@ -1284,13 +1355,29 @@ supabase functions deploy process-news
 ## Environment Variables
 
 ```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 NEXT_PUBLIC_SITE_URL=https://vitalii-berbeha.netlify.app
 
+# Telegram (Bot API + MTProto)
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+TELEGRAM_API_ID=35388773
+TELEGRAM_API_HASH=aa3d654a6327701da78c0f44e1a47993
+
+# YouTube API
+YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+YOUTUBE_CLIENT_SECRET=GOCSPX-...
+YOUTUBE_REFRESH_TOKEN=1//04...
+
 # LinkedIn Integration
 LINKEDIN_ACCESS_TOKEN=your_linkedin_access_token
 LINKEDIN_PERSON_URN=urn:li:person:your_person_id
+
+# Azure OpenAI
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your_key
 ```
 
 ## Commands
