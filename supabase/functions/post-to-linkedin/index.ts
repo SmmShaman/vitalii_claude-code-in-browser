@@ -16,7 +16,7 @@ const SITE_URL = Deno.env.get('NEXT_PUBLIC_SITE_URL') || 'https://vitalii.no'
 /**
  * Sanitize text for LinkedIn API
  * - Strips HTML tags
- * - Normalizes whitespace
+ * - Preserves paragraph breaks for readability
  * - Limits length
  * - Removes problematic characters
  */
@@ -34,11 +34,15 @@ function sanitizeText(text: string, maxLength: number = 1000): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&[a-z]+;/gi, ' ')
-    // Normalize whitespace - replace multiple spaces/newlines with single space
-    .replace(/\s+/g, ' ')
+    // Normalize multiple newlines to max 2 (preserve paragraph breaks)
+    .replace(/\n{3,}/g, '\n\n')
+    // Replace multiple spaces with single space (but keep newlines!)
+    .replace(/[^\S\n]+/g, ' ')
     // Remove control characters except newlines
     .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, '')
-    // Trim
+    // Trim each line
+    .split('\n').map(line => line.trim()).join('\n')
+    // Trim overall
     .trim()
     // Limit length
     .substring(0, maxLength)
