@@ -8,6 +8,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
+const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
+// DALL-E 3 deployment name in Azure OpenAI (create in Azure Portal)
+const AZURE_DALLE_DEPLOYMENT = Deno.env.get('AZURE_DALLE_DEPLOYMENT') || 'dall-e-3'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -102,22 +106,26 @@ serve(async (req) => {
     const imageData = await downloadImage(requestData.imageUrl)
     console.log('📥 Downloaded image, size:', imageData.length, 'bytes')
 
-    // Get Google API key
+    // Check if any image generation API is available
     const googleApiKey = await getGoogleApiKey(supabase)
-    if (!googleApiKey) {
-      console.log('⚠️ GOOGLE_API_KEY not configured (neither in env nor database)')
+    const hasAzure = !!(AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY)
+
+    if (!googleApiKey && !hasAzure) {
+      console.log('⚠️ No image generation API configured')
       return new Response(
         JSON.stringify({
           success: true,
           processedImageUrl: requestData.imageUrl,
           originalImageUrl: requestData.imageUrl,
-          error: 'GOOGLE_API_KEY not configured. Please add it in Admin → Settings → API Keys'
+          error: 'No image generation API configured. Set up Azure DALL-E or Google API.'
         } as ProcessImageResponse),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Process image with AI
+    console.log(`🔧 Available APIs: Azure DALL-E: ${hasAzure}, Google: ${!!googleApiKey}`)
+
+    // Process image with AI (tries Azure DALL-E first, then Google)
     const processedImageUrl = await processImageWithAI(imageData, prompt, googleApiKey)
 
     if (!processedImageUrl) {
@@ -286,94 +294,99 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Gemini 2.0 Flash Image Generation API
- * Uses the Gemini image generation capabilities for LinkedIn optimization
- *
- * Note: Gemini 2.0 Flash with image generation requires specific model variant
+ * Process image with AI - tries Azure DALL-E 3 first, then Google as fallback
  */
-async function processImageWithAI(imageBase64: string, prompt: string, apiKey: string): Promise<string | null> {
-  try {
-    // Try Imagen 3 first for pure image generation
-    const imagenResult = await tryImagenGeneration(prompt, apiKey)
+async function processImageWithAI(imageBase64: string, prompt: string, googleApiKey: string | null): Promise<string | null> {
+  // 1. Try Azure DALL-E 3 first (most reliable)
+  if (AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY) {
+    const dalleResult = await tryAzureDallE3(prompt)
+    if (dalleResult) {
+      console.log('✅ Image generated with Azure DALL-E 3')
+      return dalleResult
+    }
+  } else {
+    console.log('⚠️ Azure OpenAI not configured for DALL-E')
+  }
+
+  // 2. Fallback to Google Imagen 3
+  if (googleApiKey) {
+    const imagenResult = await tryImagenGeneration(prompt, googleApiKey)
     if (imagenResult) {
-      console.log('✅ Image generated with Imagen 3')
+      console.log('✅ Image generated with Google Imagen 3')
       return imagenResult
     }
+  }
 
-    // Fallback: Try Gemini 2.0 Flash with image generation
-    console.log('📤 Trying Gemini 2.0 Flash for image generation...')
+  console.log('❌ All image generation methods failed')
+  return null
+}
 
-    // Gemini 2.0 Flash experimental with image generation
-    // See: https://ai.google.dev/gemini-api/docs/image-generation
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`
+/**
+ * Generate image using Azure OpenAI DALL-E 3
+ */
+async function tryAzureDallE3(prompt: string): Promise<string | null> {
+  try {
+    console.log('📤 Generating image with Azure DALL-E 3...')
 
-    // Request body - include reference image for context
-    const requestBody = {
-      contents: [{
-        parts: [
-          { text: prompt },
-          {
-            inline_data: {
-              mime_type: 'image/jpeg',
-              data: imageBase64
-            }
-          }
-        ]
-      }],
-      generationConfig: {
-        responseModalities: ['IMAGE', 'TEXT'],
-        temperature: 0.7,
-        maxOutputTokens: 8192
-      }
-    }
+    // Azure DALL-E 3 endpoint
+    const endpoint = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_DALLE_DEPLOYMENT}/images/generations?api-version=2024-02-01`
 
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
+        'api-key': AZURE_OPENAI_API_KEY!,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({
+        prompt: prompt.substring(0, 4000), // DALL-E 3 limit
+        size: '1792x1024', // Landscape for LinkedIn
+        quality: 'standard', // 'hd' costs more
+        style: 'vivid', // More vibrant colors
+        n: 1
+      })
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Gemini API error:', response.status, errorText)
-
-      // Log detailed error for debugging
-      try {
-        const errorJson = JSON.parse(errorText)
-        console.error('Error details:', errorJson.error?.message || errorJson)
-      } catch {
-        console.error('Raw error:', errorText.substring(0, 500))
-      }
+      console.error('Azure DALL-E error:', response.status, errorText)
       return null
     }
 
     const result = await response.json()
-    console.log('📥 Gemini API response received')
-    console.log('Response structure:', JSON.stringify(result, null, 2).substring(0, 1000))
+    console.log('📥 Azure DALL-E response received')
 
-    // Extract processed image from response
-    // Gemini returns images in candidates[0].content.parts[].inline_data
-    if (result.candidates && result.candidates[0]?.content?.parts) {
-      for (const part of result.candidates[0].content.parts) {
-        if (part.inline_data && part.inline_data.data) {
-          console.log('✅ Found generated image in response')
-          // Upload processed image to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(part.inline_data.data)
-          return processedImageUrl
-        }
-        if (part.text) {
-          console.log('📝 Text response from Gemini:', part.text.substring(0, 200))
-        }
+    // DALL-E 3 returns URL to generated image
+    if (result.data && result.data[0]?.url) {
+      const imageUrl = result.data[0].url
+      console.log('🖼️ DALL-E generated image URL:', imageUrl.substring(0, 50) + '...')
+
+      // Download and upload to Supabase Storage (Azure URLs expire)
+      const imageResponse = await fetch(imageUrl)
+      if (!imageResponse.ok) {
+        console.error('Failed to download DALL-E image')
+        return null
       }
+
+      const imageBuffer = await imageResponse.arrayBuffer()
+      const base64 = btoa(
+        new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      )
+
+      const processedImageUrl = await uploadProcessedImage(base64)
+      return processedImageUrl
     }
 
-    console.log('⚠️ No image in Gemini response - model may not support image generation')
+    // Check for base64 response (alternative format)
+    if (result.data && result.data[0]?.b64_json) {
+      const processedImageUrl = await uploadProcessedImage(result.data[0].b64_json)
+      return processedImageUrl
+    }
+
+    console.log('⚠️ No image in DALL-E response')
     return null
 
   } catch (error: any) {
-    console.error('Error calling Gemini API:', error)
+    console.error('Error calling Azure DALL-E:', error)
     return null
   }
 }
