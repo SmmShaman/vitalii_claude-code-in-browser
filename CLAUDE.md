@@ -494,17 +494,17 @@ const projectColors = [
 
 ---
 
-## LinkedIn Integration (December 2024)
+## LinkedIn Integration (December 2024, Updated December 2024)
 
 ### Опис
 
-Публікація новин та блог-постів у LinkedIn через Telegram бота. Підтримка трьох мов: English, Norwegian, Ukrainian.
+Публікація новин та блог-постів у LinkedIn через Telegram бота. Підтримка трьох мов: English, Norwegian, Ukrainian. Нативне завантаження зображень.
 
 ### Файли
 
 ```
-├── supabase/functions/post-to-linkedin/index.ts  # LinkedIn API edge function
-├── supabase/functions/telegram-webhook/index.ts  # Callback handlers + duplicate checks
+├── supabase/functions/post-to-linkedin/index.ts  # LinkedIn API + native image upload
+├── supabase/functions/telegram-webhook/index.ts  # Callback handlers + bot messages
 ├── supabase/functions/telegram-scraper/index.ts  # Кнопки модерації
 ```
 
@@ -531,6 +531,25 @@ const projectColors = [
 └───────────────────────────────────────────┘
 ```
 
+### 📨 Сповіщення в боті (не popup!)
+
+Всі сповіщення про LinkedIn публікацію відправляються як **повідомлення в боті**, а не як popup alert:
+
+**При успішній публікації:**
+```
+✅ Опубліковано в LinkedIn (UA)!
+
+📰 «Заголовок статті»
+🔗 Переглянути пост
+```
+
+**При спробі повторної публікації:**
+```
+⚠️ Вже опубліковано в LinkedIn (UA)!
+
+🔗 Переглянути пост
+```
+
 ### 🛡️ Захист від дублікатів (Duplicate Safeguards)
 
 Система запобігає повторній публікації:
@@ -546,17 +565,53 @@ if (news.is_published || news.is_rewritten) {
 **Для LinkedIn:**
 ```typescript
 if (news.linkedin_post_id) {
-  // Показує: "⚠️ Вже опубліковано в LinkedIn (EN/NO/UA)!"
+  // Відправляє повідомлення в бот (не popup!)
   // Прибирає LinkedIn кнопки, показує посилання на пост
 }
 ```
+
+### 🖼️ Нативне завантаження зображень (Native Image Upload)
+
+LinkedIn тепер отримує зображення через **нативний upload** замість thumbnail URL:
+
+```typescript
+// Workflow завантаження зображення
+async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
+  // 1. Реєстрація завантаження
+  const registerResponse = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+    body: JSON.stringify({
+      registerUploadRequest: {
+        recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+        owner: LINKEDIN_PERSON_URN,
+        // ...
+      }
+    })
+  })
+
+  // 2. Завантаження зображення з джерела
+  const imageBuffer = await fetch(imageUrl).then(r => r.arrayBuffer())
+
+  // 3. Завантаження на LinkedIn
+  await fetch(uploadUrl, {
+    method: 'PUT',
+    body: imageBuffer
+  })
+
+  return asset // urn:li:digitalmediaAsset:xxxxx
+}
+```
+
+**Дві категорії постів:**
+- **IMAGE** - коли зображення успішно завантажено (з asset URN)
+- **ARTICLE** - fallback коли зображення немає або upload не вдався
 
 ### LinkedIn API
 
 Використовується **UGC Post API** (User Generated Content):
 - Endpoint: `https://api.linkedin.com/v2/ugcPosts`
+- Assets API: `https://api.linkedin.com/v2/assets?action=registerUpload`
 - Метод: POST
-- Формат: Article share з preview
+- Формат: IMAGE (з завантаженим зображенням) або ARTICLE (link preview)
 - URL: `https://vitalii.no/news/{slug}` (реальний домен)
 
 ### Що публікується
@@ -1163,6 +1218,65 @@ cd supabase
 supabase functions deploy pre-moderate-news
 supabase functions deploy post-to-linkedin
 supabase functions deploy process-blog-post
+```
+
+---
+
+## AI Prompts Selection Fix (December 2024)
+
+### Опис
+
+Виправлення вибору AI промптів з бази даних. Тепер завжди береться **останній оновлений** промпт замість випадкового.
+
+### Проблема
+
+При наявності кількох промптів з однаковим `prompt_type` (напр. два `blog_rewrite`), запит `.limit(1)` без сортування повертав **перший знайдений** в непередбачуваному порядку. Це призводило до використання старого промпту замість відредагованого.
+
+### Рішення
+
+Додано `.order('updated_at', { ascending: false })` перед `.limit(1)`:
+
+```typescript
+// До (неправильно)
+const { data: prompts } = await supabase
+  .from('ai_prompts')
+  .select('*')
+  .eq('is_active', true)
+  .eq('prompt_type', 'blog_rewrite')
+  .limit(1)  // ❌ Може повернути будь-який промпт
+
+// Після (правильно)
+const { data: prompts } = await supabase
+  .from('ai_prompts')
+  .select('*')
+  .eq('is_active', true)
+  .eq('prompt_type', 'blog_rewrite')
+  .order('updated_at', { ascending: false })  // ✅ Найновіший перший
+  .limit(1)
+```
+
+### Виправлені функції
+
+| Функція | Тип промпту | Файл |
+|---------|-------------|------|
+| `process-blog-post` | `blog_rewrite` | `supabase/functions/process-blog-post/index.ts` |
+| `pre-moderate-news` | `pre_moderation` | `supabase/functions/pre-moderate-news/index.ts` |
+| `process-news` | `news_rewrite`, `rewrite` | `supabase/functions/process-news/index.ts` |
+
+### Як працює
+
+1. Якщо в базі є кілька промптів з однаковим `prompt_type`
+2. Обидва можуть бути `is_active = true`
+3. Тепер береться той, що має найновіший `updated_at`
+4. Редагування промпту в адмін-панелі автоматично оновлює `updated_at`
+
+### Deploy
+
+```bash
+cd supabase
+supabase functions deploy process-blog-post
+supabase functions deploy pre-moderate-news
+supabase functions deploy process-news
 ```
 
 ---
