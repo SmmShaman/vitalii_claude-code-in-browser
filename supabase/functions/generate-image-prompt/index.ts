@@ -94,41 +94,65 @@ serve(async (req) => {
 })
 
 /**
+ * Get image generation prompt from database
+ * Falls back to default if not found
+ */
+async function getImageGenerationPrompt(supabase: any): Promise<string> {
+  try {
+    const { data: prompt, error } = await supabase
+      .from('ai_prompts')
+      .select('prompt_text')
+      .eq('prompt_type', 'image_generation')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error || !prompt) {
+      console.warn('⚠️ No active image_generation prompt found, using default')
+      return getDefaultPrompt()
+    }
+
+    return prompt.prompt_text
+  } catch (error) {
+    console.error('Error fetching prompt from database:', error)
+    return getDefaultPrompt()
+  }
+}
+
+/**
+ * Default fallback prompt if database is unavailable
+ */
+function getDefaultPrompt(): string {
+  return `Подивися на статтю очима людини якій далека тема але при цьому щось їй ну дуже цікаво. Як ти вважаєш що саме було б цікаво цій людині? Яка картинка постала перед очима цієї людини? Напиши одне коротке речення на основі якого я б передав би художнику реалісту твоє бачення! Це може бути ілюстрація, фото реалістична картинка, футуристична, і тд. Стиль повинен бути максимально наближений до духу статті. Сам опис картини повинен бути детальним та зрозумілим з першого погляду навіть без тексту.
+
+Ось стаття:
+
+Заголовок: {title}
+
+Текст: {content}
+
+Твоє бачення (одне речення, max 200 символів):`
+}
+
+/**
  * Generate image prompt using Azure OpenAI
  * Creates a concise, visual description of the article for image generation
  */
 async function generateImagePromptWithAI(title: string, content: string): Promise<string | null> {
   try {
+    // Get prompt template from database
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    let promptTemplate = await getImageGenerationPrompt(supabase)
+
+    // Replace placeholders with actual content
+    promptTemplate = promptTemplate.replace(/{title}/g, title)
+    promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 1000))
+
     // Azure OpenAI endpoint
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-    const systemPrompt = `You are an expert at creating image generation prompts for AI art tools like Google Gemini, Midjourney, and DALL-E.
-
-Your task is to create a SHORT, CONCISE image generation prompt that captures the ESSENCE of a news article. The prompt should:
-
-1. Be 1-3 sentences maximum (max 200 characters)
-2. Describe the KEY VISUAL CONCEPT of the article
-3. Use descriptive, visual language
-4. Be suitable for creating a professional illustration/image
-5. Include style hints (e.g., "modern illustration", "professional graphic", "minimalist design")
-6. NO text overlays - describe the visual content only
-
-Example inputs and outputs:
-
-Input: "Meta Unveils SAM Audio: A Breakthrough in AI-Powered Sound Recognition"
-Output: "Professional illustration of audio waveforms transforming into colorful AI neural networks, modern tech style, vibrant blues and purples"
-
-Input: "Scientists Discover New Exoplanet Similar to Earth"
-Output: "Artistic rendering of a blue-green Earth-like planet with two suns in the background, space illustration style"
-
-Input: "New AI Tool Helps Doctors Diagnose Diseases Faster"
-Output: "Clean medical illustration showing AI brain analyzing patient data on futuristic holographic displays, professional healthcare aesthetic"`
-
-    const userPrompt = `Article Title: ${title}
-
-Article Content (first 500 chars): ${content.substring(0, 500)}
-
-Generate a concise image generation prompt (1-3 sentences, max 200 characters):`
+    const userPrompt = promptTemplate
 
     const response = await fetch(azureUrl, {
       method: 'POST',
@@ -138,7 +162,6 @@ Generate a concise image generation prompt (1-3 sentences, max 200 characters):`
       },
       body: JSON.stringify({
         messages: [
-          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
