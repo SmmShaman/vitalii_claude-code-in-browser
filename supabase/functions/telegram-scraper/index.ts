@@ -428,8 +428,40 @@ serve(async (req) => {
               approvedCount++
               totalApproved++
 
+              // 🎨 Generate image prompt for Google AI Studio
+              console.log(`🎨 Generating image prompt for post ${post.messageId}...`)
+              let imagePrompt: string | null = null
+
+              try {
+                const promptResponse = await fetch(
+                  `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      newsId: newsEntry.id,
+                      title: post.text.substring(0, 200),
+                      content: post.text
+                    })
+                  }
+                )
+
+                if (promptResponse.ok) {
+                  const promptResult = await promptResponse.json()
+                  imagePrompt = promptResult.prompt
+                  console.log(`✅ Image prompt generated: ${imagePrompt?.substring(0, 100)}...`)
+                } else {
+                  console.warn(`⚠️  Failed to generate image prompt for post ${post.messageId}`)
+                }
+              } catch (promptError) {
+                console.error(`❌ Error generating image prompt:`, promptError)
+              }
+
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername)
+                const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername, imagePrompt)
                 if (sent) {
                   sentToBotCount++
                   totalSentToBot++
@@ -787,7 +819,8 @@ function extractUsername(url: string): string | null {
 async function sendToTelegramBot(
   newsId: string,
   post: ScrapedPost,
-  channelUsername: string
+  channelUsername: string,
+  imagePrompt: string | null = null
 ): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
@@ -795,7 +828,7 @@ async function sendToTelegramBot(
   }
 
   try {
-    const message = `🆕 <b>New Post from Telegram Channel</b>
+    let message = `🆕 <b>New Post from Telegram Channel</b>
 
 <b>Channel:</b> @${channelUsername}
 <b>Message ID:</b> ${post.messageId}
@@ -805,16 +838,36 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 
 <b>Original URL:</b> ${post.originalUrl}
 
-<i>Posted:</i> ${post.date.toISOString()}
+<i>Posted:</i> ${post.date.toISOString()}`
+
+    // Add image prompt if available
+    if (imagePrompt) {
+      message += `
+
+🎨 <b>Image Generation Prompt (копіюй в Google AI Studio):</b>
+<code>${imagePrompt}</code>
+
+💡 <i>Скопіюй промпт вище та використай в Google AI Studio (Gemini 3 Banana) для генерації зображення</i>`
+    }
+
+    message += `
 
 ⏳ <i>Waiting for moderation...</i>`
 
+    // Main keyboard with all actions
     const keyboard = {
       inline_keyboard: [
         [
           { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
           { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
         ],
+        // Image selection buttons - only show if there's an existing image
+        ...(post.photoUrl ? [[
+          { text: '🖼️ Залишити зображення', callback_data: `keep_image_${newsId}` },
+          { text: '📸 Завантажити власне', callback_data: `upload_image_${newsId}` }
+        ]] : [[
+          { text: '📸 Завантажити зображення', callback_data: `upload_image_${newsId}` }
+        ]]),
         [
           { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
           { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },

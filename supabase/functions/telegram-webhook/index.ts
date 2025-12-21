@@ -226,6 +226,124 @@ serve(async (req) => {
         })
       }
 
+      // =================================================================
+      // 📸 Check if this is a photo reply for custom image upload
+      // =================================================================
+      if (message.reply_to_message && message.photo && message.photo.length > 0) {
+        const replyText = message.reply_to_message.text || ''
+        const newsIdMatch = replyText.match(/newsId:([a-f0-9-]+)/)
+
+        if (newsIdMatch && replyText.includes('Очікую фото')) {
+          const newsId = newsIdMatch[1]
+          console.log(`📸 Received custom image for news: ${newsId}`)
+
+          try {
+            // Get largest photo
+            const photo = message.photo[message.photo.length - 1]
+
+            // Download photo from Telegram
+            const fileResponse = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${photo.file_id}`
+            )
+            const fileData = await fileResponse.json()
+
+            if (!fileData.ok) {
+              throw new Error('Failed to get photo file info')
+            }
+
+            const photoUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`
+            const photoResponse = await fetch(photoUrl)
+            const photoBuffer = await photoResponse.arrayBuffer()
+
+            // Upload to Supabase Storage
+            const fileName = `custom/${newsId}_${Date.now()}.jpg`
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('news-images')
+              .upload(fileName, photoBuffer, {
+                contentType: 'image/jpeg',
+                upsert: true,
+              })
+
+            if (uploadError) {
+              throw new Error(`Upload failed: ${uploadError.message}`)
+            }
+
+            const { data: urlData } = supabase.storage
+              .from('news-images')
+              .getPublicUrl(fileName)
+
+            const publicUrl = urlData.publicUrl
+
+            // Update news record with custom image
+            const { error: updateError } = await supabase
+              .from('news')
+              .update({
+                processed_image_url: publicUrl,
+                image_processed_at: new Date().toISOString()
+              })
+              .eq('id', newsId)
+
+            if (updateError) {
+              throw new Error(`Database update failed: ${updateError.message}`)
+            }
+
+            // Send confirmation
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: `✅ <b>Зображення завантажено!</b>\n\n📸 URL: <code>${publicUrl}</code>\n🆔 News ID: <code>${newsId}</code>`,
+                  parse_mode: 'HTML',
+                  reply_to_message_id: message.reply_to_message.message_id
+                })
+              }
+            )
+
+            // Update original message to show image uploaded
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: message.reply_to_message.message_id,
+                  text: replyText.replace('📸 <b>Очікую фото...</b>', '✅ <b>Власне зображення завантажено</b>'),
+                  parse_mode: 'HTML'
+                })
+              }
+            )
+
+            return new Response(JSON.stringify({ ok: true, uploaded: true }), {
+              headers: { 'Content-Type': 'application/json' }
+            })
+
+          } catch (error) {
+            console.error('Error uploading custom image:', error)
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: `❌ Помилка завантаження зображення: ${error.message}`,
+                  reply_to_message_id: message.message_id
+                })
+              }
+            )
+
+            return new Response(JSON.stringify({ ok: false, error: error.message }), {
+              headers: { 'Content-Type': 'application/json' },
+              status: 500
+            })
+          }
+        }
+      }
+
       // Звичайне повідомлення - ручна публікація
       const text = message.text || message.caption || ''
 
@@ -791,6 +909,74 @@ serve(async (req) => {
               text: messageText + linkedinStatusText,
               parse_mode: 'HTML',
               disable_web_page_preview: true
+            })
+          }
+        )
+
+      } else if (action === 'keep' && callbackData.startsWith('keep_image_')) {
+        // =================================================================
+        // 🖼️ Keep existing image handler
+        // =================================================================
+        console.log('User chose to keep existing image for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '✅ Поточне зображення збережено',
+              show_alert: false
+            })
+          }
+        )
+
+        // Update message to show image was kept
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n🖼️ <b>Зображення залишено (поточне)</b>',
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
+      } else if (action === 'upload' && callbackData.startsWith('upload_image_')) {
+        // =================================================================
+        // 📸 Upload custom image handler
+        // =================================================================
+        console.log('User wants to upload custom image for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '📸 Відправте фото у відповідь на це повідомлення',
+              show_alert: true
+            })
+          }
+        )
+
+        // Edit message to show we're waiting for photo
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n📸 <b>Очікую фото...</b>\n<i>Reply to this message with your photo</i>\n<code>newsId:${newsId}</code>`,
+              parse_mode: 'HTML'
             })
           }
         )
