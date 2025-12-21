@@ -257,7 +257,92 @@ async function fetchBlogContent(
 }
 
 /**
+ * Upload image to LinkedIn and get asset URN
+ * Required for native image sharing
+ */
+async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
+  try {
+    console.log('🖼️ Uploading image to LinkedIn...', imageUrl.substring(0, 50))
+
+    // Step 1: Register the upload
+    const registerResponse = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LINKEDIN_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0'
+      },
+      body: JSON.stringify({
+        registerUploadRequest: {
+          recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+          owner: LINKEDIN_PERSON_URN,
+          serviceRelationships: [
+            {
+              relationshipType: 'OWNER',
+              identifier: 'urn:li:userGeneratedContent'
+            }
+          ]
+        }
+      })
+    })
+
+    if (!registerResponse.ok) {
+      const errorText = await registerResponse.text()
+      console.error('LinkedIn register upload error:', registerResponse.status, errorText)
+      return null
+    }
+
+    const registerResult = await registerResponse.json()
+    const uploadUrl = registerResult.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl
+    const asset = registerResult.value?.asset
+
+    if (!uploadUrl || !asset) {
+      console.error('Missing upload URL or asset from register response')
+      return null
+    }
+
+    console.log('📤 Got upload URL, downloading source image...')
+
+    // Step 2: Download the source image
+    const imageResponse = await fetch(imageUrl)
+    if (!imageResponse.ok) {
+      console.error('Failed to download source image:', imageResponse.status)
+      return null
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer()
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg'
+
+    console.log('📤 Uploading image to LinkedIn...', imageBuffer.byteLength, 'bytes')
+
+    // Step 3: Upload the image to LinkedIn
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${LINKEDIN_ACCESS_TOKEN}`,
+        'Content-Type': contentType
+      },
+      body: imageBuffer
+    })
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text()
+      console.error('LinkedIn upload error:', uploadResponse.status, errorText)
+      return null
+    }
+
+    console.log('✅ Image uploaded to LinkedIn, asset:', asset)
+    return asset
+
+  } catch (error: any) {
+    console.error('Error uploading image to LinkedIn:', error)
+    return null
+  }
+}
+
+/**
  * Post content to LinkedIn using Share API v2
+ * Supports both ARTICLE (with link preview) and IMAGE (with uploaded image) modes
  */
 async function postToLinkedIn(content: {
   title: string
@@ -273,43 +358,71 @@ async function postToLinkedIn(content: {
 
     console.log('📤 Commentary length:', safeCommentary.length)
 
-    // Build the share content
-    // Use UGC Post API (User Generated Content)
-    const postBody: any = {
-      author: LINKEDIN_PERSON_URN,
-      lifecycleState: 'PUBLISHED',
-      specificContent: {
-        'com.linkedin.ugc.ShareContent': {
-          shareCommentary: {
-            text: safeCommentary
-          },
-          shareMediaCategory: 'ARTICLE',
-          media: [
-            {
-              status: 'READY',
-              originalUrl: content.url,
-              title: {
-                text: content.title
-              },
-              description: {
-                text: content.description.substring(0, 200)
-              }
-            }
-          ]
-        }
-      },
-      visibility: {
-        'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
-      }
+    let postBody: any
+
+    // If we have an image, try to upload it natively to LinkedIn
+    let imageAsset: string | null = null
+    if (content.imageUrl) {
+      imageAsset = await uploadImageToLinkedIn(content.imageUrl)
     }
 
-    // If we have an image, add it to the article preview
-    if (content.imageUrl) {
-      postBody.specificContent['com.linkedin.ugc.ShareContent'].media[0].thumbnails = [
-        {
-          url: content.imageUrl
+    if (imageAsset) {
+      // Use IMAGE category with natively uploaded image
+      console.log('📷 Using IMAGE category with uploaded asset')
+      postBody = {
+        author: LINKEDIN_PERSON_URN,
+        lifecycleState: 'PUBLISHED',
+        specificContent: {
+          'com.linkedin.ugc.ShareContent': {
+            shareCommentary: {
+              text: safeCommentary
+            },
+            shareMediaCategory: 'IMAGE',
+            media: [
+              {
+                status: 'READY',
+                media: imageAsset,
+                title: {
+                  text: content.title.substring(0, 200)
+                }
+              }
+            ]
+          }
+        },
+        visibility: {
+          'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
         }
-      ]
+      }
+    } else {
+      // Fallback to ARTICLE category (link preview)
+      console.log('📰 Using ARTICLE category (no image or upload failed)')
+      postBody = {
+        author: LINKEDIN_PERSON_URN,
+        lifecycleState: 'PUBLISHED',
+        specificContent: {
+          'com.linkedin.ugc.ShareContent': {
+            shareCommentary: {
+              text: safeCommentary
+            },
+            shareMediaCategory: 'ARTICLE',
+            media: [
+              {
+                status: 'READY',
+                originalUrl: content.url,
+                title: {
+                  text: content.title
+                },
+                description: {
+                  text: content.description.substring(0, 200)
+                }
+              }
+            ]
+          }
+        },
+        visibility: {
+          'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
+        }
+      }
     }
 
     console.log('📤 Sending to LinkedIn API...')

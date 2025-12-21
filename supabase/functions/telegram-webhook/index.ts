@@ -627,21 +627,35 @@ serve(async (req) => {
           const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
           console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), preventing duplicate`)
 
+          // Answer callback silently (required by Telegram API)
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: `⚠️ Вже опубліковано в LinkedIn (${existingLang})!`,
-                show_alert: true
+                callback_query_id: callbackId
               })
             }
           )
 
           // Build LinkedIn post URL
           const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
+
+          // Send duplicate notification as a bot message (not popup)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `⚠️ <b>Вже опубліковано в LinkedIn (${existingLang})!</b>\n\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+              })
+            }
+          )
 
           // Remove LinkedIn buttons, show link to existing post
           await fetch(
@@ -724,7 +738,7 @@ serve(async (req) => {
           ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
           : null
 
-        // Success callback
+        // Answer callback silently (required by Telegram API)
         const langLabel = linkedinLanguage.toUpperCase()
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -732,14 +746,33 @@ serve(async (req) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              callback_query_id: callbackId,
-              text: `✅ Опубліковано в LinkedIn (${langLabel})!`,
-              show_alert: false
+              callback_query_id: callbackId
             })
           }
         )
 
-        // Edit message to show LinkedIn status with details
+        // Send success notification as a bot message (not popup)
+        let successMessage = `✅ <b>Опубліковано в LinkedIn (${langLabel})!</b>\n\n`
+        successMessage += `📰 «${shortTitle}»\n`
+        if (linkedinPostUrl) {
+          successMessage += `🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: successMessage,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            })
+          }
+        )
+
+        // Edit original message to show LinkedIn status with details
         let linkedinStatusText = `\n\n✅ <b>LINKEDIN ${langLabel}</b>\n`
         linkedinStatusText += `📰 «${shortTitle}»\n`
         linkedinStatusText += `🆔 ID: <code>${newsId.substring(0, 8)}</code>\n`
