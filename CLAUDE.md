@@ -43,7 +43,8 @@
 ### News (`news` table)
 - Мультимовний контент
 - Система пре-модерації (pre_moderation_status)
-- Підтримка відео (YouTube, Telegram)
+- Підтримка відео (Bunny.net Stream, Telegram fallback)
+- Поля: `video_type`, `video_url`, `bunny_video_id`
 - is_rewritten, is_published флаги
 
 ### Moderation Workflow
@@ -106,7 +107,7 @@
 **NewsArticle.tsx:**
 - JSON-LD `NewsArticle` schema
 - Breadcrumb навігація
-- YouTube embed підтримка
+- Bunny.net Stream embed підтримка
 - Оптимізовані зображення
 - rel="noopener noreferrer" для зовнішніх посилань
 
@@ -601,9 +602,88 @@ async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
 }
 ```
 
-**Дві категорії постів:**
+### 🎬 Нативне завантаження відео (Native Video Upload)
+
+LinkedIn підтримує **native video** з кращим охопленням ніж посилання. Використовуємо Bunny.net MP4 для завантаження:
+
+```typescript
+// Workflow завантаження відео
+async function uploadVideoToLinkedIn(bunnyVideoId: string): Promise<string | null> {
+  // 1. Отримати MP4 з Bunny.net
+  const mp4Url = `https://${BUNNY_PULL_ZONE}.b-cdn.net/${bunnyVideoId}/play_720p.mp4`;
+  const videoBuffer = await fetch(mp4Url).then(r => r.arrayBuffer());
+
+  // 2. Реєстрація завантаження відео
+  const registerResponse = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LINKEDIN_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      registerUploadRequest: {
+        recipes: ['urn:li:digitalmediaRecipe:feedshare-video'],
+        owner: LINKEDIN_PERSON_URN,
+        serviceRelationships: [{
+          relationshipType: 'OWNER',
+          identifier: 'urn:li:userGeneratedContent'
+        }]
+      }
+    })
+  });
+
+  const { value } = await registerResponse.json();
+  const uploadUrl = value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+  const asset = value.asset;
+
+  // 3. Завантажити відео
+  await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: videoBuffer
+  });
+
+  // 4. Polling до статусу AVAILABLE
+  await waitForVideoProcessing(asset);
+
+  return asset; // urn:li:digitalmediaAsset:xxxxx
+}
+
+async function waitForVideoProcessing(asset: string, timeout = 300000): Promise<void> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const response = await fetch(
+      `https://api.linkedin.com/v2/assets/${encodeURIComponent(asset)}`,
+      { headers: { 'Authorization': `Bearer ${LINKEDIN_ACCESS_TOKEN}` } }
+    );
+    const data = await response.json();
+
+    if (data.recipes?.[0]?.status === 'AVAILABLE') return;
+    if (data.recipes?.[0]?.status === 'FAILED') throw new Error('Video processing failed');
+
+    await new Promise(r => setTimeout(r, 10000)); // Check every 10s
+  }
+  throw new Error('Video processing timeout');
+}
+```
+
+**LinkedIn технічні вимоги для відео:**
+
+| Параметр | Вимога |
+|----------|--------|
+| Формат | MP4 (обов'язково) |
+| Кодек | H.264 + AAC audio |
+| Розмір файлу | до 5 GB |
+| Тривалість | 3 сек – 10 хв |
+| Роздільність | 1080p рекомендовано |
+| Бітрейт | 8 Mbps оптимально |
+| Частота аудіо | 48 kHz |
+
+**Три категорії постів:**
+- **VIDEO** - коли відео успішно завантажено з Bunny.net
 - **IMAGE** - коли зображення успішно завантажено (з asset URN)
-- **ARTICLE** - fallback коли зображення немає або upload не вдався
+- **ARTICLE** - fallback коли media немає або upload не вдався
 
 ### LinkedIn API
 
@@ -667,29 +747,39 @@ supabase secrets set LINKEDIN_PERSON_URN="urn:li:person:xxxxx"
 
 ---
 
-## Video Handling & YouTube Integration (December 2024)
+## Video Handling & Bunny.net Stream Integration (December 2024)
 
 ### Опис
 
-Автоматичне завантаження відео з Telegram каналів на YouTube для надійного вбудовування на сайті. Fallback на красивий Telegram плейсхолдер якщо YouTube недоступний.
+Автоматичне завантаження відео з Telegram каналів на Bunny.net Stream для надійного вбудовування на сайті та нативного завантаження в LinkedIn.
+
+### ⚠️ Чому не YouTube?
+
+| Проблема | YouTube | Bunny.net |
+|----------|---------|-----------|
+| Ліміт uploads/день | ~6 (10,000 units, upload=1,600) | Без лімітів |
+| LinkedIn native video | ❌ Тільки embed | ✅ MP4 download URL |
+| API складність | OAuth 2.0 + refresh tokens | Простий API key |
+| Вартість | Безкоштовно, але з лімітами | Pay-as-you-go |
 
 ### Файли
 
 ```
-├── supabase/functions/telegram-scraper/index.ts  # Video extraction + YouTube upload
-├── supabase/functions/_shared/youtube-helpers.ts # YouTube API helpers
-├── supabase/functions/test-youtube-auth/index.ts # OAuth тестування
-├── components/sections/NewsSection.tsx           # Video player + Telegram fallback
-├── components/sections/NewsModal.tsx             # Video player + Telegram fallback
-├── app/news/[slug]/NewsArticle.tsx               # Standalone news page with video
+├── supabase/functions/telegram-scraper/index.ts   # Video extraction + Bunny.net upload
+├── supabase/functions/_shared/bunny-helpers.ts    # Bunny.net Stream API helpers
+├── supabase/functions/post-to-linkedin/index.ts   # Native video upload via Bunny MP4
+├── components/sections/NewsSection.tsx            # Video player (iframe/HLS)
+├── components/sections/NewsModal.tsx              # Video player (iframe/HLS)
+├── app/news/[slug]/NewsArticle.tsx                # Standalone news page with video
 ```
 
 ### Video Types
 
 | Type | Опис | Джерело |
 |------|------|---------|
-| `youtube` | YouTube embed URL | Завантажено на YouTube |
-| `telegram_embed` | Telegram post URL | Fallback коли YouTube недоступний |
+| `bunny` | Bunny.net Stream embed | Завантажено на Bunny.net |
+| `bunny_hls` | HLS playlist URL | Для кастомних плеєрів |
+| `telegram_embed` | Telegram post URL | Fallback коли Bunny недоступний |
 | `direct_url` | Пряме посилання на .mp4 | Рідко використовується |
 
 ### Workflow обробки відео
@@ -697,46 +787,180 @@ supabase secrets set LINKEDIN_PERSON_URN="urn:li:person:xxxxx"
 ```
 1. Scraper знаходить відео в Telegram пості
    ↓
-2. YouTube credentials налаштовані?
-   ├─ ТАК → Завантажити відео з Telegram CDN
-   │        → Перекласти заголовок на англійську (Azure OpenAI)
-   │        → Отримати YouTube access token
-   │        → Завантажити на YouTube (unlisted)
-   │        → video_type = 'youtube'
-   │        → video_url = 'https://youtube.com/embed/...'
+2. Telegram відео > 20MB?
+   ├─ ТАК → MTProto (Pyrogram) для скачування до 2GB
+   └─ НІ  → Стандартний Bot API
+   ↓
+3. Bunny.net credentials налаштовані?
+   ├─ ТАК → Створити video object (POST /videos)
+   │        → Завантажити binary (PUT /videos/{id})
+   │        → Polling до status=4 (Finished)
+   │        → video_type = 'bunny'
+   │        → video_url = embed URL
+   │        → bunny_video_id = GUID
    │
    └─ НІ (або помилка) → Fallback на Telegram embed
                         → video_type = 'telegram_embed'
                         → video_url = 'https://t.me/channel/123?embed=1'
 ```
 
-### YouTube OAuth Setup
+### Bunny.net Stream API
 
-**Потрібні credentials:**
-```env
-YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=GOCSPX-...
-YOUTUBE_REFRESH_TOKEN=1//04...
+#### Автентифікація
+
+```typescript
+const BUNNY_LIBRARY_ID = '62a42da3-5234-4b4c-9e61-8fc06571220d';
+const BUNNY_STREAM_API_KEY = '081d503b-9eb8-40f2-a629-f7b0b821a1f0';
+const BUNNY_BASE_URL = 'https://video.bunnycdn.com';
+
+const headers = {
+  'AccessKey': BUNNY_STREAM_API_KEY,
+  'Accept': 'application/json',
+  'Content-Type': 'application/json'
+};
 ```
 
-**Отримання Refresh Token:**
-1. Відкрити [Google OAuth Playground](https://developers.google.com/oauthplayground/)
-2. ⚙️ → "Use your own OAuth credentials" → ввести Client ID та Secret
-3. Вибрати scope: `https://www.googleapis.com/auth/youtube.upload`
-4. Authorize APIs → Exchange authorization code for tokens
-5. Скопіювати Refresh Token
+> ⚠️ **ВАЖЛИВО**: Stream API використовує **власні ключі автентифікації**. Account API key НЕ працює!
 
-**⚠️ Важливо:** Refresh Token прив'язаний до Client Secret! Якщо створили новий Secret, потрібен новий Token.
+#### Основні endpoints
 
-**Тестування:**
-```bash
-curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/test-youtube-auth" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+| Операція | Метод | Endpoint |
+|----------|-------|----------|
+| Список відео | GET | `/library/{libraryId}/videos` |
+| Інфо про відео | GET | `/library/{libraryId}/videos/{videoId}` |
+| Створити video object | POST | `/library/{libraryId}/videos` |
+| Завантажити файл | PUT | `/library/{libraryId}/videos/{videoId}` |
+| Fetch з URL | POST | `/library/{libraryId}/videos/fetch` |
+| Видалити | DELETE | `/library/{libraryId}/videos/{videoId}` |
+
+#### Статуси відео
+
+| Код | Статус | Опис |
+|-----|--------|------|
+| 0 | Created | Об'єкт створено, файл не завантажено |
+| 1 | Uploaded | Файл завантажено, очікує обробки |
+| 2 | Processing | Обробляється |
+| 3 | Transcoding | Транскодування |
+| 4 | Finished | ✅ Готово до відтворення |
+| 5 | Error | Помилка обробки |
+
+#### Приклад: Upload відео
+
+```typescript
+// Крок 1: Створити video object
+const createResponse = await fetch(
+  `${BUNNY_BASE_URL}/library/${BUNNY_LIBRARY_ID}/videos`,
+  {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ title: 'My Video' })
+  }
+);
+const { guid: videoId } = await createResponse.json();
+
+// Крок 2: Завантажити binary
+await fetch(
+  `${BUNNY_BASE_URL}/library/${BUNNY_LIBRARY_ID}/videos/${videoId}`,
+  {
+    method: 'PUT',
+    headers: {
+      'AccessKey': BUNNY_STREAM_API_KEY,
+      'Content-Type': 'application/octet-stream'
+    },
+    body: videoBuffer // ArrayBuffer або Buffer
+  }
+);
+
+// Крок 3: Polling до status=4
+let status = 0;
+while (status !== 4) {
+  await new Promise(r => setTimeout(r, 5000));
+  const info = await fetch(
+    `${BUNNY_BASE_URL}/library/${BUNNY_LIBRARY_ID}/videos/${videoId}`,
+    { headers }
+  ).then(r => r.json());
+  status = info.status;
+  if (status === 5) throw new Error('Encoding failed');
+}
 ```
+
+#### Приклад: Fetch з URL (альтернатива)
+
+```typescript
+// Для публічно доступних URL
+const response = await fetch(
+  `${BUNNY_BASE_URL}/library/${BUNNY_LIBRARY_ID}/videos/fetch`,
+  {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      url: 'https://example.com/video.mp4',
+      title: 'Fetched Video'
+    })
+  }
+);
+```
+
+### URL структура Bunny.net
+
+| Тип | URL шаблон | Призначення |
+|-----|-----------|-------------|
+| **Embed Player** | `https://iframe.mediadelivery.net/embed/{libraryId}/{videoId}` | Для блогу |
+| **HLS Playlist** | `https://{pullZone}.b-cdn.net/{videoId}/playlist.m3u8` | Кастомний плеєр |
+| **MP4 Download** | `https://{pullZone}.b-cdn.net/{videoId}/play_720p.mp4` | LinkedIn upload |
+| **Thumbnail** | `https://{pullZone}.b-cdn.net/{videoId}/thumbnail.jpg` | Preview |
+
+> **Pull Zone:** Отримати з Bunny Dashboard → Video Library → Settings
+
+### LinkedIn Native Video Upload
+
+Bunny.net дозволяє отримати MP4 файл для нативного завантаження в LinkedIn:
+
+```typescript
+// 1. Отримати MP4 URL з Bunny
+const mp4Url = `https://${BUNNY_PULL_ZONE}.b-cdn.net/${bunnyVideoId}/play_720p.mp4`;
+
+// 2. Скачати відео
+const videoBuffer = await fetch(mp4Url).then(r => r.arrayBuffer());
+
+// 3. Завантажити в LinkedIn (див. LinkedIn Integration)
+```
+
+**LinkedIn технічні вимоги для native video:**
+
+| Параметр | Вимога |
+|----------|--------|
+| Формат | MP4 (обов'язково) |
+| Кодек | H.264 + AAC audio |
+| Розмір файлу | до 5 GB |
+| Тривалість | 3 сек – 10 хв |
+| Роздільність | 1080p рекомендовано |
+| Бітрейт | 8 Mbps оптимально |
+| Частота аудіо | 48 kHz |
+
+### Telegram великі файли (MTProto)
+
+Telegram Bot API обмежує завантаження до **20 MB**. Для більших відео потрібен MTProto:
+
+```python
+# Pyrogram приклад
+from pyrogram import Client
+
+app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+async with app:
+    # Скачати файл до 2GB
+    await app.download_media(message, file_name="video.mp4")
+```
+
+**Варіанти реалізації:**
+1. **Python microservice** з Pyrogram/Telethon для великих файлів
+2. **Supabase Edge Function** викликає Python сервіс
+3. Результат → upload на Bunny.net
 
 ### Telegram Video Fallback UI
 
-Коли `video_type = 'telegram_embed'`, замість зламаного iframe показується красивий плейсхолдер:
+Коли `video_type = 'telegram_embed'`, показується плейсхолдер:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -751,21 +975,38 @@ curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/test-youtube-auth" \
 └─────────────────────────────────────────┘
 ```
 
-- Кнопка відкриває оригінальний пост в Telegram
-- Працює в NewsSection, NewsModal та NewsArticle
-
-### Environment Variables (YouTube)
+### Environment Variables (Bunny.net)
 
 ```env
-# YouTube API (для завантаження відео)
-YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=GOCSPX-...
-YOUTUBE_REFRESH_TOKEN=1//04...
+# Bunny.net Stream API
+BUNNY_LIBRARY_ID=62a42da3-5234-4b4c-9e61-8fc06571220d
+BUNNY_STREAM_API_KEY=081d503b-9eb8-40f2-a629-f7b0b821a1f0
+BUNNY_PULL_ZONE=your-pullzone-name
 
 # Azure OpenAI (для перекладу заголовків)
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 AZURE_OPENAI_API_KEY=your_key
 ```
+
+### Database Fields (оновлені)
+
+```sql
+ALTER TABLE news ADD COLUMN IF NOT EXISTS bunny_video_id TEXT;
+ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS bunny_video_id TEXT;
+```
+
+| Поле | Тип | Опис |
+|------|-----|------|
+| `video_type` | text | `bunny`, `bunny_hls`, `telegram_embed`, `direct_url` |
+| `video_url` | text | Embed URL або HLS playlist |
+| `bunny_video_id` | text | GUID відео в Bunny.net (для MP4 download) |
+
+### Документація Bunny.net
+
+- [Stream API Overview](https://docs.bunny.net/reference/stream-api-overview)
+- [Upload Videos HTTP API](https://docs.bunny.net/docs/stream-uploading-videos-through-our-http-api)
+- [MP4 URL Retrieval](https://docs.bunny.net/docs/stream-how-to-retrieve-an-mp4-url-from-stream)
+- [TUS Resumable Uploads](https://docs.bunny.net/reference/tus-resumable-uploads)
 
 ---
 
@@ -818,7 +1059,8 @@ app/news/[slug]/NewsArticle.tsx
 ### Video Support
 
 Підтримуються всі типи відео:
-- **YouTube:** Нативний iframe player
+- **Bunny.net Stream:** Нативний iframe player (`iframe.mediadelivery.net`)
+- **Bunny.net HLS:** Кастомний плеєр з HLS.js
 - **Telegram embed:** Красивий fallback з кнопкою "Дивитись в Telegram"
 - **Direct URL:** HTML5 video player
 
@@ -1284,6 +1526,7 @@ supabase functions deploy process-news
 ## Environment Variables
 
 ```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 NEXT_PUBLIC_SITE_URL=https://vitalii-berbeha.netlify.app
@@ -1291,6 +1534,19 @@ NEXT_PUBLIC_SITE_URL=https://vitalii-berbeha.netlify.app
 # LinkedIn Integration
 LINKEDIN_ACCESS_TOKEN=your_linkedin_access_token
 LINKEDIN_PERSON_URN=urn:li:person:your_person_id
+
+# Bunny.net Stream API
+BUNNY_LIBRARY_ID=62a42da3-5234-4b4c-9e61-8fc06571220d
+BUNNY_STREAM_API_KEY=081d503b-9eb8-40f2-a629-f7b0b821a1f0
+BUNNY_PULL_ZONE=your-pullzone-name
+
+# Azure OpenAI
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your_key
+
+# Telegram MTProto (для файлів > 20MB)
+TELEGRAM_API_ID=your_api_id
+TELEGRAM_API_HASH=your_api_hash
 ```
 
 ## Commands
