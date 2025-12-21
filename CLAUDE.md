@@ -831,38 +831,12 @@ AZURE_OPENAI_API_KEY=your_key
 └─────────────────────────────────────────┘
 ```
 
-### Environment Variables (Bunny.net)
+### Документація
 
-```env
-# Bunny.net Stream API
-BUNNY_LIBRARY_ID=62a42da3-5234-4b4c-9e61-8fc06571220d
-BUNNY_STREAM_API_KEY=081d503b-9eb8-40f2-a629-f7b0b821a1f0
-BUNNY_PULL_ZONE=your-pullzone-name
-
-# Azure OpenAI (для перекладу заголовків)
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_API_KEY=your_key
-```
-
-### Database Fields (оновлені)
-
-```sql
-ALTER TABLE news ADD COLUMN IF NOT EXISTS bunny_video_id TEXT;
-ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS bunny_video_id TEXT;
-```
-
-| Поле | Тип | Опис |
-|------|-----|------|
-| `video_type` | text | `bunny`, `bunny_hls`, `telegram_embed`, `direct_url` |
-| `video_url` | text | Embed URL або HLS playlist |
-| `bunny_video_id` | text | GUID відео в Bunny.net (для MP4 download) |
-
-### Документація Bunny.net
-
-- [Stream API Overview](https://docs.bunny.net/reference/stream-api-overview)
-- [Upload Videos HTTP API](https://docs.bunny.net/docs/stream-uploading-videos-through-our-http-api)
-- [MP4 URL Retrieval](https://docs.bunny.net/docs/stream-how-to-retrieve-an-mp4-url-from-stream)
-- [TUS Resumable Uploads](https://docs.bunny.net/reference/tus-resumable-uploads)
+- [MTKruto GitHub](https://github.com/MTKruto/MTKruto)
+- [MTKruto Deno](https://deno.land/x/mtkruto)
+- [YouTube Data API](https://developers.google.com/youtube/v3)
+- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
 
 ---
 
