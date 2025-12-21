@@ -35,12 +35,13 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Get active pre-moderation prompt
+    // Get active pre-moderation prompt (most recently updated)
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
       .eq('is_active', true)
       .eq('prompt_type', 'pre_moderation')
+      .order('updated_at', { ascending: false })
       .limit(1)
 
     if (promptError) {

@@ -38,11 +38,13 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     // Get blog rewrite prompt from database
+    // Sort by updated_at DESC to get the most recently edited prompt
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
       .eq('is_active', true)
       .eq('prompt_type', 'blog_rewrite')
+      .order('updated_at', { ascending: false })
       .limit(1)
 
     if (promptError || !prompts || prompts.length === 0) {

@@ -36,23 +36,25 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Get news rewrite prompt from database
+    // Get news rewrite prompt from database (most recently updated)
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
       .eq('is_active', true)
       .eq('prompt_type', 'news_rewrite')
+      .order('updated_at', { ascending: false })
       .limit(1)
 
     if (promptError || !prompts || prompts.length === 0) {
       console.warn('⚠️ No active news_rewrite prompt found, trying fallback to "rewrite" type')
 
-      // Fallback to existing "rewrite" prompt
+      // Fallback to existing "rewrite" prompt (most recently updated)
       const { data: fallbackPrompts } = await supabase
         .from('ai_prompts')
         .select('*')
         .eq('is_active', true)
         .eq('prompt_type', 'rewrite')
+        .order('updated_at', { ascending: false })
         .limit(1)
 
       if (!fallbackPrompts || fallbackPrompts.length === 0) {
