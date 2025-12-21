@@ -8,8 +8,89 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
+
+/**
+ * Find original source URL using AI
+ */
+async function findSourceLink(title: string, content: string, existingUrl?: string): Promise<string | null> {
+  try {
+    console.log('🔍 Finding original source...')
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/find-source-link`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title, content, existingUrl })
+      }
+    )
+
+    if (!response.ok) {
+      console.warn('⚠️ Find source failed, using existing URL')
+      return null
+    }
+
+    const result = await response.json()
+    if (result.success && result.sourceUrl && result.confidence !== 'low') {
+      console.log(`✅ Source found: ${result.sourceUrl} (${result.confidence})`)
+      return result.sourceUrl
+    }
+    return null
+  } catch (error) {
+    console.error('❌ Error finding source:', error)
+    return null
+  }
+}
+
+/**
+ * Generate new image using AI
+ */
+async function generateImage(imageUrl: string | null, title: string, description: string): Promise<string | null> {
+  try {
+    if (!imageUrl) {
+      console.log('⚠️ No image URL provided, skipping generation')
+      return null
+    }
+
+    console.log('🖼️ Generating new image with AI...')
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/process-image`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          imageUrl,
+          promptType: 'linkedin_optimize',
+          newsTitle: title,
+          newsDescription: description
+        })
+      }
+    )
+
+    if (!response.ok) {
+      console.warn('⚠️ Image generation failed, using original')
+      return null
+    }
+
+    const result = await response.json()
+    if (result.success && result.processedImageUrl && result.processedImageUrl !== imageUrl) {
+      console.log(`✅ New image generated: ${result.processedImageUrl}`)
+      return result.processedImageUrl
+    }
+    return null
+  } catch (error) {
+    console.error('❌ Error generating image:', error)
+    return null
+  }
+}
 
 interface BlogRewriteRequest {
   newsId: string
@@ -119,6 +200,21 @@ serve(async (req) => {
 
     console.log('✅ Blog post rewritten for all languages')
 
+    // 🔍 Find original source URL (parallel with image generation)
+    // 🖼️ Generate new image with AI
+    const [foundSourceUrl, generatedImageUrl] = await Promise.all([
+      findSourceLink(requestData.title, requestData.content, requestData.sourceLink || requestData.url),
+      generateImage(requestData.imageUrl, rewrittenContent.en.title, rewrittenContent.en.description)
+    ])
+
+    // Use AI-found source or fallback to existing
+    const finalSourceUrl = foundSourceUrl || requestData.sourceLink || requestData.url
+    console.log(`📎 Final source URL: ${finalSourceUrl}`)
+
+    // Use generated image or fallback to original
+    const finalImageUrl = generatedImageUrl || requestData.imageUrl
+    console.log(`🖼️ Final image URL: ${finalImageUrl}`)
+
     // Generate slugs with unique suffix to prevent duplicates
     const uniqueSuffix = Date.now().toString(36).substring(-6)
     const generateSlug = (text: string): string => {
@@ -154,10 +250,10 @@ serve(async (req) => {
         content_no: rewrittenContent.no.content,
         description_no: rewrittenContent.no.description,
         slug_no: generateSlug(rewrittenContent.no.title),
-        image_url: requestData.imageUrl,
+        image_url: finalImageUrl,
         video_url: requestData.videoUrl,
         video_type: requestData.videoType,
-        original_url: requestData.sourceLink || requestData.url, // Source link or Telegram URL
+        original_url: finalSourceUrl, // AI-found source or fallback
         source_news_id: requestData.newsId, // Reference to original news
         reading_time: readingTime,
         is_published: true,
