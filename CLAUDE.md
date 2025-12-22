@@ -1822,6 +1822,37 @@ supabase functions deploy generate-image-prompt
 - [ ] Source links відображаються у NewsArticle та NewsModal
 - [ ] AI промпт генерується з більшим контекстом (5000 chars)
 
+### 5. Retry Logic для Pending News (December 22, 2024)
+
+**Проблема:** Новини які пройшли AI модерацію (`approved`) але не були відправлені в Telegram бот (помилка/збій) застрягали в БД назавжди. При наступному скрапінгу вони пропускались як дублікати.
+
+**Симптоми:**
+- 200+ новин в Queue (admin panel)
+- Новини не надходять в Telegram бот
+- `pre_moderation_status = 'approved'` але `is_published = false`
+
+**Рішення:**
+```typescript
+// telegram-scraper/index.ts:318-395
+if (existingPost.pre_moderation_status === 'approved' &&
+    !existingPost.is_published &&
+    !existingPost.is_rewritten) {
+
+  // 1. Generate image prompt
+  // 2. Re-upload photo if needed
+  // 3. Retry sending to Telegram bot
+  console.log(`🔄 Retry sending approved but unpublished post to bot`)
+}
+```
+
+**Що відбувається при retry:**
+1. Генерується image prompt через Edge Function
+2. Фото завантажується в Supabase Storage (якщо потрібно)
+3. Повторна спроба відправки в Telegram бот
+4. Логування результату (success/fail)
+
+**Результат:** Всі approved новини які застрягли в черзі будуть автоматично відправлені в бот при наступному запуску scraper.
+
 ---
 
 ## Environment Variables

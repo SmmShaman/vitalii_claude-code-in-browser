@@ -288,13 +288,14 @@ serve(async (req) => {
 
             const { data: existingPost } = await supabase
               .from('news')
-              .select('id, original_url, pre_moderation_status, video_type, video_url')
+              .select('id, original_url, pre_moderation_status, video_type, video_url, is_published, is_rewritten')
               .in('original_url', [urlVariant1, urlVariant2])
               .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
               .maybeSingle()
 
             if (existingPost) {
               console.log(`🔍 Duplicate check: existing.video_type='${existingPost.video_type}', post.videoType='${post.videoType}', post.videoUrl='${post.videoUrl}'`)
+              console.log(`🔍 Duplicate check: status='${existingPost.pre_moderation_status}', published='${existingPost.is_published}', rewritten='${existingPost.is_rewritten}'`)
 
               // If post exists with telegram_embed and we have YouTube URL, update it
               if (existingPost.video_type === 'telegram_embed' && post.videoType === 'youtube') {
@@ -312,9 +313,89 @@ serve(async (req) => {
                 } else {
                   console.log(`✅ Updated post ${existingPost.id} with YouTube URL: ${post.videoUrl}`)
                 }
+              }
+
+              // 🔄 RETRY LOGIC: If post was approved but not published/rewritten, try sending to bot again
+              if (existingPost.pre_moderation_status === 'approved' && !existingPost.is_published && !existingPost.is_rewritten) {
+                console.log(`🔄 Retry sending approved but unpublished post to bot: ${existingPost.id}`)
+
+                // Generate image prompt for retry
+                let imagePrompt: string | null = null
+                try {
+                  const promptResponse = await fetch(
+                    `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        newsId: existingPost.id,
+                        title: post.text.substring(0, 200),
+                        content: post.text
+                      })
+                    }
+                  )
+
+                  if (promptResponse.ok) {
+                    const promptResult = await promptResponse.json()
+                    imagePrompt = promptResult.prompt
+                    console.log(`✅ Image prompt generated for retry: ${imagePrompt?.substring(0, 100)}...`)
+                  }
+                } catch (promptError) {
+                  console.error(`❌ Error generating image prompt for retry:`, promptError)
+                }
+
+                // Download and upload photo for retry (if not already uploaded)
+                let retryPhotoUrl = post.photoUrl
+                if (post.images && post.images.length > 0 && !existingPost.is_published) {
+                  const imageUrl = post.images[0]
+                  try {
+                    const photoResponse = await fetch(imageUrl)
+                    if (photoResponse.ok) {
+                      const photoBuffer = await photoResponse.arrayBuffer()
+                      const fileName = `telegram/${channelUsername}/${post.messageId}.jpg`
+                      const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('news-images')
+                        .upload(fileName, photoBuffer, {
+                          contentType: 'image/jpeg',
+                          upsert: true,
+                        })
+                      if (!uploadError && uploadData) {
+                        const { data: urlData } = supabase.storage.from('news-images').getPublicUrl(fileName)
+                        retryPhotoUrl = urlData.publicUrl
+                        console.log(`📸 Photo re-uploaded for retry: ${retryPhotoUrl}`)
+                      }
+                    }
+                  } catch (photoError) {
+                    console.error(`❌ Failed to re-upload photo:`, photoError)
+                  }
+                }
+
+                // Try sending to bot again
+                if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                  const sent = await sendToTelegramBot(
+                    existingPost.id,
+                    post,
+                    channelUsername,
+                    imagePrompt,
+                    post.videoUrl || null,
+                    post.videoType || null,
+                    retryPhotoUrl || null
+                  )
+                  if (sent) {
+                    sentToBotCount++
+                    totalSentToBot++
+                    console.log(`✅ Retry successful - post ${existingPost.id} sent to Telegram bot`)
+                  } else {
+                    console.warn(`⚠️  Retry failed - could not send post ${existingPost.id} to Telegram bot`)
+                  }
+                }
               } else {
                 console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (found in DB as ${existingPost.original_url}, status: ${existingPost.pre_moderation_status})`)
               }
+
               continue
             }
 
