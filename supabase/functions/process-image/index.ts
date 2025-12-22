@@ -286,28 +286,18 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Gemini 2.0 Flash Image Generation API
- * Uses the Gemini image generation capabilities for LinkedIn optimization
- *
- * Note: Gemini 2.0 Flash with image generation requires specific model variant
+ * Process image with Google Gemini 2.5 Flash Image (Nano Banana)
+ * Native image generation model from Google
+ * See: https://ai.google.dev/gemini-api/docs/image-generation
  */
 async function processImageWithAI(imageBase64: string, prompt: string, apiKey: string): Promise<string | null> {
   try {
-    // Try Imagen 3 first for pure image generation
-    const imagenResult = await tryImagenGeneration(prompt, apiKey)
-    if (imagenResult) {
-      console.log('✅ Image generated with Imagen 3')
-      return imagenResult
-    }
+    // Try Gemini 2.5 Flash Image (Nano Banana) - native image generation
+    console.log('📤 Generating image with Gemini 2.5 Flash Image (Nano Banana)...')
 
-    // Fallback: Try Gemini 2.0 Flash with image generation
-    console.log('📤 Trying Gemini 2.0 Flash for image generation...')
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`
 
-    // Gemini 2.0 Flash experimental with image generation
-    // See: https://ai.google.dev/gemini-api/docs/image-generation
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`
-
-    // Request body - include reference image for context
+    // Request body with image config for LinkedIn (16:9 landscape)
     const requestBody = {
       contents: [{
         parts: [
@@ -321,9 +311,7 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
         ]
       }],
       generationConfig: {
-        responseModalities: ['IMAGE', 'TEXT'],
-        temperature: 0.7,
-        maxOutputTokens: 8192
+        responseModalities: ['TEXT', 'IMAGE']
       }
     }
 
@@ -369,18 +357,27 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
       }
     }
 
-    console.log('⚠️ No image in Gemini response - model may not support image generation')
+    console.log('⚠️ No image in Gemini 2.5 Flash Image response')
+
+    // Fallback: Try Imagen 3
+    console.log('📤 Trying Imagen 3 as fallback...')
+    const imagenResult = await tryImagenGeneration(prompt, apiKey)
+    if (imagenResult) {
+      console.log('✅ Image generated with Imagen 3')
+      return imagenResult
+    }
+
+    console.log('❌ All image generation methods failed')
     return null
 
   } catch (error: any) {
-    console.error('Error calling Gemini API:', error)
+    console.error('Error in image generation:', error)
     return null
   }
 }
 
 /**
- * Try to generate image using Google Imagen 3 API
- * Imagen 3 is specifically designed for image generation
+ * Fallback: Try to generate image using Google Imagen 3 API
  */
 async function tryImagenGeneration(prompt: string, apiKey: string): Promise<string | null> {
   try {
