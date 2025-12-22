@@ -302,7 +302,19 @@ serve(async (req) => {
               }
             )
 
-            // Update original message to show image uploaded
+            // Update original message with STEP 2 buttons: Publish options
+            const publishKeyboard = {
+              inline_keyboard: [
+                [
+                  { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
+                  { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
+                ],
+                [
+                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            }
+
             await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -311,8 +323,9 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: message.reply_to_message.message_id,
-                  text: replyText.replace('📸 <b>Очікую фото...</b>', '✅ <b>Власне зображення завантажено</b>'),
-                  parse_mode: 'HTML'
+                  text: replyText.replace('📸 <b>Очікую фото...</b>', '✅ <b>Власне зображення завантажено</b>\n📝 <i>Оберіть де опублікувати...</i>'),
+                  parse_mode: 'HTML',
+                  reply_markup: publishKeyboard
                 })
               }
             )
@@ -890,10 +903,16 @@ serve(async (req) => {
           }
         )
 
+        // Build article URL on website
+        const slugField = `slug_${linkedinLanguage}`
+        const articleSlug = checkRecord[slugField] || checkRecord.slug_en || newsId.substring(0, 8)
+        const articlePath = contentType === 'blog' ? 'blog' : 'news'
+        const articleUrl = `https://vitalii.no/${articlePath}/${articleSlug}`
+
         // Edit original message to show LinkedIn status with details
         let linkedinStatusText = `\n\n✅ <b>LINKEDIN ${langLabel}</b>\n`
         linkedinStatusText += `📰 «${shortTitle}»\n`
-        linkedinStatusText += `🆔 ID: <code>${newsId.substring(0, 8)}</code>\n`
+        linkedinStatusText += `📝 <a href="${articleUrl}">Читати статтю</a>\n`
         if (linkedinPostUrl) {
           linkedinStatusText += `🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`
         }
@@ -913,9 +932,106 @@ serve(async (req) => {
           }
         )
 
+      } else if (callbackData.startsWith('confirm_image_')) {
+        // =================================================================
+        // ✅ STEP 1→2: Confirm image (existing or no image) → Show publish buttons
+        // =================================================================
+        const newsId = callbackData.replace('confirm_image_', '')
+        console.log('User confirmed image for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '✅ Зображення підтверджено',
+              show_alert: false
+            })
+          }
+        )
+
+        // Update message with STEP 2 buttons: Publish options
+        const newKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
+              { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
+            ],
+            [
+              { text: '❌ Reject', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              reply_markup: newKeyboard
+            })
+          }
+        )
+
+        // Also update message text to show progress
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n✅ <b>Зображення підтверджено</b>\n📝 <i>Оберіть де опублікувати...</i>',
+              parse_mode: 'HTML',
+              reply_markup: newKeyboard
+            })
+          }
+        )
+
+      } else if (callbackData.startsWith('create_custom_')) {
+        // =================================================================
+        // 📸 STEP 1→Upload: Initiate custom image upload
+        // =================================================================
+        const newsId = callbackData.replace('create_custom_', '')
+        console.log('User wants to upload custom image for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '📸 Відправте фото у відповідь на це повідомлення',
+              show_alert: true
+            })
+          }
+        )
+
+        // Edit message to show we're waiting for photo
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n📸 <b>Очікую фото...</b>\n<i>Reply to this message with your photo</i>\n<code>newsId:${newsId}</code>`,
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
       } else if (action === 'keep' && callbackData.startsWith('keep_image_')) {
         // =================================================================
-        // 🖼️ Keep existing image handler
+        // 🖼️ Keep existing image handler (OLD - kept for backward compatibility)
         // =================================================================
         console.log('User chose to keep existing image for news:', newsId)
 

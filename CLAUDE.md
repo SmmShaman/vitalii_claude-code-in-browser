@@ -1596,6 +1596,194 @@ supabase functions deploy telegram-scraper
 
 ---
 
+## Telegram Bot Workflow Improvements (December 22, 2024)
+
+### Опис
+
+Комплексне покращення Telegram бота для модерації новин: секвенційний workflow, автоматична детекція медіа, покращений контекст для AI промптів, та відображення посилань на джерела.
+
+### Виправлені проблеми
+
+#### 1. Sequential Workflow (Секвенційний робочий процес)
+
+**Проблема:** Всі кнопки показувались одночасно, що було незрозуміло та заплутано.
+
+**Рішення:** Покроковий workflow з автоматичною зміною кнопок:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  STEP 1: Image Selection (якщо немає відео)        │
+│  ┌───────────────────────────────────────────────┐ │
+│  │  ✅ Підтвердити зображення                    │ │
+│  │  📸 Створити своє                              │ │
+│  │  ❌ Reject                                     │ │
+│  └───────────────────────────────────────────────┘ │
+│                        ↓                            │
+│  STEP 2: Publication (після підтвердження)         │
+│  ┌───────────────────────────────────────────────┐ │
+│  │  📰 В новини    │    📝 В блог                 │ │
+│  │  ❌ Reject                                     │ │
+│  └───────────────────────────────────────────────┘ │
+│                        ↓                            │
+│  STEP 3: LinkedIn (після публікації)               │
+│  ┌───────────────────────────────────────────────┐ │
+│  │  🔗 LinkedIn EN │ LinkedIn NO │ LinkedIn UA    │ │
+│  └───────────────────────────────────────────────┘ │
+│                        ↓                            │
+│  STEP 4: Final Links (після LinkedIn поста)        │
+│  ┌───────────────────────────────────────────────┐ │
+│  │  ✅ LINKEDIN EN                                │ │
+│  │  📰 «Article Title»                            │ │
+│  │  📝 Читати статтю (website link)               │ │
+│  │  🔗 Переглянути пост (LinkedIn link)           │ │
+│  └───────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────┘
+```
+
+**Виконані зміни:**
+
+| Файл | Зміни |
+|------|-------|
+| `telegram-scraper/index.ts` | Початкові кнопки: тільки image workflow або publish (якщо є відео) |
+| `telegram-webhook/index.ts` | Нові callback handlers: `confirm_image`, `create_custom` |
+| `telegram-webhook/index.ts` | Photo upload показує publish buttons після завантаження |
+| `telegram-webhook/index.ts` | LinkedIn handler додає article URL + LinkedIn URL в кінці |
+
+#### 2. Media Detection (Автоматична детекція медіа)
+
+**Проблема:** Бот показував кнопки вибору зображення навіть коли пост містив відео.
+
+**Рішення:** Автоматична детекція типу медіа:
+
+```typescript
+// telegram-scraper/index.ts
+const hasVideo = videoUrl && videoType
+
+if (hasVideo) {
+  // 🎥 Video exists → Skip image workflow
+  keyboard = {
+    inline_keyboard: [
+      [
+        { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
+        { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
+      ],
+      [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
+    ]
+  }
+} else {
+  // 🖼️ No video → Show image workflow
+  // ...
+}
+```
+
+**Результат:**
+- Якщо `video_url` існує → Одразу показуються кнопки публікації
+- Якщо немає відео → Показується image workflow (Step 1)
+
+#### 3. Longer Prompt Context (Більше контексту для AI)
+
+**Проблема:** AI промпт для генерації опису зображення отримував тільки перші 1000 символів статті, що було недостатньо для розуміння контексту.
+
+**Рішення:**
+
+```typescript
+// generate-image-prompt/index.ts (line 150)
+// До
+promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 1000))
+
+// Після
+promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 5000))
+```
+
+**Результат:** AI отримує в 5 разів більше контексту (5000 символів), що дозволяє краще зрозуміти суть статті та згенерувати релевантніший опис зображення.
+
+#### 4. Display Source Links (Відображення посилань на джерела)
+
+**Проблема:** Поле `source_link` (зовнішнє джерело статті, знайдене LLM) не відображалось у фінальній UI новин та блогу.
+
+**Рішення:**
+
+**NewsArticle.tsx (lines 226-238):**
+```typescript
+{(news.source_link || news.original_url) && (
+  <div className="mb-8">
+    <a
+      href={news.source_link || news.original_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl"
+    >
+      <ExternalLink className="w-4 h-4" />
+      Read Original Article
+    </a>
+  </div>
+)}
+```
+
+**NewsModal.tsx (lines 445-448):**
+```typescript
+{((selectedNews as any).source_link || selectedNews.original_url) && (
+  <a href={(selectedNews as any).source_link || selectedNews.original_url}>
+    {t('news_read_more')}
+  </a>
+)}
+```
+
+**Результат:**
+- `source_link` має пріоритет над `original_url`
+- Показується як помітна кнопка "Read Original Article"
+- Відкривається у новій вкладці з `noopener noreferrer`
+
+### New Callback Handlers
+
+| Callback | Опис | Наступний крок |
+|----------|------|----------------|
+| `confirm_image_${newsId}` | Підтверджує існуюче зображення або продовжує без зображення | Показує кнопки публікації |
+| `create_custom_${newsId}` | Ініціює завантаження власного зображення | Чекає reply з фото |
+| `publish_news_${newsId}` | Публікує як новину | Показує LinkedIn кнопки |
+| `publish_blog_${newsId}` | Публікує як блог-пост | Показує LinkedIn кнопки |
+| `linkedin_en/no/ua_${newsId}` | Публікує в LinkedIn | Показує фінальні посилання |
+
+### Photo Upload Flow
+
+```
+1. Користувач натискає "📸 Створити своє"
+   ↓
+2. Бот оновлює повідомлення: "📸 Очікую фото..."
+   ↓
+3. Користувач відправляє фото як reply
+   ↓
+4. Бот завантажує фото в Supabase Storage (custom/ folder)
+   ↓
+5. Оновлює processed_image_url в базі даних
+   ↓
+6. Показує кнопки публікації [📰 В новини] [📝 В блог]
+```
+
+### Deploy
+
+```bash
+cd supabase
+
+# Deploy оновлені функції
+supabase functions deploy telegram-scraper
+supabase functions deploy telegram-webhook
+supabase functions deploy generate-image-prompt
+```
+
+### Testing Checklist
+
+- [ ] Posts з відео пропускають image workflow
+- [ ] Posts без відео показують image workflow
+- [ ] Підтвердження зображення показує publish buttons
+- [ ] Custom image upload показує publish buttons після завантаження
+- [ ] Публікація показує LinkedIn buttons
+- [ ] LinkedIn post показує фінальні посилання (article + LinkedIn)
+- [ ] Source links відображаються у NewsArticle та NewsModal
+- [ ] AI промпт генерується з більшим контекстом (5000 chars)
+
+---
+
 ## Environment Variables
 
 ```env
