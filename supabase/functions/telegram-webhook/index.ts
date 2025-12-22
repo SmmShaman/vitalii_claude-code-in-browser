@@ -608,7 +608,7 @@ serve(async (req) => {
               title: news.original_title || '',
               content: news.original_content || '',
               url: news.original_url || '',
-              imageUrl: news.image_url || null,
+              imageUrl: news.processed_image_url || news.image_url || null, // Prioritize custom uploaded image
               videoUrl: news.video_url || null,
               videoType: news.video_type || null,
               sourceLink: news.source_link || null // External source link
