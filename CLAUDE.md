@@ -1614,8 +1614,8 @@ supabase functions deploy telegram-scraper
 ┌─────────────────────────────────────────────────────┐
 │  STEP 1: Image Selection (якщо немає відео)        │
 │  ┌───────────────────────────────────────────────┐ │
-│  │  ✅ Підтвердити зображення                    │ │
-│  │  📸 Створити своє                              │ │
+│  │  ✅ Залишити зображення                       │ │
+│  │  📸 Згенерувати своє                           │ │
 │  │  ❌ Reject                                     │ │
 │  └───────────────────────────────────────────────┘ │
 │                        ↓                            │
@@ -1679,6 +1679,21 @@ if (hasVideo) {
 **Результат:**
 - Якщо `video_url` існує → Одразу показуються кнопки публікації
 - Якщо немає відео → Показується image workflow (Step 1)
+
+**CRITICAL FIX (Dec 22):** Використання `uploadedPhotoUrl` замість `post.photoUrl`
+
+**Проблема:** Бот використовував `post.photoUrl` (оригінальний URL з парсингу каналу), а не оновлений `photoUrl` після завантаження в Supabase Storage. Через це image workflow пропускався навіть коли зображення було успішно завантажено.
+
+**Рішення:**
+```typescript
+// telegram-scraper/index.ts:471
+sendToTelegramBot(..., photoUrl || null) // Pass uploaded photoUrl
+
+// telegram-scraper/index.ts:875
+const hasImage = uploadedPhotoUrl // Use uploaded, not original post.photoUrl
+```
+
+Тепер image workflow кнопки показуються **тільки** коли зображення реально завантажено в Supabase Storage.
 
 #### 3. Longer Prompt Context (Більше контексту для AI)
 
@@ -1751,14 +1766,35 @@ promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 5000)
    ↓
 2. Бот оновлює повідомлення: "📸 Очікую фото..."
    ↓
-3. Користувач відправляє фото як reply
+3. Користувач відправляє фото як reply (Telegram Bot API)
    ↓
-4. Бот завантажує фото в Supabase Storage (custom/ folder)
+4. Бот завантажує фото через getFile API
    ↓
-5. Оновлює processed_image_url в базі даних
+5. Зберігає в Supabase Storage (custom/ folder)
    ↓
-6. Показує кнопки публікації [📰 В новини] [📝 В блог]
+6. Оновлює processed_image_url в базі даних
+   ↓
+7. Показує кнопки публікації [📰 В новини] [📝 В блог]
+   ↓
+8. При публікації: processed_image_url має ПРІОРИТЕТ над image_url
 ```
+
+### Image Priority Logic
+
+**Проблема:** Раніше завантажене зображення (`processed_image_url`) не використовувалось при публікації.
+
+**Рішення:**
+```typescript
+// telegram-webhook/index.ts:611
+imageUrl: news.processed_image_url || news.image_url || null
+```
+
+**Пріоритет:**
+1. `processed_image_url` - власне завантажене зображення
+2. `image_url` - оригінальне з Telegram каналу
+3. `null` - немає зображення
+
+Це гарантує що користувацькі зображення **реально використовуються** в опублікованих статтях.
 
 ### Deploy
 
@@ -1774,9 +1810,13 @@ supabase functions deploy generate-image-prompt
 ### Testing Checklist
 
 - [ ] Posts з відео пропускають image workflow
-- [ ] Posts без відео показують image workflow
+- [ ] Posts без відео показують image workflow з правильними кнопками:
+  - [ ] ✅ Залишити зображення
+  - [ ] 📸 Згенерувати своє
 - [ ] Підтвердження зображення показує publish buttons
 - [ ] Custom image upload показує publish buttons після завантаження
+- [ ] **Custom image реально використовується в публікації** (processed_image_url priority)
+- [ ] **Image workflow показується тільки коли зображення завантажено** (uploadedPhotoUrl check)
 - [ ] Публікація показує LinkedIn buttons
 - [ ] LinkedIn post показує фінальні посилання (article + LinkedIn)
 - [ ] Source links відображаються у NewsArticle та NewsModal
