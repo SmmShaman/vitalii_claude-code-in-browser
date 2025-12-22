@@ -311,7 +311,7 @@ const NewsSectionComponent = ({
 
             <div className="news-section-detail-grid">
               {/* Video Player or Image */}
-              {((selectedNews as any).video_url || selectedNews.image_url) && (
+              {((selectedNews as any).video_url || (selectedNews as any).processed_image_url || selectedNews.image_url) && (
                 <div className="news-section-media-container rounded-xl overflow-hidden shadow-lg">
                   {(selectedNews as any).video_url ? (
                     <div className="bg-black">
@@ -390,9 +390,9 @@ const NewsSectionComponent = ({
                         }
                       })()}
                     </div>
-                  ) : selectedNews.image_url && (
+                  ) : ((selectedNews as any).processed_image_url || selectedNews.image_url) && (
                     <img
-                      src={selectedNews.image_url as string}
+                      src={((selectedNews as any).processed_image_url || selectedNews.image_url) as string}
                       alt={String(content.title)}
                       className="w-full h-auto object-cover"
                       style={{ aspectRatio: '16/9' }}
@@ -502,7 +502,7 @@ const NewsSectionComponent = ({
                                 <span className="text-xs">Video</span>
                               </div>
                             )}
-                            {!newsItem.video_url && newsItem.image_url && (
+                            {!newsItem.video_url && ((newsItem as any).processed_image_url || newsItem.image_url) && (
                               <div className="flex items-center gap-1">
                                 <Image className="h-3 w-3 flex-shrink-0" />
                               </div>
@@ -525,14 +525,15 @@ const NewsSectionComponent = ({
                       </div>
 
                       {/* Square Image/Video Thumbnail - Right Side */}
-                      {(newsItem.image_url || newsItem.video_url) && (
+                      {((newsItem as any).processed_image_url || newsItem.image_url || newsItem.video_url) && (
                         <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-slate-900">
                           {(() => {
-                            // Priority 1: Use image_url if available
-                            if (newsItem.image_url) {
+                            // Priority 1: Use custom uploaded image if available
+                            const imageUrl = (newsItem as any).processed_image_url || newsItem.image_url;
+                            if (imageUrl) {
                               return (
                                 <img
-                                  src={newsItem.image_url}
+                                  src={imageUrl}
                                   alt={String(content.title)}
                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                 />

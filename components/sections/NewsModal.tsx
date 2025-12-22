@@ -308,7 +308,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                   console.log('📐 Grid computed style:', window.getComputedStyle(document.querySelector('.news-detail-grid')!).display);
                 }}>
                   {/* Video Player or Image */}
-                  {((selectedNews as any).video_url || selectedNews.image_url) && (
+                  {((selectedNews as any).video_url || (selectedNews as any).processed_image_url || selectedNews.image_url) && (
                     <div className="news-media-container rounded-xl overflow-hidden shadow-lg">
                       {(selectedNews as any).video_url ? (
                         <div className="bg-black">
@@ -378,9 +378,9 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                             </video>
                           )}
                         </div>
-                      ) : selectedNews.image_url && (
+                      ) : ((selectedNews as any).processed_image_url || selectedNews.image_url) && (
                         <img
-                          src={selectedNews.image_url as string}
+                          src={((selectedNews as any).processed_image_url || selectedNews.image_url) as string}
                           alt={String(getTranslatedContent(selectedNews).title)}
                           className="w-full h-auto object-cover"
                           style={{ aspectRatio: '16/9' }}
@@ -595,10 +595,10 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                               className="block bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full flex flex-col cursor-pointer"
                             >
                               {/* Image */}
-                              {newsItem.image_url && (
+                              {((newsItem as any).processed_image_url || newsItem.image_url) && (
                                 <div className="relative w-full h-48 overflow-hidden">
                                   <img
-                                    src={newsItem.image_url as string}
+                                    src={((newsItem as any).processed_image_url || newsItem.image_url) as string}
                                     alt={String(content.title)}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />

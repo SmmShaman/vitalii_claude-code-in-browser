@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: generateOpenGraph(
       title,
       description,
-      news.image_url,
+      news.processed_image_url || news.image_url,
       url,
       'article',
       {
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         section: 'News',
       }
     ),
-    twitter: generateTwitterCard(title, description, news.image_url),
+    twitter: generateTwitterCard(title, description, news.processed_image_url || news.image_url),
     robots: generateRobots(true, true),
   }
 }

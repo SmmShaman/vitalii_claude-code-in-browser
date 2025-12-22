@@ -210,10 +210,10 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                 className="max-w-4xl mx-auto"
               >
                 {/* Featured Image */}
-                {selectedPost.image_url && (
+                {((selectedPost as any).processed_image_url || selectedPost.image_url) && (
                   <div className="w-full h-96 rounded-xl overflow-hidden mb-6">
                     <img
-                      src={selectedPost.image_url as string}
+                      src={((selectedPost as any).processed_image_url || selectedPost.image_url) as string}
                       alt={String(getTranslatedContent(selectedPost).title)}
                       className="w-full h-full object-cover"
                     />
@@ -409,10 +409,10 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                           >
                             <div className="bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full flex flex-col">
                               {/* Featured Image */}
-                              {post.image_url && (
+                              {((post as any).processed_image_url || post.image_url) && (
                                 <div className="relative w-full h-48 overflow-hidden">
                                   <img
-                                    src={post.image_url as string}
+                                    src={((post as any).processed_image_url || post.image_url) as string}
                                     alt={String(content.title)}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
