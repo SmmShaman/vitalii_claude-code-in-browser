@@ -259,10 +259,10 @@ const BlogSectionComponent = ({
                 >
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
                     {/* Featured Image */}
-                    {post.image_url && (
+                    {((post as any).processed_image_url || post.image_url) && (
                       <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden">
                         <img
-                          src={post.image_url}
+                          src={(post as any).processed_image_url || post.image_url}
                           alt={String(content.title)}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />

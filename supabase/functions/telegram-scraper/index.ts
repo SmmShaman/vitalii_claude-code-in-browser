@@ -241,6 +241,14 @@ serve(async (req) => {
         const posts = await parseChannelPosts(html, channelUsername)
         console.log(`📨 Found ${posts.length} posts`)
 
+        // Log date range of parsed posts for debugging
+        if (posts.length > 0) {
+          const dates = posts.map(p => p.date).sort((a, b) => a.getTime() - b.getTime())
+          const oldestDate = dates[0]
+          const newestDate = dates[dates.length - 1]
+          console.log(`📅 Parsed posts date range: ${oldestDate.toISOString()} to ${newestDate.toISOString()}`)
+        }
+
         // Determine date filter based on parameters
         let filterFromDate: Date
         let filterToDate: Date | null = null
@@ -259,16 +267,22 @@ serve(async (req) => {
         }
 
         // Filter posts by date range
+        console.log(`📊 Filtering ${posts.length} parsed posts by date...`)
         const newPosts = posts.filter(post => {
-          if (filterToDate) {
-            // Historical load: posts within date range
-            return post.date >= filterFromDate && post.date <= filterToDate
-          } else {
-            // Incremental: posts newer than last fetch
-            return post.date > filterFromDate
+          const passesFilter = filterToDate
+            ? (post.date >= filterFromDate && post.date <= filterToDate)
+            : (post.date > filterFromDate)
+
+          if (!passesFilter) {
+            console.log(`⏭️ Skipping post ${post.messageId} (date ${post.date.toISOString()} outside filter range)`)
           }
+          return passesFilter
         })
-        console.log(`✅ Found ${newPosts.length} post(s) matching date filter`)
+        console.log(`✅ Found ${newPosts.length} post(s) matching date filter (out of ${posts.length} parsed)`)
+
+        if (newPosts.length === 0) {
+          console.log(`⚠️ No posts passed date filter. Filter range: ${filterFromDate.toISOString()} to ${filterToDate ? filterToDate.toISOString() : 'now'}`)
+        }
 
         // Process new posts
         let processedCount = 0
@@ -801,6 +815,10 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
         const dateElement = message.querySelector('.tgme_widget_message_date time')
         const datetime = dateElement?.getAttribute('datetime')
         const date = datetime ? new Date(datetime) : new Date()
+
+        if (!datetime) {
+          console.log(`⚠️ Post ${messageId} has no datetime attribute, using current time`)
+        }
 
         // Skip if no content
         if (!text && !photoUrl && !videoUrl) {

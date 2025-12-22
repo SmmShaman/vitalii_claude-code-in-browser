@@ -76,7 +76,7 @@ export function NewsArticle({ slug }: NewsArticleProps) {
 
       <article className="flex-1">
         {/* Image Gallery - supports multiple images */}
-        {!news.video_url && (news.images?.length > 0 || news.image_url) && (
+        {!news.video_url && (news.processed_image_url || news.images?.length > 0 || news.image_url) && (
           <figure className="mb-6">
             {news.images?.length > 1 ? (
               // Multiple images - show grid gallery
@@ -100,10 +100,10 @@ export function NewsArticle({ slug }: NewsArticleProps) {
                 ))}
               </div>
             ) : (
-              // Single image - full width
+              // Single image - full width (prioritize custom uploaded image)
               <div className="relative w-full aspect-video rounded-2xl overflow-hidden">
                 <Image
-                  src={news.images?.[0] || news.image_url}
+                  src={news.processed_image_url || news.images?.[0] || news.image_url}
                   alt={title}
                   fill
                   priority
