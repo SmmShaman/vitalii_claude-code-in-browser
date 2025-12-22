@@ -461,7 +461,14 @@ serve(async (req) => {
               }
 
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                const sent = await sendToTelegramBot(newsEntry.id, post, channelUsername, imagePrompt)
+                const sent = await sendToTelegramBot(
+                  newsEntry.id,
+                  post,
+                  channelUsername,
+                  imagePrompt,
+                  post.videoUrl || null,
+                  post.videoType || null
+                )
                 if (sent) {
                   sentToBotCount++
                   totalSentToBot++
@@ -820,7 +827,9 @@ async function sendToTelegramBot(
   newsId: string,
   post: ScrapedPost,
   channelUsername: string,
-  imagePrompt: string | null = null
+  imagePrompt: string | null = null,
+  videoUrl: string | null = null,
+  videoType: string | null = null
 ): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
@@ -854,29 +863,61 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 
 ⏳ <i>Waiting for moderation...</i>`
 
-    // Main keyboard with all actions
-    const keyboard = {
-      inline_keyboard: [
-        [
-          { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
-          { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
-        ],
-        // Image selection buttons - only show if there's an existing image
-        ...(post.photoUrl ? [[
-          { text: '🖼️ Залишити зображення', callback_data: `keep_image_${newsId}` },
-          { text: '📸 Завантажити власне', callback_data: `upload_image_${newsId}` }
-        ]] : [[
-          { text: '📸 Завантажити зображення', callback_data: `upload_image_${newsId}` }
-        ]]),
-        [
-          { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
-          { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
-          { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
-        ],
-        [
-          { text: '❌ Reject', callback_data: `reject_${newsId}` }
+    // 🎬 SEQUENTIAL WORKFLOW: Start with image selection OR go straight to publish if video
+    // Step 1: Image workflow (if no video)
+    // Step 2: Publish buttons (В новини / В блог)
+    // Step 3: LinkedIn buttons (shown after publish)
+    // Step 4: Final links (shown after LinkedIn post)
+
+    const hasVideo = videoUrl && videoType
+    let keyboard: { inline_keyboard: any[] }
+
+    if (hasVideo) {
+      // 🎥 Video exists → Skip image workflow, go straight to publish
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
+            { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
+          ],
+          [
+            { text: '❌ Reject', callback_data: `reject_${newsId}` }
+          ]
         ]
-      ]
+      }
+    } else {
+      // 🖼️ No video → Show image workflow first
+      if (post.photoUrl) {
+        // Has image → Confirm or upload custom
+        keyboard = {
+          inline_keyboard: [
+            [
+              { text: '✅ Підтвердити зображення', callback_data: `confirm_image_${newsId}` }
+            ],
+            [
+              { text: '📸 Створити своє', callback_data: `create_custom_${newsId}` }
+            ],
+            [
+              { text: '❌ Reject', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+      } else {
+        // No image → Upload required
+        keyboard = {
+          inline_keyboard: [
+            [
+              { text: '📸 Завантажити зображення', callback_data: `create_custom_${newsId}` }
+            ],
+            [
+              { text: '➡️ Продовжити без зображення', callback_data: `confirm_image_${newsId}` }
+            ],
+            [
+              { text: '❌ Reject', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+      }
     }
 
     const response = await fetch(

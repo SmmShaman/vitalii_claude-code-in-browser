@@ -147,7 +147,8 @@ async function generateImagePromptWithAI(title: string, content: string): Promis
 
     // Replace placeholders with actual content
     promptTemplate = promptTemplate.replace(/{title}/g, title)
-    promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 1000))
+    // Provide more context (5000 chars) for better AI understanding
+    promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 5000))
 
     // Azure OpenAI endpoint
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`

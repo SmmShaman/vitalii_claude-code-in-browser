@@ -441,11 +441,11 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                       return null;
                     })()}
 
-                    {/* Source Link */}
-                    {selectedNews.original_url && (
+                    {/* Source Link - prefer source_link over original_url */}
+                    {((selectedNews as any).source_link || selectedNews.original_url) && (
                       <div className={getNewsSlug(selectedNews) ? "mt-4" : "mt-6 pt-6 border-t border-border"}>
                         <a
-                          href={selectedNews.original_url}
+                          href={(selectedNews as any).source_link || selectedNews.original_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm"
