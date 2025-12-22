@@ -467,7 +467,8 @@ serve(async (req) => {
                   channelUsername,
                   imagePrompt,
                   post.videoUrl || null,
-                  post.videoType || null
+                  post.videoType || null,
+                  photoUrl || null // Pass updated photoUrl from Supabase Storage
                 )
                 if (sent) {
                   sentToBotCount++
@@ -829,7 +830,8 @@ async function sendToTelegramBot(
   channelUsername: string,
   imagePrompt: string | null = null,
   videoUrl: string | null = null,
-  videoType: string | null = null
+  videoType: string | null = null,
+  uploadedPhotoUrl: string | null = null // Updated photoUrl from Supabase Storage
 ): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
@@ -870,6 +872,7 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
     // Step 4: Final links (shown after LinkedIn post)
 
     const hasVideo = videoUrl && videoType
+    const hasImage = uploadedPhotoUrl // Use uploaded photoUrl, not original post.photoUrl
     let keyboard: { inline_keyboard: any[] }
 
     if (hasVideo) {
@@ -887,15 +890,15 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
       }
     } else {
       // 🖼️ No video → Show image workflow first
-      if (post.photoUrl) {
+      if (hasImage) {
         // Has image → Confirm or upload custom
         keyboard = {
           inline_keyboard: [
             [
-              { text: '✅ Підтвердити зображення', callback_data: `confirm_image_${newsId}` }
+              { text: '✅ Залишити зображення', callback_data: `confirm_image_${newsId}` }
             ],
             [
-              { text: '📸 Створити своє', callback_data: `create_custom_${newsId}` }
+              { text: '📸 Згенерувати своє', callback_data: `create_custom_${newsId}` }
             ],
             [
               { text: '❌ Reject', callback_data: `reject_${newsId}` }
@@ -903,7 +906,7 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
           ]
         }
       } else {
-        // No image → Upload required
+        // No image → Upload required or continue without
         keyboard = {
           inline_keyboard: [
             [
