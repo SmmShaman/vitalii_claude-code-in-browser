@@ -1853,6 +1853,70 @@ if (existingPost.pre_moderation_status === 'approved' &&
 
 **Результат:** Всі approved новини які застрягли в черзі будуть автоматично відправлені в бот при наступному запуску scraper.
 
+### 6. Debug Logging для Queue Diagnostics (December 22, 2024)
+
+**Проблема:** 200+ новин в черзі, але жодні нові новини не надходять в Telegram бот. Логи показували що пости знайдені, але не оброблені.
+
+**Симптоми:**
+- Логи: "✅ Found 17 message elements"
+- Але НЕ БУЛО логів: "🔄 Processing post ${messageId}"
+- Всі пости відсіювалися, але невідомо чому
+
+**Рішення:** Додано детальне логування для діагностики:
+
+```typescript
+// telegram-scraper/index.ts
+
+// 1. Date range parsing
+console.log(`📨 Found ${posts.length} posts`)
+if (posts.length > 0) {
+  const dates = posts.map(p => p.date).sort((a, b) => a.getTime() - b.getTime())
+  const oldestDate = dates[0]
+  const newestDate = dates[dates.length - 1]
+  console.log(`📅 Parsed posts date range: ${oldestDate.toISOString()} to ${newestDate.toISOString()}`)
+}
+
+// 2. Date filtering with warnings
+console.log(`📊 Filtering ${posts.length} parsed posts by date...`)
+const newPosts = posts.filter(post => {
+  const passesFilter = filterToDate
+    ? (post.date >= filterFromDate && post.date <= filterToDate)
+    : (post.date > filterFromDate)
+
+  if (!passesFilter) {
+    console.log(`⏭️ Skipping post ${post.messageId} (date ${post.date.toISOString()} outside filter range)`)
+  }
+  return passesFilter
+})
+
+// 3. Final count and warning
+console.log(`✅ Found ${newPosts.length} post(s) matching date filter (out of ${posts.length} parsed)`)
+if (newPosts.length === 0) {
+  console.log(`⚠️ No posts passed date filter. Filter range: ${filterFromDate.toISOString()} to ${filterToDate ? filterToDate.toISOString() : 'now'}`)
+}
+
+// 4. Missing datetime warning
+if (!datetime) {
+  console.log(`⚠️ Post ${messageId} has no datetime attribute, using current time`)
+}
+```
+
+**Що логується тепер:**
+
+| Етап | Лог | Мета |
+|------|-----|------|
+| Parsing | `📅 Parsed posts date range: X to Y` | Показати діапазон спарсених дат |
+| Filtering | `📊 Filtering N parsed posts by date...` | Скільки постів до фільтру |
+| Skipped | `⏭️ Skipping post X (date Y outside filter range)` | Чому пост відсіяний |
+| Result | `✅ Found N post(s) matching date filter (out of M parsed)` | Скільки пройшло фільтр |
+| Warning | `⚠️ No posts passed date filter. Filter range: X to Y` | Якщо жоден не пройшов |
+| Missing date | `⚠️ Post X has no datetime attribute` | Коли дата не спарсилась |
+
+**Результат:** Тепер можемо точно діагностувати чому пости не обробляються:
+- Чи всі пости старіші за last_fetched_at?
+- Чи є проблеми з парсингом дат?
+- Чи filter range налаштований правильно?
+
 ---
 
 ## Environment Variables
