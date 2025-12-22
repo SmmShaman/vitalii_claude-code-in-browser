@@ -1614,8 +1614,8 @@ supabase functions deploy telegram-scraper
 ┌─────────────────────────────────────────────────────┐
 │  STEP 1: Image Selection (якщо немає відео)        │
 │  ┌───────────────────────────────────────────────┐ │
-│  │  ✅ Підтвердити зображення                    │ │
-│  │  📸 Створити своє                              │ │
+│  │  ✅ Залишити зображення                       │ │
+│  │  📸 Згенерувати своє                           │ │
 │  │  ❌ Reject                                     │ │
 │  └───────────────────────────────────────────────┘ │
 │                        ↓                            │
@@ -1679,6 +1679,21 @@ if (hasVideo) {
 **Результат:**
 - Якщо `video_url` існує → Одразу показуються кнопки публікації
 - Якщо немає відео → Показується image workflow (Step 1)
+
+**CRITICAL FIX (Dec 22):** Використання `uploadedPhotoUrl` замість `post.photoUrl`
+
+**Проблема:** Бот використовував `post.photoUrl` (оригінальний URL з парсингу каналу), а не оновлений `photoUrl` після завантаження в Supabase Storage. Через це image workflow пропускався навіть коли зображення було успішно завантажено.
+
+**Рішення:**
+```typescript
+// telegram-scraper/index.ts:471
+sendToTelegramBot(..., photoUrl || null) // Pass uploaded photoUrl
+
+// telegram-scraper/index.ts:875
+const hasImage = uploadedPhotoUrl // Use uploaded, not original post.photoUrl
+```
+
+Тепер image workflow кнопки показуються **тільки** коли зображення реально завантажено в Supabase Storage.
 
 #### 3. Longer Prompt Context (Більше контексту для AI)
 
@@ -1795,10 +1810,13 @@ supabase functions deploy generate-image-prompt
 ### Testing Checklist
 
 - [ ] Posts з відео пропускають image workflow
-- [ ] Posts без відео показують image workflow
+- [ ] Posts без відео показують image workflow з правильними кнопками:
+  - [ ] ✅ Залишити зображення
+  - [ ] 📸 Згенерувати своє
 - [ ] Підтвердження зображення показує publish buttons
 - [ ] Custom image upload показує publish buttons після завантаження
 - [ ] **Custom image реально використовується в публікації** (processed_image_url priority)
+- [ ] **Image workflow показується тільки коли зображення завантажено** (uploadedPhotoUrl check)
 - [ ] Публікація показує LinkedIn buttons
 - [ ] LinkedIn post показує фінальні посилання (article + LinkedIn)
 - [ ] Source links відображаються у NewsArticle та NewsModal
