@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: generateOpenGraph(
       title,
       description,
-      post.image_url || post.cover_image_url,
+      (post as any).processed_image_url || post.image_url || post.cover_image_url,
       url,
       'article',
       {
@@ -55,17 +55,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         section: post.category,
       }
     ),
-    twitter: generateTwitterCard(title, description, post.image_url || post.cover_image_url),
+    twitter: generateTwitterCard(title, description, (post as any).processed_image_url || post.image_url || post.cover_image_url),
     robots: generateRobots(true, true),
   }
 }
 
-export async function generateStaticParams() {
-  const posts = await getLatestBlogPosts(100)
-  return posts.map((post: any) => ({
-    slug: post.slug_en || post.id,
-  }))
-}
+// Dynamic rendering to avoid build timeouts and missing items
+// generateStaticParams removed - all pages rendered on-demand
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
 
 export default async function BlogPage({ params }: Props) {
   const { slug } = await params
