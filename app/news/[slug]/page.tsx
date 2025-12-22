@@ -60,12 +60,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export async function generateStaticParams() {
-  const news = await getLatestNews(100)
-  return news.map((item: any) => ({
-    slug: item.slug_en || item.id,
-  }))
-}
+// Dynamic rendering to avoid build timeouts and missing items
+// generateStaticParams removed - all pages rendered on-demand
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
 
 export default async function NewsPage({ params }: Props) {
   const { slug } = await params

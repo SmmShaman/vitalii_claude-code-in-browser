@@ -144,7 +144,7 @@ export function BlogArticle({ slug }: BlogArticleProps) {
         )}
 
         {/* Image Gallery (only if no video) - supports multiple images */}
-        {!post.video_url && (post.images?.length > 0 || post.image_url || post.cover_image_url) && (
+        {!post.video_url && ((post as any).processed_image_url || post.images?.length > 0 || post.image_url || post.cover_image_url) && (
           <figure className="mb-6">
             {post.images?.length > 1 ? (
               // Multiple images - show grid gallery
@@ -168,10 +168,10 @@ export function BlogArticle({ slug }: BlogArticleProps) {
                 ))}
               </div>
             ) : (
-              // Single image - full width
+              // Single image - full width (prioritize custom uploaded image)
               <div className="relative w-full aspect-video rounded-2xl overflow-hidden">
                 <Image
-                  src={post.images?.[0] || post.image_url || post.cover_image_url}
+                  src={(post as any).processed_image_url || post.images?.[0] || post.image_url || post.cover_image_url}
                   alt={title}
                   fill
                   priority
@@ -270,10 +270,10 @@ export function BlogArticle({ slug }: BlogArticleProps) {
                     href={`/blog/${relatedSlug}`}
                     className="block p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                   >
-                    {relatedPost.image_url && (
+                    {((relatedPost as any).processed_image_url || relatedPost.image_url) && (
                       <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3">
                         <Image
-                          src={relatedPost.image_url}
+                          src={(relatedPost as any).processed_image_url || relatedPost.image_url}
                           alt={relatedTitle}
                           fill
                           sizes="(max-width: 768px) 100vw, 33vw"
