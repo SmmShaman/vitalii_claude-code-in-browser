@@ -240,7 +240,9 @@ serve(async (req) => {
         console.log(`✅ Fetched HTML (${html.length} bytes)`)
 
         // Parse HTML
+        console.log(`🔍 About to call parseChannelPosts...`)
         const posts = await parseChannelPosts(html, channelUsername)
+        console.log(`✅ parseChannelPosts RETURNED with ${posts.length} posts`)
         console.log(`📨 Found ${posts.length} posts`)
 
         // Log date range of parsed posts for debugging
@@ -843,6 +845,7 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
           originalUrl: `https://t.me/${channelUsername}/${messageId}`,
           sourceLink,
         })
+        console.log(`✅ Added post ${messageId} to array (total: ${posts.length})`)
       } catch (postError) {
         console.error('Error parsing post:', postError)
         continue
@@ -852,6 +855,7 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
     console.error('Error in parseChannelPosts:', parseError)
   }
 
+  console.log(`🔚 parseChannelPosts FINISHING - returning ${posts.length} posts`)
   return posts
 }
 
