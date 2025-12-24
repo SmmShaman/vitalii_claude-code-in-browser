@@ -1917,6 +1917,107 @@ if (!datetime) {
 - Чи є проблеми з парсингом дат?
 - Чи filter range налаштований правильно?
 
+### 7. Deployment Troubleshooting & Version Logging (December 24, 2024)
+
+**Проблема:** Supabase Edge Functions не оновлювались після GitHub Actions deployment, навіть коли workflow показував success. Функції продовжували виконувати старий код.
+
+**Симптоми:**
+- GitHub Actions workflow "Deploy Supabase Edge Functions" завершувався успішно
+- Але Supabase function logs показували старий код (відсутні нові debug логи)
+- Workflow output показував: "No change found in Function: telegram-scraper"
+- Навіть після додавання dummy коментарів та merge PR
+
+**Діагностика:**
+
+1. **Перевірка версії в логах:**
+```
+# Старий код (до fix)
+🕷️  Telegram Scraper started
+
+# Новий код (після fix)
+🕷️  Telegram Scraper v2024-12-24-01 started
+📦 Features: Sequential workflow, media detection, debug logging, retry logic
+```
+
+2. **Перевірка GitHub Actions logs:**
+- Відкрити https://github.com/SmmShaman/vitalii_claude-code-in-browser/actions
+- Знайти workflow run "Deploy Supabase Edge Functions"
+- Відкрити job "deploy"
+- Розгорнути step "Deploy all functions"
+- Шукати: `Deploying function: telegram-scraper`
+
+**Очікуваний output при успішному deployment:**
+```
+Deploying function: telegram-scraper
+Bundling Function: telegram-scraper
+Deploying Function: telegram-scraper (script size: X.XXX MB)
+Deployed Functions on project ***: telegram-scraper
+```
+
+**Очікуваний output коли Supabase пропускає deployment:**
+```
+No change found in Function: telegram-scraper
+```
+
+**Рішення:** Додано version logging для верифікації deployment:
+
+```typescript
+// supabase/functions/telegram-scraper/index.ts:89-91
+// Version: 2024-12-24-01 - Sequential workflow + debug logging
+console.log('🕷️  Telegram Scraper v2024-12-24-01 started')
+console.log('📦 Features: Sequential workflow, media detection, debug logging, retry logic')
+
+// supabase/functions/telegram-scraper/index.ts:636
+console.log(`✅ Telegram Scraper v2024-12-24-01 finished successfully`)
+```
+
+**Як перевірити що deployment відбувся:**
+
+1. Запустити функцію через Admin Panel або Edge Function endpoint
+2. Перевірити Supabase Function Logs
+3. Шукати рядок: `🕷️  Telegram Scraper v2024-12-24-01 started`
+4. Якщо version присутній → deployment successful
+5. Якщо version відсутній → функція все ще на старій версії
+
+**Checksum Issue:**
+
+Supabase CLI використовує checksums для визначення чи змінився код функції:
+- Тільки зміни в коді викликають checksum change
+- Зміни в коментарях можуть не змінити checksum (залежить від bundler)
+- Найкращий спосіб force redeploy: змінити actual код (log statements, constants, тощо)
+
+**Deployment через GitHub Actions:**
+
+GitHub Actions workflow (`/.github/workflows/deploy-supabase.yml`) автоматично деплоїть при:
+- Push до `main` branch
+- Зміни в `supabase/functions/**` або `supabase/migrations/**`
+- Manual workflow dispatch
+
+**Manual deployment (альтернатива):**
+
+Якщо GitHub Actions не спрацьовує:
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login
+supabase login --token YOUR_ACCESS_TOKEN
+
+# Link project
+supabase link --project-ref YOUR_PROJECT_REF
+
+# Deploy specific function
+supabase functions deploy telegram-scraper --no-verify-jwt
+
+# Deploy all functions
+for dir in supabase/functions/*/; do
+  if [ -d "$dir" ] && [ "$(basename $dir)" != "_shared" ]; then
+    func_name=$(basename $dir)
+    supabase functions deploy $func_name --no-verify-jwt
+  fi
+done
+```
+
 ---
 
 ## Environment Variables
