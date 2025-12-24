@@ -4,32 +4,150 @@
 
 **Vitalii Berbeha Portfolio** - професійне портфоліо з блогом та новинним розділом. Побудовано на Next.js 15 з Supabase як бекендом.
 
+---
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# TypeScript check (no emit)
+npx tsc --noEmit
+
+# Lint code
+npm run lint
+```
+
+**URLs:**
+- Development: http://localhost:3000
+- Production: https://vitalii.no (via Netlify)
+- Admin Panel: /admin/login → /admin/dashboard
+
+---
+
 ## Tech Stack
 
-- **Frontend:** Next.js 15, React, TypeScript, Tailwind CSS
-- **Backend:** Supabase (PostgreSQL)
-- **Deployment:** Netlify
-- **Languages:** Мультимовна підтримка (EN, NO, UA)
+| Layer | Technology | Version |
+|-------|------------|---------|
+| **Frontend** | Next.js | 15.1.0 |
+| **UI Library** | React | 19.1.0 |
+| **Language** | TypeScript | 5.9.3 |
+| **Styling** | Tailwind CSS | 3.4.18 |
+| **Animations** | GSAP | 3.13.0 |
+| **Animations** | Framer Motion | 12.23.24 |
+| **3D Graphics** | Three.js | 0.180.0 |
+| **Backend** | Supabase (PostgreSQL) | 2.76.1 |
+| **Edge Functions** | Deno (Supabase) | - |
+| **AI** | Azure OpenAI | GPT-4.1-mini |
+| **Forms** | React Hook Form + Zod | 7.65.0 / 4.1.12 |
+| **HTTP** | TanStack Query | 5.90.5 |
+| **Deployment** | Netlify | - |
+| **CI/CD** | GitHub Actions | - |
+| **Languages** | Мультимовна підтримка | EN, NO, UA |
 
-## Project Structure
+---
+
+## Project Structure (Complete)
 
 ```
-├── app/                    # Next.js App Router
-│   ├── blog/[slug]/       # Динамічні сторінки блогу
-│   ├── news/[slug]/       # Динамічні сторінки новин
-│   ├── admin/             # Адмін-панель
-│   ├── layout.tsx         # Root layout
-│   ├── sitemap.ts         # Динамічний sitemap
-│   └── robots.ts          # robots.txt
+├── app/                          # Next.js App Router
+│   ├── @modal/                   # Parallel routes for modals
+│   │   └── (.)blog/[slug]/       # Intercepted blog modal route
+│   │   └── (.)news/[slug]/       # Intercepted news modal route
+│   ├── admin/                    # Admin panel
+│   │   ├── login/page.tsx        # Login page
+│   │   └── dashboard/page.tsx    # Dashboard with tabs
+│   ├── blog/[slug]/              # Dynamic blog pages
+│   │   ├── page.tsx              # Metadata + data fetching
+│   │   └── BlogArticle.tsx       # Blog article component
+│   ├── news/[slug]/              # Dynamic news pages
+│   │   ├── page.tsx              # Metadata + data fetching
+│   │   └── NewsArticle.tsx       # News article component
+│   ├── page.tsx                  # Home page (BentoGrid)
+│   ├── layout.tsx                # Root layout + fonts
+│   ├── globals.css               # Global styles + utilities
+│   ├── sitemap.ts                # Dynamic XML sitemap
+│   └── robots.ts                 # robots.txt configuration
+│
 ├── components/
-│   ├── sections/          # Секції головної сторінки
-│   └── admin/             # Компоненти адмін-панелі
-├── integrations/supabase/ # Supabase клієнт та типи
-├── utils/
-│   ├── seo.ts             # SEO утиліти
-│   ├── debug.ts           # Debug утиліти
-│   └── translations.ts    # Переклади
-└── supabase/functions/    # Edge Functions
+│   ├── layout/                   # Layout components
+│   │   ├── Header.tsx            # Hero section with animations
+│   │   ├── Footer.tsx            # Footer with social links
+│   │   └── Sidebar.tsx           # Language switcher
+│   ├── sections/                 # Page sections
+│   │   ├── BentoGrid.tsx         # Main 6-section grid
+│   │   ├── NewsSection.tsx       # News list + detail view
+│   │   ├── BlogSection.tsx       # Blog list + detail view
+│   │   ├── NewsModal.tsx         # News modal overlay
+│   │   └── BlogModal.tsx         # Blog modal overlay
+│   ├── ui/                       # UI components
+│   │   ├── Modal.tsx             # Reusable modal
+│   │   ├── HeroTextAnimation.tsx # Liquid fill text effect
+│   │   ├── ProjectsCarousel.tsx  # Projects carousel + explosion
+│   │   ├── ServicesAnimation.tsx # GSAP services animation
+│   │   ├── SkillsAnimation.tsx   # Skills explosion effect
+│   │   └── AboutAnimation.tsx    # About text animation
+│   ├── admin/                    # Admin components
+│   │   ├── SkillsManager.tsx     # CRUD for skills
+│   │   ├── DebugSettings.tsx     # Debug mode toggle
+│   │   └── AIPromptsManager.tsx  # AI prompts editor
+│   └── background/               # Background effects
+│       └── ParticleBackground.tsx
+│
+├── contexts/                     # React Context
+│   └── TranslationContext.tsx    # Language switching (EN/NO/UA)
+│
+├── hooks/                        # Custom React Hooks
+│   └── useReducedMotion.ts       # Accessibility: prefers-reduced-motion
+│
+├── integrations/supabase/        # Supabase integration
+│   ├── client.ts                 # Supabase client + API functions
+│   └── types.ts                  # Auto-generated DB types
+│
+├── utils/                        # Utility functions
+│   ├── seo.ts                    # JSON-LD, OG, Twitter Cards
+│   ├── debug.ts                  # Debug logging utilities
+│   ├── translations.ts           # Translation strings (3000+)
+│   ├── skillsStorage.ts          # Skills localStorage CRUD
+│   └── footerApi.ts              # Weather, geolocation APIs
+│
+├── supabase/                     # Supabase configuration
+│   ├── functions/                # Edge Functions (Deno)
+│   │   ├── _shared/              # Shared helpers
+│   │   ├── telegram-scraper/     # RSS/Telegram scraper
+│   │   ├── pre-moderate-news/    # AI pre-moderation
+│   │   ├── generate-image-prompt/# AI image descriptions
+│   │   ├── process-news/         # AI content rewriting
+│   │   ├── process-blog-post/    # News → Blog conversion
+│   │   ├── telegram-webhook/     # Bot callback handler
+│   │   ├── post-to-linkedin/     # LinkedIn posting
+│   │   └── [8 more functions]
+│   └── migrations/               # SQL migrations
+│
+├── public/                       # Static assets
+│   └── images/
+│
+├── netlify/                      # Netlify configuration
+│
+├── .github/workflows/            # CI/CD pipelines
+│   ├── deploy.yml                # Netlify deployment
+│   └── deploy-supabase.yml       # Edge Functions deployment
+│
+├── package.json                  # Dependencies
+├── next.config.ts                # Next.js config
+├── tailwind.config.ts            # Tailwind config
+├── tsconfig.json                 # TypeScript config
+└── CLAUDE.md                     # This file
 ```
 
 ## Content Management
@@ -52,6 +170,260 @@
 2. AI переписує контент (is_rewritten)
 3. Пре-модерація (pending → approved/rejected)
 4. Публікація (is_published)
+
+---
+
+## Supabase Edge Functions Reference
+
+Всі Edge Functions написані на Deno та знаходяться в `/supabase/functions/`.
+
+| Функція | Опис | Тригер | Input → Output |
+|---------|------|--------|----------------|
+| **telegram-scraper** | Скрапінг RSS/Telegram каналів, детекція медіа | Scheduled / Manual | news_sources → news records |
+| **pre-moderate-news** | AI фільтрація спаму/реклами через Azure OpenAI | telegram-scraper | news content → status (approved/rejected) |
+| **generate-image-prompt** | AI генерація описів для зображень | pre-moderate-news | title + content → image prompt |
+| **process-news** | AI переклад контенту на EN/NO/UA | Telegram bot | news + language → translated content |
+| **process-blog-post** | Конвертація новини в блог-пост | Telegram bot "📝 В блог" | news ID → blog_posts record |
+| **post-to-linkedin** | Публікація в LinkedIn через OAuth 2.0 | Telegram bot LinkedIn buttons | news/blog ID → linkedin_post_id |
+| **telegram-webhook** | Обробка Telegram bot callbacks | Telegram messages | callback_query → DB updates |
+| **find-source-link** | Витягування URL джерел з контенту | telegram-scraper | text content → source_link |
+| **fetch-news** | Завантаження новин з RSS | Manual / Scheduled | RSS URL → raw data |
+| **process-image** | Завантаження зображень в Supabase Storage | telegram-webhook | image file → Storage URL |
+| **resend-to-bot** | Повторна відправка failed submissions | Scheduled | pending news → bot message |
+| **telegram-monitor** | Моніторинг статусу Telegram бота | Scheduled | - → health check logs |
+| **test-youtube-auth** | Тестування YouTube OAuth налаштувань | Manual | - → token validity |
+
+### Shared Helpers (`_shared/`)
+
+```typescript
+// youtube-helpers.ts
+- getAccessToken()           // Refresh YouTube OAuth token
+- uploadVideoToYouTube()     // Upload video with metadata
+- getChannelInfo()           // Get channel details
+```
+
+### Deploy Edge Functions
+
+```bash
+cd supabase
+
+# Deploy single function
+supabase functions deploy telegram-scraper --no-verify-jwt
+
+# Deploy all functions
+for dir in supabase/functions/*/; do
+  if [ -d "$dir" ] && [ "$(basename $dir)" != "_shared" ]; then
+    supabase functions deploy $(basename $dir) --no-verify-jwt
+  fi
+done
+
+# Set secrets
+supabase secrets set AZURE_OPENAI_ENDPOINT="https://..."
+supabase secrets set AZURE_OPENAI_API_KEY="..."
+```
+
+---
+
+## Database Schema (Supabase PostgreSQL)
+
+### Main Tables
+
+#### `news` - Новини
+```sql
+id                      UUID PRIMARY KEY
+source_id               UUID (FK → news_sources)
+original_title          TEXT
+original_content        TEXT
+original_url            TEXT
+title_en, title_no, title_ua       TEXT (мультимовні заголовки)
+content_en, content_no, content_ua TEXT (мультимовний контент)
+description_en, description_no, description_ua TEXT
+slug_en, slug_no, slug_ua          TEXT (SEO-friendly URLs)
+image_url               TEXT (оригінальне зображення)
+processed_image_url     TEXT (користувацьке зображення)
+video_url               TEXT
+video_type              TEXT ('youtube' | 'telegram_embed' | 'direct_url')
+tags                    TEXT[] (масив тегів)
+source_link             TEXT (зовнішнє джерело)
+published_at            TIMESTAMPTZ
+created_at, updated_at  TIMESTAMPTZ
+is_rewritten            BOOLEAN (AI переписав)
+is_published            BOOLEAN (опубліковано на сайті)
+pre_moderation_status   TEXT ('pending' | 'approved' | 'rejected')
+rejection_reason        TEXT
+views_count             INTEGER
+linkedin_post_id        TEXT
+linkedin_language       TEXT
+linkedin_posted_at      TIMESTAMPTZ
+image_generation_prompt TEXT (AI prompt для зображення)
+prompt_generated_at     TIMESTAMPTZ
+```
+
+#### `blog_posts` - Блог-пости
+```sql
+id                      UUID PRIMARY KEY
+author_id               UUID (FK → users, nullable)
+source_news_id          UUID (FK → news, якщо створено з новини)
+title_en, title_no, title_ua       TEXT
+content_en, content_no, content_ua TEXT
+description_en, description_no, description_ua TEXT
+slug_en, slug_no, slug_ua          TEXT
+image_url, cover_image_url         TEXT
+processed_image_url     TEXT
+video_url, video_type   TEXT
+tags                    TEXT[]
+category                TEXT
+reading_time            INTEGER (хвилини)
+is_published            BOOLEAN
+is_featured             BOOLEAN
+views_count             INTEGER
+published_at            TIMESTAMPTZ
+linkedin_post_id, linkedin_language, linkedin_posted_at
+```
+
+#### `news_sources` - Джерела новин
+```sql
+id                      UUID PRIMARY KEY
+name                    TEXT
+url                     TEXT (base URL)
+rss_url                 TEXT (RSS feed URL)
+source_type             TEXT ('rss' | 'telegram' | 'web')
+is_active               BOOLEAN
+fetch_interval          INTEGER (секунди)
+last_fetched_at         TIMESTAMPTZ
+category                TEXT
+```
+
+#### `ai_prompts` - AI промпти
+```sql
+id                      UUID PRIMARY KEY
+name                    TEXT (назва в UI)
+description             TEXT
+prompt_text             TEXT (повний текст промпту)
+prompt_type             TEXT ('pre_moderation' | 'news_rewrite' | 'blog_rewrite' | 'image_generation')
+is_active               BOOLEAN
+usage_count             INTEGER
+created_at, updated_at  TIMESTAMPTZ
+```
+
+#### `users` - Адміністратори
+```sql
+id                      UUID PRIMARY KEY
+email                   TEXT UNIQUE
+password_hash           TEXT
+full_name               TEXT
+role                    TEXT ('admin' | 'editor')
+is_active               BOOLEAN
+last_login_at           TIMESTAMPTZ
+```
+
+#### `tags` - Теги
+```sql
+id                      UUID PRIMARY KEY
+name_en, name_no, name_ua TEXT
+slug                    TEXT UNIQUE
+usage_count             INTEGER
+```
+
+#### `contact_forms` - Контактні форми
+```sql
+id                      UUID PRIMARY KEY
+name                    TEXT
+email                   TEXT
+message                 TEXT
+created_at              TIMESTAMPTZ
+```
+
+### Database Views
+
+```sql
+-- latest_news: Останні опубліковані новини з джерелами
+SELECT n.*, s.name as source_name
+FROM news n
+JOIN news_sources s ON n.source_id = s.id
+WHERE n.is_published = true
+ORDER BY n.published_at DESC
+
+-- latest_blog_posts: Останні опубліковані блог-пости
+SELECT * FROM blog_posts
+WHERE is_published = true
+ORDER BY published_at DESC
+```
+
+---
+
+## CI/CD Pipelines (GitHub Actions)
+
+### `.github/workflows/deploy.yml` - Netlify Deployment
+
+**Тригери:**
+- Push до `main` branch
+- Pull Requests
+- Manual dispatch
+
+**Кроки:**
+1. Checkout коду
+2. Setup Node.js 20
+3. Install dependencies (`npm ci`)
+4. Build Next.js (`netlify build`)
+5. Deploy (preview для PR, production для push)
+
+### `.github/workflows/deploy-supabase.yml` - Edge Functions
+
+**Тригери:**
+- Push до `main` з змінами в `supabase/functions/**` або `supabase/migrations/**`
+- Manual dispatch
+
+**Кроки:**
+1. Checkout коду
+2. Setup Supabase CLI
+3. Login з access token
+4. Link project
+5. Deploy всі functions (loop через директорії)
+6. Run migrations
+
+**Environment Secrets (GitHub):**
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_PROJECT_REF`
+- `NETLIFY_AUTH_TOKEN`
+- `NETLIFY_SITE_ID`
+
+---
+
+## Translation System
+
+### Як працює
+
+1. **TranslationContext** (`contexts/TranslationContext.tsx`)
+   - Зберігає поточну мову (`en` | `no` | `ua`)
+   - Надає функцію `t(key)` для перекладу
+
+2. **Translations** (`utils/translations.ts`)
+   - 3000+ ключів перекладу
+   - Структура: `{ en: {...}, no: {...}, ua: {...} }`
+
+3. **Використання в компонентах:**
+```tsx
+import { useTranslations } from '@/contexts/TranslationContext'
+
+function MyComponent() {
+  const { t, language, setLanguage } = useTranslations()
+
+  return (
+    <div>
+      <h1>{t('welcome_title')}</h1>
+      <button onClick={() => setLanguage('ua')}>UA</button>
+    </div>
+  )
+}
+```
+
+### Мультимовний контент в БД
+
+Кожен запис має окремі поля для кожної мови:
+- `title_en`, `title_no`, `title_ua`
+- `content_en`, `content_no`, `content_ua`
+- `slug_en`, `slug_no`, `slug_ua`
 
 ---
 
@@ -2017,6 +2389,145 @@ for dir in supabase/functions/*/; do
   fi
 done
 ```
+
+---
+
+## Component Architecture
+
+### BentoGrid Layout
+
+Головна сторінка побудована на **6 інтерактивних секцій** у grid-layout:
+
+```
+┌─────────────┬─────────────┬─────────────┐
+│   About     │  Services   │  Projects   │
+│  (Profile)  │   (Cards)   │ (Carousel)  │
+├─────────────┼─────────────┼─────────────┤
+│   Skills    │    News     │    Blog     │
+│ (Explosion) │   (List)    │   (List)    │
+└─────────────┴─────────────┴─────────────┘
+```
+
+**Взаємодія:**
+- Hover на секцію → фон сторінки змінює колір
+- Hover на секцію → Hero текст заповнюється контрастним кольором
+- 3 секунди hover на Projects → "explosion" у сітку проектів
+- Hover на Skills → particle explosion effect
+- Click на News/Blog → modal з деталями
+
+### Key UI Components
+
+| Компонент | Файл | Опис |
+|-----------|------|------|
+| `BentoGrid` | `components/sections/BentoGrid.tsx` | Головний grid з 6 секцій |
+| `HeroTextAnimation` | `components/ui/HeroTextAnimation.tsx` | Liquid fill ефект для тексту |
+| `ProjectsCarousel` | `components/ui/ProjectsCarousel.tsx` | GSAP карусель + explosion grid |
+| `ServicesAnimation` | `components/ui/ServicesAnimation.tsx` | GSAP анімація сервісів |
+| `SkillsAnimation` | `components/ui/SkillsAnimation.tsx` | Particle explosion на hover |
+| `AboutAnimation` | `components/ui/AboutAnimation.tsx` | Text morph анімація |
+| `Modal` | `components/ui/Modal.tsx` | Reusable modal з safe-area |
+| `NewsSection` | `components/sections/NewsSection.tsx` | News list + detail view |
+| `BlogSection` | `components/sections/BlogSection.tsx` | Blog list + detail view |
+
+### Modal System (Parallel Routes)
+
+Next.js App Router parallel routes для модалів:
+
+```
+app/
+├── @modal/                    # Modal slot
+│   ├── (.)blog/[slug]/        # Intercepted blog route
+│   │   └── page.tsx           # Shows BlogModal
+│   └── (.)news/[slug]/        # Intercepted news route
+│       └── page.tsx           # Shows NewsModal
+├── blog/[slug]/page.tsx       # Full blog page (direct navigation)
+└── news/[slug]/page.tsx       # Full news page (direct navigation)
+```
+
+**Як працює:**
+1. Click на картку → URL змінюється на `/blog/[slug]`
+2. Parallel route `@modal/(.)blog/[slug]` перехоплює
+3. Показується modal overlay
+4. Прямий перехід на `/blog/[slug]` → повна сторінка
+
+---
+
+## Animation Libraries
+
+### GSAP (GreenSock)
+
+Використовується для:
+- `ProjectsCarousel` — infinite scroll carousel
+- `ServicesAnimation` — staggered card animations
+- `SkillsAnimation` — particle positioning
+
+```typescript
+import gsap from 'gsap'
+
+// Timeline example
+const tl = gsap.timeline({ repeat: -1 })
+tl.to('.card', { x: 100, duration: 0.5, stagger: 0.1 })
+```
+
+### Framer Motion
+
+Використовується для:
+- Page transitions
+- Modal animations
+- Drag & drop (Skills manager)
+- Hover states
+
+```tsx
+import { motion, AnimatePresence } from 'framer-motion'
+
+<motion.div
+  initial={{ opacity: 0, scale: 0.9 }}
+  animate={{ opacity: 1, scale: 1 }}
+  exit={{ opacity: 0, scale: 0.9 }}
+  whileHover={{ scale: 1.05 }}
+/>
+```
+
+### Three.js
+
+Використовується для:
+- `ParticleBackground` — 3D частинки на фоні
+
+```typescript
+import * as THREE from 'three'
+
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000)
+const renderer = new THREE.WebGLRenderer({ alpha: true })
+```
+
+---
+
+## Admin Panel
+
+### Доступ
+
+1. URL: `/admin/login`
+2. Email + Password authentication
+3. Redirect до `/admin/dashboard`
+
+### Вкладки Dashboard
+
+| Вкладка | Функціонал |
+|---------|------------|
+| **Queue** | Перегляд pending/approved/rejected новин |
+| **AI Prompts** | Редагування AI промптів (pre_moderation, rewrite, image_generation) |
+| **Skills** | CRUD для технологій (drag & drop сортування) |
+| **Debug** | Toggle console logging для анімацій |
+| **Settings** | Загальні налаштування |
+
+### Skills Manager
+
+- Додавання нових скілів (назва + категорія)
+- Inline редагування
+- Drag & drop сортування (Framer Motion Reorder)
+- Групування по категоріях
+- Зберігання в localStorage
 
 ---
 
