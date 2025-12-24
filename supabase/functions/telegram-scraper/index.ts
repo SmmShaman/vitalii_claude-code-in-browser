@@ -86,8 +86,9 @@ serve(async (req) => {
   }
 
   try {
-    // Force redeploy - Dec 23, 2024
-    console.log('🕷️  Telegram Scraper started')
+    // Version: 2024-12-24-01 - Sequential workflow + debug logging
+    console.log('🕷️  Telegram Scraper v2024-12-24-01 started')
+    console.log('📦 Features: Sequential workflow, media detection, debug logging, retry logic')
 
     // Parse request body for optional parameters
     let requestBody: any = {}
@@ -632,6 +633,7 @@ serve(async (req) => {
     console.log(`\n🎉 Scraping complete! Total processed: ${totalProcessed}`)
     console.log(`🤖 AI Moderation: ${totalApproved} approved, ${totalRejected} rejected`)
     console.log(`📤 Sent to Telegram bot: ${totalSentToBot}`)
+    console.log(`✅ Telegram Scraper v2024-12-24-01 finished successfully`)
 
     return new Response(
       JSON.stringify({
