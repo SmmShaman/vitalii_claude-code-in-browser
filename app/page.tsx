@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { sectionNeonColors } from '@/components/sections/BentoGrid'
+import { sectionNeonColorsMobile } from '@/components/sections/BentoGridMobile'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const Header = dynamic(
   () => import('@/components/layout/Header').then(mod => mod.Header),
@@ -19,6 +21,11 @@ const BentoGrid = dynamic(
   { ssr: false }
 )
 
+const BentoGridMobile = dynamic(
+  () => import('@/components/sections/BentoGridMobile').then(mod => mod.BentoGridMobile),
+  { ssr: false }
+)
+
 const ParticlesBackground = dynamic(
   () => import('@/components/background/ParticlesBackground').then(mod => mod.ParticlesBackground),
   { ssr: false }
@@ -26,36 +33,49 @@ const ParticlesBackground = dynamic(
 
 export default function HomePage() {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null)
+  const isMobile = useIsMobile()
 
   // Get the current neon color based on hovered section
-  const currentNeonColor = hoveredSection ? sectionNeonColors[hoveredSection]?.primary : null
+  // Desktop uses { primary, secondary }, Mobile uses { bg, text, icon }
+  const getCurrentColor = () => {
+    if (!hoveredSection) return null
+    if (isMobile) {
+      return sectionNeonColorsMobile[hoveredSection]?.icon || null
+    }
+    return sectionNeonColors[hoveredSection]?.primary || null
+  }
+  const currentNeonColor = getCurrentColor()
 
   return (
-    <div className="h-screen-safe w-full max-w-[100vw] overflow-hidden flex flex-col relative p-3 sm:p-5 pb-3 sm:pb-4">
+    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'p-2 pb-2 overflow-y-auto' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
       {/* Dynamic Background Color Overlay */}
       <div
         className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
         style={{
           backgroundColor: currentNeonColor || 'transparent',
-          opacity: currentNeonColor ? 0.4 : 0,
+          opacity: currentNeonColor ? 0.3 : 0,
         }}
       />
 
-      {/* Animated Background */}
-      <ParticlesBackground />
+      {/* Animated Background - Hidden on mobile for performance */}
+      {!isMobile && <ParticlesBackground />}
 
-      {/* Header - Auto height based on content with bottom margin */}
-      <div className="flex-shrink-0 relative z-20 mb-3 sm:mb-5">
+      {/* Header - Smaller on mobile */}
+      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'mb-2' : 'mb-3 sm:mb-5'}`}>
         <Header hoveredSection={hoveredSection} />
       </div>
 
-      {/* Main Content - Takes remaining space */}
-      <main className="flex-1 min-h-0 relative z-10 overflow-hidden">
-        <BentoGrid onHoveredSectionChange={setHoveredSection} />
+      {/* Main Content - Different layouts for mobile/desktop */}
+      <main className={`relative z-10 ${isMobile ? 'flex-1 min-h-0' : 'flex-1 min-h-0 overflow-hidden'}`}>
+        {isMobile ? (
+          <BentoGridMobile onHoveredSectionChange={setHoveredSection} />
+        ) : (
+          <BentoGrid onHoveredSectionChange={setHoveredSection} />
+        )}
       </main>
 
       {/* Footer */}
-      <div className="flex-shrink-0 relative z-20 mt-3 sm:mt-4">
+      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'mt-2' : 'mt-3 sm:mt-4'}`}>
         <Footer />
       </div>
     </div>
