@@ -86,6 +86,7 @@ serve(async (req) => {
   }
 
   try {
+    // Force redeploy - Dec 23, 2024
     console.log('🕷️  Telegram Scraper started')
 
     // Parse request body for optional parameters
