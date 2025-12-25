@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { translations } from '@/utils/translations'
-import { ChevronDown, User, Briefcase, FolderOpen, Sparkles, Newspaper, BookOpen } from 'lucide-react'
+import { ChevronDown, User, Briefcase, FolderOpen, Sparkles, Newspaper, BookOpen, Calendar, Eye } from 'lucide-react'
+import { getLatestNews, getLatestBlogPosts } from '@/integrations/supabase/client'
 
 // Section colors (same as desktop)
 const sectionColors: { [key: string]: { bg: string; text: string; icon: string } } = {
@@ -48,11 +49,51 @@ interface BentoGridMobileProps {
 export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps) => {
   const { t, currentLanguage } = useTranslations()
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const [newsData, setNewsData] = useState<any[]>([])
+  const [blogData, setBlogData] = useState<any[]>([])
+  const [isLoadingNews, setIsLoadingNews] = useState(false)
+  const [isLoadingBlog, setIsLoadingBlog] = useState(false)
+
+  // Fetch news and blog data
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoadingNews(true)
+      setIsLoadingBlog(true)
+
+      const [news, blogs] = await Promise.all([
+        getLatestNews(5),
+        getLatestBlogPosts(5)
+      ])
+
+      setNewsData(news || [])
+      setBlogData(blogs || [])
+      setIsLoadingNews(false)
+      setIsLoadingBlog(false)
+    }
+
+    fetchData()
+  }, [])
 
   const handleSectionClick = (sectionId: string) => {
     const newExpanded = expandedSection === sectionId ? null : sectionId
     setExpandedSection(newExpanded)
     onHoveredSectionChange?.(newExpanded)
+  }
+
+  // Helper to get title/description by language
+  const getLocalizedField = (item: any, field: string) => {
+    const lang = currentLanguage.toLowerCase()
+    return item[`${field}_${lang}`] || item[`${field}_en`] || ''
+  }
+
+  // Format date
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    return date.toLocaleDateString(currentLanguage === 'UA' ? 'uk-UA' : currentLanguage === 'NO' ? 'nb-NO' : 'en-US', {
+      day: 'numeric',
+      month: 'short'
+    })
   }
 
   // Render content based on section type
@@ -126,27 +167,116 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
       case 'news':
         return (
-          <div className="space-y-2">
-            <p className="text-gray-600 text-sm">{t(section.contentKey as any)}</p>
-            <a
-              href="/news"
-              className="inline-flex items-center gap-1 text-lime-700 font-medium text-sm hover:underline"
-            >
-              {t('view_all_news' as any) || 'View all news'} →
-            </a>
+          <div className="space-y-3">
+            {isLoadingNews ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-lime-600 border-t-transparent"></div>
+              </div>
+            ) : newsData.length > 0 ? (
+              <>
+                {newsData.slice(0, 3).map((item) => {
+                  const slug = item[`slug_${currentLanguage.toLowerCase()}`] || item.slug_en
+                  return (
+                    <a
+                      key={item.id}
+                      href={`/news/${slug}`}
+                      className="block bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors"
+                    >
+                      <div className="flex gap-3">
+                        {(item.processed_image_url || item.image_url) && (
+                          <img
+                            src={item.processed_image_url || item.image_url}
+                            alt={getLocalizedField(item, 'title')}
+                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 text-sm line-clamp-2">
+                            {getLocalizedField(item, 'title')}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                            <Calendar className="w-3 h-3" />
+                            <span>{formatDate(item.published_at)}</span>
+                            {item.views_count > 0 && (
+                              <>
+                                <Eye className="w-3 h-3 ml-1" />
+                                <span>{item.views_count}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  )
+                })}
+                <a
+                  href="/news"
+                  className="inline-flex items-center gap-1 text-lime-700 font-medium text-sm hover:underline"
+                >
+                  {t('view_all_news' as any) || 'View all news'} →
+                </a>
+              </>
+            ) : (
+              <p className="text-gray-500 text-sm text-center py-4">
+                {t('no_news' as any) || 'No news available'}
+              </p>
+            )}
           </div>
         )
 
       case 'blog':
         return (
-          <div className="space-y-2">
-            <p className="text-gray-600 text-sm">{t(section.contentKey as any)}</p>
-            <a
-              href="/blog"
-              className="inline-flex items-center gap-1 text-blue-700 font-medium text-sm hover:underline"
-            >
-              {t('view_all_blog' as any) || 'View all posts'} →
-            </a>
+          <div className="space-y-3">
+            {isLoadingBlog ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+              </div>
+            ) : blogData.length > 0 ? (
+              <>
+                {blogData.slice(0, 3).map((item) => {
+                  const slug = item[`slug_${currentLanguage.toLowerCase()}`] || item.slug_en
+                  return (
+                    <a
+                      key={item.id}
+                      href={`/blog/${slug}`}
+                      className="block bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors"
+                    >
+                      <div className="flex gap-3">
+                        {(item.processed_image_url || item.image_url || item.cover_image_url) && (
+                          <img
+                            src={item.processed_image_url || item.image_url || item.cover_image_url}
+                            alt={getLocalizedField(item, 'title')}
+                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 text-sm line-clamp-2">
+                            {getLocalizedField(item, 'title')}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                            <Calendar className="w-3 h-3" />
+                            <span>{formatDate(item.published_at)}</span>
+                            {item.reading_time && (
+                              <span className="ml-1">• {item.reading_time} min</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  )
+                })}
+                <a
+                  href="/blog"
+                  className="inline-flex items-center gap-1 text-blue-700 font-medium text-sm hover:underline"
+                >
+                  {t('view_all_blog' as any) || 'View all posts'} →
+                </a>
+              </>
+            ) : (
+              <p className="text-gray-500 text-sm text-center py-4">
+                {t('no_blog_posts' as any) || 'No blog posts available'}
+              </p>
+            )}
           </div>
         )
 

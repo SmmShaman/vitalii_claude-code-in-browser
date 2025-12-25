@@ -6,6 +6,7 @@ import { Globe } from 'lucide-react';
 import { useTranslations, type Language } from '@/contexts/TranslationContext';
 import { heroContrastColors } from '@/components/sections/BentoGrid';
 import { HeroTextAnimation } from '@/components/ui/HeroTextAnimation';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface HeaderProps {
   isCompact?: boolean;
@@ -14,6 +15,7 @@ interface HeaderProps {
 
 export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps) => {
   const { t, currentLanguage, setCurrentLanguage } = useTranslations();
+  const isMobile = useIsMobile();
 
   // Debounced state for smooth transitions between sections
   const [debouncedSection, setDebouncedSection] = useState<string | null>(null);
@@ -67,6 +69,60 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
 
   const languages: Language[] = ['NO', 'EN', 'UA'];
 
+  // Mobile-specific header layout
+  if (isMobile) {
+    return (
+      <header className="w-full">
+        <div className="flex flex-col gap-2">
+          {/* Top row: Name + Language switcher */}
+          <div className="flex items-center justify-between">
+            <h1
+              className="font-bold text-amber-400 font-comfortaa"
+              style={{
+                fontSize: '1.5rem',
+                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+                lineHeight: '1.1'
+              }}
+            >
+              {t('title')}
+            </h1>
+            {/* Compact language buttons */}
+            <div className="flex gap-1">
+              {languages.map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setCurrentLanguage(lang)}
+                  className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
+                    currentLanguage === lang
+                      ? 'bg-gray-800/80 text-white'
+                      : 'bg-white/70 text-gray-700'
+                  }`}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Subtitle with background for contrast */}
+          <p
+            className="text-gray-800 font-medium text-sm px-2 py-1 bg-white/60 rounded-lg inline-block"
+            style={{ maxWidth: 'fit-content' }}
+          >
+            {t('subtitle')}
+          </p>
+          {/* Description with background */}
+          <p
+            className="text-gray-700 text-xs px-2 py-1 bg-white/50 rounded-lg"
+            style={{ lineHeight: '1.4' }}
+          >
+            {t('description')}
+          </p>
+        </div>
+      </header>
+    );
+  }
+
+  // Desktop layout (original)
   return (
     <header className="w-full flex items-start">
       {/* Container wrapper for consistent width with BentoGrid */}
