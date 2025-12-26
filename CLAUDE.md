@@ -45,12 +45,16 @@ npm run lint
 | **Styling** | Tailwind CSS | 3.4.18 |
 | **Animations** | GSAP | 3.13.0 |
 | **Animations** | Framer Motion | 12.23.24 |
+| **Animations** | Anime.js | 4.2.2 |
 | **3D Graphics** | Three.js | 0.180.0 |
 | **Backend** | Supabase (PostgreSQL) | 2.76.1 |
 | **Edge Functions** | Deno (Supabase) | - |
 | **AI** | Azure OpenAI | GPT-4.1-mini |
+| **AI** | Google Gemini | 2.5 Flash |
 | **Forms** | React Hook Form + Zod | 7.65.0 / 4.1.12 |
 | **HTTP** | TanStack Query | 5.90.5 |
+| **UI Primitives** | Radix UI | Dialog, Tooltip, ScrollArea |
+| **Image Processing** | node-vibrant | 4.0.3 |
 | **Deployment** | Netlify | - |
 | **CI/CD** | GitHub Actions | - |
 | **Languages** | Мультимовна підтримка | EN, NO, UA |
@@ -83,15 +87,21 @@ npm run lint
 │   ├── layout/                   # Layout components
 │   │   ├── Header.tsx            # Hero section with animations
 │   │   ├── Footer.tsx            # Footer with social links
-│   │   └── Sidebar.tsx           # Language switcher
+│   │   ├── Sidebar.tsx           # Language switcher
+│   │   └── ArticleHeader.tsx     # Compact sticky header for articles
 │   ├── sections/                 # Page sections
-│   │   ├── BentoGrid.tsx         # Main 6-section grid
+│   │   ├── BentoGrid.tsx         # Main 6-section grid (desktop)
+│   │   ├── BentoGridMobile.tsx   # Mobile accordion layout
 │   │   ├── NewsSection.tsx       # News list + detail view
 │   │   ├── BlogSection.tsx       # Blog list + detail view
 │   │   ├── NewsModal.tsx         # News modal overlay
 │   │   └── BlogModal.tsx         # Blog modal overlay
 │   ├── ui/                       # UI components
 │   │   ├── Modal.tsx             # Reusable modal
+│   │   ├── Toast.tsx             # Toast notifications with context
+│   │   ├── ShareButtons.tsx      # Social sharing (LinkedIn, X, Copy)
+│   │   ├── Skeleton.tsx          # Loading skeleton components
+│   │   ├── ScrollReveal.tsx      # Scroll-triggered animations
 │   │   ├── HeroTextAnimation.tsx # Liquid fill text effect
 │   │   ├── ProjectsCarousel.tsx  # Projects carousel + explosion
 │   │   ├── ServicesAnimation.tsx # GSAP services animation
@@ -100,7 +110,12 @@ npm run lint
 │   ├── admin/                    # Admin components
 │   │   ├── SkillsManager.tsx     # CRUD for skills
 │   │   ├── DebugSettings.tsx     # Debug mode toggle
-│   │   └── AIPromptsManager.tsx  # AI prompts editor
+│   │   ├── AIPromptsManager.tsx  # AI prompts editor
+│   │   ├── LinkedInPostsManager.tsx  # LinkedIn posts management
+│   │   ├── ImageProcessingSettings.tsx  # Gemini AI image settings
+│   │   └── APIKeysSettings.tsx   # External API keys management
+│   ├── ArticleLayout.tsx         # Reusable article page wrapper
+│   ├── Sidebar.tsx               # Article sidebar (latest news/blog)
 │   └── background/               # Background effects
 │       └── ParticleBackground.tsx
 │
@@ -108,7 +123,11 @@ npm run lint
 │   └── TranslationContext.tsx    # Language switching (EN/NO/UA)
 │
 ├── hooks/                        # Custom React Hooks
-│   └── useReducedMotion.ts       # Accessibility: prefers-reduced-motion
+│   ├── useReducedMotion.ts       # Accessibility: prefers-reduced-motion
+│   └── useIsMobile.ts            # Mobile/tablet detection hooks
+│
+├── lib/                          # Utility libraries
+│   └── utils.ts                  # cn() - Tailwind class merging
 │
 ├── integrations/supabase/        # Supabase integration
 │   ├── client.ts                 # Supabase client + API functions
@@ -119,7 +138,11 @@ npm run lint
 │   ├── debug.ts                  # Debug logging utilities
 │   ├── translations.ts           # Translation strings (3000+)
 │   ├── skillsStorage.ts          # Skills localStorage CRUD
+│   ├── skillLogos.ts             # SVG logos from SimpleIcons CDN
 │   └── footerApi.ts              # Weather, geolocation APIs
+│
+├── app/
+│   └── providers.tsx             # TranslationProvider + ToastProvider
 │
 ├── supabase/                     # Supabase configuration
 │   ├── functions/                # Edge Functions (Deno)
@@ -188,7 +211,7 @@ npm run lint
 | **telegram-webhook** | Обробка Telegram bot callbacks | Telegram messages | callback_query → DB updates |
 | **find-source-link** | Витягування URL джерел з контенту | telegram-scraper | text content → source_link |
 | **fetch-news** | Завантаження новин з RSS | Manual / Scheduled | RSS URL → raw data |
-| **process-image** | Завантаження зображень в Supabase Storage | telegram-webhook | image file → Storage URL |
+| **process-image** | Обробка зображень через Google Gemini AI | telegram-webhook / manual | image + prompt → enhanced image |
 | **resend-to-bot** | Повторна відправка failed submissions | Scheduled | pending news → bot message |
 | **telegram-monitor** | Моніторинг статусу Telegram бота | Scheduled | - → health check logs |
 | **test-youtube-auth** | Тестування YouTube OAuth налаштувань | Manual | - → token validity |
@@ -2419,15 +2442,21 @@ done
 
 | Компонент | Файл | Опис |
 |-----------|------|------|
-| `BentoGrid` | `components/sections/BentoGrid.tsx` | Головний grid з 6 секцій |
+| `BentoGrid` | `components/sections/BentoGrid.tsx` | Головний grid з 6 секцій (desktop) |
+| `BentoGridMobile` | `components/sections/BentoGridMobile.tsx` | Accordion layout (mobile) |
 | `HeroTextAnimation` | `components/ui/HeroTextAnimation.tsx` | Liquid fill ефект для тексту |
 | `ProjectsCarousel` | `components/ui/ProjectsCarousel.tsx` | GSAP карусель + explosion grid |
 | `ServicesAnimation` | `components/ui/ServicesAnimation.tsx` | GSAP анімація сервісів |
 | `SkillsAnimation` | `components/ui/SkillsAnimation.tsx` | Particle explosion на hover |
 | `AboutAnimation` | `components/ui/AboutAnimation.tsx` | Text morph анімація |
 | `Modal` | `components/ui/Modal.tsx` | Reusable modal з safe-area |
+| `Toast` | `components/ui/Toast.tsx` | Toast notifications + Context |
+| `ShareButtons` | `components/ui/ShareButtons.tsx` | Social sharing (LinkedIn, X) |
+| `Skeleton` | `components/ui/Skeleton.tsx` | Loading skeleton components |
+| `ScrollReveal` | `components/ui/ScrollReveal.tsx` | Scroll-triggered animations |
 | `NewsSection` | `components/sections/NewsSection.tsx` | News list + detail view |
 | `BlogSection` | `components/sections/BlogSection.tsx` | Blog list + detail view |
+| `ArticleLayout` | `components/ArticleLayout.tsx` | Standalone article wrapper |
 
 ### Modal System (Parallel Routes)
 
@@ -2518,6 +2547,9 @@ const renderer = new THREE.WebGLRenderer({ alpha: true })
 | **Queue** | Перегляд pending/approved/rejected новин |
 | **AI Prompts** | Редагування AI промптів (pre_moderation, rewrite, image_generation) |
 | **Skills** | CRUD для технологій (drag & drop сортування) |
+| **LinkedIn** | Управління LinkedIn публікаціями (repost, статистика) |
+| **Image Processing** | Налаштування Gemini AI для обробки зображень (сезонні теми) |
+| **API Keys** | Управління зовнішніми API ключами (Google, LinkedIn) |
 | **Debug** | Toggle console logging для анімацій |
 | **Settings** | Загальні налаштування |
 
@@ -2531,13 +2563,540 @@ const renderer = new THREE.WebGLRenderer({ alpha: true })
 
 ---
 
+## Mobile Layout System (December 2024)
+
+### BentoGridMobile Component
+
+Мобільна версія головної сторінки з accordion-стилем для 6 секцій.
+
+**Файл:** `components/sections/BentoGridMobile.tsx`
+
+**Функціонал:**
+- Collapsible секції з Framer Motion анімаціями
+- Touch-friendly UI з іконками (Lucide React)
+- Завантаження останніх новин та блог-постів з Supabase
+- Локалізовані дати для кожної мови
+- Кольорова схема ідентична desktop версії
+
+**Структура:**
+```
+┌─────────────────────────────────────┐
+│  👤 About                      ▼   │
+├─────────────────────────────────────┤
+│  💼 Services                   ▼   │
+├─────────────────────────────────────┤
+│  📁 Projects                   ▼   │
+├─────────────────────────────────────┤
+│  ✨ Skills                     ▼   │
+├─────────────────────────────────────┤
+│  📰 News                       ▲   │
+│  ┌─────────────────────────────┐   │
+│  │ [img] Article Title...      │   │
+│  │       📅 Dec 25  👁 42      │   │
+│  │ [img] Article Title...      │   │
+│  │       📅 Dec 24  👁 38      │   │
+│  │ View all news →             │   │
+│  └─────────────────────────────┘   │
+├─────────────────────────────────────┤
+│  📖 Blog                       ▼   │
+└─────────────────────────────────────┘
+```
+
+**Використання:**
+```tsx
+// app/page.tsx
+import { useIsMobile } from '@/hooks/useIsMobile'
+import { BentoGridMobile } from '@/components/sections/BentoGridMobile'
+
+export default function Home() {
+  const isMobile = useIsMobile()
+
+  return isMobile ? (
+    <BentoGridMobile onHoveredSectionChange={handleHover} />
+  ) : (
+    <BentoGrid onHoveredSectionChange={handleHover} />
+  )
+}
+```
+
+---
+
+## Mobile Detection Hooks
+
+**Файл:** `hooks/useIsMobile.ts`
+
+### useIsMobile()
+
+Визначає чи пристрій мобільний (ширина < 768px).
+
+```typescript
+export const useIsMobile = (): boolean => {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  return isMobile
+}
+```
+
+### useIsTablet()
+
+Визначає чи пристрій планшет (768px ≤ ширина < 1024px).
+
+```typescript
+export const useIsTablet = (): boolean => {
+  const [isTablet, setIsTablet] = useState(false)
+
+  useEffect(() => {
+    const checkTablet = () => {
+      const width = window.innerWidth
+      setIsTablet(width >= 768 && width < 1024)
+    }
+    checkTablet()
+    window.addEventListener('resize', checkTablet)
+    return () => window.removeEventListener('resize', checkTablet)
+  }, [])
+
+  return isTablet
+}
+```
+
+**SSR-безпечність:** Initial state `false`, оновлюється при mount.
+
+---
+
+## Article Layout System
+
+### ArticleLayout Component
+
+**Файл:** `components/ArticleLayout.tsx`
+
+Обгортка для standalone сторінок статей (news/blog).
+
+```tsx
+interface ArticleLayoutProps {
+  children: React.ReactNode
+  backHref?: string      // Default: '/'
+  backLabel?: string     // Default: 'Back to Home'
+}
+
+export function ArticleLayout({ children, backHref = '/', backLabel }: ArticleLayoutProps) {
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <ArticleHeader backHref={backHref} backLabel={backLabel} />
+      <main className="flex-1">{children}</main>
+      <Footer />
+    </div>
+  )
+}
+```
+
+### ArticleHeader Component
+
+**Файл:** `components/layout/ArticleHeader.tsx`
+
+Compact sticky header для сторінок статей:
+- Кнопка "Back" з посиланням
+- Language switcher
+- Sticky positioning при скролі
+
+---
+
+## Toast Notification System
+
+**Файл:** `components/ui/Toast.tsx`
+
+Global toast система з React Context API.
+
+### Типи toast:
+
+| Type | Колір | Auto-dismiss |
+|------|-------|--------------|
+| `success` | Зелений | 3 секунди |
+| `error` | Червоний | 5 секунд |
+| `warning` | Amber | 3 секунди |
+| `info` | Синій | 3 секунди |
+
+### Використання:
+
+```tsx
+import { useToast } from '@/components/ui/Toast'
+
+function MyComponent() {
+  const { showToast } = useToast()
+
+  return (
+    <button onClick={() => showToast('Link copied!', 'success')}>
+      Copy Link
+    </button>
+  )
+}
+```
+
+### Provider Setup:
+
+```tsx
+// app/providers.tsx
+import { ToastProvider } from '@/components/ui/Toast'
+
+export function Providers({ children }) {
+  return (
+    <TranslationProvider>
+      <ToastProvider>
+        {children}
+      </ToastProvider>
+    </TranslationProvider>
+  )
+}
+```
+
+### Accessibility:
+
+- `role="status"` для screen readers
+- `aria-live="polite"` для announcements
+- Manual dismiss button
+
+---
+
+## Social Sharing Buttons
+
+**Файл:** `components/ui/ShareButtons.tsx`
+
+Кнопки для поширення статей у соцмережах.
+
+### Підтримувані платформи:
+
+| Платформа | Метод | Callback |
+|-----------|-------|----------|
+| LinkedIn | Share offsite URL | Opens in popup |
+| X (Twitter) | Intent URL with text | Opens in popup |
+| Copy Link | Clipboard API | Toast notification |
+
+### Props:
+
+```typescript
+interface ShareButtonsProps {
+  url: string           // Relative URL (e.g., '/news/slug')
+  title: string         // Article title
+  description?: string  // Article description (for Twitter)
+}
+```
+
+### Використання:
+
+```tsx
+<ShareButtons
+  url="/news/meta-unveils-sam-audio"
+  title="Meta Unveils SAM Audio"
+  description="A breakthrough in AI audio processing"
+/>
+```
+
+---
+
+## Loading Skeleton Components
+
+**Файл:** `components/ui/Skeleton.tsx`
+
+Компоненти для loading states.
+
+### Skeleton (Base)
+
+```tsx
+<Skeleton className="h-4 w-32" />
+```
+
+### ArticleSkeleton
+
+Повний скелетон для сторінки статті:
+- Hero image placeholder
+- Meta info (date, views)
+- Title (2 lines)
+- Tags
+- Content paragraphs
+- Share buttons
+- Related articles grid
+
+### NewsCardSkeleton
+
+Скелетон для карточки новини у списку.
+
+### Features:
+
+- Pulse animation
+- Dark mode support
+- Accessible (`role="status"`, `aria-label`)
+
+---
+
+## Scroll Reveal Animations
+
+**Файл:** `components/ui/ScrollReveal.tsx`
+
+Intersection Observer-based анімації при скролі.
+
+### ScrollReveal Component
+
+```tsx
+interface ScrollRevealProps {
+  children: ReactNode
+  delay?: number           // Seconds (default: 0)
+  direction?: 'up' | 'down' | 'left' | 'right' | 'none'  // Default: 'up'
+  duration?: number        // Seconds (default: 0.5)
+  once?: boolean           // Animate only once (default: true)
+}
+```
+
+**Використання:**
+
+```tsx
+<ScrollReveal direction="up" delay={0.2}>
+  <h2>This slides up when scrolled into view</h2>
+</ScrollReveal>
+```
+
+### StaggerReveal Component
+
+Staggered animation для списків:
+
+```tsx
+<StaggerReveal staggerDelay={0.1} direction="up">
+  {items.map(item => (
+    <Card key={item.id}>{item.title}</Card>
+  ))}
+</StaggerReveal>
+```
+
+---
+
+## Skill Logos Utility
+
+**Файл:** `utils/skillLogos.ts`
+
+SVG логотипи з SimpleIcons CDN для секції Skills.
+
+### Визначені логотипи:
+
+```typescript
+const skillLogos: Record<string, string> = {
+  'React': 'https://cdn.simpleicons.org/react/61DAFB',
+  'TypeScript': 'https://cdn.simpleicons.org/typescript/3178C6',
+  'Tailwind CSS': 'https://cdn.simpleicons.org/tailwindcss/06B6D4',
+  'Python': 'https://cdn.simpleicons.org/python/3776AB',
+  'Supabase': 'https://cdn.simpleicons.org/supabase/3FCF8E',
+  'n8n': 'https://cdn.simpleicons.org/n8n/EA4B71',
+  // ... 20+ logos
+}
+```
+
+### getSkillLogo(skillName)
+
+Повертає URL логотипу або генерує fallback з ініціалами:
+
+```typescript
+const logo = getSkillLogo('React')      // SimpleIcons URL
+const logo = getSkillLogo('CustomTool') // SVG with "CT" initials
+```
+
+---
+
+## Admin Panel - New Components
+
+### LinkedInPostsManager
+
+**Файл:** `components/admin/LinkedInPostsManager.tsx`
+
+Управління LinkedIn публікаціями.
+
+**Функціонал:**
+- Список всіх news/blog з LinkedIn post ID
+- Metadata: тип, заголовок, мова, дата
+- Статистика (загальна кількість, по мовах)
+- Repost функціональність (перепублікація іншою мовою)
+- Зовнішні посилання на статті та LinkedIn пости
+
+### ImageProcessingSettings
+
+**Файл:** `components/admin/ImageProcessingSettings.tsx`
+
+Налаштування AI промптів для обробки зображень через Google Gemini.
+
+**Сезонні теми:**
+
+| ID | Назва | Іконка | Опис |
+|-----|-------|--------|------|
+| christmas | 🎄 Різдвяний | Snowflake | Warm holiday lighting, cozy winter |
+| spring | 🌸 Весняний | Flower2 | Fresh, vibrant, optimistic |
+| easter | 🐰 Пасхальний | Star | Warm, pastel tones |
+| summer | ☀️ Літній | Sun | Bright, energetic |
+| autumn | 🍂 Осінній | Leaf | Golden/orange, cozy |
+| valentine | 💝 Валентина | Heart | Romantic, pink/red accents |
+
+**База даних:** Промпти зберігаються в `ai_prompts` з типом `image_linkedin_optimize`
+
+### APIKeysSettings
+
+**Файл:** `components/admin/APIKeysSettings.tsx`
+
+Управління зовнішніми API ключами.
+
+**Підтримувані ключі:**
+
+| Key Name | Опис | Документація |
+|----------|------|--------------|
+| `GOOGLE_API_KEY` | Gemini AI image processing | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `LINKEDIN_ACCESS_TOKEN` | OAuth2 token | [LinkedIn Developer Portal](https://linkedin.com/developers/apps) |
+| `LINKEDIN_PERSON_URN` | User ID (urn:li:person:xxx) | LinkedIn API /v2/me |
+
+**Функції:**
+- Show/hide password fields
+- Copy to clipboard
+- Test API key
+- Save to `api_settings` table
+
+---
+
+## New Database Tables
+
+### `api_settings` - API Keys Storage
+
+**Міграція:** `20251220_add_api_settings.sql`
+
+```sql
+CREATE TABLE api_settings (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_name        TEXT UNIQUE NOT NULL,
+  key_value       TEXT,
+  description     TEXT,
+  is_active       BOOLEAN DEFAULT true,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- Default keys
+INSERT INTO api_settings (key_name, description) VALUES
+  ('GOOGLE_API_KEY', 'Google API Key for Gemini image processing'),
+  ('LINKEDIN_ACCESS_TOKEN', 'LinkedIn OAuth2 access token'),
+  ('LINKEDIN_PERSON_URN', 'LinkedIn Person URN');
+```
+
+**RLS:** Authenticated users read, service role manages.
+
+### `daily_images` - Background Images Cache
+
+**Міграція:** `20250102000000_create_daily_images.sql`
+
+```sql
+CREATE TABLE daily_images (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date            DATE UNIQUE NOT NULL,
+  title           TEXT,
+  description     TEXT,
+  image_url       TEXT NOT NULL,
+  thumbnail_url   TEXT,
+  source          TEXT,                    -- 'bing', 'nasa', 'unsplash'
+  colors          JSONB,                   -- Vibrant.js color palette
+  theme           TEXT,                    -- 'winter', 'space', 'nature', 'abstract'
+  effect          TEXT,                    -- 'snow', 'rain', 'stars', 'sparkles'
+  fetch_duration_ms INTEGER,
+  last_viewed_at  TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Use Case:** Динамічні фони з детекцією теми та екстракцією кольорів.
+
+### New Columns
+
+**`images` array (news table):**
+```sql
+ALTER TABLE news ADD COLUMN images TEXT[];
+```
+Підтримка кількох зображень на пост (Telegram albums).
+
+---
+
+## Google Gemini Image Processing
+
+**Edge Function:** `supabase/functions/process-image/index.ts`
+
+Обробка зображень через Google Gemini 2.5 Flash.
+
+### Prompt Types:
+
+| Type | Опис |
+|------|------|
+| `enhance` | General quality enhancement |
+| `linkedin_optimize` | Professional look for LinkedIn (1200x627) |
+| `generate` | Generate new image from context |
+| `custom` | Custom prompt from user |
+
+### Request Schema:
+
+```typescript
+interface ProcessImageRequest {
+  imageUrl: string
+  newsId?: string
+  promptType?: 'enhance' | 'linkedin_optimize' | 'generate' | 'custom'
+  customPrompt?: string
+  newsTitle?: string        // For context injection
+  newsDescription?: string
+  newsUrl?: string
+}
+```
+
+### Placeholders for prompts:
+
+- `{title}` - Article title
+- `{description}` - Article description
+- `{url}` - Article URL
+
+### API Key Source:
+
+1. Environment variable `GOOGLE_API_KEY`
+2. Fallback to `api_settings` table
+
+---
+
+## Utility Function: cn()
+
+**Файл:** `lib/utils.ts`
+
+Merge Tailwind CSS classes з правильним precedence.
+
+```typescript
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+```
+
+**Використання:**
+
+```tsx
+<div className={cn(
+  'base-class',
+  isActive && 'active-class',
+  className
+)} />
+```
+
+---
+
 ## Environment Variables
 
 ```env
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-NEXT_PUBLIC_SITE_URL=https://vitalii-berbeha.netlify.app
+NEXT_PUBLIC_SITE_URL=https://vitalii.no
 
 # Telegram (Bot API + MTProto)
 TELEGRAM_BOT_TOKEN=your_bot_token
@@ -2557,6 +3116,9 @@ LINKEDIN_PERSON_URN=urn:li:person:your_person_id
 # Azure OpenAI
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 AZURE_OPENAI_API_KEY=your_key
+
+# Google AI (Gemini)
+GOOGLE_API_KEY=your_google_api_key
 ```
 
 ## Commands
@@ -2580,5 +3142,5 @@ npx tsc --noEmit # TypeScript check
 Updated \integrations/supabase/client.ts\ to handle missing credentials gracefully.
 - **Problem**: The app crashed or logged errors when \NEXT_PUBLIC_SUPABASE_URL\ was missing.
 - **Solution**: Added \isSupabaseConfigured()\ check.
-- **Behavior**: If keys are missing, data fetching functions return empty arrays/objects instead of failing. This allows the UI to show " No news available\�
+- **Behavior**: If keys are missing, data fetching functions return empty arrays/objects instead of failing. This allows the UI to show " No news available\�
 " states.
