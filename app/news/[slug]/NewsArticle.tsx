@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { getNewsBySlug, getRelatedNews } from '@/integrations/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Calendar, ExternalLink, Eye } from 'lucide-react'
+import { Calendar, ExternalLink, Eye, ChevronRight, Home } from 'lucide-react'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { ShareButtons } from '@/components/ui/ShareButtons'
+import { ArticleSkeleton } from '@/components/ui/Skeleton'
+import { ScrollReveal } from '@/components/ui/ScrollReveal'
 import {
   generateNewsArticleSchema,
   formatDate,
@@ -44,11 +46,7 @@ export function NewsArticle({ slug }: NewsArticleProps) {
   }, [slug])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-lime-600 border-t-transparent"></div>
-      </div>
-    )
+    return <ArticleSkeleton />
   }
 
   if (!news) {
@@ -82,7 +80,66 @@ export function NewsArticle({ slug }: NewsArticleProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(newsArticleSchema) }}
       />
 
-      <article>
+      <article itemScope itemType="https://schema.org/NewsArticle">
+        {/* Breadcrumbs */}
+        <nav
+          aria-label="Breadcrumb"
+          className="max-w-5xl mx-auto px-4 py-4"
+          itemScope
+          itemType="https://schema.org/BreadcrumbList"
+        >
+          <ol className="flex items-center gap-2 text-sm text-gray-600">
+            <li
+              itemProp="itemListElement"
+              itemScope
+              itemType="https://schema.org/ListItem"
+              className="flex items-center"
+            >
+              <Link
+                href="/"
+                itemProp="item"
+                className="flex items-center gap-1.5 hover:text-lime-600 transition-colors"
+              >
+                <Home className="w-4 h-4" />
+                <span itemProp="name">Home</span>
+              </Link>
+              <meta itemProp="position" content="1" />
+            </li>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <li
+              itemProp="itemListElement"
+              itemScope
+              itemType="https://schema.org/ListItem"
+              className="flex items-center"
+            >
+              <Link
+                href="/#news"
+                itemProp="item"
+                className="hover:text-lime-600 transition-colors"
+              >
+                <span itemProp="name">News</span>
+              </Link>
+              <meta itemProp="position" content="2" />
+            </li>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <li
+              itemProp="itemListElement"
+              itemScope
+              itemType="https://schema.org/ListItem"
+              className="flex items-center"
+            >
+              <span
+                itemProp="name"
+                className="text-gray-900 font-medium truncate max-w-[200px] sm:max-w-[300px]"
+                title={title}
+              >
+                {title}
+              </span>
+              <meta itemProp="position" content="3" />
+            </li>
+          </ol>
+        </nav>
+
         {/* Hero Section - Full Width */}
         {heroImage && !news.video_url && (
           <div className="relative w-full h-[35vh] md:h-[45vh] lg:h-[50vh] bg-gray-100">
@@ -131,71 +188,90 @@ export function NewsArticle({ slug }: NewsArticleProps) {
         {/* Content Container */}
         <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
           {/* Meta info */}
-          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-4">
-            {news.published_at && (
-              <time dateTime={news.published_at} className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" />
-                {formatDate(news.published_at)}
-              </time>
-            )}
-            {news.views_count > 0 && (
-              <span className="flex items-center gap-1.5">
-                <Eye className="w-4 h-4" />
-                {news.views_count} views
-              </span>
-            )}
-          </div>
+          <ScrollReveal delay={0.1}>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-4">
+              {news.published_at && (
+                <time dateTime={news.published_at} className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(news.published_at)}
+                </time>
+              )}
+              {news.views_count > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Eye className="w-4 h-4" />
+                  {news.views_count} views
+                </span>
+              )}
+            </div>
+          </ScrollReveal>
 
           {/* Title */}
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-            {title}
-          </h1>
+          <ScrollReveal delay={0.2}>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+              {title}
+            </h1>
+          </ScrollReveal>
 
           {/* Tags */}
           {news.tags && news.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-8">
-              {news.tags.map((tag: string) => (
-                <Link
-                  key={tag}
-                  href={`/news?tag=${encodeURIComponent(tag)}`}
-                  className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-lime-100 hover:text-lime-700 transition-colors"
-                >
-                  #{tag}
-                </Link>
-              ))}
-            </div>
+            <ScrollReveal delay={0.3}>
+              <div className="flex flex-wrap gap-2 mb-8">
+                {news.tags.map((tag: string) => (
+                  <Link
+                    key={tag}
+                    href={`/news?tag=${encodeURIComponent(tag)}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-lime-100 hover:text-lime-700 transition-colors"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+            </ScrollReveal>
           )}
 
-          {/* Article Content */}
-          <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
-            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg">
-              {content}
-            </p>
-          </div>
+          {/* Article Content - Section with H2 */}
+          <ScrollReveal delay={0.4}>
+            <section aria-labelledby="article-content">
+              <h2 id="article-content" className="sr-only">Article Content</h2>
+              <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg">
+                  {content}
+                </p>
+              </div>
+            </section>
+          </ScrollReveal>
 
           {/* Original Source Link */}
           {(news.source_link || news.original_url) && (
-            <div className="mb-8">
-              <a
-                href={news.source_link || news.original_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition-colors font-medium"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Read Original Article
-              </a>
-            </div>
+            <ScrollReveal delay={0.5}>
+              <div className="mb-8">
+                <h2 className="sr-only">Original Source</h2>
+                <a
+                  href={news.source_link || news.original_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Read Original Article
+                </a>
+              </div>
+            </ScrollReveal>
           )}
 
           {/* Share Buttons */}
-          <div className="py-6 border-t border-gray-200">
-            <ShareButtons
-              url={`/news/${currentSlug}`}
-              title={title}
-              description={content?.substring(0, 150)}
-            />
-          </div>
+          <ScrollReveal delay={0.6}>
+            <section aria-labelledby="share-section">
+              <h2 id="share-section" className="sr-only">Share this article</h2>
+              <div className="py-6 border-t border-gray-200">
+                <ShareButtons
+                  url={`/news/${currentSlug}`}
+                  title={title}
+                  description={content?.substring(0, 150)}
+                />
+              </div>
+            </section>
+          </ScrollReveal>
         </div>
 
         {/* Related News - Full width background */}

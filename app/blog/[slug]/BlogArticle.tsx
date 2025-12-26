@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { getBlogPostBySlug, getRelatedBlogPosts } from '@/integrations/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Clock, Calendar, ExternalLink, Eye } from 'lucide-react'
+import { Clock, Calendar, ExternalLink, Eye, ChevronRight, Home } from 'lucide-react'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { ShareButtons } from '@/components/ui/ShareButtons'
+import { ArticleSkeleton } from '@/components/ui/Skeleton'
+import { ScrollReveal } from '@/components/ui/ScrollReveal'
 import {
   generateBlogPostSchema,
   formatDate,
@@ -45,11 +47,7 @@ export function BlogArticle({ slug }: BlogArticleProps) {
   }, [slug])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
-      </div>
-    )
+    return <ArticleSkeleton />
   }
 
   if (!post) {
@@ -83,7 +81,82 @@ export function BlogArticle({ slug }: BlogArticleProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostSchema) }}
       />
 
-      <article>
+      <article itemScope itemType="https://schema.org/BlogPosting">
+        {/* Breadcrumbs */}
+        <nav
+          aria-label="Breadcrumb"
+          className="max-w-5xl mx-auto px-4 py-4"
+          itemScope
+          itemType="https://schema.org/BreadcrumbList"
+        >
+          <ol className="flex items-center gap-2 text-sm text-gray-600">
+            <li
+              itemProp="itemListElement"
+              itemScope
+              itemType="https://schema.org/ListItem"
+              className="flex items-center"
+            >
+              <Link
+                href="/"
+                itemProp="item"
+                className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+              >
+                <Home className="w-4 h-4" />
+                <span itemProp="name">Home</span>
+              </Link>
+              <meta itemProp="position" content="1" />
+            </li>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <li
+              itemProp="itemListElement"
+              itemScope
+              itemType="https://schema.org/ListItem"
+              className="flex items-center"
+            >
+              <Link
+                href="/#blog"
+                itemProp="item"
+                className="hover:text-blue-600 transition-colors"
+              >
+                <span itemProp="name">Blog</span>
+              </Link>
+              <meta itemProp="position" content="2" />
+            </li>
+            {post.category && (
+              <>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <li
+                  itemProp="itemListElement"
+                  itemScope
+                  itemType="https://schema.org/ListItem"
+                  className="flex items-center"
+                >
+                  <span itemProp="name" className="text-blue-600">
+                    {post.category}
+                  </span>
+                  <meta itemProp="position" content="3" />
+                </li>
+              </>
+            )}
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <li
+              itemProp="itemListElement"
+              itemScope
+              itemType="https://schema.org/ListItem"
+              className="flex items-center"
+            >
+              <span
+                itemProp="name"
+                className="text-gray-900 font-medium truncate max-w-[200px] sm:max-w-[300px]"
+                title={title}
+              >
+                {title}
+              </span>
+              <meta itemProp="position" content={post.category ? "4" : "3"} />
+            </li>
+          </ol>
+        </nav>
+
         {/* Hero Section - Full Width */}
         {heroImage && !post.video_url && (
           <div className="relative w-full h-[35vh] md:h-[45vh] lg:h-[50vh] bg-gray-100">
@@ -141,82 +214,101 @@ export function BlogArticle({ slug }: BlogArticleProps) {
         {/* Content Container */}
         <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
           {/* Meta info */}
-          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-4">
-            {post.category && !heroImage && (
-              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-                {post.category}
-              </span>
-            )}
-            {post.published_at && (
-              <time dateTime={post.published_at} className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" />
-                {formatDate(post.published_at)}
-              </time>
-            )}
-            {readingTime > 0 && (
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4" />
-                {readingTime} min read
-              </span>
-            )}
-            {post.views_count > 0 && (
-              <span className="flex items-center gap-1.5">
-                <Eye className="w-4 h-4" />
-                {post.views_count} views
-              </span>
-            )}
-          </div>
+          <ScrollReveal delay={0.1}>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-4">
+              {post.category && !heroImage && (
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+                  {post.category}
+                </span>
+              )}
+              {post.published_at && (
+                <time dateTime={post.published_at} className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(post.published_at)}
+                </time>
+              )}
+              {readingTime > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4" />
+                  {readingTime} min read
+                </span>
+              )}
+              {post.views_count > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Eye className="w-4 h-4" />
+                  {post.views_count} views
+                </span>
+              )}
+            </div>
+          </ScrollReveal>
 
           {/* Title */}
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-            {title}
-          </h1>
+          <ScrollReveal delay={0.2}>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+              {title}
+            </h1>
+          </ScrollReveal>
 
           {/* Tags */}
           {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-8">
-              {post.tags.map((tag: string) => (
-                <Link
-                  key={tag}
-                  href={`/blog?tag=${encodeURIComponent(tag)}`}
-                  className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                >
-                  #{tag}
-                </Link>
-              ))}
-            </div>
+            <ScrollReveal delay={0.3}>
+              <div className="flex flex-wrap gap-2 mb-8">
+                {post.tags.map((tag: string) => (
+                  <Link
+                    key={tag}
+                    href={`/blog?tag=${encodeURIComponent(tag)}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+            </ScrollReveal>
           )}
 
-          {/* Article Content */}
-          <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
-            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg">
-              {content}
-            </p>
-          </div>
+          {/* Article Content - Section with H2 */}
+          <ScrollReveal delay={0.4}>
+            <section aria-labelledby="article-content">
+              <h2 id="article-content" className="sr-only">Article Content</h2>
+              <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg">
+                  {content}
+                </p>
+              </div>
+            </section>
+          </ScrollReveal>
 
           {/* Original Source Link */}
           {post.original_url && (
-            <div className="mb-8">
-              <a
-                href={post.original_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Read Original Article
-              </a>
-            </div>
+            <ScrollReveal delay={0.5}>
+              <div className="mb-8">
+                <h2 className="sr-only">Original Source</h2>
+                <a
+                  href={post.original_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Read Original Article
+                </a>
+              </div>
+            </ScrollReveal>
           )}
 
           {/* Share Buttons */}
-          <div className="py-6 border-t border-gray-200">
-            <ShareButtons
-              url={`/blog/${currentSlug}`}
-              title={title}
-              description={content?.substring(0, 150)}
-            />
-          </div>
+          <ScrollReveal delay={0.6}>
+            <section aria-labelledby="share-section">
+              <h2 id="share-section" className="sr-only">Share this article</h2>
+              <div className="py-6 border-t border-gray-200">
+                <ShareButtons
+                  url={`/blog/${currentSlug}`}
+                  title={title}
+                  description={content?.substring(0, 150)}
+                />
+              </div>
+            </section>
+          </ScrollReveal>
         </div>
 
         {/* Related Posts - Full width background */}
