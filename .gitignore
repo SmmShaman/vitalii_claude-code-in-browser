@@ -32,3 +32,6 @@ supabase/.temp/
 *.sw?
 .next
 tsconfig.tsbuildinfo
+
+# Local Netlify folder
+.netlify

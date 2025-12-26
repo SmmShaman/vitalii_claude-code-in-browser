@@ -69,7 +69,7 @@ export interface NewsFilters {
  * Get latest news (2-3 items for Bento Grid)
  */
 export const getLatestNews = async (limit: number = 3) => {
-  if (!supabase) {
+  if (!isSupabaseConfigured()) {
     console.warn('📰 Supabase not configured - returning empty news');
     return [];
   }
@@ -137,7 +137,7 @@ export const getLatestNews = async (limit: number = 3) => {
  * Get all news with pagination and filters
  */
 export const getAllNews = async (filters: NewsFilters = {}) => {
-  if (!supabase) {
+  if (!isSupabaseConfigured()) {
     console.warn('📰 Supabase not configured - returning empty news');
     return { data: [], count: 0 };
   }
@@ -183,9 +183,9 @@ export const getAllNews = async (filters: NewsFilters = {}) => {
  * Get single news item by ID
  */
 export const getNewsById = async (id: string) => {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
 
-  const { data, error} = await supabase
+  const { data, error } = await supabase
     .from('news')
     .select('*')
     .eq('id', id)
@@ -208,7 +208,7 @@ export const getNewsById = async (id: string) => {
 };
 
 export const getNewsBySlug = async (slug: string, language: 'en' | 'no' | 'ua' = 'en') => {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
 
   // First try the specified language slug
   const slugColumn = `slug_${language}`;
@@ -273,7 +273,7 @@ export interface BlogFilters {
  * Get latest blog posts (2-3 items for Bento Grid)
  */
 export const getLatestBlogPosts = async (limit: number = 3) => {
-  if (!supabase) {
+  if (!isSupabaseConfigured()) {
     console.warn('📝 Supabase not configured - returning empty blog posts');
     return [];
   }
@@ -296,7 +296,7 @@ export const getLatestBlogPosts = async (limit: number = 3) => {
  * Get all blog posts with pagination and filters
  */
 export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
-  if (!supabase) {
+  if (!isSupabaseConfigured()) {
     console.warn('📝 Supabase not configured - returning empty blog posts');
     return { data: [], count: 0 };
   }
@@ -343,7 +343,7 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
  * Searches all slug columns (slug_en, slug_no, slug_ua) to find the post
  */
 export const getBlogPostBySlug = async (slug: string, language: 'en' | 'no' | 'ua' = 'en') => {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
 
   // First try the specified language slug
   const slugColumn = `slug_${language}`;
@@ -393,7 +393,7 @@ export const getBlogPostBySlug = async (slug: string, language: 'en' | 'no' | 'u
  * Get blog post by ID
  */
 export const getBlogPostById = async (id: string) => {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
 
   const { data, error } = await supabase
     .from('blog_posts')
@@ -418,7 +418,7 @@ export const getRelatedBlogPosts = async (
   tags: string[],
   limit: number = 3
 ) => {
-  if (!supabase || !tags || tags.length === 0) return [];
+  if (!isSupabaseConfigured() || !tags || tags.length === 0) return [];
 
   // Get posts that share any of the same tags, excluding the current post
   const { data, error } = await supabase
@@ -446,7 +446,7 @@ export const getRelatedNews = async (
   tags: string[],
   limit: number = 3
 ) => {
-  if (!supabase || !tags || tags.length === 0) return [];
+  if (!isSupabaseConfigured() || !tags || tags.length === 0) return [];
 
   const { data, error } = await supabase
     .from('news')
@@ -473,7 +473,7 @@ export const getRelatedNews = async (
  * Get all tags
  */
 export const getAllTags = async () => {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
 
   const { data, error } = await supabase
     .from('tags')
