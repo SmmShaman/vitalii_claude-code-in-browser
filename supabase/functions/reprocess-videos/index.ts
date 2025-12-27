@@ -18,7 +18,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   downloadTelegramVideoMTKruto,
   uploadVideoToYouTube,
-  getYouTubeConfig
+  getYouTubeConfig,
+  getYouTubeAccessToken
 } from "../_shared/youtube-helpers.ts";
 
 const corsHeaders = {
@@ -197,10 +198,10 @@ serve(async (req) => {
 
             console.log(`📱 Telegram channel: @${channelUsername}, message: ${messageId}`);
 
-            // Download video from Telegram using MTKruto
-            const videoPath = await downloadTelegramVideoMTKruto(channelUsername, messageId);
+            // Download video from Telegram using MTKruto (returns Uint8Array directly)
+            const videoBuffer = await downloadTelegramVideoMTKruto(channelUsername, messageId);
 
-            if (!videoPath) {
+            if (!videoBuffer) {
               console.log(`❌ Failed to download video from Telegram`);
               results.push({
                 id: news.id,
@@ -212,32 +213,25 @@ serve(async (req) => {
               continue;
             }
 
-            console.log(`✅ Video downloaded to: ${videoPath}`);
+            console.log(`✅ Video downloaded, size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
 
-            // Read the video file
-            const videoBuffer = await Deno.readFile(videoPath);
-            console.log(`📦 Video size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
-
-            // Upload to YouTube
+            // Get YouTube config and access token
             const youtubeConfig = getYouTubeConfig();
             if (!youtubeConfig) {
               throw new Error('YouTube configuration missing');
             }
 
-            const uploadResult = await uploadVideoToYouTube({
+            console.log('🔑 Getting YouTube access token...');
+            const accessToken = await getYouTubeAccessToken(youtubeConfig);
+
+            // Upload to YouTube
+            const uploadResult = await uploadVideoToYouTube(accessToken, {
               videoBuffer: videoBuffer,
               title: title.substring(0, 100), // YouTube title limit
               description: `News article: ${title}\n\nSource: https://vitalii.no/news/${news.id}`,
               tags: ['news', 'technology'],
               categoryId: '25' // News & Politics
             });
-
-            // Clean up temp file
-            try {
-              await Deno.remove(videoPath);
-            } catch (e) {
-              console.log('Could not remove temp file:', e);
-            }
 
             if (uploadResult.success && uploadResult.embedUrl) {
               console.log(`🎉 YouTube upload successful: ${uploadResult.embedUrl}`);
