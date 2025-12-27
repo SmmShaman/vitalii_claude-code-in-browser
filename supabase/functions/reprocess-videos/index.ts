@@ -4,9 +4,13 @@
  * Re-downloads videos from Telegram and uploads to YouTube
  * for existing news/blog_posts that have video_type = 'telegram_embed'
  *
+ * Modes:
+ * 1. Manual: POST with { "limit": 10, "offset": 0 }
+ * 2. Autonomous: POST with { "autonomous": true } - reads state from DB, auto-advances
+ *
  * Usage:
  * POST /functions/v1/reprocess-videos
- * Body: { "limit": 10, "offset": 0, "type": "news" | "blog" }
+ * Body: { "limit": 10, "offset": 0, "type": "news" | "blog", "autonomous": true }
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -28,6 +32,7 @@ interface ReprocessRequest {
   type?: 'news' | 'blog' | 'all';  // Which table to process (default: 'news')
   dryRun?: boolean;    // Just show what would be processed (default: false)
   newsId?: string;     // Process specific news ID
+  autonomous?: boolean; // Auto mode - reads state from DB, auto-advances
 }
 
 interface ProcessResult {
@@ -37,6 +42,16 @@ interface ProcessResult {
   newVideoUrl?: string;
   status: 'success' | 'failed' | 'skipped';
   error?: string;
+}
+
+interface ReprocessState {
+  id: number;
+  current_offset: number;
+  last_run_at: string | null;
+  total_processed: number;
+  total_success: number;
+  total_failed: number;
+  is_complete: boolean;
 }
 
 serve(async (req) => {
@@ -59,13 +74,55 @@ serve(async (req) => {
 
     // Parse request
     const body: ReprocessRequest = await req.json().catch(() => ({}));
-    const limit = Math.min(body.limit || 5, 20); // Max 20 per request (YouTube limits)
-    const offset = body.offset || 0;
+    const autonomous = body.autonomous || false;
+    let limit = Math.min(body.limit || 5, 20); // Max 20 per request (YouTube limits)
+    let offset = body.offset || 0;
     const type = body.type || 'news';
     const dryRun = body.dryRun || false;
     const specificNewsId = body.newsId;
 
-    console.log(`📋 Config: limit=${limit}, offset=${offset}, type=${type}, dryRun=${dryRun}`);
+    // In autonomous mode, read state from DB
+    let currentState: ReprocessState | null = null;
+    if (autonomous) {
+      console.log('🤖 Running in AUTONOMOUS mode');
+
+      const { data: stateData, error: stateError } = await supabase
+        .from('video_reprocess_state')
+        .select('*')
+        .eq('id', 1)
+        .single();
+
+      if (stateError) {
+        console.log('⚠️ No state table found, creating initial state...');
+        // Create initial state if table exists but no row
+        await supabase
+          .from('video_reprocess_state')
+          .upsert({ id: 1, current_offset: 0, total_processed: 0, total_success: 0, total_failed: 0, is_complete: false });
+        currentState = { id: 1, current_offset: 0, last_run_at: null, total_processed: 0, total_success: 0, total_failed: 0, is_complete: false };
+      } else {
+        currentState = stateData as ReprocessState;
+      }
+
+      // Check if already complete
+      if (currentState?.is_complete) {
+        console.log('✅ Video reprocessing already COMPLETE!');
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'All videos have been reprocessed!',
+            state: currentState
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Use state offset
+      offset = currentState?.current_offset || 0;
+      limit = 5; // Smaller batches in autonomous mode for reliability
+      console.log(`📍 Autonomous state: offset=${offset}, processed=${currentState?.total_processed}`);
+    }
+
+    console.log(`📋 Config: limit=${limit}, offset=${offset}, type=${type}, dryRun=${dryRun}, autonomous=${autonomous}`);
 
     const results: ProcessResult[] = [];
     let totalPending = 0;
@@ -282,8 +339,37 @@ serve(async (req) => {
 
     const successCount = results.filter(r => r.status === 'success').length;
     const failedCount = results.filter(r => r.status === 'failed').length;
+    const remaining = Math.max(0, totalPending - offset - limit);
 
-    console.log(`\n📊 Summary: ${successCount} success, ${failedCount} failed, ${totalPending - limit} remaining`);
+    console.log(`\n📊 Summary: ${successCount} success, ${failedCount} failed, ${remaining} remaining`);
+
+    // Update state in autonomous mode
+    if (autonomous && !dryRun) {
+      const isComplete = remaining === 0;
+
+      const { error: updateStateError } = await supabase
+        .from('video_reprocess_state')
+        .update({
+          current_offset: offset + results.length,
+          last_run_at: new Date().toISOString(),
+          total_processed: (currentState?.total_processed || 0) + results.length,
+          total_success: (currentState?.total_success || 0) + successCount,
+          total_failed: (currentState?.total_failed || 0) + failedCount,
+          is_complete: isComplete,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 1);
+
+      if (updateStateError) {
+        console.error('Failed to update state:', updateStateError);
+      } else {
+        console.log(`✅ State updated: offset=${offset + results.length}, complete=${isComplete}`);
+      }
+
+      if (isComplete) {
+        console.log('🎉 ALL VIDEOS REPROCESSED! Job complete.');
+      }
+    }
 
     return new Response(
       JSON.stringify({
@@ -292,8 +378,16 @@ serve(async (req) => {
         successCount,
         failedCount,
         totalPending,
-        remaining: Math.max(0, totalPending - offset - limit),
+        remaining,
         nextOffset: offset + limit,
+        autonomous,
+        state: autonomous ? {
+          current_offset: offset + results.length,
+          total_processed: (currentState?.total_processed || 0) + results.length,
+          total_success: (currentState?.total_success || 0) + successCount,
+          total_failed: (currentState?.total_failed || 0) + failedCount,
+          is_complete: remaining === 0
+        } : undefined,
         results,
         message: dryRun
           ? `Dry run complete. Would process ${results.length} items.`
