@@ -14,6 +14,30 @@ interface YouTubeConfig {
   refreshToken: string;
 }
 
+/**
+ * Get YouTube configuration from environment variables
+ * Returns null if any required config is missing
+ */
+export function getYouTubeConfig(): YouTubeConfig | null {
+  const clientId = Deno.env.get("YOUTUBE_CLIENT_ID");
+  const clientSecret = Deno.env.get("YOUTUBE_CLIENT_SECRET");
+  const refreshToken = Deno.env.get("YOUTUBE_REFRESH_TOKEN");
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    console.error('❌ YouTube configuration missing:');
+    console.error(`  YOUTUBE_CLIENT_ID: ${clientId ? 'SET' : 'MISSING'}`);
+    console.error(`  YOUTUBE_CLIENT_SECRET: ${clientSecret ? 'SET' : 'MISSING'}`);
+    console.error(`  YOUTUBE_REFRESH_TOKEN: ${refreshToken ? 'SET' : 'MISSING'}`);
+    return null;
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    refreshToken,
+  };
+}
+
 interface YouTubeUploadOptions {
   videoBuffer: Uint8Array;
   title: string;
