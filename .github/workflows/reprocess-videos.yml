@@ -22,27 +22,31 @@ jobs:
 
     steps:
       - name: Call Reprocess Videos Edge Function
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
           echo "🔄 Calling reprocess-videos Edge Function..."
+          echo "URL: ${SUPABASE_URL}/functions/v1/reprocess-videos"
 
-          RESPONSE=$(curl -s -X POST \
-            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/functions/v1/reprocess-videos" \
-            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${SUPABASE_URL}/functions/v1/reprocess-videos" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "autonomous": true,
-              "limit": ${{ github.event.inputs.limit || 5 }},
-              "dryRun": ${{ github.event.inputs.dry_run || false }}
-            }')
+            -d '{"autonomous": true, "limit": 5}')
 
-          echo "Response: $RESPONSE"
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Code: $HTTP_CODE"
+          echo "Response: $BODY"
 
           # Parse response
-          SUCCESS=$(echo $RESPONSE | jq -r '.success // false')
-          PROCESSED=$(echo $RESPONSE | jq -r '.processed // 0')
-          REMAINING=$(echo $RESPONSE | jq -r '.remaining // 0')
-          IS_COMPLETE=$(echo $RESPONSE | jq -r '.state.is_complete // false')
-          MESSAGE=$(echo $RESPONSE | jq -r '.message // "No message"')
+          SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+          PROCESSED=$(echo "$BODY" | jq -r '.processed // 0')
+          REMAINING=$(echo "$BODY" | jq -r '.remaining // 0')
+          IS_COMPLETE=$(echo "$BODY" | jq -r '.state.is_complete // false')
+          MESSAGE=$(echo "$BODY" | jq -r '.message // "No message"')
 
           echo ""
           echo "📊 Results:"
