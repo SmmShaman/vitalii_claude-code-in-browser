@@ -27,21 +27,18 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
           echo "🔄 Calling reprocess-videos Edge Function..."
-          echo "URL length: ${#SUPABASE_URL}"
-          echo "ANON_KEY length: ${#SUPABASE_ANON_KEY}"
-          echo "URL starts with https: $(echo $SUPABASE_URL | grep -c '^https://')"
 
-          if [ -z "$SUPABASE_URL" ]; then
-            echo "❌ ERROR: SUPABASE_URL is empty!"
-            exit 1
-          fi
+          # Trim whitespace from secrets
+          CLEAN_URL=$(echo "$SUPABASE_URL" | tr -d '[:space:]')
+          CLEAN_KEY=$(echo "$SUPABASE_ANON_KEY" | tr -d '\n\r')
 
-          FULL_URL="${SUPABASE_URL}/functions/v1/reprocess-videos"
-          echo "Full URL length: ${#FULL_URL}"
+          echo "URL length after trim: ${#CLEAN_URL}"
+          FULL_URL="${CLEAN_URL}/functions/v1/reprocess-videos"
+          echo "Full URL: $FULL_URL"
 
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "${SUPABASE_URL}/functions/v1/reprocess-videos" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "$FULL_URL" \
+            -H "Authorization: Bearer ${CLEAN_KEY}" \
             -H "Content-Type: application/json" \
             -d '{"autonomous": true, "limit": 5}')
 
