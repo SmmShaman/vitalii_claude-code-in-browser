@@ -280,8 +280,10 @@ export async function downloadTelegramVideoMTKruto(
 
   console.log('🔌 Initializing MTKruto client...');
 
-  // Initialize client (uses internal memory storage by default)
+  // Initialize client with memory storage (storage: null per MTKruto docs)
+  // See: https://mtkru.to/storage-adapters
   const client = new Client({
+    storage: null,
     apiId: Number(apiId),
     apiHash: apiHash,
   });
