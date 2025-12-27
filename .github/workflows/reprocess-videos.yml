@@ -26,8 +26,8 @@ jobs:
           echo "🔄 Calling reprocess-videos Edge Function..."
 
           RESPONSE=$(curl -s -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/reprocess-videos" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/functions/v1/reprocess-videos" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{
               "autonomous": true,
