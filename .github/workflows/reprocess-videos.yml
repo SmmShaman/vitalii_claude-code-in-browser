@@ -1,0 +1,64 @@
+name: Reprocess Videos (Hourly)
+
+on:
+  schedule:
+    # Run every hour at minute 30
+    - cron: '30 * * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Number of videos to process'
+        required: false
+        default: '5'
+      dry_run:
+        description: 'Dry run (no changes)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  reprocess:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Reprocess Videos Edge Function
+        run: |
+          echo "🔄 Calling reprocess-videos Edge Function..."
+
+          RESPONSE=$(curl -s -X POST \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/functions/v1/reprocess-videos" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "autonomous": true,
+              "limit": ${{ github.event.inputs.limit || 5 }},
+              "dryRun": ${{ github.event.inputs.dry_run || false }}
+            }')
+
+          echo "Response: $RESPONSE"
+
+          # Parse response
+          SUCCESS=$(echo $RESPONSE | jq -r '.success // false')
+          PROCESSED=$(echo $RESPONSE | jq -r '.processed // 0')
+          REMAINING=$(echo $RESPONSE | jq -r '.remaining // 0')
+          IS_COMPLETE=$(echo $RESPONSE | jq -r '.state.is_complete // false')
+          MESSAGE=$(echo $RESPONSE | jq -r '.message // "No message"')
+
+          echo ""
+          echo "📊 Results:"
+          echo "  - Success: $SUCCESS"
+          echo "  - Processed: $PROCESSED"
+          echo "  - Remaining: $REMAINING"
+          echo "  - Complete: $IS_COMPLETE"
+          echo "  - Message: $MESSAGE"
+
+          if [ "$IS_COMPLETE" = "true" ]; then
+            echo ""
+            echo "🎉 All videos have been reprocessed!"
+          fi
+
+      - name: Check for errors
+        if: failure()
+        run: |
+          echo "❌ Reprocess videos job failed. Check logs above."
+          exit 1
