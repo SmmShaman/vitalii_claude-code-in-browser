@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic'
 import { sectionNeonColors } from '@/components/sections/BentoGrid'
 import { sectionNeonColorsMobile } from '@/components/sections/BentoGridMobile'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { SectionedScrollProgress } from '@/components/ui/ScrollProgressIndicator'
 
 const Header = dynamic(
   () => import('@/components/layout/Header').then(mod => mod.Header),
@@ -34,20 +33,11 @@ const ParticlesBackground = dynamic(
 
 export default function HomePage() {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null)
-  const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null)
   const isMobile = useIsMobile()
 
-  // Map section IDs to indices for progress indicator
-  const sectionOrder = ['about', 'services', 'projects', 'skills', 'news', 'blog']
-  const getSectionIndex = (sectionId: string | null) => {
-    if (!sectionId) return null
-    return sectionOrder.indexOf(sectionId)
-  }
-
-  // Update active section index when hovered section changes
+  // Update hovered section for background color changes
   const handleSectionChange = (sectionId: string | null) => {
     setHoveredSection(sectionId)
-    setActiveSectionIndex(getSectionIndex(sectionId))
   }
 
   // Get the current neon color based on hovered section
@@ -80,17 +70,6 @@ export default function HomePage() {
         <Header hoveredSection={hoveredSection} />
       </div>
 
-      {/* Scroll Progress Indicator - Mobile only */}
-      {isMobile && (
-        <SectionedScrollProgress
-          sections={sectionOrder.map((id) => ({
-            id,
-            color: sectionNeonColorsMobile[id]?.icon || '#888'
-          }))}
-          activeSection={activeSectionIndex}
-        />
-      )}
-
       {/* Main Content - Different layouts for mobile/desktop */}
       <main className={`relative z-10 ${isMobile ? 'flex-1 min-h-0' : 'flex-1 min-h-0 overflow-hidden'}`}>
         {isMobile ? (
@@ -100,10 +79,12 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Footer */}
-      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'mt-2' : 'mt-3 sm:mt-4'}`}>
-        <Footer />
-      </div>
+      {/* Footer - Desktop only */}
+      {!isMobile && (
+        <div className="flex-shrink-0 relative z-20 mt-3 sm:mt-4">
+          <Footer />
+        </div>
+      )}
     </div>
   )
 }

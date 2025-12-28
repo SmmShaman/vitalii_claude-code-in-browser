@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { translations } from '@/utils/translations'
-import { ChevronDown, User, Briefcase, FolderOpen, Sparkles, Newspaper, BookOpen, Calendar, Eye } from 'lucide-react'
+import { User, Briefcase, FolderOpen, Sparkles, Newspaper, BookOpen, Calendar, Eye } from 'lucide-react'
 import { getLatestNews, getLatestBlogPosts } from '@/integrations/supabase/client'
-import { useActiveSection } from '@/hooks/useActiveSection'
 
 // Section colors (same as desktop)
 const sectionColors: { [key: string]: { bg: string; text: string; icon: string } } = {
@@ -19,13 +18,13 @@ const sectionColors: { [key: string]: { bg: string; text: string; icon: string }
 }
 
 // Section icons
-const sectionIcons: { [key: string]: React.ReactNode } = {
-  about: <User className="w-5 h-5" />,
-  services: <Briefcase className="w-5 h-5" />,
-  projects: <FolderOpen className="w-5 h-5" />,
-  skills: <Sparkles className="w-5 h-5" />,
-  news: <Newspaper className="w-5 h-5" />,
-  blog: <BookOpen className="w-5 h-5" />,
+const sectionIcons: { [key: string]: any } = {
+  about: User,
+  services: Briefcase,
+  projects: FolderOpen,
+  skills: Sparkles,
+  news: Newspaper,
+  blog: BookOpen,
 }
 
 interface Section {
@@ -49,27 +48,16 @@ interface BentoGridMobileProps {
 
 export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps) => {
   const { t, currentLanguage } = useTranslations()
-  const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const [expandedSection, setExpandedSection] = useState<string>('about') // Default to 'about'
   const [newsData, setNewsData] = useState<any[]>([])
   const [blogData, setBlogData] = useState<any[]>([])
   const [isLoadingNews, setIsLoadingNews] = useState(false)
   const [isLoadingBlog, setIsLoadingBlog] = useState(false)
 
-  // Create refs for each section for scroll tracking
-  const sectionRefs = useRef<(HTMLDivElement | null)[]>([])
-
-  // Track which section is currently in viewport center
-  const activeSectionIndex = useActiveSection(
-    sectionRefs.current.map(el => ({ current: el }))
-  )
-
-  // Update hovered section based on scroll position
+  // Notify parent of expanded section
   useEffect(() => {
-    if (activeSectionIndex !== null && activeSectionIndex >= 0 && activeSectionIndex < sections.length) {
-      const sectionId = sections[activeSectionIndex].id
-      onHoveredSectionChange?.(sectionId)
-    }
-  }, [activeSectionIndex, onHoveredSectionChange])
+    onHoveredSectionChange?.(expandedSection)
+  }, [expandedSection, onHoveredSectionChange])
 
   // Fetch news and blog data
   useEffect(() => {
@@ -92,9 +80,9 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
   }, [])
 
   const handleSectionClick = (sectionId: string) => {
-    const newExpanded = expandedSection === sectionId ? null : sectionId
-    setExpandedSection(newExpanded)
-    onHoveredSectionChange?.(newExpanded)
+    if (sectionId !== expandedSection) {
+      setExpandedSection(sectionId)
+    }
   }
 
   // Helper to get title/description by language
@@ -129,8 +117,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                   key={idx}
                   className="inline-block mr-1"
                   initial={{ opacity: 0, y: 5 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-50px' }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{
                     duration: 0.2,
                     delay: idx * 0.03,
@@ -153,8 +140,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 key={idx}
                 className="bg-white/60 rounded-lg p-3"
                 initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={{
                   duration: 0.4,
                   delay: idx * 0.1,
@@ -177,8 +163,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 key={idx}
                 className="bg-white/60 rounded-lg p-3 flex items-start gap-3"
                 initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: '-50px' }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{
                   duration: 0.4,
                   delay: idx * 0.1,
@@ -203,8 +188,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <motion.p
                 className="text-center text-gray-500 text-xs"
                 initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
                 +{projects.length - 4} more projects
@@ -222,8 +206,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 key={idx}
                 className="px-3 py-1.5 bg-white/60 rounded-full text-xs font-medium text-gray-700"
                 initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{
                   duration: 0.3,
                   delay: idx * 0.05,
@@ -246,13 +229,16 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               </div>
             ) : newsData.length > 0 ? (
               <>
-                {newsData.slice(0, 3).map((item) => {
+                {newsData.slice(0, 3).map((item, idx) => {
                   const slug = item[`slug_${currentLanguage.toLowerCase()}`] || item.slug_en
                   return (
-                    <a
+                    <motion.a
                       key={item.id}
                       href={`/news/${slug}`}
                       className="block bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
                     >
                       <div className="flex gap-3">
                         {(item.processed_image_url || item.image_url) && (
@@ -278,7 +264,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </motion.a>
                   )
                 })}
                 <a
@@ -305,13 +291,16 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               </div>
             ) : blogData.length > 0 ? (
               <>
-                {blogData.slice(0, 3).map((item) => {
+                {blogData.slice(0, 3).map((item, idx) => {
                   const slug = item[`slug_${currentLanguage.toLowerCase()}`] || item.slug_en
                   return (
-                    <a
+                    <motion.a
                       key={item.id}
                       href={`/blog/${slug}`}
                       className="block bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
                     >
                       <div className="flex gap-3">
                         {(item.processed_image_url || item.image_url || item.cover_image_url) && (
@@ -334,7 +323,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </motion.a>
                   )
                 })}
                 <a
@@ -362,76 +351,79 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto overflow-x-hidden pb-4">
-      <div className="flex flex-col gap-3 px-1">
-        {sections.map((section, index) => {
-          const isExpanded = expandedSection === section.id
-          const isActive = activeSectionIndex === index
-          const colors = sectionColors[section.id]
-          const icon = sectionIcons[section.id]
+    <div className="h-full w-full flex flex-col">
+      {/* Compact Top Navigation - Square Buttons */}
+      <div className="flex-shrink-0 mb-3">
+        <div className="grid grid-cols-3 gap-2">
+          {sections.map((section) => {
+            const isExpanded = expandedSection === section.id
+            const colors = sectionColors[section.id]
+            const Icon = sectionIcons[section.id]
 
-          return (
-            <motion.div
-              key={section.id}
-              ref={(el) => {
-                sectionRefs.current[index] = el
-              }}
-              layout
-              className={`rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${colors.bg} ${
-                isActive ? 'ring-2 ring-offset-2' : ''
-              }`}
-              style={isActive ? {
-                '--tw-ring-color': colors.icon
-              } as React.CSSProperties : {}}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Card Header - Always visible */}
-              <button
+            return (
+              <motion.button
+                key={section.id}
                 onClick={() => handleSectionClick(section.id)}
-                className={`w-full px-4 py-4 flex items-center justify-between ${colors.text}`}
+                className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${colors.bg} ${
+                  isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+                whileTap={{ scale: 0.95 }}
+                layout
               >
-                <div className="flex items-center gap-3">
+                <Icon
+                  className="w-5 h-5"
+                  style={{ color: colors.icon }}
+                />
+                <span
+                  className={`text-[0.65rem] font-semibold ${colors.text} text-center leading-tight px-1`}
+                >
+                  {t(section.titleKey as any)}
+                </span>
+              </motion.button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Expanded Section Content */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <AnimatePresence mode="wait">
+          {sections.map((section) => {
+            if (section.id !== expandedSection) return null
+
+            const colors = sectionColors[section.id]
+            const Icon = sectionIcons[section.id]
+
+            return (
+              <motion.div
+                key={section.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className={`h-full rounded-xl ${colors.bg} p-4 overflow-y-auto`}
+              >
+                {/* Section Header */}
+                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-black/10">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: colors.icon + '20', color: colors.icon }}
                   >
-                    {icon}
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <span className="font-semibold text-base">
+                  <h2 className={`font-bold text-lg ${colors.text}`}>
                     {t(section.titleKey as any)}
-                  </span>
+                  </h2>
                 </div>
-                <motion.div
-                  animate={{ rotate: isExpanded ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </motion.div>
-              </button>
 
-              {/* Expandable Content */}
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 pb-4">
-                      <div className="pt-2 border-t border-black/5">
-                        {renderSectionContent(section)}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )
-        })}
+                {/* Section Content */}
+                <div>
+                  {renderSectionContent(section)}
+                </div>
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
       </div>
     </div>
   )

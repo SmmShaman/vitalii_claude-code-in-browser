@@ -114,17 +114,6 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               fontWeight="600"
             />
           </div>
-          {/* Description with liquid fill animation - scroll-driven */}
-          <div className="px-1">
-            <HeroTextAnimation
-              text={t('description') as string}
-              fillColor={fillColor}
-              isActive={isActive}
-              direction="ltr"
-              fontSize="0.75rem"
-              fontWeight="400"
-            />
-          </div>
         </div>
       </header>
     );
