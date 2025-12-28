@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, RefObject } from 'react'
  * Hook to track which section is currently in the viewport center
  * Used for scroll-driven animations on mobile
  */
-export function useActiveSection(sectionRefs: RefObject<HTMLElement>[]) {
+export function useActiveSection(sectionRefs: RefObject<HTMLElement | null>[]) {
   const [activeSection, setActiveSection] = useState<number | null>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
 
@@ -21,7 +21,7 @@ export function useActiveSection(sectionRefs: RefObject<HTMLElement>[]) {
         let maxRatio = 0
         let maxIndex = -1
 
-        entries.forEach((entry, index) => {
+        entries.forEach((entry) => {
           if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
             maxRatio = entry.intersectionRatio
             maxIndex = sectionRefs.findIndex(ref => ref.current === entry.target)
@@ -59,7 +59,7 @@ export function useActiveSection(sectionRefs: RefObject<HTMLElement>[]) {
  * Hook to track scroll progress within a section
  * Returns 0-1 value representing how far through the section we've scrolled
  */
-export function useScrollProgress(elementRef: RefObject<HTMLElement>) {
+export function useScrollProgress(elementRef: RefObject<HTMLElement | null>) {
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export function useScrollProgress(elementRef: RefObject<HTMLElement>) {
  * Hook to detect when element enters viewport
  * Returns boolean indicating if element is in view
  */
-export function useInViewport(elementRef: RefObject<HTMLElement>, options?: IntersectionObserverInit) {
+export function useInViewport(elementRef: RefObject<HTMLElement | null>, options?: IntersectionObserverInit) {
   const [isInView, setIsInView] = useState(false)
 
   useEffect(() => {
