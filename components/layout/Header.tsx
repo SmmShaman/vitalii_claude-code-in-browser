@@ -103,20 +103,28 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               ))}
             </div>
           </div>
-          {/* Subtitle with background for contrast */}
-          <p
-            className="text-gray-800 font-medium text-sm px-2 py-1 bg-white/60 rounded-lg inline-block"
-            style={{ maxWidth: 'fit-content' }}
-          >
-            {t('subtitle')}
-          </p>
-          {/* Description with background */}
-          <p
-            className="text-gray-700 text-xs px-2 py-1 bg-white/50 rounded-lg"
-            style={{ lineHeight: '1.4' }}
-          >
-            {t('description')}
-          </p>
+          {/* Subtitle with liquid fill animation - scroll-driven */}
+          <div className="px-1">
+            <HeroTextAnimation
+              text={t('subtitle') as string}
+              fillColor={fillColor}
+              isActive={isActive}
+              direction="ltr"
+              fontSize="0.875rem"
+              fontWeight="600"
+            />
+          </div>
+          {/* Description with liquid fill animation - scroll-driven */}
+          <div className="px-1">
+            <HeroTextAnimation
+              text={t('description') as string}
+              fillColor={fillColor}
+              isActive={isActive}
+              direction="ltr"
+              fontSize="0.75rem"
+              fontWeight="400"
+            />
+          </div>
         </div>
       </header>
     );
