@@ -79,12 +79,10 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Footer - Desktop only */}
-      {!isMobile && (
-        <div className="flex-shrink-0 relative z-20 mt-3 sm:mt-4">
-          <Footer />
-        </div>
-      )}
+      {/* Footer */}
+      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'mt-2' : 'mt-3 sm:mt-4'}`}>
+        <Footer />
+      </div>
     </div>
   )
 }

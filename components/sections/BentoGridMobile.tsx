@@ -352,9 +352,9 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
   return (
     <div className="h-full w-full flex flex-col">
-      {/* Compact Top Navigation - Square Buttons */}
-      <div className="flex-shrink-0 mb-3">
-        <div className="grid grid-cols-3 gap-2">
+      {/* Compact Top Navigation - Single Row */}
+      <div className="flex-shrink-0 mb-2">
+        <div className="flex gap-1 overflow-x-auto">
           {sections.map((section) => {
             const isExpanded = expandedSection === section.id
             const colors = sectionColors[section.id]
@@ -364,18 +364,18 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <motion.button
                 key={section.id}
                 onClick={() => handleSectionClick(section.id)}
-                className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${colors.bg} ${
-                  isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                className={`flex-shrink-0 px-2 py-1 rounded flex items-center gap-1 transition-all ${colors.bg} ${
+                  isExpanded ? 'opacity-0 pointer-events-none h-0 p-0 overflow-hidden' : 'opacity-100'
                 }`}
                 whileTap={{ scale: 0.95 }}
                 layout
               >
                 <Icon
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   style={{ color: colors.icon }}
                 />
                 <span
-                  className={`text-[0.65rem] font-semibold ${colors.text} text-center leading-tight px-1`}
+                  className={`text-xs font-semibold ${colors.text} whitespace-nowrap`}
                 >
                   {t(section.titleKey as any)}
                 </span>
