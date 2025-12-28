@@ -52,7 +52,7 @@ export default function HomePage() {
   const currentNeonColor = getCurrentColor()
 
   return (
-    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'p-2 pb-2 overflow-y-auto' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
+    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'overflow-hidden' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
       {/* Dynamic Background Color Overlay */}
       <div
         className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
@@ -66,12 +66,12 @@ export default function HomePage() {
       {!isMobile && <ParticlesBackground />}
 
       {/* Header - Smaller on mobile */}
-      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'mb-2' : 'mb-3 sm:mb-5'}`}>
+      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'p-2 pb-1' : 'mb-3 sm:mb-5'}`}>
         <Header hoveredSection={hoveredSection} />
       </div>
 
       {/* Main Content - Different layouts for mobile/desktop */}
-      <main className={`relative z-10 ${isMobile ? 'flex-1 min-h-0' : 'flex-1 min-h-0 overflow-hidden'}`}>
+      <main className={`relative z-10 ${isMobile ? 'flex-1 min-h-0 px-2 pb-20' : 'flex-1 min-h-0 overflow-hidden'}`}>
         {isMobile ? (
           <BentoGridMobile onHoveredSectionChange={handleSectionChange} />
         ) : (
@@ -79,10 +79,16 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Footer */}
-      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'mt-2' : 'mt-3 sm:mt-4'}`}>
-        <Footer />
-      </div>
+      {/* Footer - Fixed bottom on mobile */}
+      {isMobile ? (
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-sm border-t border-gray-200">
+          <Footer />
+        </div>
+      ) : (
+        <div className="flex-shrink-0 relative z-20 mt-3 sm:mt-4">
+          <Footer />
+        </div>
+      )}
     </div>
   )
 }
