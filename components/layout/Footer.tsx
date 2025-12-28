@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchFooterData } from '@/utils/footerApi';
 import type { FooterData } from '@/utils/footerApi';
 import { useTranslations } from '@/contexts/TranslationContext';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface SocialLink {
   icon: React.ComponentType<{ className?: string }>;
@@ -40,6 +41,7 @@ export const Footer = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const { t, currentLanguage } = useTranslations();
+  const isMobile = useIsMobile();
 
   // Email modal state
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -151,11 +153,23 @@ export const Footer = () => {
 
   const { userLocation, weather, distance, error } = footerData;
 
+  // Text colors based on mobile/desktop
+  const textPrimary = isMobile ? 'text-gray-700' : 'text-white/80'
+  const textSecondary = isMobile ? 'text-gray-600' : 'text-white/60'
+  const textAccent = isMobile ? 'text-gray-900' : 'text-white/90'
+  const iconColor = isMobile ? 'text-gray-600 hover:text-gray-800' : 'text-white/80 hover:text-white'
+  const dividerColor = isMobile ? 'bg-gray-300' : 'bg-white/30'
+  const hoverBg = isMobile ? 'hover:bg-gray-100 active:bg-gray-200' : 'hover:bg-white/10 active:bg-white/20'
+
   return (
     <footer className="h-full w-full flex items-center overflow-y-auto">
       <div
-        className="max-w-6xl mx-auto rounded-xl sm:rounded-2xl shadow-2xl border border-black/20 w-full"
-        style={{
+        className={`max-w-6xl mx-auto rounded-xl sm:rounded-2xl w-full ${
+          isMobile ? 'border-black/10' : 'shadow-2xl border border-black/20'
+        }`}
+        style={isMobile ? {
+          background: 'transparent',
+        } : {
           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
           backdropFilter: 'blur(2px)',
         }}
@@ -165,7 +179,7 @@ export const Footer = () => {
           <div className="flex items-center justify-between gap-4">
             {/* Left: Clock */}
             <div
-              className="text-white/80 font-mono flex-shrink-0 flex items-center"
+              className={`${textPrimary} font-mono flex-shrink-0 flex items-center`}
               style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
             >
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
@@ -179,15 +193,15 @@ export const Footer = () => {
               transition={{ delay: 0.2 }}
             >
               {isLoading ? (
-                <div className="text-white/60 text-xs sm:text-sm flex items-center">{t('footer_loading' as any)}</div>
+                <div className={`${textSecondary} text-xs sm:text-sm flex items-center`}>{t('footer_loading' as any)}</div>
               ) : error ? (
-                <div className="text-white/60 text-xs sm:text-sm flex items-center">{error}</div>
+                <div className={`${textSecondary} text-xs sm:text-sm flex items-center`}>{error}</div>
               ) : (
                 <div className="flex items-center gap-3 flex-wrap justify-center">
                   {/* Weather text */}
                   {weather && userLocation && (
                     <div
-                      className="text-white/90 text-center flex items-center"
+                      className={`${textAccent} text-center flex items-center`}
                       style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
                     >
                       {t('footer_weather_in' as any)} <span className="font-semibold ml-1">{userLocation.city}</span>{' '}
@@ -199,7 +213,7 @@ export const Footer = () => {
                   {/* Distance */}
                   {distance !== null && (
                     <div
-                      className="text-white/90 flex items-center"
+                      className={`${textAccent} flex items-center`}
                       style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
                     >
                       {distance.toLocaleString()} {t('footer_distance_from_me' as any)}
@@ -214,7 +228,7 @@ export const Footer = () => {
               {/* Email Button */}
               <button
                 onClick={openEmailModal}
-                className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20"
+                className={`${iconColor} ${hoverBg} transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg`}
                 aria-label="Send Email"
                 onMouseEnter={() => setSelectedSocial('Email')}
                 onMouseLeave={() => setSelectedSocial(null)}
@@ -223,7 +237,7 @@ export const Footer = () => {
               </button>
 
               {/* Divider */}
-              <div className="w-px h-4 sm:h-5 bg-white/30 mx-1" />
+              <div className={`w-px h-4 sm:h-5 ${dividerColor} mx-1`} />
 
               {/* Social Icons */}
               {socialLinks.map((social) => {
@@ -232,7 +246,7 @@ export const Footer = () => {
                   <button
                     key={social.label}
                     onClick={() => handleSocialClick(social)}
-                    className="text-white/80 hover:text-white transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20"
+                    className={`${iconColor} ${hoverBg} transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg`}
                     aria-label={social.label}
                     onMouseEnter={() => setSelectedSocial(social.label)}
                     onMouseLeave={() => setSelectedSocial(null)}
@@ -250,7 +264,7 @@ export const Footer = () => {
               {selectedSocial && (
                 <motion.div
                   key={selectedSocial}
-                  className="text-center text-white/70 text-xs"
+                  className={`text-center ${textSecondary} text-xs`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
