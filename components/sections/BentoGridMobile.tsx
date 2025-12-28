@@ -380,9 +380,9 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               className={`rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${colors.bg} ${
                 isActive ? 'ring-2 ring-offset-2' : ''
               }`}
-              style={{
-                ringColor: isActive ? colors.icon : 'transparent'
-              }}
+              style={isActive ? {
+                '--tw-ring-color': colors.icon
+              } as React.CSSProperties : {}}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
