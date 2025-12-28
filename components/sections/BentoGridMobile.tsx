@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { translations } from '@/utils/translations'
 import { ChevronDown, User, Briefcase, FolderOpen, Sparkles, Newspaper, BookOpen, Calendar, Eye } from 'lucide-react'
 import { getLatestNews, getLatestBlogPosts } from '@/integrations/supabase/client'
+import { useActiveSection } from '@/hooks/useActiveSection'
 
 // Section colors (same as desktop)
 const sectionColors: { [key: string]: { bg: string; text: string; icon: string } } = {
@@ -53,6 +54,22 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
   const [blogData, setBlogData] = useState<any[]>([])
   const [isLoadingNews, setIsLoadingNews] = useState(false)
   const [isLoadingBlog, setIsLoadingBlog] = useState(false)
+
+  // Create refs for each section for scroll tracking
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // Track which section is currently in viewport center
+  const activeSectionIndex = useActiveSection(
+    sectionRefs.current.map(el => ({ current: el }))
+  )
+
+  // Update hovered section based on scroll position
+  useEffect(() => {
+    if (activeSectionIndex !== null && activeSectionIndex >= 0 && activeSectionIndex < sections.length) {
+      const sectionId = sections[activeSectionIndex].id
+      onHoveredSectionChange?.(sectionId)
+    }
+  }, [activeSectionIndex, onHoveredSectionChange])
 
   // Fetch news and blog data
   useEffect(() => {
@@ -102,10 +119,27 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
     switch (section.id) {
       case 'about':
+        const aboutText = t(section.contentKey as any) as string
+        const aboutWords = aboutText.split(' ')
         return (
           <div className="prose prose-sm max-w-none">
-            <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-              {t(section.contentKey as any)}
+            <p className="text-gray-700 leading-relaxed">
+              {aboutWords.map((word, idx) => (
+                <motion.span
+                  key={idx}
+                  className="inline-block mr-1"
+                  initial={{ opacity: 0, y: 5 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-50px' }}
+                  transition={{
+                    duration: 0.2,
+                    delay: idx * 0.03,
+                    ease: 'easeOut'
+                  }}
+                >
+                  {word}
+                </motion.span>
+              ))}
             </p>
           </div>
         )
@@ -115,10 +149,21 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
         return (
           <div className="space-y-3">
             {services.map((service, idx) => (
-              <div key={idx} className="bg-white/60 rounded-lg p-3">
+              <motion.div
+                key={idx}
+                className="bg-white/60 rounded-lg p-3"
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{
+                  duration: 0.4,
+                  delay: idx * 0.1,
+                  ease: 'easeOut'
+                }}
+              >
                 <h4 className="font-semibold text-gray-900 text-sm">{service.title}</h4>
                 <p className="text-gray-600 text-xs mt-1">{service.description}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         )
@@ -128,7 +173,19 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
         return (
           <div className="space-y-3">
             {projects.slice(0, 4).map((project, idx) => (
-              <div key={idx} className="bg-white/60 rounded-lg p-3 flex items-start gap-3">
+              <motion.div
+                key={idx}
+                className="bg-white/60 rounded-lg p-3 flex items-start gap-3"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{
+                  duration: 0.4,
+                  delay: idx * 0.1,
+                  ease: 'backOut'
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
                 {project.image && (
                   <img
                     src={project.image}
@@ -140,12 +197,18 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                   <h4 className="font-semibold text-gray-900 text-sm truncate">{project.title}</h4>
                   <p className="text-gray-600 text-xs mt-1 line-clamp-2">{project.short}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
             {projects.length > 4 && (
-              <p className="text-center text-gray-500 text-xs">
+              <motion.p
+                className="text-center text-gray-500 text-xs"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.5 }}
+              >
                 +{projects.length - 4} more projects
-              </p>
+              </motion.p>
             )}
           </div>
         )
@@ -155,12 +218,21 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
         return (
           <div className="flex flex-wrap gap-2">
             {skills.map((skill, idx) => (
-              <span
+              <motion.span
                 key={idx}
                 className="px-3 py-1.5 bg-white/60 rounded-full text-xs font-medium text-gray-700"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{
+                  duration: 0.3,
+                  delay: idx * 0.05,
+                  ease: 'easeOut'
+                }}
+                whileTap={{ scale: 1.1 }}
               >
                 {skill.name}
-              </span>
+              </motion.span>
             ))}
           </div>
         )
@@ -292,16 +364,25 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
   return (
     <div className="h-full w-full overflow-y-auto overflow-x-hidden pb-4">
       <div className="flex flex-col gap-3 px-1">
-        {sections.map((section) => {
+        {sections.map((section, index) => {
           const isExpanded = expandedSection === section.id
+          const isActive = activeSectionIndex === index
           const colors = sectionColors[section.id]
           const icon = sectionIcons[section.id]
 
           return (
             <motion.div
               key={section.id}
+              ref={(el) => {
+                sectionRefs.current[index] = el
+              }}
               layout
-              className={`rounded-xl overflow-hidden shadow-sm ${colors.bg}`}
+              className={`rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${colors.bg} ${
+                isActive ? 'ring-2 ring-offset-2' : ''
+              }`}
+              style={{
+                ringColor: isActive ? colors.icon : 'transparent'
+              }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
