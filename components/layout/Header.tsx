@@ -73,46 +73,44 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
   if (isMobile) {
     return (
       <header className="w-full">
-        <div className="flex flex-col gap-2">
-          {/* Top row: Name + Language switcher */}
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
             <h1
               className="font-bold text-amber-400 font-comfortaa"
               style={{
-                fontSize: '1.5rem',
+                fontSize: '1.25rem',
                 textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
                 lineHeight: '1.1'
               }}
             >
               {t('title')}
             </h1>
-            {/* Compact language buttons */}
-            <div className="flex gap-1">
-              {languages.map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setCurrentLanguage(lang)}
-                  className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
-                    currentLanguage === lang
-                      ? 'bg-gray-800/80 text-white'
-                      : 'bg-white/70 text-gray-700'
-                  }`}
-                >
-                  {lang}
-                </button>
-              ))}
-            </div>
+            <p
+              className="text-gray-700 font-comfortaa mt-0.5"
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                lineHeight: '1.2'
+              }}
+            >
+              {t('subtitle')}
+            </p>
           </div>
-          {/* Subtitle with liquid fill animation - scroll-driven */}
-          <div className="px-1">
-            <HeroTextAnimation
-              text={t('subtitle') as string}
-              fillColor={fillColor}
-              isActive={isActive}
-              direction="ltr"
-              fontSize="0.875rem"
-              fontWeight="600"
-            />
+          {/* Compact language buttons */}
+          <div className="flex gap-1 flex-shrink-0">
+            {languages.map((lang) => (
+              <button
+                key={lang}
+                onClick={() => setCurrentLanguage(lang)}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
+                  currentLanguage === lang
+                    ? 'bg-gray-800/80 text-white'
+                    : 'bg-white/70 text-gray-700'
+                }`}
+              >
+                {lang}
+              </button>
+            ))}
           </div>
         </div>
       </header>

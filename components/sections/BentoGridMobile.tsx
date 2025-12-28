@@ -352,9 +352,9 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
   return (
     <div className="h-full w-full flex flex-col">
-      {/* Compact Top Navigation - Single Row */}
-      <div className="flex-shrink-0 mb-2">
-        <div className="flex gap-1 overflow-x-auto">
+      {/* Compact Top Navigation - Fixed Top */}
+      <div className="flex-shrink-0">
+        <div className="flex gap-1">
           {sections.map((section) => {
             const isExpanded = expandedSection === section.id
             const colors = sectionColors[section.id]
@@ -364,20 +364,22 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <motion.button
                 key={section.id}
                 onClick={() => handleSectionClick(section.id)}
-                className={`flex-shrink-0 px-2 py-1 rounded flex items-center gap-1 transition-all ${colors.bg} ${
-                  isExpanded ? 'opacity-0 pointer-events-none h-0 p-0 overflow-hidden' : 'opacity-100'
+                className={`flex-1 px-1 py-1.5 rounded flex flex-col items-center justify-center gap-0.5 transition-all ${colors.bg} ${
+                  isExpanded ? 'ring-2 ring-offset-1' : ''
                 }`}
+                style={isExpanded ? {
+                  '--tw-ring-color': colors.icon
+                } as React.CSSProperties : {}}
                 whileTap={{ scale: 0.95 }}
-                layout
               >
                 <Icon
-                  className="w-4 h-4"
+                  className="w-4 h-4 flex-shrink-0"
                   style={{ color: colors.icon }}
                 />
                 <span
-                  className={`text-xs font-semibold ${colors.text} whitespace-nowrap`}
+                  className={`text-[0.6rem] font-semibold ${colors.text} text-center leading-tight`}
                 >
-                  {t(section.titleKey as any)}
+                  {isExpanded ? t(section.titleKey as any) : ''}
                 </span>
               </motion.button>
             )
