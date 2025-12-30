@@ -162,6 +162,20 @@ async function processWithPrompt(
   const tags = rewrittenContent.tags || rewrittenContent.en?.tags || []
   console.log(`✅ Content rewritten for all languages, tags: ${tags.length > 0 ? tags.join(', ') : 'none'}`)
 
+  // Append source link to content if available (for each language)
+  const sourceLink = requestData.sourceLink
+  if (sourceLink) {
+    console.log(`📎 Appending source link to content: ${sourceLink}`)
+    const sourceSuffix = {
+      en: `\n\n**Source:** [Original Article](${sourceLink})`,
+      no: `\n\n**Kilde:** [Original artikkel](${sourceLink})`,
+      ua: `\n\n**Джерело:** [Оригінальна стаття](${sourceLink})`
+    }
+    rewrittenContent.en.content = rewrittenContent.en.content + sourceSuffix.en
+    rewrittenContent.no.content = rewrittenContent.no.content + sourceSuffix.no
+    rewrittenContent.ua.content = rewrittenContent.ua.content + sourceSuffix.ua
+  }
+
   // Generate slugs with unique suffix to prevent duplicates
   const uniqueSuffix = requestData.newsId.substring(0, 8)
   const generateSlug = (text: string): string => {
