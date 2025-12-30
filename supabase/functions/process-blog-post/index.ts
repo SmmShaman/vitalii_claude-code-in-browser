@@ -141,10 +141,14 @@ serve(async (req) => {
     }
 
     // Build prompt with placeholders
+    // Use sourceLink (real source) instead of Telegram URL when available
+    const sourceUrl = requestData.sourceLink || requestData.url || ''
+    console.log(`📎 Source URL for AI prompt: ${sourceUrl}`)
+
     const systemPrompt = blogPrompt.prompt_text
       .replace('{title}', requestData.title)
       .replace('{content}', requestData.content)
-      .replace('{url}', requestData.url || '')
+      .replace('{url}', sourceUrl)
 
     console.log('📝 Rewriting blog post with AI...')
 

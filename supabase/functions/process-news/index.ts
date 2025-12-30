@@ -19,6 +19,7 @@ interface NewsRewriteRequest {
   imageUrl?: string | null
   videoUrl?: string | null
   videoType?: string | null
+  sourceLink?: string | null  // External source link extracted from Telegram post
 }
 
 /**
@@ -96,10 +97,14 @@ async function processWithPrompt(
   }
 
   // Build prompt with placeholders
+  // Use sourceLink (real source) instead of Telegram URL when available
+  const sourceUrl = requestData.sourceLink || requestData.url || ''
+  console.log(`📎 Source URL for AI prompt: ${sourceUrl}`)
+
   const systemPrompt = prompt.prompt_text
     .replace('{title}', requestData.title)
     .replace('{content}', requestData.content)
-    .replace('{url}', requestData.url || '')
+    .replace('{url}', sourceUrl)
 
   console.log('📝 Rewriting with AI...')
 
