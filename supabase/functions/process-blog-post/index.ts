@@ -204,6 +204,20 @@ serve(async (req) => {
 
     console.log('✅ Blog post rewritten for all languages')
 
+    // Append source link to content if available (for each language)
+    const sourceLink = requestData.sourceLink
+    if (sourceLink) {
+      console.log(`📎 Appending source link to blog content: ${sourceLink}`)
+      const sourceSuffix = {
+        en: `\n\n**Source:** [Original Article](${sourceLink})`,
+        no: `\n\n**Kilde:** [Original artikkel](${sourceLink})`,
+        ua: `\n\n**Джерело:** [Оригінальна стаття](${sourceLink})`
+      }
+      rewrittenContent.en.content = rewrittenContent.en.content + sourceSuffix.en
+      rewrittenContent.no.content = rewrittenContent.no.content + sourceSuffix.no
+      rewrittenContent.ua.content = rewrittenContent.ua.content + sourceSuffix.ua
+    }
+
     // 🔍 Find original source URL (parallel with image generation)
     // 🖼️ Generate new image with AI
     const [foundSourceUrl, generatedImageUrl] = await Promise.all([
