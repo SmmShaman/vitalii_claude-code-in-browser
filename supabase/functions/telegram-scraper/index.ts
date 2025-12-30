@@ -79,6 +79,101 @@ function extractSourceLink(text: string): string | null {
   return null
 }
 
+/**
+ * Check if URL is an external source (not Telegram, not social share)
+ */
+function isExternalSourceUrl(url: string): boolean {
+  if (!url) return false
+
+  // Skip Telegram URLs
+  if (url.includes('t.me/') || url.includes('telegram.me/') || url.includes('telegram.org/')) {
+    return false
+  }
+  // Skip common social media share URLs
+  if (url.includes('twitter.com/intent/') || url.includes('facebook.com/sharer/')) {
+    return false
+  }
+  // Skip hashtag links and internal anchors
+  if (url.startsWith('#') || url.startsWith('tg://')) {
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Extract text content with hyperlinks converted to inline URLs
+ * Converts <a href="URL">text</a> to "text (URL)" format
+ * Returns both processed text and list of external source URLs
+ */
+function extractTextWithHyperlinks(element: any): { text: string; sourceLinks: string[] } {
+  if (!element) {
+    return { text: '', sourceLinks: [] }
+  }
+
+  const sourceLinks: string[] = []
+
+  // Get innerHTML to access hyperlinks
+  const innerHTML = element.innerHTML || ''
+
+  // If no HTML or no links, return plain text
+  if (!innerHTML || !innerHTML.includes('<a ')) {
+    return {
+      text: element.textContent?.trim() || '',
+      sourceLinks: []
+    }
+  }
+
+  // Process HTML to extract and convert hyperlinks
+  let processedText = innerHTML
+
+  // Match all <a> tags with href
+  // Pattern: <a href="URL" ...>text</a>
+  const linkRegex = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi
+  let match
+
+  while ((match = linkRegex.exec(innerHTML)) !== null) {
+    const fullMatch = match[0]
+    const href = match[1]
+    const linkText = match[2].trim()
+
+    // Check if this is an external source URL
+    if (isExternalSourceUrl(href)) {
+      sourceLinks.push(href)
+
+      // Replace the <a> tag with "text (URL)" format
+      // This makes the URL visible to AI during rewrite
+      if (linkText && linkText.toLowerCase() !== href.toLowerCase()) {
+        // If link text is different from URL, show both
+        processedText = processedText.replace(fullMatch, `${linkText} (${href})`)
+      } else {
+        // If link text IS the URL, just show URL
+        processedText = processedText.replace(fullMatch, href)
+      }
+
+      console.log(`🔗 Found hyperlink: "${linkText}" → ${href}`)
+    } else {
+      // For non-external links (Telegram, hashtags), keep just the text
+      processedText = processedText.replace(fullMatch, linkText)
+    }
+  }
+
+  // Remove remaining HTML tags and clean up
+  processedText = processedText
+    .replace(/<br\s*\/?>/gi, '\n')           // Convert <br> to newlines
+    .replace(/<[^>]+>/g, '')                  // Remove remaining HTML tags
+    .replace(/&nbsp;/g, ' ')                  // Convert &nbsp; to space
+    .replace(/&amp;/g, '&')                   // Convert &amp; to &
+    .replace(/&lt;/g, '<')                    // Convert &lt; to <
+    .replace(/&gt;/g, '>')                    // Convert &gt; to >
+    .replace(/&quot;/g, '"')                  // Convert &quot; to "
+    .replace(/&#39;/g, "'")                   // Convert &#39; to '
+    .replace(/\s+/g, ' ')                     // Normalize whitespace
+    .trim()
+
+  return { text: processedText, sourceLinks }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -86,9 +181,9 @@ serve(async (req) => {
   }
 
   try {
-    // Version: 2024-12-24-01 - Sequential workflow + debug logging
-    console.log('🕷️  Telegram Scraper v2024-12-24-01 started')
-    console.log('📦 Features: Sequential workflow, media detection, debug logging, retry logic')
+    // Version: 2024-12-30-01 - Hyperlink extraction for source URLs
+    console.log('🕷️  Telegram Scraper v2024-12-30-01 started')
+    console.log('📦 Features: Hyperlink extraction, inline URLs for AI rewrite, sequential workflow')
 
     // Parse request body for optional parameters
     let requestBody: any = {}
@@ -635,7 +730,7 @@ serve(async (req) => {
     console.log(`\n🎉 Scraping complete! Total processed: ${totalProcessed}`)
     console.log(`🤖 AI Moderation: ${totalApproved} approved, ${totalRejected} rejected`)
     console.log(`📤 Sent to Telegram bot: ${totalSentToBot}`)
-    console.log(`✅ Telegram Scraper v2024-12-24-01 finished successfully`)
+    console.log(`✅ Telegram Scraper v2024-12-30-01 finished successfully`)
 
     return new Response(
       JSON.stringify({
@@ -691,9 +786,15 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
         const messageId = dataPost.split('/')[1] // Format: "channel/123"
         if (!messageId) continue
 
-        // Extract text
+        // Extract text with hyperlinks converted to inline URLs
+        // This extracts <a href="URL">text</a> and converts to "text (URL)" format
+        // So AI can see and use the actual source URLs during rewrite
         const textElement = message.querySelector('.tgme_widget_message_text')
-        const text = textElement?.textContent?.trim() || ''
+        const { text, sourceLinks: extractedSourceLinks } = extractTextWithHyperlinks(textElement)
+
+        if (extractedSourceLinks.length > 0) {
+          console.log(`🔗 Post ${messageId}: Found ${extractedSourceLinks.length} external link(s) in hyperlinks`)
+        }
 
         // Extract ALL photo URLs (multiple images support)
         const images: string[] = []
@@ -830,8 +931,15 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
           continue
         }
 
-        // Extract source link from text
-        const sourceLink = extractSourceLink(text)
+        // Get source link: prefer hyperlinks extracted from <a> tags, fallback to regex on text
+        // Priority: 1) First external hyperlink from <a href>, 2) URL found in plain text
+        const sourceLink = extractedSourceLinks.length > 0
+          ? extractedSourceLinks[0]  // First external hyperlink (most likely the main source)
+          : extractSourceLink(text)   // Fallback: search for URL patterns in text
+
+        if (sourceLink) {
+          console.log(`📎 Post ${messageId}: Source link = ${sourceLink}`)
+        }
 
         posts.push({
           channelUsername,
