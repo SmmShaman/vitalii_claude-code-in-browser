@@ -432,11 +432,11 @@ const NewsSectionComponent = ({
                 <p className="whitespace-pre-wrap">{content.content}</p>
               </div>
 
-              {/* Links Section */}
+              {/* Links Section - prefer source_link over original_url */}
               <div className="news-section-links">
-                {selectedNews.original_url && (
+                {((selectedNews as any).source_link || selectedNews.original_url) && (
                   <a
-                    href={selectedNews.original_url}
+                    href={(selectedNews as any).source_link || selectedNews.original_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-primary hover:underline"
