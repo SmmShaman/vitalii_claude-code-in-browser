@@ -287,22 +287,7 @@ serve(async (req) => {
               throw new Error(`Database update failed: ${updateError.message}`)
             }
 
-            // Send confirmation
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  text: `✅ <b>Зображення завантажено!</b>\n\n📸 URL: <code>${publicUrl}</code>\n🆔 News ID: <code>${newsId}</code>`,
-                  parse_mode: 'HTML',
-                  reply_to_message_id: message.reply_to_message.message_id
-                })
-              }
-            )
-
-            // Update original message with STEP 2 buttons: Publish options
+            // Update original message with success status and STEP 2 buttons (NO separate message!)
             const publishKeyboard = {
               inline_keyboard: [
                 [
@@ -773,22 +758,7 @@ serve(async (req) => {
           // Build LinkedIn post URL
           const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
 
-          // Send duplicate notification as a bot message (not popup)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: `⚠️ <b>Вже опубліковано в LinkedIn (${existingLang})!</b>\n\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-
-          // Remove LinkedIn buttons, show link to existing post
+          // Update original message to show duplicate status (NO separate message!)
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -797,7 +767,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + `\n\n✅ <b>LINKEDIN ${existingLang}</b>\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
+                text: messageText + `\n\n⚠️ <b>Вже опубліковано в LinkedIn (${existingLang})!</b>\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true
               })
@@ -882,35 +852,14 @@ serve(async (req) => {
           }
         )
 
-        // Send success notification as a bot message (not popup)
-        let successMessage = `✅ <b>Опубліковано в LinkedIn (${langLabel})!</b>\n\n`
-        successMessage += `📰 «${shortTitle}»\n`
-        if (linkedinPostUrl) {
-          successMessage += `🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`
-        }
-
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: successMessage,
-              parse_mode: 'HTML',
-              disable_web_page_preview: true
-            })
-          }
-        )
-
         // Build article URL on website
         const slugField = `slug_${linkedinLanguage}`
         const articleSlug = checkRecord[slugField] || checkRecord.slug_en || newsId.substring(0, 8)
         const articlePath = contentType === 'blog' ? 'blog' : 'news'
         const articleUrl = `https://vitalii.no/${articlePath}/${articleSlug}`
 
-        // Edit original message to show LinkedIn status with details
-        let linkedinStatusText = `\n\n✅ <b>LINKEDIN ${langLabel}</b>\n`
+        // Update original message to show LinkedIn status (NO separate message!)
+        let linkedinStatusText = `\n\n✅ <b>Опубліковано в LinkedIn (${langLabel})!</b>\n`
         linkedinStatusText += `📰 «${shortTitle}»\n`
         linkedinStatusText += `📝 <a href="${articleUrl}">Читати статтю</a>\n`
         if (linkedinPostUrl) {
