@@ -27,6 +27,10 @@ interface NewsRewriteRequest {
  * Rewrites content in objective journalistic style
  */
 serve(async (req) => {
+  // Version: 2024-12-30-02 - Source link appending
+  console.log('🚀 Process News v2024-12-30-02 started')
+  console.log('📦 Features: Source link appending to rewritten content')
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -34,6 +38,7 @@ serve(async (req) => {
   try {
     const requestData: NewsRewriteRequest = await req.json()
     console.log('🚀 Processing news for newsId:', requestData.newsId)
+    console.log('📎 Received sourceLink:', requestData.sourceLink || 'NULL')
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
