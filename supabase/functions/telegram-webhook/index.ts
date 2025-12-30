@@ -300,6 +300,11 @@ serve(async (req) => {
               ]
             }
 
+            // Remove entire "Очікую фото" block (including technical info) and add success status
+            const cleanedText = replyText
+              .replace(/\n\n📸 <b>Очікую фото\.\.\.<\/b>[\s\S]*?newsId:[a-f0-9-]+<\/code>/i, '')
+              .trim()
+
             await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -308,7 +313,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: message.reply_to_message.message_id,
-                  text: replyText.replace('📸 <b>Очікую фото...</b>', '✅ <b>Власне зображення завантажено</b>\n📝 <i>Оберіть де опублікувати...</i>'),
+                  text: cleanedText + '\n\n✅ <b>Зображення прикріплено</b>\n📝 <i>Оберіть де опублікувати...</i>',
                   parse_mode: 'HTML',
                   reply_markup: publishKeyboard
                 })
