@@ -82,6 +82,7 @@ serve(async (req) => {
       description: string
       url: string
       imageUrl?: string
+      sourceLink?: string
     }
 
     if (requestData.contentType === 'news' && requestData.newsId) {
@@ -96,7 +97,8 @@ serve(async (req) => {
       title: content.title.substring(0, 50) + '...',
       descriptionLength: content.description.length,
       url: content.url,
-      imageUrl: content.imageUrl
+      imageUrl: content.imageUrl,
+      sourceLink: content.sourceLink
     })
     console.log('📋 Full title:', content.title)
     console.log('📋 Full description:', content.description)
@@ -179,7 +181,7 @@ async function fetchNewsContent(
   supabase: any,
   newsId: string,
   language: 'en' | 'no' | 'ua'
-): Promise<{ title: string; description: string; url: string; imageUrl?: string }> {
+): Promise<{ title: string; description: string; url: string; imageUrl?: string; sourceLink?: string }> {
   const { data: news, error } = await supabase
     .from('news')
     .select('*')
@@ -208,11 +210,15 @@ async function fetchNewsContent(
   // Use processed image if available, otherwise original
   const imageUrl = news.processed_image_url || news.image_url
 
+  // Get source link (external source URL extracted from Telegram post)
+  const sourceLink = news.source_link || null
+
   return {
     title,
     description,
     url,
-    imageUrl
+    imageUrl,
+    sourceLink
   }
 }
 
@@ -223,7 +229,7 @@ async function fetchBlogContent(
   supabase: any,
   blogPostId: string,
   language: 'en' | 'no' | 'ua'
-): Promise<{ title: string; description: string; url: string; imageUrl?: string }> {
+): Promise<{ title: string; description: string; url: string; imageUrl?: string; sourceLink?: string }> {
   const { data: post, error } = await supabase
     .from('blog_posts')
     .select('*')
@@ -252,11 +258,15 @@ async function fetchBlogContent(
   // Use processed image if available, otherwise original
   const imageUrl = post.processed_image_url || post.image_url
 
+  // Get source link from blog_posts.original_url (which stores the source)
+  const sourceLink = post.original_url || null
+
   return {
     title,
     description,
     url,
-    imageUrl
+    imageUrl,
+    sourceLink
   }
 }
 
@@ -353,11 +363,21 @@ async function postToLinkedIn(content: {
   description: string
   url: string
   imageUrl?: string
+  sourceLink?: string
 }): Promise<{ success: boolean; postId?: string; error?: string }> {
   try {
     // Build the share commentary (LinkedIn limit is 3000 chars)
     // Keep it concise for better engagement
-    const commentary = `${content.title}\n\n${content.description}\n\n🔗 Read more: ${content.url}`
+    // Include source link if available (original article source like GitHub, HuggingFace, etc.)
+    let commentary = `${content.title}\n\n${content.description}`
+
+    // Add source link if available (external original source)
+    if (content.sourceLink) {
+      commentary += `\n\n📄 Original source: ${content.sourceLink}`
+      console.log('📎 Including source link in LinkedIn post:', content.sourceLink)
+    }
+
+    commentary += `\n\n🔗 Read more: ${content.url}`
     const safeCommentary = commentary.substring(0, 2900)
 
     console.log('📤 Commentary length:', safeCommentary.length)
