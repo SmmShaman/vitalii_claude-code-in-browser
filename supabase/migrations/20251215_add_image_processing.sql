@@ -8,9 +8,10 @@ ADD COLUMN IF NOT EXISTS processed_image_url TEXT,
 ADD COLUMN IF NOT EXISTS image_processed_at TIMESTAMPTZ;
 
 -- Add image processing prompts to ai_prompts table (for Gemini Nano Banana)
-INSERT INTO ai_prompts (prompt_type, prompt_text, description, is_active)
+INSERT INTO ai_prompts (name, prompt_type, prompt_text, description, is_active)
 VALUES
-  ('image_linkedin_optimize',
+  ('LinkedIn Image Optimizer',
+   'image_linkedin_optimize',
    'Edit this image to make it perfect for LinkedIn:
 - Enhance professional appearance with better lighting and contrast
 - Make colors vibrant but professional (not oversaturated)
@@ -20,7 +21,8 @@ VALUES
 Output a high-quality edited version of this image.',
    'Промпт для оптимізації зображень перед публікацією в LinkedIn (використовує Gemini)',
    true),
-  ('image_enhance',
+  ('Image Enhancer',
+   'image_enhance',
    'Enhance this image:
 - Improve clarity and sharpness
 - Adjust brightness and contrast for better visibility
