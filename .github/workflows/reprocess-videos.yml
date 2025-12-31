@@ -1,9 +1,9 @@
-name: Reprocess Videos (Hourly)
+name: Reprocess Videos (Daily)
 
 on:
   schedule:
-    # Run every hour at minute 30
-    - cron: '30 * * * *'
+    # Run once per day at 08:00 UTC (YouTube quota: 10,000 units/day, upload=1,600 units = max ~6 videos)
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       limit:

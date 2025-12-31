@@ -6,7 +6,8 @@
  */
 
 // MTKruto imports for Telegram MTProto
-import { Client } from "https://deno.land/x/mtkruto@0.1.190/mod.ts";
+// Updated to 0.3.1 (latest on deno.land/x) with StorageMemory to fix "this.storage.initialize is not a function" error
+import { Client, StorageMemory } from "https://deno.land/x/mtkruto@0.3.1/mod.ts";
 
 interface YouTubeConfig {
   clientId: string;
@@ -280,10 +281,10 @@ export async function downloadTelegramVideoMTKruto(
 
   console.log('🔌 Initializing MTKruto client...');
 
-  // Initialize client with memory storage (storage: null per MTKruto docs)
-  // See: https://mtkru.to/storage-adapters
+  // Initialize client with StorageMemory for in-memory session storage
+  // Required for MTKruto 0.77.1+ (storage: null no longer works)
   const client = new Client({
-    storage: null,
+    storage: new StorageMemory(),
     apiId: Number(apiId),
     apiHash: apiHash,
   });
