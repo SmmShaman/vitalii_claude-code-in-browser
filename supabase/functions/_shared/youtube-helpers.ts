@@ -5,6 +5,9 @@
  * Includes MTKruto integration for downloading large videos from Telegram
  */
 
+// Version for deployment verification
+export const YOUTUBE_HELPERS_VERSION = "2024-12-31-v2-jsr";
+
 // MTKruto imports for Telegram MTProto
 // Updated to 0.77.12 (latest on JSR) with StorageMemory
 import { Client, StorageMemory } from "jsr:@mtkruto/mtkruto@0.77.12";
@@ -279,7 +282,7 @@ export async function downloadTelegramVideoMTKruto(
     return null;
   }
 
-  console.log('🔌 Initializing MTKruto client...');
+  console.log(`🔌 Initializing MTKruto client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
 
   // Initialize client with StorageMemory for in-memory session storage
   // Required for MTKruto 0.77+ (storage: null no longer works)
