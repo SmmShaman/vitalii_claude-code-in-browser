@@ -6,11 +6,11 @@
  */
 
 // Version for deployment verification
-export const YOUTUBE_HELPERS_VERSION = "2024-12-31-v2-jsr";
+export const YOUTUBE_HELPERS_VERSION = "2024-12-31-v3-deno";
 
 // MTKruto imports for Telegram MTProto
-// Updated to 0.77.12 (latest on JSR) with StorageMemory
-import { Client, StorageMemory } from "jsr:@mtkruto/mtkruto@0.77.12";
+// Using deno.land/x version 0.3.1 (JSR version not available in Supabase bundler)
+import { Client, StorageMemory } from "https://deno.land/x/mtkruto@0.3.1/mod.ts";
 
 interface YouTubeConfig {
   clientId: string;
