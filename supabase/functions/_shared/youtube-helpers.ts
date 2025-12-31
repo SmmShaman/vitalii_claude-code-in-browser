@@ -282,7 +282,7 @@ export async function downloadTelegramVideoMTKruto(
   console.log('🔌 Initializing MTKruto client...');
 
   // Initialize client with StorageMemory for in-memory session storage
-  // Required for MTKruto 0.77.1+ (storage: null no longer works)
+  // Required for MTKruto 0.3.1+ (storage: null no longer works)
   const client = new Client({
     storage: new StorageMemory(),
     apiId: Number(apiId),
@@ -302,7 +302,8 @@ export async function downloadTelegramVideoMTKruto(
 
     console.log(`📥 Fetching message ${messageId} from @${cleanUsername}...`);
 
-    const messages = await client.getMessages(cleanUsername, { ids: [messageId] });
+    // MTKruto 0.3.1 API: getMessages accepts array of IDs directly (not { ids: [...] })
+    const messages = await client.getMessages(cleanUsername, [messageId]);
 
     if (!messages || messages.length === 0 || !messages[0]) {
       console.error('❌ Message not found');
