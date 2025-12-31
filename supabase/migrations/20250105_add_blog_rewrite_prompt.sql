@@ -53,4 +53,4 @@ Return ONLY valid JSON in this exact format:
   'Rewrites content as personal blog post from first-person perspective',
   true,
   0
-);
+) ON CONFLICT DO NOTHING;
