@@ -32,10 +32,7 @@ Instructions:
   'Rewrites news content in professional journalistic style',
   true,
   0
-) ON CONFLICT (prompt_type) WHERE is_active = true DO UPDATE SET
-  prompt_text = EXCLUDED.prompt_text,
-  description = EXCLUDED.description,
-  updated_at = NOW();
+) ON CONFLICT DO NOTHING;
 
 -- Blog post rewrite prompt (first-person perspective)
 INSERT INTO ai_prompts (
@@ -69,7 +66,4 @@ Instructions:
   'Rewrites content as personal blog post from first-person perspective',
   true,
   0
-) ON CONFLICT (prompt_type) WHERE is_active = true DO UPDATE SET
-  prompt_text = EXCLUDED.prompt_text,
-  description = EXCLUDED.description,
-  updated_at = NOW();
+) ON CONFLICT DO NOTHING;
