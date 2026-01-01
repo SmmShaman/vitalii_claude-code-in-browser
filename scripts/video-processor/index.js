@@ -224,9 +224,9 @@ async function processNewsItem(client, news) {
     // Step 1: Download from Telegram
     tempFile = await downloadTelegramVideo(client, parsed.channel, parsed.messageId);
 
-    // Step 2: Upload to YouTube
-    const title = news.title_en || news.original_title || 'Untitled Video';
-    const description = news.description_en || news.original_content?.substring(0, 500) || '';
+    // Step 2: Upload to YouTube (ALWAYS English title)
+    const title = news.title_en || 'News Video';
+    const description = news.description_en || '';
 
     const youtubeResult = await uploadToYouTube(tempFile, title, description);
 
