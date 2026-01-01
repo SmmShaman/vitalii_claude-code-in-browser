@@ -39,6 +39,7 @@ interface ReprocessRequest {
   dryRun?: boolean;    // Just show what would be processed (default: false)
   newsId?: string;     // Process specific news ID
   autonomous?: boolean; // Auto mode - reads state from DB, auto-advances
+  cleanupMode?: boolean; // Only identify and fix photo-only posts (set video_type to null)
 }
 
 interface ProcessResult {
@@ -46,8 +47,9 @@ interface ProcessResult {
   title: string;
   oldVideoUrl: string;
   newVideoUrl?: string;
-  status: 'success' | 'failed' | 'skipped';
+  status: 'success' | 'failed' | 'skipped' | 'cleaned';
   error?: string;
+  mediaType?: string; // For cleanup mode: what media was found
 }
 
 interface ReprocessState {
@@ -92,11 +94,16 @@ serve(async (req) => {
     // Parse request
     const body: ReprocessRequest = await req.json().catch(() => ({}));
     const autonomous = body.autonomous || false;
-    let limit = Math.min(body.limit || 5, 20); // Max 20 per request (YouTube limits)
+    let limit = Math.min(body.limit || 5, 50); // Max 50 per request (higher for cleanup mode)
     let offset = body.offset || 0;
     const type = body.type || 'news';
     const dryRun = body.dryRun || false;
     const specificNewsId = body.newsId;
+    const cleanupMode = body.cleanupMode || false;
+
+    if (cleanupMode) {
+      console.log('🧹 Running in CLEANUP MODE - identifying photo-only posts');
+    }
 
     // In autonomous mode, read state from DB
     let currentState: ReprocessState | null = null;
@@ -232,6 +239,37 @@ serve(async (req) => {
             if (!downloadResult.success || !downloadResult.data) {
               const errorMsg = `[${downloadResult.stage}] ${downloadResult.error}`;
               console.log(`❌ Download failed: ${errorMsg}`);
+
+              // CLEANUP MODE: If no video found (photo only), update DB and mark as cleaned
+              if (cleanupMode && downloadResult.stage === 'checkVideo') {
+                console.log('🧹 Cleanup: Photo-only post detected, updating video_type to null');
+                const { error: cleanupError } = await supabase
+                  .from('news')
+                  .update({ video_type: null, video_url: null })
+                  .eq('id', news.id);
+
+                if (cleanupError) {
+                  console.error('Failed to cleanup:', cleanupError);
+                  results.push({
+                    id: news.id,
+                    title: title,
+                    oldVideoUrl: news.video_url,
+                    status: 'failed',
+                    error: `Cleanup failed: ${cleanupError.message}`,
+                    mediaType: downloadResult.error?.includes('found:') ? downloadResult.error.split('found:')[1].trim().replace(')', '') : 'unknown'
+                  });
+                } else {
+                  results.push({
+                    id: news.id,
+                    title: title,
+                    oldVideoUrl: news.video_url,
+                    status: 'cleaned',
+                    mediaType: downloadResult.error?.includes('found:') ? downloadResult.error.split('found:')[1].trim().replace(')', '') : 'unknown'
+                  });
+                }
+                continue;
+              }
+
               results.push({
                 id: news.id,
                 title: title,
@@ -245,6 +283,19 @@ serve(async (req) => {
             const videoBuffer = downloadResult.data;
 
             console.log(`✅ Video downloaded, size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+
+            // In cleanup mode, we only want to identify media types, not upload
+            if (cleanupMode) {
+              console.log('🧹 Cleanup: Video found, skipping upload (cleanup mode only identifies, does not upload)');
+              results.push({
+                id: news.id,
+                title: title,
+                oldVideoUrl: news.video_url,
+                status: 'skipped',
+                mediaType: 'video'
+              });
+              continue;
+            }
 
             // Get YouTube config and access token
             const youtubeConfig = getYouTubeConfig();
@@ -364,9 +415,11 @@ serve(async (req) => {
 
     const successCount = results.filter(r => r.status === 'success').length;
     const failedCount = results.filter(r => r.status === 'failed').length;
+    const cleanedCount = results.filter(r => r.status === 'cleaned').length;
+    const skippedCount = results.filter(r => r.status === 'skipped').length;
     const remaining = Math.max(0, totalPending - offset - limit);
 
-    console.log(`\n📊 Summary: ${successCount} success, ${failedCount} failed, ${remaining} remaining`);
+    console.log(`\n📊 Summary: ${successCount} success, ${failedCount} failed, ${cleanedCount} cleaned, ${skippedCount} skipped, ${remaining} remaining`);
 
     // Update state in autonomous mode
     if (autonomous && !dryRun) {
@@ -402,10 +455,13 @@ serve(async (req) => {
         processed: results.length,
         successCount,
         failedCount,
+        cleanedCount,
+        skippedCount,
         totalPending,
         remaining,
         nextOffset: offset + limit,
         autonomous,
+        cleanupMode,
         mtkrutoClientReady: !!sharedMTKrutoClient,
         state: autonomous ? {
           current_offset: offset + results.length,
@@ -417,7 +473,9 @@ serve(async (req) => {
         results,
         message: dryRun
           ? `Dry run complete. Would process ${results.length} items.`
-          : `Processed ${results.length} items. ${successCount} successful, ${failedCount} failed.`
+          : cleanupMode
+            ? `Cleanup: ${cleanedCount} photo-only posts fixed, ${skippedCount} videos found, ${failedCount} errors.`
+            : `Processed ${results.length} items. ${successCount} successful, ${failedCount} failed.`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
