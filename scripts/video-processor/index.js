@@ -281,12 +281,14 @@ async function processNewsItem(client, news) {
 
 /**
  * Get pending videos from database
+ * Only gets PUBLISHED news with telegram_embed videos
  */
 async function getPendingVideos(limit, specificId = null) {
   let query = supabase
     .from('news')
     .select('id, original_title, title_en, description_en, original_content, video_url, video_type')
     .eq('video_type', 'telegram_embed')
+    .eq('is_published', true)  // Only published news!
     .not('video_url', 'is', null);
 
   if (specificId) {
