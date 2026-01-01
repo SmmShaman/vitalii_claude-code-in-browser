@@ -2,18 +2,22 @@
  * YouTube API Helpers
  *
  * Helper functions for uploading videos to YouTube using OAuth 2.0
- * Includes MTKruto integration for downloading large videos from Telegram
+ * Includes GramJS (grm) integration for downloading large videos from Telegram
  */
 
 // Version for deployment verification
-export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v6-no-legacy-fallback";
+export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v7-gramjs";
 
-// MTKruto imports for Telegram MTProto
-// Using deno.land/x version 0.77.1 (latest stable, fixes base64 replaceAll error)
-import { Client, StorageMemory } from "https://deno.land/x/mtkruto@0.77.1/mod.ts";
+// GramJS (grm) imports for Telegram MTProto - Deno port
+import { TelegramClient, Api } from "https://deno.land/x/grm@v0.3.0/mod.ts";
+import { StringSession } from "https://deno.land/x/grm@v0.3.0/sessions/mod.ts";
 
 // Export Client type for external use
-export type MTKrutoClient = Client;
+export type GramJSClient = TelegramClient;
+
+// Keep MTKruto imports as fallback (commented out for now)
+// import { Client, StorageMemory } from "https://deno.land/x/mtkruto@0.77.1/mod.ts";
+// export type MTKrutoClient = Client;
 
 interface YouTubeConfig {
   clientId: string;
@@ -266,43 +270,52 @@ export async function downloadTelegramVideo(
 }
 
 // ============================================
-// SHARED MTKRUTO CLIENT MANAGEMENT
+// SHARED GRAMJS CLIENT MANAGEMENT
 // Create ONE client per batch to avoid FLOOD_WAIT
 // ============================================
 
 /**
- * Create and start a shared MTKruto client
+ * Create and start a shared GramJS client
  * Call this ONCE at the start of a batch, then reuse for all videos
  */
-export async function createMTKrutoClient(): Promise<Client | null> {
+export async function createGramJSClient(): Promise<TelegramClient | null> {
   const apiId = Deno.env.get("TELEGRAM_API_ID");
   const apiHash = Deno.env.get("TELEGRAM_API_HASH");
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
   if (!apiId || !apiHash || !botToken) {
-    console.error('❌ MTKruto credentials not configured');
+    console.error('❌ GramJS credentials not configured');
     console.error(`  TELEGRAM_API_ID: ${apiId ? 'SET' : 'MISSING'}`);
     console.error(`  TELEGRAM_API_HASH: ${apiHash ? 'SET' : 'MISSING'}`);
     console.error(`  TELEGRAM_BOT_TOKEN: ${botToken ? 'SET' : 'MISSING'}`);
     return null;
   }
 
-  console.log(`🔌 Creating shared MTKruto client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
+  console.log(`🔌 Creating shared GramJS client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
 
-  const client = new Client({
-    storage: new StorageMemory(),
-    apiId: Number(apiId),
-    apiHash: apiHash,
-  });
+  // Use empty StringSession for bot authentication
+  const stringSession = new StringSession("");
+
+  const client = new TelegramClient(
+    stringSession,
+    Number(apiId),
+    apiHash,
+    {
+      connectionRetries: 3,
+    }
+  );
 
   try {
-    console.log('🚀 Starting MTKruto client with bot token...');
-    await client.start({ botToken });
-    console.log('✅ MTKruto client started (shared instance)');
+    console.log('🚀 Starting GramJS client with bot token...');
+    await client.start({
+      botAuthToken: botToken,
+    });
+    console.log('✅ GramJS client started (shared instance)');
     return client;
   } catch (error: any) {
-    console.error('❌ Failed to start MTKruto client:', error?.message || error);
+    console.error('❌ Failed to start GramJS client:', error?.message || error);
     console.error('❌ Error name:', error?.name);
+    console.error('❌ Error stack:', error?.stack?.substring(0, 500));
 
     // Check for specific errors
     if (error?.message?.includes('FLOOD_WAIT')) {
@@ -318,17 +331,22 @@ export async function createMTKrutoClient(): Promise<Client | null> {
 }
 
 /**
- * Disconnect the shared MTKruto client
+ * Disconnect the shared GramJS client
  * Call this ONCE at the end of a batch
  */
-export async function disconnectMTKrutoClient(client: Client): Promise<void> {
+export async function disconnectGramJSClient(client: TelegramClient): Promise<void> {
   try {
     await client.disconnect();
-    console.log('🔌 MTKruto client disconnected (shared instance)');
+    console.log('🔌 GramJS client disconnected (shared instance)');
   } catch (e) {
     // Ignore disconnect errors
   }
 }
+
+// Backward compatibility aliases
+export const createMTKrutoClient = createGramJSClient;
+export const disconnectMTKrutoClient = disconnectGramJSClient;
+export type MTKrutoClient = TelegramClient;
 
 // Result type for detailed error reporting
 export interface DownloadResult {
@@ -339,11 +357,11 @@ export interface DownloadResult {
 }
 
 /**
- * Download video using an EXISTING MTKruto client (no new auth!)
+ * Download video using an EXISTING GramJS client (no new auth!)
  * Use this inside loops to avoid FLOOD_WAIT
  */
 export async function downloadVideoWithClient(
-  client: Client,
+  client: TelegramClient,
   channelUsername: string,
   messageId: number
 ): Promise<Uint8Array | null> {
@@ -355,10 +373,10 @@ export async function downloadVideoWithClient(
 }
 
 /**
- * Download video with detailed error reporting
+ * Download video with detailed error reporting (GramJS implementation)
  */
 export async function downloadVideoWithClientDetailed(
-  client: Client,
+  client: TelegramClient,
   channelUsername: string,
   messageId: number
 ): Promise<DownloadResult> {
@@ -368,38 +386,49 @@ export async function downloadVideoWithClientDetailed(
       ? channelUsername.slice(1)
       : channelUsername;
 
-    console.log(`📥 Fetching message ${messageId} from @${cleanUsername}...`);
+    console.log(`📥 Fetching message ${messageId} from @${cleanUsername}... (GramJS)`);
 
-    const messages = await client.getMessages(cleanUsername, [messageId]);
+    // GramJS uses getMessages with entity and options
+    const messages = await client.getMessages(cleanUsername, { ids: [messageId] });
 
     if (!messages || messages.length === 0 || !messages[0]) {
       return { success: false, error: 'Message not found', stage: 'getMessages' };
     }
 
     const message = messages[0];
-    console.log(`✅ Message found, type: ${message.constructor.name}`);
+    console.log(`✅ Message found, type: ${message.className}`);
 
-    // Log what media types the message has
-    const mediaTypes = [];
-    if (message.video) mediaTypes.push('video');
-    if (message.document) mediaTypes.push('document');
-    if (message.animation) mediaTypes.push('animation');
-    if (message.photo) mediaTypes.push('photo');
-    if (message.sticker) mediaTypes.push('sticker');
-    if (message.audio) mediaTypes.push('audio');
-    console.log(`📎 Message media types: ${mediaTypes.length > 0 ? mediaTypes.join(', ') : 'none (text only)'}`);
-
-    // Check if message has downloadable video (video, document, or animation)
-    const media = message.video || message.document || message.animation;
+    // GramJS uses message.media for all media types
+    const media = message.media;
     if (!media) {
-      return { success: false, error: `Message has no video (found: ${mediaTypes.join(', ') || 'text only'})`, stage: 'checkVideo' };
+      return { success: false, error: 'Message has no media (text only)', stage: 'checkVideo' };
     }
-    const fileSize = media?.fileSize || 0;
+
+    // Check media type
+    const mediaClassName = media.className;
+    console.log(`📎 Media class: ${mediaClassName}`);
+
+    // Check if it's a video-like media
+    const isVideo = mediaClassName === 'MessageMediaDocument' || mediaClassName === 'MessageMediaVideo';
+    const isPhoto = mediaClassName === 'MessageMediaPhoto';
+
+    if (isPhoto) {
+      return { success: false, error: `Message has no video (found: photo)`, stage: 'checkVideo' };
+    }
+
+    if (!isVideo) {
+      return { success: false, error: `Unsupported media type: ${mediaClassName}`, stage: 'checkVideo' };
+    }
+
+    // Get file size if available
+    let fileSize = 0;
+    let mimeType = 'unknown';
+    if (media.document) {
+      fileSize = Number(media.document.size || 0);
+      mimeType = media.document.mimeType || 'unknown';
+    }
     const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
-    const mediaType = message.video ? 'video' : message.animation ? 'animation' : 'document';
-    const mimeType = media?.mimeType || 'unknown';
-    console.log(`📊 Media: ${mediaType}, MIME: ${mimeType}, Size: ${fileSizeMB} MB`);
-    console.log(`📎 File ID: ${media?.fileId?.substring(0, 20)}...`);
+    console.log(`📊 Media: document, MIME: ${mimeType}, Size: ${fileSizeMB} MB`);
 
     // Check if file is too large for /tmp (512 MB limit on Pro)
     const maxSize = 500 * 1024 * 1024; // 500 MB safety margin
@@ -407,56 +436,45 @@ export async function downloadVideoWithClientDetailed(
       return { success: false, error: `Video too large: ${fileSizeMB} MB (max 500 MB)`, stage: 'sizeCheck' };
     }
 
-    console.log('⬇️ Downloading video via MTKruto...');
+    console.log('⬇️ Downloading video via GramJS...');
 
-    // Download to memory
-    const chunks: Uint8Array[] = [];
+    // GramJS downloadMedia returns Buffer directly
     let downloadedBytes = 0;
-    let chunkCount = 0;
-
-    try {
-      for await (const chunk of client.download(message)) {
-        chunkCount++;
-        chunks.push(chunk);
-        downloadedBytes += chunk.length;
-
+    const buffer = await client.downloadMedia(message, {
+      progressCallback: (received: number, total: number) => {
+        downloadedBytes = received;
         // Log progress every 10 MB
-        if (downloadedBytes % (10 * 1024 * 1024) < chunk.length) {
-          const progressMB = (downloadedBytes / (1024 * 1024)).toFixed(2);
-          console.log(`📥 Downloaded: ${progressMB} MB / ${fileSizeMB} MB (${chunkCount} chunks)`);
+        if (received % (10 * 1024 * 1024) < 1024 * 1024) {
+          const progressMB = (received / (1024 * 1024)).toFixed(2);
+          const totalMB = (total / (1024 * 1024)).toFixed(2);
+          console.log(`📥 Downloaded: ${progressMB} MB / ${totalMB} MB`);
         }
       }
-    } catch (downloadError: any) {
-      const errMsg = downloadError?.message || String(downloadError);
-      console.error(`❌ Download failed after ${chunkCount} chunks, ${downloadedBytes} bytes`);
-      console.error(`❌ Error: ${errMsg}`);
+    });
+
+    if (!buffer) {
       return {
         success: false,
-        error: `${errMsg} (after ${chunkCount} chunks, ${(downloadedBytes/1024/1024).toFixed(2)} MB, media: ${mediaType}/${mimeType})`,
+        error: `Download returned null buffer (media: ${mimeType})`,
         stage: 'download'
       };
     }
 
-    // Combine chunks into single buffer
-    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-    const videoBuffer = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      videoBuffer.set(chunk, offset);
-      offset += chunk.length;
-    }
+    // GramJS returns Buffer, convert to Uint8Array
+    const videoBuffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
     const downloadedMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
-    console.log(`✅ Download complete: ${downloadedMB} MB`);
+    console.log(`✅ Download complete: ${downloadedMB} MB (GramJS)`);
 
     return { success: true, data: videoBuffer };
 
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
-    console.error('❌ MTKruto download error:', errorMsg);
+    console.error('❌ GramJS download error:', errorMsg);
     console.error('❌ Error name:', error?.name);
+    console.error('❌ Error stack:', error?.stack?.substring(0, 300));
 
-    // Check for specific MTKruto errors
+    // Check for specific errors
     let stage = 'download';
     if (errorMsg.includes('FLOOD_WAIT')) {
       const waitSeconds = errorMsg.match(/FLOOD_WAIT_(\d+)/)?.[1];
@@ -464,7 +482,7 @@ export async function downloadVideoWithClientDetailed(
       stage = 'FLOOD_WAIT';
     }
     if (errorMsg.includes('AUTH_KEY')) {
-      console.error('🔑 Authentication error - MTKruto client may need restart');
+      console.error('🔑 Authentication error - GramJS client may need restart');
       stage = 'AUTH_KEY';
     }
 
@@ -478,24 +496,27 @@ export async function downloadVideoWithClientDetailed(
 // ============================================
 
 /**
- * Download video from Telegram using MTKruto (MTProto)
+ * Download video from Telegram using GramJS (MTProto)
  * Supports files up to 2GB (vs 20MB limit of Bot API)
  *
  * ⚠️ DEPRECATED: Creates new client each call = FLOOD_WAIT risk
- * Use createMTKrutoClient() + downloadVideoWithClient() instead
+ * Use createGramJSClient() + downloadVideoWithClient() instead
  */
-export async function downloadTelegramVideoMTKruto(
+export async function downloadTelegramVideoGramJS(
   channelUsername: string,
   messageId: number
 ): Promise<Uint8Array | null> {
-  console.warn('⚠️ Using legacy downloadTelegramVideoMTKruto - consider using shared client');
+  console.warn('⚠️ Using legacy downloadTelegramVideoGramJS - consider using shared client');
 
-  const client = await createMTKrutoClient();
+  const client = await createGramJSClient();
   if (!client) return null;
 
   try {
     return await downloadVideoWithClient(client, channelUsername, messageId);
   } finally {
-    await disconnectMTKrutoClient(client);
+    await disconnectGramJSClient(client);
   }
 }
+
+// Backward compatibility alias
+export const downloadTelegramVideoMTKruto = downloadTelegramVideoGramJS;
