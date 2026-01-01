@@ -300,8 +300,19 @@ export async function createMTKrutoClient(): Promise<Client | null> {
     await client.start({ botToken });
     console.log('✅ MTKruto client started (shared instance)');
     return client;
-  } catch (error) {
-    console.error('❌ Failed to start MTKruto client:', error);
+  } catch (error: any) {
+    console.error('❌ Failed to start MTKruto client:', error?.message || error);
+    console.error('❌ Error name:', error?.name);
+
+    // Check for specific errors
+    if (error?.message?.includes('FLOOD_WAIT')) {
+      const waitSeconds = error.message.match(/FLOOD_WAIT_(\d+)/)?.[1];
+      console.error(`⏰ FLOOD_WAIT on auth! Must wait ${waitSeconds} seconds`);
+    }
+    if (error?.message?.includes('AUTH_KEY')) {
+      console.error('🔑 AUTH_KEY error - check Telegram API credentials');
+    }
+
     return null;
   }
 }
@@ -395,8 +406,20 @@ export async function downloadVideoWithClient(
 
     return videoBuffer;
 
-  } catch (error) {
-    console.error('❌ MTKruto download error:', error);
+  } catch (error: any) {
+    console.error('❌ MTKruto download error:', error?.message || error);
+    console.error('❌ Error name:', error?.name);
+    console.error('❌ Error stack:', error?.stack?.substring(0, 500));
+
+    // Check for specific MTKruto errors
+    if (error?.message?.includes('FLOOD_WAIT')) {
+      const waitSeconds = error.message.match(/FLOOD_WAIT_(\d+)/)?.[1];
+      console.error(`⏰ FLOOD_WAIT detected! Must wait ${waitSeconds} seconds`);
+    }
+    if (error?.message?.includes('AUTH_KEY')) {
+      console.error('🔑 Authentication error - MTKruto client may need restart');
+    }
+
     return null;
   }
 }
