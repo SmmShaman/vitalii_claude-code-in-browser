@@ -230,10 +230,11 @@ async function processNewsItem(client, news) {
 
     const youtubeResult = await uploadToYouTube(tempFile, title, description);
 
-    // Step 3: Update database
+    // Step 3: Update database (save original Telegram URL for LinkedIn)
     const { error: updateError } = await supabase
       .from('news')
       .update({
+        original_video_url: news.video_url,  // Save original Telegram URL!
         video_url: youtubeResult.embedUrl,
         video_type: 'youtube',
         updated_at: new Date().toISOString(),
