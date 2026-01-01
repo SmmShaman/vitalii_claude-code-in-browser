@@ -1,4 +1,4 @@
-// Version: 2025-01-01-v8-gramjs - Force redeploy with GramJS
+// Version: 2025-01-01-v9-mtcute - Use mtcute for Telegram MTProto (supports bot tokens!)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts'
@@ -6,9 +6,9 @@ import {
   getYouTubeAccessToken,
   uploadVideoToYouTube,
   downloadTelegramVideo,
-  createMTKrutoClient,       // Now uses GramJS via alias
-  disconnectMTKrutoClient,   // Now uses GramJS via alias
-  downloadVideoWithClient,   // Now uses GramJS
+  createMTKrutoClient,       // Now uses mtcute via alias
+  disconnectMTKrutoClient,   // Now uses mtcute via alias
+  downloadVideoWithClient,   // Now uses mtcute
   MTKrutoClient,             // Now TelegramClient type
   YOUTUBE_HELPERS_VERSION
 } from '../_shared/youtube-helpers.ts'

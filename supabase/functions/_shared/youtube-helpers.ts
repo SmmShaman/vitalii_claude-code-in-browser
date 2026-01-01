@@ -2,22 +2,23 @@
  * YouTube API Helpers
  *
  * Helper functions for uploading videos to YouTube using OAuth 2.0
- * Includes GramJS (grm) integration for downloading large videos from Telegram
+ * Includes mtcute integration for downloading large videos from Telegram
  */
 
 // Version for deployment verification
-export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v7-gramjs";
+export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v8-mtcute";
 
-// GramJS (grm) imports for Telegram MTProto - Deno port
-import { TelegramClient, Api } from "https://deno.land/x/grm@v0.3.0/mod.ts";
-import { StringSession } from "https://deno.land/x/grm@v0.3.0/sessions/mod.ts";
+// mtcute imports for Telegram MTProto - supports bot tokens!
+// Using JSR import for Deno
+import { TelegramClient } from "jsr:@mtcute/deno@0.27.1";
+import { MemoryStorage } from "jsr:@mtcute/core@0.27.4/storage/memory.js";
 
 // Export Client type for external use
-export type GramJSClient = TelegramClient;
+export type MTCuteClient = TelegramClient;
 
-// Keep MTKruto imports as fallback (commented out for now)
-// import { Client, StorageMemory } from "https://deno.land/x/mtkruto@0.77.1/mod.ts";
-// export type MTKrutoClient = Client;
+// Backward compatibility aliases
+export type GramJSClient = TelegramClient;
+export type MTKrutoClient = TelegramClient;
 
 interface YouTubeConfig {
   clientId: string;
@@ -270,50 +271,48 @@ export async function downloadTelegramVideo(
 }
 
 // ============================================
-// SHARED GRAMJS CLIENT MANAGEMENT
+// SHARED MTCUTE CLIENT MANAGEMENT
 // Create ONE client per batch to avoid FLOOD_WAIT
 // ============================================
 
 /**
- * Create and start a shared GramJS client
+ * Create and start a shared mtcute client
  * Call this ONCE at the start of a batch, then reuse for all videos
  */
-export async function createGramJSClient(): Promise<TelegramClient | null> {
+export async function createMTCuteClient(): Promise<TelegramClient | null> {
   const apiId = Deno.env.get("TELEGRAM_API_ID");
   const apiHash = Deno.env.get("TELEGRAM_API_HASH");
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
   if (!apiId || !apiHash || !botToken) {
-    console.error('❌ GramJS credentials not configured');
+    console.error('❌ mtcute credentials not configured');
     console.error(`  TELEGRAM_API_ID: ${apiId ? 'SET' : 'MISSING'}`);
     console.error(`  TELEGRAM_API_HASH: ${apiHash ? 'SET' : 'MISSING'}`);
     console.error(`  TELEGRAM_BOT_TOKEN: ${botToken ? 'SET' : 'MISSING'}`);
     return null;
   }
 
-  console.log(`🔌 Creating shared GramJS client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
-
-  // Use empty StringSession for bot authentication
-  const stringSession = new StringSession("");
-
-  const client = new TelegramClient(
-    stringSession,
-    Number(apiId),
-    apiHash,
-    {
-      connectionRetries: 3,
-    }
-  );
+  console.log(`🔌 Creating shared mtcute client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
 
   try {
-    console.log('🚀 Starting GramJS client with bot token...');
-    await client.start({
-      botAuthToken: botToken,
+    // Create client with MemoryStorage for serverless environment
+    const client = new TelegramClient({
+      apiId: Number(apiId),
+      apiHash: apiHash,
+      storage: new MemoryStorage(),
     });
-    console.log('✅ GramJS client started (shared instance)');
+
+    console.log('🚀 Starting mtcute client with bot token...');
+
+    // mtcute uses start() with botToken parameter
+    await client.start({
+      botToken: botToken,
+    });
+
+    console.log('✅ mtcute client started (shared instance)');
     return client;
   } catch (error: any) {
-    console.error('❌ Failed to start GramJS client:', error?.message || error);
+    console.error('❌ Failed to start mtcute client:', error?.message || error);
     console.error('❌ Error name:', error?.name);
     console.error('❌ Error stack:', error?.stack?.substring(0, 500));
 
@@ -331,22 +330,23 @@ export async function createGramJSClient(): Promise<TelegramClient | null> {
 }
 
 /**
- * Disconnect the shared GramJS client
+ * Disconnect the shared mtcute client
  * Call this ONCE at the end of a batch
  */
-export async function disconnectGramJSClient(client: TelegramClient): Promise<void> {
+export async function disconnectMTCuteClient(client: TelegramClient): Promise<void> {
   try {
-    await client.disconnect();
-    console.log('🔌 GramJS client disconnected (shared instance)');
+    await client.close();
+    console.log('🔌 mtcute client disconnected (shared instance)');
   } catch (e) {
     // Ignore disconnect errors
   }
 }
 
-// Backward compatibility aliases
-export const createMTKrutoClient = createGramJSClient;
-export const disconnectMTKrutoClient = disconnectGramJSClient;
-export type MTKrutoClient = TelegramClient;
+// Backward compatibility aliases for existing code
+export const createGramJSClient = createMTCuteClient;
+export const createMTKrutoClient = createMTCuteClient;
+export const disconnectGramJSClient = disconnectMTCuteClient;
+export const disconnectMTKrutoClient = disconnectMTCuteClient;
 
 // Result type for detailed error reporting
 export interface DownloadResult {
@@ -357,7 +357,7 @@ export interface DownloadResult {
 }
 
 /**
- * Download video using an EXISTING GramJS client (no new auth!)
+ * Download video using an EXISTING mtcute client (no new auth!)
  * Use this inside loops to avoid FLOOD_WAIT
  */
 export async function downloadVideoWithClient(
@@ -373,7 +373,7 @@ export async function downloadVideoWithClient(
 }
 
 /**
- * Download video with detailed error reporting (GramJS implementation)
+ * Download video with detailed error reporting (mtcute implementation)
  */
 export async function downloadVideoWithClientDetailed(
   client: TelegramClient,
@@ -386,49 +386,57 @@ export async function downloadVideoWithClientDetailed(
       ? channelUsername.slice(1)
       : channelUsername;
 
-    console.log(`📥 Fetching message ${messageId} from @${cleanUsername}... (GramJS)`);
+    console.log(`📥 Fetching message ${messageId} from @${cleanUsername}... (mtcute ${YOUTUBE_HELPERS_VERSION})`);
 
-    // GramJS uses getMessages with entity and options
-    const messages = await client.getMessages(cleanUsername, { ids: [messageId] });
+    // mtcute uses getMessages to fetch messages
+    const messages = await client.getMessages(cleanUsername, { ids: messageId });
 
     if (!messages || messages.length === 0 || !messages[0]) {
       return { success: false, error: 'Message not found', stage: 'getMessages' };
     }
 
     const message = messages[0];
-    console.log(`✅ Message found, type: ${message.className}`);
+    console.log(`✅ Message found, id: ${message.id}`);
 
-    // GramJS uses message.media for all media types
+    // mtcute uses message.media for media
     const media = message.media;
     if (!media) {
       return { success: false, error: 'Message has no media (text only)', stage: 'checkVideo' };
     }
 
-    // Check media type
-    const mediaClassName = media.className;
-    console.log(`📎 Media class: ${mediaClassName}`);
+    // Get media type
+    const mediaType = media.type;
+    console.log(`📎 Media type: ${mediaType}`);
 
-    // Check if it's a video-like media
-    const isVideo = mediaClassName === 'MessageMediaDocument' || mediaClassName === 'MessageMediaVideo';
-    const isPhoto = mediaClassName === 'MessageMediaPhoto';
-
-    if (isPhoto) {
+    // Check if it's a video
+    if (mediaType === 'photo') {
       return { success: false, error: `Message has no video (found: photo)`, stage: 'checkVideo' };
     }
 
-    if (!isVideo) {
-      return { success: false, error: `Unsupported media type: ${mediaClassName}`, stage: 'checkVideo' };
+    if (mediaType !== 'video' && mediaType !== 'document') {
+      return { success: false, error: `Unsupported media type: ${mediaType}`, stage: 'checkVideo' };
+    }
+
+    // For documents, check if it's a video MIME type
+    if (mediaType === 'document') {
+      const doc = media as any;
+      const mimeType = doc.mimeType || '';
+      if (!mimeType.startsWith('video/')) {
+        return { success: false, error: `Document is not a video (MIME: ${mimeType})`, stage: 'checkVideo' };
+      }
     }
 
     // Get file size if available
     let fileSize = 0;
     let mimeType = 'unknown';
-    if (media.document) {
-      fileSize = Number(media.document.size || 0);
-      mimeType = media.document.mimeType || 'unknown';
+    if ('fileSize' in media) {
+      fileSize = Number((media as any).fileSize || 0);
+    }
+    if ('mimeType' in media) {
+      mimeType = (media as any).mimeType || 'unknown';
     }
     const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
-    console.log(`📊 Media: document, MIME: ${mimeType}, Size: ${fileSizeMB} MB`);
+    console.log(`📊 Media: ${mediaType}, MIME: ${mimeType}, Size: ${fileSizeMB} MB`);
 
     // Check if file is too large for /tmp (512 MB limit on Pro)
     const maxSize = 500 * 1024 * 1024; // 500 MB safety margin
@@ -436,21 +444,10 @@ export async function downloadVideoWithClientDetailed(
       return { success: false, error: `Video too large: ${fileSizeMB} MB (max 500 MB)`, stage: 'sizeCheck' };
     }
 
-    console.log('⬇️ Downloading video via GramJS...');
+    console.log('⬇️ Downloading video via mtcute...');
 
-    // GramJS downloadMedia returns Buffer directly
-    let downloadedBytes = 0;
-    const buffer = await client.downloadMedia(message, {
-      progressCallback: (received: number, total: number) => {
-        downloadedBytes = received;
-        // Log progress every 10 MB
-        if (received % (10 * 1024 * 1024) < 1024 * 1024) {
-          const progressMB = (received / (1024 * 1024)).toFixed(2);
-          const totalMB = (total / (1024 * 1024)).toFixed(2);
-          console.log(`📥 Downloaded: ${progressMB} MB / ${totalMB} MB`);
-        }
-      }
-    });
+    // mtcute uses downloadAsBuffer method
+    const buffer = await client.downloadAsBuffer(media);
 
     if (!buffer) {
       return {
@@ -460,17 +457,17 @@ export async function downloadVideoWithClientDetailed(
       };
     }
 
-    // GramJS returns Buffer, convert to Uint8Array
+    // Convert to Uint8Array if needed
     const videoBuffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
     const downloadedMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
-    console.log(`✅ Download complete: ${downloadedMB} MB (GramJS)`);
+    console.log(`✅ Download complete: ${downloadedMB} MB (mtcute)`);
 
     return { success: true, data: videoBuffer };
 
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
-    console.error('❌ GramJS download error:', errorMsg);
+    console.error('❌ mtcute download error:', errorMsg);
     console.error('❌ Error name:', error?.name);
     console.error('❌ Error stack:', error?.stack?.substring(0, 300));
 
@@ -482,7 +479,7 @@ export async function downloadVideoWithClientDetailed(
       stage = 'FLOOD_WAIT';
     }
     if (errorMsg.includes('AUTH_KEY')) {
-      console.error('🔑 Authentication error - GramJS client may need restart');
+      console.error('🔑 Authentication error - mtcute client may need restart');
       stage = 'AUTH_KEY';
     }
 
@@ -496,27 +493,28 @@ export async function downloadVideoWithClientDetailed(
 // ============================================
 
 /**
- * Download video from Telegram using GramJS (MTProto)
+ * Download video from Telegram using mtcute (MTProto)
  * Supports files up to 2GB (vs 20MB limit of Bot API)
  *
  * ⚠️ DEPRECATED: Creates new client each call = FLOOD_WAIT risk
- * Use createGramJSClient() + downloadVideoWithClient() instead
+ * Use createMTCuteClient() + downloadVideoWithClient() instead
  */
-export async function downloadTelegramVideoGramJS(
+export async function downloadTelegramVideoMTCute(
   channelUsername: string,
   messageId: number
 ): Promise<Uint8Array | null> {
-  console.warn('⚠️ Using legacy downloadTelegramVideoGramJS - consider using shared client');
+  console.warn('⚠️ Using legacy downloadTelegramVideoMTCute - consider using shared client');
 
-  const client = await createGramJSClient();
+  const client = await createMTCuteClient();
   if (!client) return null;
 
   try {
     return await downloadVideoWithClient(client, channelUsername, messageId);
   } finally {
-    await disconnectGramJSClient(client);
+    await disconnectMTCuteClient(client);
   }
 }
 
-// Backward compatibility alias
-export const downloadTelegramVideoMTKruto = downloadTelegramVideoGramJS;
+// Backward compatibility aliases
+export const downloadTelegramVideoGramJS = downloadTelegramVideoMTCute;
+export const downloadTelegramVideoMTKruto = downloadTelegramVideoMTCute;
