@@ -330,6 +330,14 @@ export async function disconnectMTKrutoClient(client: Client): Promise<void> {
   }
 }
 
+// Result type for detailed error reporting
+export interface DownloadResult {
+  success: boolean;
+  data?: Uint8Array;
+  error?: string;
+  stage?: string;
+}
+
 /**
  * Download video using an EXISTING MTKruto client (no new auth!)
  * Use this inside loops to avoid FLOOD_WAIT
@@ -339,6 +347,21 @@ export async function downloadVideoWithClient(
   channelUsername: string,
   messageId: number
 ): Promise<Uint8Array | null> {
+  const result = await downloadVideoWithClientDetailed(client, channelUsername, messageId);
+  if (!result.success) {
+    console.error(`❌ Download failed at stage: ${result.stage}, error: ${result.error}`);
+  }
+  return result.data || null;
+}
+
+/**
+ * Download video with detailed error reporting
+ */
+export async function downloadVideoWithClientDetailed(
+  client: Client,
+  channelUsername: string,
+  messageId: number
+): Promise<DownloadResult> {
   try {
     // Format channel username (remove @ if present)
     const cleanUsername = channelUsername.startsWith('@')
@@ -350,8 +373,7 @@ export async function downloadVideoWithClient(
     const messages = await client.getMessages(cleanUsername, [messageId]);
 
     if (!messages || messages.length === 0 || !messages[0]) {
-      console.error('❌ Message not found');
-      return null;
+      return { success: false, error: 'Message not found', stage: 'getMessages' };
     }
 
     const message = messages[0];
@@ -359,8 +381,7 @@ export async function downloadVideoWithClient(
 
     // Check if message has video
     if (!message.video && !message.document) {
-      console.error('❌ Message does not contain video');
-      return null;
+      return { success: false, error: 'Message does not contain video', stage: 'checkVideo' };
     }
 
     const media = message.video || message.document;
@@ -371,8 +392,7 @@ export async function downloadVideoWithClient(
     // Check if file is too large for /tmp (512 MB limit on Pro)
     const maxSize = 500 * 1024 * 1024; // 500 MB safety margin
     if (fileSize > maxSize) {
-      console.error(`❌ Video too large: ${fileSizeMB} MB (max 500 MB)`);
-      return null;
+      return { success: false, error: `Video too large: ${fileSizeMB} MB (max 500 MB)`, stage: 'sizeCheck' };
     }
 
     console.log('⬇️ Downloading video via MTKruto...');
@@ -404,23 +424,26 @@ export async function downloadVideoWithClient(
     const downloadedMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
     console.log(`✅ Download complete: ${downloadedMB} MB`);
 
-    return videoBuffer;
+    return { success: true, data: videoBuffer };
 
   } catch (error: any) {
-    console.error('❌ MTKruto download error:', error?.message || error);
+    const errorMsg = error?.message || String(error);
+    console.error('❌ MTKruto download error:', errorMsg);
     console.error('❌ Error name:', error?.name);
-    console.error('❌ Error stack:', error?.stack?.substring(0, 500));
 
     // Check for specific MTKruto errors
-    if (error?.message?.includes('FLOOD_WAIT')) {
-      const waitSeconds = error.message.match(/FLOOD_WAIT_(\d+)/)?.[1];
+    let stage = 'download';
+    if (errorMsg.includes('FLOOD_WAIT')) {
+      const waitSeconds = errorMsg.match(/FLOOD_WAIT_(\d+)/)?.[1];
       console.error(`⏰ FLOOD_WAIT detected! Must wait ${waitSeconds} seconds`);
+      stage = 'FLOOD_WAIT';
     }
-    if (error?.message?.includes('AUTH_KEY')) {
+    if (errorMsg.includes('AUTH_KEY')) {
       console.error('🔑 Authentication error - MTKruto client may need restart');
+      stage = 'AUTH_KEY';
     }
 
-    return null;
+    return { success: false, error: errorMsg, stage };
   }
 }
 
