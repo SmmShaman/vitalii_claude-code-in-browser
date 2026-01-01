@@ -6,7 +6,7 @@
  */
 
 // Version for deployment verification
-export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v5-single-client";
+export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v6-no-legacy-fallback";
 
 // MTKruto imports for Telegram MTProto
 // Using deno.land/x version 0.77.1 (latest stable, fixes base64 replaceAll error)
