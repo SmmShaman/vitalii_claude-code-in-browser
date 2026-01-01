@@ -6,11 +6,14 @@
  */
 
 // Version for deployment verification
-export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v4-mtkruto-77";
+export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v5-single-client";
 
 // MTKruto imports for Telegram MTProto
 // Using deno.land/x version 0.77.1 (latest stable, fixes base64 replaceAll error)
 import { Client, StorageMemory } from "https://deno.land/x/mtkruto@0.77.1/mod.ts";
+
+// Export Client type for external use
+export type MTKrutoClient = Client;
 
 interface YouTubeConfig {
   clientId: string;
@@ -262,14 +265,16 @@ export async function downloadTelegramVideo(
   }
 }
 
+// ============================================
+// SHARED MTKRUTO CLIENT MANAGEMENT
+// Create ONE client per batch to avoid FLOOD_WAIT
+// ============================================
+
 /**
- * Download video from Telegram using MTKruto (MTProto)
- * Supports files up to 2GB (vs 20MB limit of Bot API)
+ * Create and start a shared MTKruto client
+ * Call this ONCE at the start of a batch, then reuse for all videos
  */
-export async function downloadTelegramVideoMTKruto(
-  channelUsername: string,
-  messageId: number
-): Promise<Uint8Array | null> {
+export async function createMTKrutoClient(): Promise<Client | null> {
   const apiId = Deno.env.get("TELEGRAM_API_ID");
   const apiHash = Deno.env.get("TELEGRAM_API_HASH");
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -282,10 +287,8 @@ export async function downloadTelegramVideoMTKruto(
     return null;
   }
 
-  console.log(`🔌 Initializing MTKruto client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
+  console.log(`🔌 Creating shared MTKruto client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
 
-  // Initialize client with StorageMemory for in-memory session storage
-  // Required for MTKruto 0.77+ (storage: null no longer works)
   const client = new Client({
     storage: new StorageMemory(),
     apiId: Number(apiId),
@@ -295,9 +298,37 @@ export async function downloadTelegramVideoMTKruto(
   try {
     console.log('🚀 Starting MTKruto client with bot token...');
     await client.start({ botToken });
-    console.log('✅ MTKruto client started');
+    console.log('✅ MTKruto client started (shared instance)');
+    return client;
+  } catch (error) {
+    console.error('❌ Failed to start MTKruto client:', error);
+    return null;
+  }
+}
 
-    // Get messages from channel
+/**
+ * Disconnect the shared MTKruto client
+ * Call this ONCE at the end of a batch
+ */
+export async function disconnectMTKrutoClient(client: Client): Promise<void> {
+  try {
+    await client.disconnect();
+    console.log('🔌 MTKruto client disconnected (shared instance)');
+  } catch (e) {
+    // Ignore disconnect errors
+  }
+}
+
+/**
+ * Download video using an EXISTING MTKruto client (no new auth!)
+ * Use this inside loops to avoid FLOOD_WAIT
+ */
+export async function downloadVideoWithClient(
+  client: Client,
+  channelUsername: string,
+  messageId: number
+): Promise<Uint8Array | null> {
+  try {
     // Format channel username (remove @ if present)
     const cleanUsername = channelUsername.startsWith('@')
       ? channelUsername.slice(1)
@@ -305,7 +336,6 @@ export async function downloadTelegramVideoMTKruto(
 
     console.log(`📥 Fetching message ${messageId} from @${cleanUsername}...`);
 
-    // MTKruto 0.3.1 API: getMessages accepts array of IDs directly (not { ids: [...] })
     const messages = await client.getMessages(cleanUsername, [messageId]);
 
     if (!messages || messages.length === 0 || !messages[0]) {
@@ -368,12 +398,33 @@ export async function downloadTelegramVideoMTKruto(
   } catch (error) {
     console.error('❌ MTKruto download error:', error);
     return null;
+  }
+}
+
+// ============================================
+// LEGACY FUNCTION (creates new client each time)
+// Keep for backward compatibility but prefer shared client
+// ============================================
+
+/**
+ * Download video from Telegram using MTKruto (MTProto)
+ * Supports files up to 2GB (vs 20MB limit of Bot API)
+ *
+ * ⚠️ DEPRECATED: Creates new client each call = FLOOD_WAIT risk
+ * Use createMTKrutoClient() + downloadVideoWithClient() instead
+ */
+export async function downloadTelegramVideoMTKruto(
+  channelUsername: string,
+  messageId: number
+): Promise<Uint8Array | null> {
+  console.warn('⚠️ Using legacy downloadTelegramVideoMTKruto - consider using shared client');
+
+  const client = await createMTKrutoClient();
+  if (!client) return null;
+
+  try {
+    return await downloadVideoWithClient(client, channelUsername, messageId);
   } finally {
-    try {
-      await client.disconnect();
-      console.log('🔌 MTKruto client disconnected');
-    } catch (e) {
-      // Ignore disconnect errors
-    }
+    await disconnectMTKrutoClient(client);
   }
 }
