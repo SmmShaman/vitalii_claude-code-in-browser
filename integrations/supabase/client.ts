@@ -97,7 +97,7 @@ export const getLatestNews = async (limit: number = 3) => {
       video_url,
       video_type,
       source_id,
-      news_sources!inner(name, category)
+      news_sources(name, category)
     `)
     .eq('is_published', true)
     .order('published_at', { ascending: false })

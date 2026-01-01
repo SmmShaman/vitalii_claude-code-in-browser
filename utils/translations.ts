@@ -243,6 +243,16 @@ export const translations = {
     weather_heavy_snow: "heavy snow",
     weather_rain_showers: "rain showers",
     weather_thunderstorm: "thunderstorm",
+
+    // Mobile navigation
+    nav_home: "Home",
+    nav_services: "Services",
+    nav_projects: "Projects",
+    nav_news: "News",
+    nav_blog: "Blog",
+    nav_contact: "Contact",
+    view_all: "View all",
+    read_more: "Read more",
   },
   no: {
     title: "Vitalii Berbeha",
@@ -486,6 +496,16 @@ export const translations = {
     weather_heavy_snow: "kraftig snø",
     weather_rain_showers: "regnbyger",
     weather_thunderstorm: "tordenvær",
+
+    // Mobile navigation
+    nav_home: "Hjem",
+    nav_services: "Tjenester",
+    nav_projects: "Prosjekter",
+    nav_news: "Nyheter",
+    nav_blog: "Blogg",
+    nav_contact: "Kontakt",
+    view_all: "Se alle",
+    read_more: "Les mer",
   },
   ua: {
     title: "Віталій Бербега",
@@ -729,6 +749,16 @@ export const translations = {
     weather_heavy_snow: "сильний сніг",
     weather_rain_showers: "злива",
     weather_thunderstorm: "гроза",
+
+    // Mobile navigation
+    nav_home: "Головна",
+    nav_services: "Послуги",
+    nav_projects: "Проєкти",
+    nav_news: "Новини",
+    nav_blog: "Блог",
+    nav_contact: "Контакт",
+    view_all: "Дивитись все",
+    read_more: "Читати далі",
   },
 };
 
