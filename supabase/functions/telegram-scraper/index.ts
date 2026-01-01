@@ -5,7 +5,11 @@ import {
   getYouTubeAccessToken,
   uploadVideoToYouTube,
   downloadTelegramVideo,
-  downloadTelegramVideoMTKruto
+  createMTKrutoClient,
+  disconnectMTKrutoClient,
+  downloadVideoWithClient,
+  MTKrutoClient,
+  YOUTUBE_HELPERS_VERSION
 } from '../_shared/youtube-helpers.ts'
 
 const corsHeaders = {
@@ -181,9 +185,9 @@ serve(async (req) => {
   }
 
   try {
-    // Version: 2024-12-30-01 - Hyperlink extraction for source URLs
-    console.log('🕷️  Telegram Scraper v2024-12-30-01 started')
-    console.log('📦 Features: Hyperlink extraction, inline URLs for AI rewrite, sequential workflow')
+    // Version: 2025-01-01-single-client - Single MTKruto client to avoid FLOOD_WAIT
+    console.log('🕷️  Telegram Scraper v2025-01-01-single-client started')
+    console.log('📦 Features: Single MTKruto client, no FLOOD_WAIT, hyperlink extraction')
 
     // Parse request body for optional parameters
     let requestBody: any = {}
@@ -305,7 +309,23 @@ serve(async (req) => {
     let totalSentToBot = 0
     const results: { channel: string; processed: number; approved?: number; rejected?: number; sentToBot?: number; error?: string }[] = []
 
+    // Check if YouTube upload is configured
+    const youtubeConfigured = !!(YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET && YOUTUBE_REFRESH_TOKEN && TELEGRAM_BOT_TOKEN)
+
+    // Create SHARED MTKruto client ONCE for all channels (avoids FLOOD_WAIT)
+    let sharedMTKrutoClient: MTKrutoClient | null = null
+    if (youtubeConfigured) {
+      console.log(`🔌 Creating shared MTKruto client (${YOUTUBE_HELPERS_VERSION})...`)
+      sharedMTKrutoClient = await createMTKrutoClient()
+      if (sharedMTKrutoClient) {
+        console.log('✅ Shared MTKruto client ready - will reuse for all videos')
+      } else {
+        console.warn('⚠️ Failed to create shared client - videos will fallback to Telegram embed')
+      }
+    }
+
     // Process each channel (only those ready to fetch)
+    try {
     for (const source of sourcesToProcess) {
       try {
         const channelUsername = extractUsername(source.url)
@@ -334,9 +354,9 @@ serve(async (req) => {
         const html = await response.text()
         console.log(`✅ Fetched HTML (${html.length} bytes)`)
 
-        // Parse HTML
+        // Parse HTML (pass shared MTKruto client to avoid FLOOD_WAIT)
         console.log(`🔍 About to call parseChannelPosts...`)
-        const posts = await parseChannelPosts(html, channelUsername)
+        const posts = await parseChannelPosts(html, channelUsername, sharedMTKrutoClient)
         console.log(`✅ parseChannelPosts RETURNED with ${posts.length} posts`)
         console.log(`📨 Found ${posts.length} posts`)
 
@@ -725,12 +745,19 @@ serve(async (req) => {
           error: channelError.message || 'Unknown error',
         })
       }
+    } // end for loop
+    } finally {
+      // Disconnect shared MTKruto client after processing all channels
+      if (sharedMTKrutoClient) {
+        console.log('🔌 Disconnecting shared MTKruto client...')
+        await disconnectMTKrutoClient(sharedMTKrutoClient)
+      }
     }
 
     console.log(`\n🎉 Scraping complete! Total processed: ${totalProcessed}`)
     console.log(`🤖 AI Moderation: ${totalApproved} approved, ${totalRejected} rejected`)
     console.log(`📤 Sent to Telegram bot: ${totalSentToBot}`)
-    console.log(`✅ Telegram Scraper v2024-12-30-01 finished successfully`)
+    console.log(`✅ Telegram Scraper v2025-01-01-single-client finished successfully`)
 
     return new Response(
       JSON.stringify({
@@ -763,7 +790,11 @@ serve(async (req) => {
 /**
  * Parse Telegram channel posts from HTML
  */
-async function parseChannelPosts(html: string, channelUsername: string): Promise<ScrapedPost[]> {
+async function parseChannelPosts(
+  html: string,
+  channelUsername: string,
+  sharedMTKrutoClient: MTKrutoClient | null = null
+): Promise<ScrapedPost[]> {
   const posts: ScrapedPost[] = []
 
   try {
@@ -845,8 +876,17 @@ async function parseChannelPosts(html: string, channelUsername: string): Promise
               const msgId = parseInt(dataPost.split('/')[1])
               console.log(`📥 [VIDEO] Downloading video via MTKruto: @${channelUsername} message ${msgId}`)
 
-              // Download video using MTKruto (supports files up to 2GB)
-              const videoBuffer = await downloadTelegramVideoMTKruto(channelUsername, msgId)
+              // Download video using shared MTKruto client (avoids FLOOD_WAIT)
+              let videoBuffer: Uint8Array | null = null
+              if (sharedMTKrutoClient) {
+                console.log('🔄 [VIDEO] Using shared MTKruto client (single auth)')
+                videoBuffer = await downloadVideoWithClient(sharedMTKrutoClient, channelUsername, msgId)
+              } else {
+                console.warn('⚠️ [VIDEO] No shared client - this may cause FLOOD_WAIT!')
+                // Fallback to legacy function (creates new client each time)
+                const { downloadTelegramVideoMTKruto } = await import('../_shared/youtube-helpers.ts')
+                videoBuffer = await downloadTelegramVideoMTKruto(channelUsername, msgId)
+              }
 
               if (videoBuffer) {
                 const videoSizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2)
