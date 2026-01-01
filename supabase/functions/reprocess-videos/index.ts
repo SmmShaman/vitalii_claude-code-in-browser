@@ -215,21 +215,30 @@ serve(async (req) => {
 
             // Download video from Telegram using SHARED MTKruto client (avoids FLOOD_WAIT)
             let videoBuffer: Uint8Array | null = null;
+            let downloadError: string | null = null;
+
             if (sharedMTKrutoClient) {
               console.log('🔄 Using shared MTKruto client (single auth)');
-              videoBuffer = await downloadVideoWithClient(sharedMTKrutoClient, channelUsername, messageId);
+              try {
+                videoBuffer = await downloadVideoWithClient(sharedMTKrutoClient, channelUsername, messageId);
+              } catch (dlError: any) {
+                downloadError = dlError?.message || 'Unknown download error';
+                console.error('❌ Download exception:', downloadError);
+              }
             } else {
+              downloadError = 'No shared MTKruto client available (client creation failed)';
               console.log('❌ No shared MTKruto client available');
             }
 
             if (!videoBuffer) {
-              console.log(`❌ Failed to download video from Telegram`);
+              const errorMsg = downloadError || 'Failed to download video from Telegram (null buffer)';
+              console.log(`❌ ${errorMsg}`);
               results.push({
                 id: news.id,
                 title: title,
                 oldVideoUrl: news.video_url,
                 status: 'failed',
-                error: 'Failed to download video from Telegram'
+                error: errorMsg
               });
               continue;
             }
@@ -396,6 +405,7 @@ serve(async (req) => {
         remaining,
         nextOffset: offset + limit,
         autonomous,
+        mtkrutoClientReady: !!sharedMTKrutoClient,
         state: autonomous ? {
           current_offset: offset + results.length,
           total_processed: (currentState?.total_processed || 0) + results.length,
