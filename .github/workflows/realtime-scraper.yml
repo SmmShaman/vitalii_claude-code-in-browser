@@ -5,60 +5,63 @@ on:
     # Run every 10 minutes
     - cron: '*/10 * * * *'
   workflow_dispatch:
-    inputs:
-      source_name:
-        description: 'Specific source to scrape (leave empty for round-robin)'
-        required: false
-        default: ''
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get active sources
-        id: sources
-        run: |
-          SOURCES=$(curl -s "https://uchmopqiylywnemvjttl.supabase.co/rest/v1/news_sources?select=id,name&is_active=eq.true&source_type=eq.telegram" \
-            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}")
-          echo "sources=$SOURCES" >> $GITHUB_OUTPUT
-          echo "Found sources: $SOURCES"
-
-      - name: Calculate which source to process
+      - name: Get active sources and pick one
         id: pick
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
-          # Get current minute of the hour (0-59)
-          MINUTE=$(date +%M)
-          # Get sources as array
-          SOURCES='${{ steps.sources.outputs.sources }}'
-          COUNT=$(echo "$SOURCES" | jq 'length')
+          # Fetch sources
+          SOURCES=$(curl -s "https://uchmopqiylywnemvjttl.supabase.co/rest/v1/news_sources?select=id,name&is_active=eq.true&source_type=eq.telegram" \
+            -H "apikey: $SUPABASE_ANON_KEY")
 
-          if [ "$COUNT" -eq "0" ]; then
+          echo "Raw response: $SOURCES"
+
+          COUNT=$(echo "$SOURCES" | jq 'length')
+          echo "Source count: $COUNT"
+
+          if [ "$COUNT" -eq "0" ] || [ -z "$COUNT" ]; then
             echo "No active sources found"
             echo "source_id=" >> $GITHUB_OUTPUT
+            echo "source_name=none" >> $GITHUB_OUTPUT
             exit 0
           fi
 
+          # Get current minute of the hour (0-59)
+          MINUTE=$(date +%M)
+          # Remove leading zero for arithmetic
+          MINUTE=$((10#$MINUTE))
+
           # Round-robin: pick source based on minute
-          # Every 10 min = 6 times per hour, we have 6 sources
           INDEX=$((MINUTE / 10 % COUNT))
 
           SOURCE_ID=$(echo "$SOURCES" | jq -r ".[$INDEX].id")
           SOURCE_NAME=$(echo "$SOURCES" | jq -r ".[$INDEX].name")
 
-          echo "Minute: $MINUTE, Index: $INDEX, Source: $SOURCE_NAME ($SOURCE_ID)"
+          echo "Minute: $MINUTE, Index: $INDEX"
+          echo "Selected: $SOURCE_NAME ($SOURCE_ID)"
+
           echo "source_id=$SOURCE_ID" >> $GITHUB_OUTPUT
           echo "source_name=$SOURCE_NAME" >> $GITHUB_OUTPUT
 
       - name: Scrape selected source
         if: steps.pick.outputs.source_id != ''
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SOURCE_ID: ${{ steps.pick.outputs.source_id }}
+          SOURCE_NAME: ${{ steps.pick.outputs.source_name }}
         run: |
-          echo "🕷️ Scraping: ${{ steps.pick.outputs.source_name }}"
+          echo "🕷️ Scraping: $SOURCE_NAME"
 
           RESULT=$(curl -s -X POST "https://uchmopqiylywnemvjttl.supabase.co/functions/v1/telegram-scraper" \
-            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             -H "Content-Type: application/json" \
-            -d '{"source_id": "${{ steps.pick.outputs.source_id }}"}' \
+            -d "{\"source_id\": \"$SOURCE_ID\"}" \
             --max-time 150)
 
           echo "Result: $RESULT"
