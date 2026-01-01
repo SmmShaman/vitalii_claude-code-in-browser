@@ -16,10 +16,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  downloadTelegramVideoMTKruto,
+  createMTKrutoClient,
+  disconnectMTKrutoClient,
+  downloadVideoWithClient,
   uploadVideoToYouTube,
   getYouTubeConfig,
-  getYouTubeAccessToken
+  getYouTubeAccessToken,
+  MTKrutoClient,
+  YOUTUBE_HELPERS_VERSION
 } from "../_shared/youtube-helpers.ts";
 
 const corsHeaders = {
@@ -62,8 +66,19 @@ serve(async (req) => {
   }
 
   console.log('🔄 Reprocess Videos function started');
+  console.log(`📦 Using youtube-helpers ${YOUTUBE_HELPERS_VERSION}`);
+
+  // Create SHARED MTKruto client ONCE for all videos (avoids FLOOD_WAIT)
+  let sharedMTKrutoClient: MTKrutoClient | null = null;
 
   try {
+    console.log('🔌 Creating shared MTKruto client...');
+    sharedMTKrutoClient = await createMTKrutoClient();
+    if (sharedMTKrutoClient) {
+      console.log('✅ Shared MTKruto client ready - will reuse for all videos');
+    } else {
+      console.warn('⚠️ Failed to create MTKruto client - video downloads will fail');
+    }
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -198,8 +213,14 @@ serve(async (req) => {
 
             console.log(`📱 Telegram channel: @${channelUsername}, message: ${messageId}`);
 
-            // Download video from Telegram using MTKruto (returns Uint8Array directly)
-            const videoBuffer = await downloadTelegramVideoMTKruto(channelUsername, messageId);
+            // Download video from Telegram using SHARED MTKruto client (avoids FLOOD_WAIT)
+            let videoBuffer: Uint8Array | null = null;
+            if (sharedMTKrutoClient) {
+              console.log('🔄 Using shared MTKruto client (single auth)');
+              videoBuffer = await downloadVideoWithClient(sharedMTKrutoClient, channelUsername, messageId);
+            } else {
+              console.log('❌ No shared MTKruto client available');
+            }
 
             if (!videoBuffer) {
               console.log(`❌ Failed to download video from Telegram`);
@@ -405,5 +426,11 @@ serve(async (req) => {
         status: 500
       }
     );
+  } finally {
+    // Disconnect shared MTKruto client after all processing
+    if (sharedMTKrutoClient) {
+      console.log('🔌 Disconnecting shared MTKruto client...');
+      await disconnectMTKrutoClient(sharedMTKrutoClient);
+    }
   }
 });
