@@ -184,10 +184,17 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Debug logs array - will be included in response for troubleshooting
+  const debugLogs: string[] = []
+  const log = (msg: string) => {
+    console.log(msg)
+    debugLogs.push(`${new Date().toISOString()} ${msg}`)
+  }
+
   try {
-    // Version: 2025-01-01-single-client - Single MTKruto client to avoid FLOOD_WAIT
-    console.log('🕷️  Telegram Scraper v2025-01-01-single-client started')
-    console.log('📦 Features: Single MTKruto client, no FLOOD_WAIT, hyperlink extraction')
+    // Version: 2025-01-01-v2-debug - Single MTKruto client + debug logs in response
+    log('🕷️  Telegram Scraper v2025-01-01-v2-debug started')
+    log('📦 Features: Single MTKruto client, debug logs in response')
 
     // Parse request body for optional parameters
     let requestBody: any = {}
@@ -288,14 +295,15 @@ serve(async (req) => {
     })
 
     if (sourcesToProcess.length === 0) {
-      console.log('ℹ️  No sources ready to fetch at this time')
+      log('ℹ️  No sources ready to fetch at this time')
       return new Response(
         JSON.stringify({
           ok: true,
           message: 'No sources ready to fetch',
           totalSources: sources.length,
           sourcesProcessed: 0,
-          sourcesSkipped: sources.length
+          sourcesSkipped: sources.length,
+          debugLogs,  // Include debug logs
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -311,17 +319,26 @@ serve(async (req) => {
 
     // Check if YouTube upload is configured
     const youtubeConfigured = !!(YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET && YOUTUBE_REFRESH_TOKEN && TELEGRAM_BOT_TOKEN)
+    log(`🔧 YouTube configured: ${youtubeConfigured}`)
+    log(`🔧 Credentials: YT_CLIENT_ID=${!!YOUTUBE_CLIENT_ID}, YT_SECRET=${!!YOUTUBE_CLIENT_SECRET}, YT_TOKEN=${!!YOUTUBE_REFRESH_TOKEN}, TG_BOT=${!!TELEGRAM_BOT_TOKEN}`)
 
     // Create SHARED MTKruto client ONCE for all channels (avoids FLOOD_WAIT)
     let sharedMTKrutoClient: MTKrutoClient | null = null
     if (youtubeConfigured) {
-      console.log(`🔌 Creating shared MTKruto client (${YOUTUBE_HELPERS_VERSION})...`)
-      sharedMTKrutoClient = await createMTKrutoClient()
-      if (sharedMTKrutoClient) {
-        console.log('✅ Shared MTKruto client ready - will reuse for all videos')
-      } else {
-        console.warn('⚠️ Failed to create shared client - videos will fallback to Telegram embed')
+      log(`🔌 Creating shared MTKruto client (${YOUTUBE_HELPERS_VERSION})...`)
+      try {
+        sharedMTKrutoClient = await createMTKrutoClient()
+        if (sharedMTKrutoClient) {
+          log('✅ Shared MTKruto client ready - will reuse for all videos')
+        } else {
+          log('⚠️ Failed to create shared client - videos will fallback to Telegram embed')
+        }
+      } catch (mtkError: any) {
+        log(`❌ MTKruto client creation error: ${mtkError.message}`)
+        log(`❌ MTKruto error stack: ${mtkError.stack?.substring(0, 500)}`)
       }
+    } else {
+      log('⚠️ YouTube not configured - all videos will use Telegram embed')
     }
 
     // Process each channel (only those ready to fetch)
@@ -754,10 +771,10 @@ serve(async (req) => {
       }
     }
 
-    console.log(`\n🎉 Scraping complete! Total processed: ${totalProcessed}`)
-    console.log(`🤖 AI Moderation: ${totalApproved} approved, ${totalRejected} rejected`)
-    console.log(`📤 Sent to Telegram bot: ${totalSentToBot}`)
-    console.log(`✅ Telegram Scraper v2025-01-01-single-client finished successfully`)
+    log(`\n🎉 Scraping complete! Total processed: ${totalProcessed}`)
+    log(`🤖 AI Moderation: ${totalApproved} approved, ${totalRejected} rejected`)
+    log(`📤 Sent to Telegram bot: ${totalSentToBot}`)
+    log(`✅ Telegram Scraper v2025-01-01-v2-debug finished successfully`)
 
     return new Response(
       JSON.stringify({
@@ -768,6 +785,7 @@ serve(async (req) => {
         totalRejected,
         totalSentToBot,
         results,
+        debugLogs,  // Include debug logs in response
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -778,6 +796,7 @@ serve(async (req) => {
         ok: false,
         error: error.message || 'Unknown error',
         stack: error.stack,
+        debugLogs,  // Include debug logs even on error
       }),
       {
         status: 500,
