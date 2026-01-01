@@ -18,12 +18,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   createMTKrutoClient,
   disconnectMTKrutoClient,
-  downloadVideoWithClient,
+  downloadVideoWithClientDetailed,
   uploadVideoToYouTube,
   getYouTubeConfig,
   getYouTubeAccessToken,
   MTKrutoClient,
-  YOUTUBE_HELPERS_VERSION
+  YOUTUBE_HELPERS_VERSION,
+  DownloadResult
 } from "../_shared/youtube-helpers.ts";
 
 const corsHeaders = {
@@ -214,25 +215,23 @@ serve(async (req) => {
             console.log(`📱 Telegram channel: @${channelUsername}, message: ${messageId}`);
 
             // Download video from Telegram using SHARED MTKruto client (avoids FLOOD_WAIT)
-            let videoBuffer: Uint8Array | null = null;
-            let downloadError: string | null = null;
+            let downloadResult: DownloadResult;
 
             if (sharedMTKrutoClient) {
               console.log('🔄 Using shared MTKruto client (single auth)');
-              try {
-                videoBuffer = await downloadVideoWithClient(sharedMTKrutoClient, channelUsername, messageId);
-              } catch (dlError: any) {
-                downloadError = dlError?.message || 'Unknown download error';
-                console.error('❌ Download exception:', downloadError);
-              }
+              downloadResult = await downloadVideoWithClientDetailed(sharedMTKrutoClient, channelUsername, messageId);
             } else {
-              downloadError = 'No shared MTKruto client available (client creation failed)';
+              downloadResult = {
+                success: false,
+                error: 'No shared MTKruto client available (client creation failed)',
+                stage: 'client'
+              };
               console.log('❌ No shared MTKruto client available');
             }
 
-            if (!videoBuffer) {
-              const errorMsg = downloadError || 'Failed to download video from Telegram (null buffer)';
-              console.log(`❌ ${errorMsg}`);
+            if (!downloadResult.success || !downloadResult.data) {
+              const errorMsg = `[${downloadResult.stage}] ${downloadResult.error}`;
+              console.log(`❌ Download failed: ${errorMsg}`);
               results.push({
                 id: news.id,
                 title: title,
@@ -242,6 +241,8 @@ serve(async (req) => {
               });
               continue;
             }
+
+            const videoBuffer = downloadResult.data;
 
             console.log(`✅ Video downloaded, size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
 
