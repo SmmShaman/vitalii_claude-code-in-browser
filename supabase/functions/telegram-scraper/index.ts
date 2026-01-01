@@ -882,10 +882,9 @@ async function parseChannelPosts(
                 console.log('🔄 [VIDEO] Using shared MTKruto client (single auth)')
                 videoBuffer = await downloadVideoWithClient(sharedMTKrutoClient, channelUsername, msgId)
               } else {
-                console.warn('⚠️ [VIDEO] No shared client - this may cause FLOOD_WAIT!')
-                // Fallback to legacy function (creates new client each time)
-                const { downloadTelegramVideoMTKruto } = await import('../_shared/youtube-helpers.ts')
-                videoBuffer = await downloadTelegramVideoMTKruto(channelUsername, msgId)
+                // NO FALLBACK! Legacy function creates new client = MORE FLOOD_WAIT
+                console.warn('⚠️ [VIDEO] No shared client - skipping video download (FLOOD_WAIT protection)')
+                console.log('📌 [VIDEO] Will use Telegram embed fallback')
               }
 
               if (videoBuffer) {
