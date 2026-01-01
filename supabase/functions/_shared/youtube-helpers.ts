@@ -396,7 +396,10 @@ export async function downloadVideoWithClientDetailed(
     }
     const fileSize = media?.fileSize || 0;
     const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
-    console.log(`📊 Video size: ${fileSizeMB} MB`);
+    const mediaType = message.video ? 'video' : message.animation ? 'animation' : 'document';
+    const mimeType = media?.mimeType || 'unknown';
+    console.log(`📊 Media: ${mediaType}, MIME: ${mimeType}, Size: ${fileSizeMB} MB`);
+    console.log(`📎 File ID: ${media?.fileId?.substring(0, 20)}...`);
 
     // Check if file is too large for /tmp (512 MB limit on Pro)
     const maxSize = 500 * 1024 * 1024; // 500 MB safety margin
@@ -409,16 +412,29 @@ export async function downloadVideoWithClientDetailed(
     // Download to memory
     const chunks: Uint8Array[] = [];
     let downloadedBytes = 0;
+    let chunkCount = 0;
 
-    for await (const chunk of client.download(message)) {
-      chunks.push(chunk);
-      downloadedBytes += chunk.length;
+    try {
+      for await (const chunk of client.download(message)) {
+        chunkCount++;
+        chunks.push(chunk);
+        downloadedBytes += chunk.length;
 
-      // Log progress every 10 MB
-      if (downloadedBytes % (10 * 1024 * 1024) < chunk.length) {
-        const progressMB = (downloadedBytes / (1024 * 1024)).toFixed(2);
-        console.log(`📥 Downloaded: ${progressMB} MB / ${fileSizeMB} MB`);
+        // Log progress every 10 MB
+        if (downloadedBytes % (10 * 1024 * 1024) < chunk.length) {
+          const progressMB = (downloadedBytes / (1024 * 1024)).toFixed(2);
+          console.log(`📥 Downloaded: ${progressMB} MB / ${fileSizeMB} MB (${chunkCount} chunks)`);
+        }
       }
+    } catch (downloadError: any) {
+      const errMsg = downloadError?.message || String(downloadError);
+      console.error(`❌ Download failed after ${chunkCount} chunks, ${downloadedBytes} bytes`);
+      console.error(`❌ Error: ${errMsg}`);
+      return {
+        success: false,
+        error: `${errMsg} (after ${chunkCount} chunks, ${(downloadedBytes/1024/1024).toFixed(2)} MB, media: ${mediaType}/${mimeType})`,
+        stage: 'download'
+      };
     }
 
     // Combine chunks into single buffer
