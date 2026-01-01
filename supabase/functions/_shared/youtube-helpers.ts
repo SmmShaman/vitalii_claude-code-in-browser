@@ -1,24 +1,12 @@
 /**
- * YouTube API Helpers
+ * YouTube API Helpers for Supabase Edge Functions
  *
- * Helper functions for uploading videos to YouTube using OAuth 2.0
- * Includes mtcute integration for downloading large videos from Telegram
+ * Simplified version - video downloading is handled by GitHub Actions
+ * This module only provides YouTube upload helpers and Telegram embed fallback
  */
 
 // Version for deployment verification
-export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v8-mtcute";
-
-// mtcute imports for Telegram MTProto - supports bot tokens!
-// Using JSR import for Deno
-import { TelegramClient } from "jsr:@mtcute/deno@0.27.1";
-import { MemoryStorage } from "jsr:@mtcute/core@0.27.4/storage/memory.js";
-
-// Export Client type for external use
-export type MTCuteClient = TelegramClient;
-
-// Backward compatibility aliases
-export type GramJSClient = TelegramClient;
-export type MTKrutoClient = TelegramClient;
+export const YOUTUBE_HELPERS_VERSION = "2025-01-01-v10-github-actions";
 
 interface YouTubeConfig {
   clientId: string;
@@ -43,11 +31,7 @@ export function getYouTubeConfig(): YouTubeConfig | null {
     return null;
   }
 
-  return {
-    clientId,
-    clientSecret,
-    refreshToken,
-  };
+  return { clientId, clientSecret, refreshToken };
 }
 
 interface YouTubeUploadOptions {
@@ -173,7 +157,6 @@ export async function uploadVideoToYouTube(
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
       console.error('❌ YouTube upload failed:', errorText);
-
       return {
         success: false,
         error: `YouTube upload failed: ${uploadResponse.status} ${errorText}`
@@ -204,14 +187,15 @@ export async function uploadVideoToYouTube(
 }
 
 /**
- * Download video from Telegram using Bot API
+ * Download video from Telegram using Bot API (limited to 20MB)
+ * For larger videos, use GitHub Actions with MTKruto
  */
 export async function downloadTelegramVideo(
   videoUrl: string,
   botToken: string
 ): Promise<Uint8Array | null> {
   try {
-    console.log('⬇️ Downloading video from Telegram...');
+    console.log('⬇️ Downloading video from Telegram Bot API...');
     console.log(`🔗 URL: ${videoUrl}`);
 
     // If it's a CDN URL, download directly
@@ -229,40 +213,9 @@ export async function downloadTelegramVideo(
       return videoBuffer;
     }
 
-    // If it's a file_id, use Telegram Bot API
-    // Extract file_id from URL or use directly
-    const fileId = videoUrl;
-
-    // Get file info
-    const fileInfoResponse = await fetch(
-      `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`
-    );
-
-    if (!fileInfoResponse.ok) {
-      throw new Error('Failed to get file info from Telegram');
-    }
-
-    const fileInfo = await fileInfoResponse.json();
-
-    if (!fileInfo.ok) {
-      throw new Error(`Telegram API error: ${fileInfo.description}`);
-    }
-
-    const filePath = fileInfo.result.file_path;
-
-    // Download file
-    const downloadUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
-    const downloadResponse = await fetch(downloadUrl);
-
-    if (!downloadResponse.ok) {
-      throw new Error('Failed to download file from Telegram');
-    }
-
-    const arrayBuffer = await downloadResponse.arrayBuffer();
-    const videoBuffer = new Uint8Array(arrayBuffer);
-
-    console.log(`✅ Downloaded ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB from Telegram Bot API`);
-    return videoBuffer;
+    // Bot API limit is 20MB
+    console.warn('⚠️ Bot API has 20MB limit. For larger videos, use GitHub Actions.');
+    return null;
 
   } catch (error) {
     console.error('❌ Error downloading from Telegram:', error);
@@ -271,84 +224,17 @@ export async function downloadTelegramVideo(
 }
 
 // ============================================
-// SHARED MTCUTE CLIENT MANAGEMENT
-// Create ONE client per batch to avoid FLOOD_WAIT
+// STUB FUNCTIONS FOR BACKWARD COMPATIBILITY
+// Actual video processing is done by GitHub Actions
 // ============================================
 
-/**
- * Create and start a shared mtcute client
- * Call this ONCE at the start of a batch, then reuse for all videos
- */
-export async function createMTCuteClient(): Promise<TelegramClient | null> {
-  const apiId = Deno.env.get("TELEGRAM_API_ID");
-  const apiHash = Deno.env.get("TELEGRAM_API_HASH");
-  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+// These types and functions are kept for backward compatibility
+// but they don't do actual MTProto operations anymore
 
-  if (!apiId || !apiHash || !botToken) {
-    console.error('❌ mtcute credentials not configured');
-    console.error(`  TELEGRAM_API_ID: ${apiId ? 'SET' : 'MISSING'}`);
-    console.error(`  TELEGRAM_API_HASH: ${apiHash ? 'SET' : 'MISSING'}`);
-    console.error(`  TELEGRAM_BOT_TOKEN: ${botToken ? 'SET' : 'MISSING'}`);
-    return null;
-  }
+export type MTKrutoClient = null;
+export type GramJSClient = null;
+export type MTCuteClient = null;
 
-  console.log(`🔌 Creating shared mtcute client... (youtube-helpers ${YOUTUBE_HELPERS_VERSION})`);
-
-  try {
-    // Create client with MemoryStorage for serverless environment
-    const client = new TelegramClient({
-      apiId: Number(apiId),
-      apiHash: apiHash,
-      storage: new MemoryStorage(),
-    });
-
-    console.log('🚀 Starting mtcute client with bot token...');
-
-    // mtcute uses start() with botToken parameter
-    await client.start({
-      botToken: botToken,
-    });
-
-    console.log('✅ mtcute client started (shared instance)');
-    return client;
-  } catch (error: any) {
-    console.error('❌ Failed to start mtcute client:', error?.message || error);
-    console.error('❌ Error name:', error?.name);
-    console.error('❌ Error stack:', error?.stack?.substring(0, 500));
-
-    // Check for specific errors
-    if (error?.message?.includes('FLOOD_WAIT')) {
-      const waitSeconds = error.message.match(/FLOOD_WAIT_(\d+)/)?.[1];
-      console.error(`⏰ FLOOD_WAIT on auth! Must wait ${waitSeconds} seconds`);
-    }
-    if (error?.message?.includes('AUTH_KEY')) {
-      console.error('🔑 AUTH_KEY error - check Telegram API credentials');
-    }
-
-    return null;
-  }
-}
-
-/**
- * Disconnect the shared mtcute client
- * Call this ONCE at the end of a batch
- */
-export async function disconnectMTCuteClient(client: TelegramClient): Promise<void> {
-  try {
-    await client.close();
-    console.log('🔌 mtcute client disconnected (shared instance)');
-  } catch (e) {
-    // Ignore disconnect errors
-  }
-}
-
-// Backward compatibility aliases for existing code
-export const createGramJSClient = createMTCuteClient;
-export const createMTKrutoClient = createMTCuteClient;
-export const disconnectGramJSClient = disconnectMTCuteClient;
-export const disconnectMTKrutoClient = disconnectMTCuteClient;
-
-// Result type for detailed error reporting
 export interface DownloadResult {
   success: boolean;
   data?: Uint8Array;
@@ -357,164 +243,49 @@ export interface DownloadResult {
 }
 
 /**
- * Download video using an EXISTING mtcute client (no new auth!)
- * Use this inside loops to avoid FLOOD_WAIT
+ * @deprecated Video processing moved to GitHub Actions
+ * This function always returns null - use GitHub Actions trigger instead
+ */
+export async function createMTKrutoClient(): Promise<null> {
+  console.log(`⚠️ MTProto client creation disabled in Edge Functions (v${YOUTUBE_HELPERS_VERSION})`);
+  console.log(`ℹ️ Video processing is handled by GitHub Actions`);
+  return null;
+}
+
+export const createGramJSClient = createMTKrutoClient;
+export const createMTCuteClient = createMTKrutoClient;
+
+export async function disconnectMTKrutoClient(_client: null): Promise<void> {
+  // No-op
+}
+
+export const disconnectGramJSClient = disconnectMTKrutoClient;
+export const disconnectMTCuteClient = disconnectMTKrutoClient;
+
+/**
+ * @deprecated Video processing moved to GitHub Actions
  */
 export async function downloadVideoWithClient(
-  client: TelegramClient,
-  channelUsername: string,
-  messageId: number
+  _client: null,
+  _channelUsername: string,
+  _messageId: number
 ): Promise<Uint8Array | null> {
-  const result = await downloadVideoWithClientDetailed(client, channelUsername, messageId);
-  if (!result.success) {
-    console.error(`❌ Download failed at stage: ${result.stage}, error: ${result.error}`);
-  }
-  return result.data || null;
+  console.log(`⚠️ Video download disabled in Edge Functions - use GitHub Actions`);
+  return null;
 }
 
-/**
- * Download video with detailed error reporting (mtcute implementation)
- */
 export async function downloadVideoWithClientDetailed(
-  client: TelegramClient,
-  channelUsername: string,
-  messageId: number
+  _client: null,
+  _channelUsername: string,
+  _messageId: number
 ): Promise<DownloadResult> {
-  try {
-    // Format channel username (remove @ if present)
-    const cleanUsername = channelUsername.startsWith('@')
-      ? channelUsername.slice(1)
-      : channelUsername;
-
-    console.log(`📥 Fetching message ${messageId} from @${cleanUsername}... (mtcute ${YOUTUBE_HELPERS_VERSION})`);
-
-    // mtcute uses getMessages to fetch messages
-    const messages = await client.getMessages(cleanUsername, { ids: messageId });
-
-    if (!messages || messages.length === 0 || !messages[0]) {
-      return { success: false, error: 'Message not found', stage: 'getMessages' };
-    }
-
-    const message = messages[0];
-    console.log(`✅ Message found, id: ${message.id}`);
-
-    // mtcute uses message.media for media
-    const media = message.media;
-    if (!media) {
-      return { success: false, error: 'Message has no media (text only)', stage: 'checkVideo' };
-    }
-
-    // Get media type
-    const mediaType = media.type;
-    console.log(`📎 Media type: ${mediaType}`);
-
-    // Check if it's a video
-    if (mediaType === 'photo') {
-      return { success: false, error: `Message has no video (found: photo)`, stage: 'checkVideo' };
-    }
-
-    if (mediaType !== 'video' && mediaType !== 'document') {
-      return { success: false, error: `Unsupported media type: ${mediaType}`, stage: 'checkVideo' };
-    }
-
-    // For documents, check if it's a video MIME type
-    if (mediaType === 'document') {
-      const doc = media as any;
-      const mimeType = doc.mimeType || '';
-      if (!mimeType.startsWith('video/')) {
-        return { success: false, error: `Document is not a video (MIME: ${mimeType})`, stage: 'checkVideo' };
-      }
-    }
-
-    // Get file size if available
-    let fileSize = 0;
-    let mimeType = 'unknown';
-    if ('fileSize' in media) {
-      fileSize = Number((media as any).fileSize || 0);
-    }
-    if ('mimeType' in media) {
-      mimeType = (media as any).mimeType || 'unknown';
-    }
-    const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
-    console.log(`📊 Media: ${mediaType}, MIME: ${mimeType}, Size: ${fileSizeMB} MB`);
-
-    // Check if file is too large for /tmp (512 MB limit on Pro)
-    const maxSize = 500 * 1024 * 1024; // 500 MB safety margin
-    if (fileSize > maxSize) {
-      return { success: false, error: `Video too large: ${fileSizeMB} MB (max 500 MB)`, stage: 'sizeCheck' };
-    }
-
-    console.log('⬇️ Downloading video via mtcute...');
-
-    // mtcute uses downloadAsBuffer method
-    const buffer = await client.downloadAsBuffer(media);
-
-    if (!buffer) {
-      return {
-        success: false,
-        error: `Download returned null buffer (media: ${mimeType})`,
-        stage: 'download'
-      };
-    }
-
-    // Convert to Uint8Array if needed
-    const videoBuffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-
-    const downloadedMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
-    console.log(`✅ Download complete: ${downloadedMB} MB (mtcute)`);
-
-    return { success: true, data: videoBuffer };
-
-  } catch (error: any) {
-    const errorMsg = error?.message || String(error);
-    console.error('❌ mtcute download error:', errorMsg);
-    console.error('❌ Error name:', error?.name);
-    console.error('❌ Error stack:', error?.stack?.substring(0, 300));
-
-    // Check for specific errors
-    let stage = 'download';
-    if (errorMsg.includes('FLOOD_WAIT')) {
-      const waitSeconds = errorMsg.match(/FLOOD_WAIT_(\d+)/)?.[1];
-      console.error(`⏰ FLOOD_WAIT detected! Must wait ${waitSeconds} seconds`);
-      stage = 'FLOOD_WAIT';
-    }
-    if (errorMsg.includes('AUTH_KEY')) {
-      console.error('🔑 Authentication error - mtcute client may need restart');
-      stage = 'AUTH_KEY';
-    }
-
-    return { success: false, error: errorMsg, stage };
-  }
+  return {
+    success: false,
+    error: 'Video download moved to GitHub Actions',
+    stage: 'disabled'
+  };
 }
 
-// ============================================
-// LEGACY FUNCTION (creates new client each time)
-// Keep for backward compatibility but prefer shared client
-// ============================================
-
-/**
- * Download video from Telegram using mtcute (MTProto)
- * Supports files up to 2GB (vs 20MB limit of Bot API)
- *
- * ⚠️ DEPRECATED: Creates new client each call = FLOOD_WAIT risk
- * Use createMTCuteClient() + downloadVideoWithClient() instead
- */
-export async function downloadTelegramVideoMTCute(
-  channelUsername: string,
-  messageId: number
-): Promise<Uint8Array | null> {
-  console.warn('⚠️ Using legacy downloadTelegramVideoMTCute - consider using shared client');
-
-  const client = await createMTCuteClient();
-  if (!client) return null;
-
-  try {
-    return await downloadVideoWithClient(client, channelUsername, messageId);
-  } finally {
-    await disconnectMTCuteClient(client);
-  }
-}
-
-// Backward compatibility aliases
-export const downloadTelegramVideoGramJS = downloadTelegramVideoMTCute;
-export const downloadTelegramVideoMTKruto = downloadTelegramVideoMTCute;
+export const downloadTelegramVideoMTKruto = downloadVideoWithClient;
+export const downloadTelegramVideoGramJS = downloadVideoWithClient;
+export const downloadTelegramVideoMTCute = downloadVideoWithClient;

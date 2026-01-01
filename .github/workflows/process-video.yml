@@ -1,0 +1,78 @@
+name: Process Telegram Video
+
+on:
+  # Manual trigger with inputs
+  workflow_dispatch:
+    inputs:
+      news_id:
+        description: 'News ID to process'
+        required: false
+        type: string
+      mode:
+        description: 'Processing mode'
+        required: true
+        default: 'single'
+        type: choice
+        options:
+          - single    # Process single news by ID
+          - batch     # Process batch of pending videos
+      batch_limit:
+        description: 'Number of videos to process in batch mode'
+        required: false
+        default: '10'
+        type: string
+
+  # Scheduled batch processing (every 30 minutes)
+  schedule:
+    - cron: '*/30 * * * *'
+
+  # Webhook trigger from Supabase Edge Function
+  repository_dispatch:
+    types: [process-video]
+
+jobs:
+  process-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./scripts/video-processor
+        run: npm ci
+
+      - name: Process video(s)
+        working-directory: ./scripts/video-processor
+        env:
+          # Telegram MTProto credentials
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+          # YouTube OAuth credentials
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+
+          # Supabase credentials
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          # Processing parameters
+          NEWS_ID: ${{ github.event.inputs.news_id || github.event.client_payload.news_id || '' }}
+          MODE: ${{ github.event.inputs.mode || github.event.client_payload.mode || 'batch' }}
+          BATCH_LIMIT: ${{ github.event.inputs.batch_limit || github.event.client_payload.batch_limit || '10' }}
+        run: node index.js
+
+      - name: Report results
+        if: always()
+        run: |
+          echo "Video processing completed"
+          echo "Mode: ${{ github.event.inputs.mode || github.event.client_payload.mode || 'batch' }}"

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { triggerVideoProcessing, isGitHubActionsEnabled } from '../_shared/github-actions.ts'
 
 /**
  * Extract external source links from text content
@@ -576,6 +577,21 @@ serve(async (req) => {
           return new Response(JSON.stringify({ ok: true, duplicate: true }), {
             headers: { 'Content-Type': 'application/json' }
           })
+        }
+
+        // 🎬 TRIGGER VIDEO PROCESSING VIA GITHUB ACTIONS
+        // If news has telegram_embed video, trigger background processing to YouTube
+        if (news.video_type === 'telegram_embed' && news.video_url && isGitHubActionsEnabled()) {
+          console.log(`🎬 Triggering GitHub Action for video processing: ${newsId}`)
+          const triggerResult = await triggerVideoProcessing({
+            newsId: newsId,
+            mode: 'single'
+          })
+          if (triggerResult.success) {
+            console.log(`✅ GitHub Action triggered - video will be processed in background`)
+          } else {
+            console.log(`⚠️ GitHub Action trigger failed: ${triggerResult.error} - video will remain as Telegram embed`)
+          }
         }
 
         // Choose appropriate processing function based on publication type
