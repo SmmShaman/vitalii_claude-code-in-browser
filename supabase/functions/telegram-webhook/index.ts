@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { triggerVideoProcessing, isGitHubActionsEnabled } from '../_shared/github-actions.ts'
+import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo } from '../_shared/github-actions.ts'
 
 /**
  * Extract external source links from text content
@@ -800,7 +800,59 @@ serve(async (req) => {
           })
         }
 
-        // Post to LinkedIn with correct content type and ID
+        // 🎬 Check if news has video - use GitHub Action for native LinkedIn video
+        const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
+
+        if (hasVideo && isGitHubActionsEnabled()) {
+          console.log(`🎬 News has video - triggering LinkedIn video GitHub Action`)
+          console.log(`   Original video URL: ${news.original_video_url}`)
+
+          const triggerResult = await triggerLinkedInVideo({
+            newsId: newsId,
+            language: linkedinLanguage as 'en' | 'no' | 'ua'
+          })
+
+          if (triggerResult.success) {
+            // Answer callback with processing message
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  callback_query_id: callbackId,
+                  text: '🎬 Відео завантажується в LinkedIn... Зачекайте 1-2 хв',
+                  show_alert: true
+                })
+              }
+            )
+
+            // Update message to show processing status
+            const langLabel = linkedinLanguage.toUpperCase()
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: messageText + `\n\n⏳ <b>Відео завантажується в LinkedIn (${langLabel})...</b>\n🎬 Це може зайняти 1-2 хвилини`,
+                  parse_mode: 'HTML'
+                })
+              }
+            )
+
+            return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
+              headers: { 'Content-Type': 'application/json' }
+            })
+          } else {
+            console.error('❌ Failed to trigger LinkedIn video Action:', triggerResult.error)
+            // Fall through to regular text+image posting
+          }
+        }
+
+        // Post to LinkedIn with correct content type and ID (text + image only)
         console.log(`Calling post-to-linkedin for ${contentType} ${contentId}...`)
 
         const linkedinRequestBody: any = {
