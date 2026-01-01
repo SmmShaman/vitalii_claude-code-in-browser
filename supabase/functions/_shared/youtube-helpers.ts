@@ -379,12 +379,21 @@ export async function downloadVideoWithClientDetailed(
     const message = messages[0];
     console.log(`✅ Message found, type: ${message.constructor.name}`);
 
-    // Check if message has video
-    if (!message.video && !message.document) {
-      return { success: false, error: 'Message does not contain video', stage: 'checkVideo' };
-    }
+    // Log what media types the message has
+    const mediaTypes = [];
+    if (message.video) mediaTypes.push('video');
+    if (message.document) mediaTypes.push('document');
+    if (message.animation) mediaTypes.push('animation');
+    if (message.photo) mediaTypes.push('photo');
+    if (message.sticker) mediaTypes.push('sticker');
+    if (message.audio) mediaTypes.push('audio');
+    console.log(`📎 Message media types: ${mediaTypes.length > 0 ? mediaTypes.join(', ') : 'none (text only)'}`);
 
-    const media = message.video || message.document;
+    // Check if message has downloadable video (video, document, or animation)
+    const media = message.video || message.document || message.animation;
+    if (!media) {
+      return { success: false, error: `Message has no video (found: ${mediaTypes.join(', ') || 'text only'})`, stage: 'checkVideo' };
+    }
     const fileSize = media?.fileSize || 0;
     const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
     console.log(`📊 Video size: ${fileSizeMB} MB`);
