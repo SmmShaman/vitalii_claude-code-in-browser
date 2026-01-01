@@ -54,6 +54,24 @@ serve(async (req) => {
       })
     }
 
+    if (action === 'delete_rejected') {
+      // Delete rejected news
+      const { data, error } = await supabase
+        .from('news')
+        .delete()
+        .eq('pre_moderation_status', 'rejected')
+        .select('id')
+
+      if (error) throw error
+      return new Response(JSON.stringify({
+        ok: true,
+        deleted: data?.length || 0,
+        message: `Deleted ${data?.length || 0} rejected news`
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
     return new Response(JSON.stringify({
       ok: false,
       error: 'Invalid action. Use: disable, enable, or list',

@@ -164,7 +164,19 @@ npm run lint
 │
 ├── .github/workflows/            # CI/CD pipelines
 │   ├── deploy.yml                # Netlify deployment
-│   └── deploy-supabase.yml       # Edge Functions deployment
+│   ├── deploy-supabase.yml       # Edge Functions deployment
+│   ├── realtime-scraper.yml      # Real-time news scraping (every 10 min)
+│   ├── process-video.yml         # Video processing (Telegram → YouTube)
+│   ├── linkedin-video.yml        # LinkedIn native video upload
+│   └── reprocess-videos.yml      # Batch video reprocessing
+│
+├── scripts/                      # Node.js scripts for GitHub Actions
+│   ├── video-processor/          # Telegram → YouTube video processor
+│   │   ├── index.js              # Main processor script
+│   │   └── package.json          # Dependencies (@mtkruto/node, googleapis)
+│   └── linkedin-video/           # LinkedIn native video uploader
+│       ├── index.js              # Main uploader script
+│       └── package.json          # Dependencies
 │
 ├── package.json                  # Dependencies
 ├── next.config.ts                # Next.js config
@@ -215,6 +227,9 @@ npm run lint
 | **resend-to-bot** | Повторна відправка failed submissions | Scheduled | pending news → bot message |
 | **telegram-monitor** | Моніторинг статусу Telegram бота | Scheduled | - → health check logs |
 | **test-youtube-auth** | Тестування YouTube OAuth налаштувань | Manual | - → token validity |
+| **manage-sources** | Управління джерелами новин (enable/disable/delete) | Manual | action + names → updated sources |
+| **resend-stuck-posts** | Повторна відправка застряглих approved постів | Manual | - → resent to bot |
+| **reprocess-videos** | Повторна обробка відео (cleanup mode) | Manual | options → reprocessed videos |
 
 ### Shared Helpers (`_shared/`)
 
@@ -223,6 +238,11 @@ npm run lint
 - getAccessToken()           // Refresh YouTube OAuth token
 - uploadVideoToYouTube()     // Upload video with metadata
 - getChannelInfo()           // Get channel details
+
+// github-actions.ts
+- triggerVideoProcessing()   // Trigger process-video GitHub Action
+- triggerLinkedInVideo()     // Trigger linkedin-video GitHub Action
+- isGitHubActionsEnabled()   // Check if GH_PAT is configured
 ```
 
 ### Deploy Edge Functions
@@ -410,6 +430,66 @@ ORDER BY published_at DESC
 - `SUPABASE_PROJECT_REF`
 - `NETLIFY_AUTH_TOKEN`
 - `NETLIFY_SITE_ID`
+
+### `.github/workflows/realtime-scraper.yml` - Real-time News Scraper
+
+**Тригери:**
+- Cron: `*/10 * * * *` (кожні 10 хвилин)
+- Manual dispatch
+
+**Логіка:**
+- Round-robin вибір каналу на основі хвилини годин
+- 6 каналів × 10 хв = 60 хв повний цикл
+- Уникає Edge Function timeout обробляючи по одному каналу
+
+| Хвилина | Індекс | Канал |
+|---------|--------|-------|
+| 00-09 | 0 | HOT DIGITAL |
+| 10-19 | 1 | tips_ai |
+| 20-29 | 2 | geekneural |
+| 30-39 | 3 | TheOpen_Ai |
+| 40-49 | 4 | dailyprompts |
+| 50-59 | 5 | Нейронавт |
+
+### `.github/workflows/process-video.yml` - Video Processing
+
+**Тригери:**
+- Cron: `*/30 * * * *` (кожні 30 хвилин)
+- Repository dispatch: `process-video`
+- Manual dispatch
+
+**Процес:**
+1. Завантаження відео з Telegram через MTKruto (MTProto)
+2. Завантаження на YouTube (unlisted)
+3. Оновлення `video_url` та `video_type` в БД
+
+**Environment Variables:**
+- `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_BOT_TOKEN`
+- `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+### `.github/workflows/linkedin-video.yml` - LinkedIn Native Video
+
+**Тригери:**
+- Repository dispatch: `linkedin-video`
+- Manual dispatch
+
+**Процес:**
+1. Завантаження відео з Telegram (original_video_url)
+2. Реєстрація upload в LinkedIn API
+3. Завантаження відео на LinkedIn
+4. Створення поста з native video
+
+### Netlify Configuration
+
+**ВАЖЛИВО:** Netlify auto-builds вимкнено (`stop_builds: true`).
+
+Deployment відбувається тільки через GitHub Actions:
+```
+git push → GitHub Actions → netlify build → netlify deploy --prod → vitalii.no
+```
+
+Це запобігає дублюванню білдів та помилкам через відсутність env vars в Netlify auto-build.
 
 ---
 
@@ -1001,7 +1081,7 @@ async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
 - **IMAGE** - коли зображення успішно завантажено (з asset URN)
 - **ARTICLE** - fallback коли зображення немає або upload не вдався
 
-> **Примітка:** Native video upload в LinkedIn потребує MP4 файл. YouTube не надає прямий MP4 URL, тому поки що відео публікуються як посилання. Для native video потрібен буде альтернативний сховище (Bunny.net Stream тощо).
+> **Примітка:** Native video upload реалізовано через GitHub Actions. Див. секцію "Video Processing via GitHub Actions" нижче.
 
 ### LinkedIn API
 
@@ -1232,6 +1312,101 @@ AZURE_OPENAI_API_KEY=your_key
 - [MTKruto Deno](https://deno.land/x/mtkruto)
 - [YouTube Data API](https://developers.google.com/youtube/v3)
 - [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
+
+---
+
+## Video Processing via GitHub Actions (January 2025)
+
+### Опис
+
+Обробка відео винесена в GitHub Actions для обходу лімітів Supabase Edge Functions. Це дозволяє:
+- Обробляти великі відео (>512 MB)
+- Уникати timeout Edge Functions (150-400 сек)
+- Завантажувати native video в LinkedIn
+
+### Архітектура
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    GitHub Actions Runners                        │
+│  ┌──────────────────┐       ┌──────────────────────────────┐    │
+│  │  process-video   │       │     linkedin-video           │    │
+│  │  (Telegram→YT)   │       │  (Telegram→LinkedIn native)  │    │
+│  └────────┬─────────┘       └──────────────┬───────────────┘    │
+│           │                                 │                    │
+│           └───────────┬─────────────────────┘                    │
+│                       ▼                                          │
+│               MTKruto (MTProto)                                  │
+│               Download from Telegram                             │
+└─────────────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      External APIs                               │
+│  ┌──────────────────┐       ┌──────────────────────────────┐    │
+│  │   YouTube API    │       │      LinkedIn API             │    │
+│  │  (unlisted upload)│       │  (native video upload)       │    │
+│  └──────────────────┘       └──────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Скрипти
+
+#### `scripts/video-processor/index.js`
+- Завантажує відео з Telegram через MTKruto
+- Завантажує на YouTube (unlisted)
+- Оновлює `video_url` та `video_type` в Supabase
+- Зберігає `original_video_url` для LinkedIn
+
+#### `scripts/linkedin-video/index.js`
+- Завантажує відео з Telegram (original_video_url)
+- Реєструє upload в LinkedIn API
+- Завантажує як native video
+- Створює пост з відео
+
+### Database Fields
+
+```sql
+-- Додано в таблицю news
+original_video_url      TEXT    -- Оригінальний Telegram URL для LinkedIn
+video_processing_error  TEXT    -- Помилка обробки (для debug)
+video_processing_attempted_at TIMESTAMPTZ -- Час останньої спроби
+```
+
+### Тригери
+
+**Автоматичний:**
+- `process-video` запускається кожні 30 хвилин для batch processing
+
+**Через Edge Function:**
+```typescript
+// telegram-webhook викликає при публікації новини з відео
+if (news.original_video_url && news.is_published) {
+  await triggerLinkedInVideo({ newsId: news.id, language: 'en' })
+}
+```
+
+### Environment Variables (GitHub Secrets)
+
+```env
+# Telegram MTProto
+TELEGRAM_API_ID=xxxxx
+TELEGRAM_API_HASH=xxxxx
+TELEGRAM_BOT_TOKEN=xxxxx
+
+# YouTube
+YOUTUBE_CLIENT_ID=xxxxx
+YOUTUBE_CLIENT_SECRET=xxxxx
+YOUTUBE_REFRESH_TOKEN=xxxxx
+
+# LinkedIn
+LINKEDIN_ACCESS_TOKEN=xxxxx
+LINKEDIN_PERSON_URN=urn:li:person:xxxxx
+
+# Supabase
+SUPABASE_URL=xxxxx
+SUPABASE_SERVICE_ROLE_KEY=xxxxx
+```
 
 ---
 
