@@ -72,42 +72,80 @@ async function downloadTelegramVideo(client, channel, messageId) {
   console.log(`📥 Downloading video from @${channel} message ${messageId}...`);
 
   try {
-    // Get the message
-    const messages = await client.getMessages(channel, { ids: messageId });
+    // Get the message using getMessage (singular) - returns Message | null
+    const message = await client.getMessage(channel, messageId);
 
-    if (!messages || messages.length === 0) {
+    if (!message) {
       throw new Error('Message not found');
     }
 
-    const message = messages[0];
+    console.log(`📨 Message type: ${message.constructor.name || typeof message}`);
 
-    // Check for video
-    if (!message.video && !message.document) {
-      throw new Error('No video in message');
+    // Check for video - MTKruto uses message.video for MessageVideo type
+    let fileId = null;
+    let fileSize = 0;
+    let mimeType = 'video/mp4';
+
+    if (message.video) {
+      fileId = message.video.fileId;
+      fileSize = message.video.fileSize || 0;
+      mimeType = message.video.mimeType || 'video/mp4';
+      console.log(`🎬 Found video: ${(fileSize / 1024 / 1024).toFixed(2)} MB, ${mimeType}`);
+    } else if (message.document) {
+      // Check if document is a video
+      if (!message.document.mimeType?.startsWith('video/')) {
+        throw new Error(`Not a video: ${message.document.mimeType}`);
+      }
+      fileId = message.document.fileId;
+      fileSize = message.document.fileSize || 0;
+      mimeType = message.document.mimeType;
+      console.log(`📄 Found video document: ${(fileSize / 1024 / 1024).toFixed(2)} MB, ${mimeType}`);
+    } else if (message.animation) {
+      fileId = message.animation.fileId;
+      fileSize = message.animation.fileSize || 0;
+      mimeType = message.animation.mimeType || 'video/mp4';
+      console.log(`🎞️ Found animation: ${(fileSize / 1024 / 1024).toFixed(2)} MB`);
+    } else {
+      // Log available properties to debug
+      const props = Object.keys(message).filter(k => !k.startsWith('_'));
+      throw new Error(`No video in message. Available: ${props.join(', ')}`);
     }
 
-    const media = message.video || message.document;
-
-    // Check if it's a video
-    if (message.document && !message.document.mimeType?.startsWith('video/')) {
-      throw new Error(`Not a video: ${message.document.mimeType}`);
+    if (!fileId) {
+      throw new Error('No fileId found in message');
     }
 
-    // Download to temp file
+    // Download to temp file using async generator
     const tempDir = os.tmpdir();
     const tempFile = path.join(tempDir, `video_${messageId}_${Date.now()}.mp4`);
 
     console.log(`📁 Saving to: ${tempFile}`);
 
-    let downloadedBytes = 0;
-    const fileSize = media.size || 0;
+    // Use fs.createWriteStream for writing chunks
+    const fsSync = await import('fs');
+    const writeStream = fsSync.createWriteStream(tempFile);
 
-    await client.downloadToFile(media, tempFile, (progress) => {
-      downloadedBytes = progress.downloaded;
+    let downloadedBytes = 0;
+    let lastLogPercent = 0;
+
+    // Download using async generator
+    for await (const chunk of client.download(fileId)) {
+      writeStream.write(chunk);
+      downloadedBytes += chunk.length;
+
       const percent = fileSize > 0 ? Math.round((downloadedBytes / fileSize) * 100) : 0;
-      if (percent % 20 === 0) {
+      if (percent >= lastLogPercent + 20) {
         console.log(`📥 Progress: ${percent}% (${(downloadedBytes / 1024 / 1024).toFixed(2)} MB)`);
+        lastLogPercent = percent;
       }
+    }
+
+    writeStream.end();
+
+    // Wait for write to complete
+    await new Promise((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
     });
 
     const stats = await fs.stat(tempFile);
