@@ -48,6 +48,7 @@ interface ScrapedPost {
   images: string[]             // All images from post
   videoUrl: string | null
   videoType: string | null
+  originalVideoUrl: string | null  // Original Telegram URL for LinkedIn native video
   date: Date
   originalUrl: string
   sourceLink: string | null  // External source link extracted from text
@@ -619,6 +620,7 @@ serve(async (req) => {
                 images: uploadedImages.length > 0 ? uploadedImages : null, // All images array
                 video_url: post.videoUrl,
                 video_type: post.videoType,
+                original_video_url: post.originalVideoUrl, // Original Telegram URL for LinkedIn native video
                 source_id: source.id,
                 is_published: false,
                 is_rewritten: false,
@@ -871,6 +873,7 @@ async function parseChannelPosts(
         // Extract video URL and type
         let videoUrl: string | null = null
         let videoType: string | null = null
+        let originalVideoUrl: string | null = null  // Original Telegram URL for LinkedIn native video
 
         // Check if YouTube upload is configured
         const youtubeConfigured = !!(YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET && YOUTUBE_REFRESH_TOKEN && TELEGRAM_BOT_TOKEN)
@@ -883,6 +886,11 @@ async function parseChannelPosts(
         const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player, .tgme_widget_message_video, .tgme_widget_message_roundvideo, .message_media_not_supported')
 
         if (videoElement || videoWrap) {
+          // 🎬 ALWAYS save original Telegram URL for LinkedIn native video upload
+          const msgIdForOriginal = dataPost.split('/')[1]
+          originalVideoUrl = `https://t.me/${channelUsername}/${msgIdForOriginal}`
+          console.log(`🎬 [VIDEO] Original Telegram URL saved: ${originalVideoUrl}`)
+
           console.log(`🎥 [VIDEO DEBUG] Found video in post`)
           console.log(`🎥 [VIDEO DEBUG] videoElement exists: ${!!videoElement}`)
           console.log(`🎥 [VIDEO DEBUG] videoWrap exists: ${!!videoWrap}`)
@@ -1008,6 +1016,7 @@ async function parseChannelPosts(
           images,
           videoUrl,
           videoType,
+          originalVideoUrl,
           date,
           originalUrl: `https://t.me/${channelUsername}/${messageId}`,
           sourceLink,
