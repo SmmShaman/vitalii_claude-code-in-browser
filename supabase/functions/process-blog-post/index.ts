@@ -108,9 +108,9 @@ interface BlogRewriteRequest {
  * Rewrites content from author's first-person perspective
  */
 serve(async (req) => {
-  // Version: 2024-12-30-02 - Source link appending
-  console.log('🚀 Process Blog Post v2024-12-30-02 started')
-  console.log('📦 Features: Source link appending to rewritten content')
+  // Version: 2025-01-02-01 - Fix AI response format with explicit structure
+  console.log('🚀 Process Blog Post v2025-01-02-01 started')
+  console.log('📦 Features: Fixed system prompt with explicit JSON structure, max_tokens 8000')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -170,7 +170,18 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a professional blog writer. Rewrite content from first-person perspective, as if you are sharing personal insights and experiences. Make it engaging and authentic. Return ONLY valid JSON.'
+            content: `You are a professional blog writer. Rewrite content from first-person perspective, as if you are sharing personal insights and experiences. Make it engaging and authentic.
+
+You MUST return ONLY valid JSON with this EXACT structure:
+{
+  "en": { "title": "...", "content": "...", "description": "..." },
+  "no": { "title": "...", "content": "...", "description": "..." },
+  "ua": { "title": "...", "content": "...", "description": "..." },
+  "tags": ["tag1", "tag2", "tag3"],
+  "category": "Tech"
+}
+
+CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each must contain "title", "content", and "description".`
           },
           {
             role: 'user',
@@ -178,7 +189,7 @@ serve(async (req) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 3000
+        max_tokens: 8000
       })
     })
 

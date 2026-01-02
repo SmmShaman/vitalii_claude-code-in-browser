@@ -759,48 +759,8 @@ serve(async (req) => {
           })
         }
 
-        // 🛡️ DUPLICATE CHECK: Prevent republishing to LinkedIn
-        if (checkRecord.linkedin_post_id) {
-          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
-          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), preventing duplicate`)
-
-          // Answer callback silently (required by Telegram API)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId
-              })
-            }
-          )
-
-          // Build LinkedIn post URL
-          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
-
-          // Update original message to show duplicate status (NO separate message!)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + `\n\n⚠️ <b>Вже опубліковано в LinkedIn (${existingLang})!</b>\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-
-          return new Response(JSON.stringify({ ok: true, duplicate: true }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // 🎬 Check if news has video - use GitHub Action for native LinkedIn video
+        // 🎬 Check if news has video FIRST - video posts bypass duplicate check
+        // This allows re-uploading with native video even if image post was made before
         const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
 
         if (hasVideo && isGitHubActionsEnabled()) {
@@ -850,6 +810,48 @@ serve(async (req) => {
             console.error('❌ Failed to trigger LinkedIn video Action:', triggerResult.error)
             // Fall through to regular text+image posting
           }
+        }
+
+        // 🛡️ DUPLICATE CHECK: Prevent republishing to LinkedIn (only for non-video posts)
+        // Video posts bypass this check above
+        if (checkRecord.linkedin_post_id) {
+          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
+          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), preventing duplicate`)
+
+          // Answer callback silently (required by Telegram API)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId
+              })
+            }
+          )
+
+          // Build LinkedIn post URL
+          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
+
+          // Update original message to show duplicate status (NO separate message!)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + `\n\n⚠️ <b>Вже опубліковано в LinkedIn (${existingLang})!</b>\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+              })
+            }
+          )
+
+          return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
         }
 
         // Post to LinkedIn with correct content type and ID (text + image only)

@@ -27,9 +27,9 @@ interface NewsRewriteRequest {
  * Rewrites content in objective journalistic style
  */
 serve(async (req) => {
-  // Version: 2024-12-30-02 - Source link appending
-  console.log('🚀 Process News v2024-12-30-02 started')
-  console.log('📦 Features: Source link appending to rewritten content')
+  // Version: 2025-01-02-02 - Fix AI response format with explicit structure
+  console.log('🚀 Process News v2025-01-02-02 started')
+  console.log('📦 Features: Fixed system prompt with explicit JSON structure, max_tokens 8000')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -126,7 +126,15 @@ async function processWithPrompt(
       messages: [
         {
           role: 'system',
-          content: 'You are a professional content rewriter and translator. Return ONLY valid JSON.'
+          content: `You are a professional content rewriter and translator. You MUST return ONLY valid JSON with this EXACT structure:
+{
+  "en": { "title": "...", "content": "...", "description": "..." },
+  "no": { "title": "...", "content": "...", "description": "..." },
+  "ua": { "title": "...", "content": "...", "description": "..." },
+  "tags": ["tag1", "tag2", "tag3"]
+}
+
+CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each must contain "title", "content", and "description".`
         },
         {
           role: 'user',
@@ -134,7 +142,7 @@ async function processWithPrompt(
         }
       ],
       temperature: 0.5,
-      max_tokens: 3000
+      max_tokens: 8000
     })
   })
 
@@ -156,11 +164,22 @@ async function processWithPrompt(
     throw new Error('Failed to parse AI response')
   }
 
-  const rewrittenContent = JSON.parse(jsonMatch[0])
+  let rewrittenContent
+  try {
+    rewrittenContent = JSON.parse(jsonMatch[0])
+    console.log('Parsed JSON keys:', Object.keys(rewrittenContent))
+  } catch (parseError: any) {
+    console.error('JSON parse error:', parseError.message)
+    console.error('Raw JSON string (first 1000 chars):', jsonMatch[0].substring(0, 1000))
+    throw new Error(`Failed to parse JSON: ${parseError.message}`)
+  }
 
   // Validate structure
   if (!rewrittenContent.en || !rewrittenContent.no || !rewrittenContent.ua) {
-    throw new Error('AI response missing required language fields')
+    console.error('Missing language fields. Got keys:', Object.keys(rewrittenContent))
+    console.error('en:', !!rewrittenContent.en, 'no:', !!rewrittenContent.no, 'ua:', !!rewrittenContent.ua)
+    console.error('Raw response (first 500 chars):', aiContent.substring(0, 500))
+    throw new Error(`AI response missing required language fields. Got keys: ${Object.keys(rewrittenContent).join(', ')}. Raw: ${aiContent.substring(0, 300)}`)
   }
 
   // Extract tags from AI response (if available)
