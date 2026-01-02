@@ -636,7 +636,7 @@ const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
 
 // Social links data
 interface SocialLink {
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
   href: string
   label: string
   username: string
