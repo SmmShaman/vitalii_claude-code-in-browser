@@ -41,10 +41,10 @@ const VerticalLabel = ({ text, color }: { text: string; color: string }) => {
       {letters.map((letter, idx) => (
         <span
           key={idx}
-          className="font-bold text-[11px] leading-none block"
+          className="font-bold text-xs leading-none block"
           style={{
             color: color,
-            opacity: 0.7,
+            opacity: 0.85,
             textShadow: `0 0 10px ${color}50, 0 0 20px ${color}30`,
             fontFamily: 'Anton, sans-serif',
           }}
@@ -84,7 +84,7 @@ const AboutExplosionOverlay = ({
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+        className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
         style={{ backgroundColor: `${color}20` }}
         aria-label="Close"
       >
@@ -160,7 +160,7 @@ const ServicesExplosionOverlay = ({
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+        className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
         style={{ backgroundColor: `${color}20` }}
         aria-label="Close"
       >
@@ -267,7 +267,7 @@ const ProjectsExplosionOverlay = ({
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+          className="absolute top-4 left-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
           style={{ backgroundColor: `${colorSet.to}20` }}
           aria-label="Back"
         >
@@ -277,7 +277,7 @@ const ProjectsExplosionOverlay = ({
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+          className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
           style={{ backgroundColor: `${color}20` }}
           aria-label="Close"
         >
@@ -377,7 +377,7 @@ const ProjectsExplosionOverlay = ({
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+        className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
         style={{ backgroundColor: `${color}20` }}
         aria-label="Close"
       >
@@ -536,7 +536,7 @@ const NewsListOverlay = ({
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+        className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
         style={{ backgroundColor: `${color}20` }}
         aria-label="Close"
       >
@@ -585,7 +585,7 @@ const NewsListOverlay = ({
                     <p className="text-gray-500 text-xs line-clamp-2 mb-2">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -753,7 +753,7 @@ const ContactsOverlay = ({
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+        className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
         style={{ backgroundColor: `${color}20` }}
         aria-label="Close"
       >
@@ -826,7 +826,7 @@ const ContactsOverlay = ({
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    className="w-11 h-11 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: `${selectedSocial.color}15` }}
                   >
                     <selectedSocial.icon className="w-5 h-5" style={{ color: selectedSocial.color }} />
@@ -1158,7 +1158,7 @@ const BlogListOverlay = ({
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full z-10 transition-colors"
+        className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full z-10 transition-colors"
         style={{ backgroundColor: `${color}20` }}
         aria-label="Close"
       >
@@ -1207,7 +1207,7 @@ const BlogListOverlay = ({
                     <p className="text-gray-500 text-xs line-clamp-2 mb-2">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -1459,7 +1459,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto pb-24 scroll-smooth"
       >
-        <div className="space-y-3 px-3">
+        <div className="space-y-4 px-4">
 
           {/* HOME / ABOUT Section */}
           <section ref={el => { sectionRefs.current['home'] = el }} className="pt-2">
@@ -1473,7 +1473,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('about_title') as string} color={sectionColors.home.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-2 right-2 text-[10px] text-amber-600/60 font-medium">
+              <div className="absolute top-3 right-3 text-xs text-amber-700 font-medium">
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1505,7 +1505,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('services_title') as string} color={sectionColors.services.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-2 right-2 text-[10px] text-pink-600/60 font-medium">
+              <div className="absolute top-3 right-3 text-xs text-pink-700 font-medium">
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1534,11 +1534,11 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               </div>
 
               {/* Progress dots */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                 {translations[langKey].services_list.map((_, i) => (
                   <div
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${i === currentServiceIndex ? 'bg-pink-500 w-3' : 'bg-pink-300'}`}
+                    className={`w-2 h-2 rounded-full transition-all ${i === currentServiceIndex ? 'bg-pink-500 w-4' : 'bg-pink-300'}`}
                   />
                 ))}
               </div>
@@ -1558,7 +1558,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('projects_title') as string} color={sectionColors.projects.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-2 right-2 text-[10px] text-emerald-600/60 font-medium">
+              <div className="absolute top-3 right-3 text-xs text-emerald-700 font-medium">
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1746,7 +1746,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                             <h4 className="font-semibold text-gray-900 text-xs line-clamp-2">
                               {getLocalizedField(item, 'title')}
                             </h4>
-                            <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-500">
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(item.published_at)}</span>
                               {item.views_count > 0 && (
@@ -1825,7 +1825,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                             <h4 className="font-semibold text-gray-900 text-xs line-clamp-2">
                               {getLocalizedField(item, 'title')}
                             </h4>
-                            <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-500">
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(item.published_at)}</span>
                               {item.reading_time && <span>• {item.reading_time} min</span>}
@@ -1857,7 +1857,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('contact_title' as any) || 'Contact'} color={sectionColors.contact.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-2 right-2 text-[10px] text-purple-600/60 font-medium">
+              <div className="absolute top-3 right-3 text-xs text-purple-700 font-medium">
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
