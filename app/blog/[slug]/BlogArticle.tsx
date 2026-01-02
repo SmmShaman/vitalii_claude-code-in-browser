@@ -278,20 +278,48 @@ export function BlogArticle({ slug }: BlogArticleProps) {
             </section>
           </ScrollReveal>
 
-          {/* Original Source Link */}
-          {post.original_url && (
+          {/* Source Links - Display all external links */}
+          {(post.source_links?.length > 0 || post.original_url) && (
             <ScrollReveal delay={0.5}>
               <div className="mb-8">
-                <h2 className="sr-only">Original Source</h2>
-                <a
-                  href={post.original_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Read Original Article
-                </a>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <ExternalLink className="w-5 h-5 text-blue-600" />
+                  Resources
+                </h2>
+                <div className="flex flex-wrap gap-3">
+                  {/* If we have multiple source_links, display all */}
+                  {post.source_links?.length > 0 ? (
+                    post.source_links.map((link: string, index: number) => {
+                      let hostname = 'Source'
+                      try {
+                        hostname = new URL(link).hostname.replace('www.', '')
+                      } catch {}
+                      return (
+                        <a
+                          key={index}
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-700 rounded-lg transition-colors text-sm font-medium"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          {hostname}
+                        </a>
+                      )
+                    })
+                  ) : (
+                    /* Fallback to original_url */
+                    <a
+                      href={post.original_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Read Original Article
+                    </a>
+                  )}
+                </div>
               </div>
             </ScrollReveal>
           )}

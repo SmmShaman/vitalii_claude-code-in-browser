@@ -100,7 +100,8 @@ interface BlogRewriteRequest {
   imageUrl?: string | null
   videoUrl?: string | null
   videoType?: string | null
-  sourceLink?: string | null  // External source link from Telegram post content
+  sourceLink?: string | null    // First external source link (backwards compatibility)
+  sourceLinks?: string[]        // ALL external source links from Telegram post content
 }
 
 /**
@@ -220,18 +221,35 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
 
     console.log('✅ Blog post rewritten for all languages')
 
-    // Append source link to content if available (for each language)
-    const sourceLink = requestData.sourceLink
-    if (sourceLink) {
-      console.log(`📎 Appending source link to blog content: ${sourceLink}`)
-      const sourceSuffix = {
-        en: `\n\n**Source:** [Original Article](${sourceLink})`,
-        no: `\n\n**Kilde:** [Original artikkel](${sourceLink})`,
-        ua: `\n\n**Джерело:** [Оригінальна стаття](${sourceLink})`
+    // Append source links to content if available (for each language)
+    // Priority: sourceLinks array (all links) > sourceLink (single, backwards compat)
+    const sourceLinks = requestData.sourceLinks?.length ? requestData.sourceLinks : (requestData.sourceLink ? [requestData.sourceLink] : [])
+
+    if (sourceLinks.length > 0) {
+      console.log(`📎 Appending ${sourceLinks.length} source link(s) to blog content`)
+      sourceLinks.forEach((link, i) => console.log(`   ${i + 1}. ${link}`))
+
+      // Format as Resources section with multiple links
+      const formatLinks = (links: string[], headerText: string): string => {
+        if (links.length === 1) {
+          // Single link - use simple format
+          return `\n\n**${headerText}:** [${new URL(links[0]).hostname}](${links[0]})`
+        }
+        // Multiple links - use bullet list
+        const linksList = links.map(link => {
+          try {
+            const hostname = new URL(link).hostname.replace('www.', '')
+            return `- [${hostname}](${link})`
+          } catch {
+            return `- [Link](${link})`
+          }
+        }).join('\n')
+        return `\n\n**${headerText}:**\n${linksList}`
       }
-      rewrittenContent.en.content = rewrittenContent.en.content + sourceSuffix.en
-      rewrittenContent.no.content = rewrittenContent.no.content + sourceSuffix.no
-      rewrittenContent.ua.content = rewrittenContent.ua.content + sourceSuffix.ua
+
+      rewrittenContent.en.content = rewrittenContent.en.content + formatLinks(sourceLinks, 'Resources')
+      rewrittenContent.no.content = rewrittenContent.no.content + formatLinks(sourceLinks, 'Ressurser')
+      rewrittenContent.ua.content = rewrittenContent.ua.content + formatLinks(sourceLinks, 'Ресурси')
     }
 
     // 🔍 Find original source URL (parallel with image generation)

@@ -51,7 +51,8 @@ interface ScrapedPost {
   originalVideoUrl: string | null  // Original Telegram URL for LinkedIn native video
   date: Date
   originalUrl: string
-  sourceLink: string | null  // External source link extracted from text
+  sourceLink: string | null    // First external source link (backwards compatibility)
+  sourceLinks: string[]        // ALL external source links extracted from text
 }
 
 /**
@@ -615,7 +616,8 @@ serve(async (req) => {
                 original_title: post.text.substring(0, 200), // First 200 chars as title
                 original_content: post.text,
                 original_url: post.originalUrl,
-                source_link: post.sourceLink, // External source link from text
+                source_link: post.sourceLink, // First external source link (backwards compatibility)
+                source_links: post.sourceLinks.length > 0 ? post.sourceLinks : null, // ALL external source links
                 image_url: photoUrl,
                 images: uploadedImages.length > 0 ? uploadedImages : null, // All images array
                 video_url: post.videoUrl,
@@ -998,14 +1000,25 @@ async function parseChannelPosts(
           continue
         }
 
-        // Get source link: prefer hyperlinks extracted from <a> tags, fallback to regex on text
-        // Priority: 1) First external hyperlink from <a href>, 2) URL found in plain text
-        const sourceLink = extractedSourceLinks.length > 0
-          ? extractedSourceLinks[0]  // First external hyperlink (most likely the main source)
-          : extractSourceLink(text)   // Fallback: search for URL patterns in text
+        // Get ALL source links from hyperlinks and text
+        // Combine: 1) All external hyperlinks from <a href>, 2) URL patterns found in plain text
+        let allSourceLinks: string[] = [...extractedSourceLinks]
 
-        if (sourceLink) {
-          console.log(`📎 Post ${messageId}: Source link = ${sourceLink}`)
+        // Also check plain text for URLs not in hyperlinks
+        const textUrl = extractSourceLink(text)
+        if (textUrl && !allSourceLinks.includes(textUrl)) {
+          allSourceLinks.push(textUrl)
+        }
+
+        // Remove duplicates
+        allSourceLinks = [...new Set(allSourceLinks)]
+
+        // First link for backwards compatibility
+        const sourceLink = allSourceLinks.length > 0 ? allSourceLinks[0] : null
+
+        if (allSourceLinks.length > 0) {
+          console.log(`📎 Post ${messageId}: Found ${allSourceLinks.length} source link(s):`)
+          allSourceLinks.forEach((link, i) => console.log(`   ${i + 1}. ${link}`))
         }
 
         posts.push({
@@ -1020,6 +1033,7 @@ async function parseChannelPosts(
           date,
           originalUrl: `https://t.me/${channelUsername}/${messageId}`,
           sourceLink,
+          sourceLinks: allSourceLinks,
         })
         console.log(`✅ Added post ${messageId} to array (total: ${posts.length})`)
       } catch (postError) {

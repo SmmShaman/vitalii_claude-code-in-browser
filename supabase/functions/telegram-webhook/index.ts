@@ -617,7 +617,8 @@ serve(async (req) => {
               imageUrl: news.processed_image_url || news.image_url || null, // Prioritize custom uploaded image
               videoUrl: news.video_url || null,
               videoType: news.video_type || null,
-              sourceLink: news.source_link || null // External source link
+              sourceLink: news.source_link || null, // First external source link (backwards compatibility)
+              sourceLinks: news.source_links || [] // ALL external source links
             })
           }
         )
