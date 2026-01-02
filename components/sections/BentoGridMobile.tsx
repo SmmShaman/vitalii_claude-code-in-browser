@@ -447,7 +447,7 @@ const NewsListOverlay = ({
   onClose: () => void
   color: string
   currentLanguage: string
-  t: (key: string) => string
+  t: (key: any) => any
 }) => {
   const [allNews, setAllNews] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -664,7 +664,7 @@ const ContactsOverlay = ({
 }: {
   onClose: () => void
   color: string
-  t: (key: string) => string
+  t: (key: any) => any
 }) => {
   const [selectedSocial, setSelectedSocial] = useState<SocialLink | null>(null)
   const [copied, setCopied] = useState(false)
@@ -1069,7 +1069,7 @@ const BlogListOverlay = ({
   onClose: () => void
   color: string
   currentLanguage: string
-  t: (key: string) => string
+  t: (key: any) => any
 }) => {
   const [allBlogs, setAllBlogs] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
