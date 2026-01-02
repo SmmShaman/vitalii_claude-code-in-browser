@@ -92,11 +92,12 @@ export function Modal({ children, title = 'Article' }: ModalProps) {
 
   return (
     <AnimatePresence>
+      {/* Light backdrop for smooth transition */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-white"
         onClick={onDismiss}
         aria-hidden="true"
       />
@@ -106,16 +107,16 @@ export function Modal({ children, title = 'Article' }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed inset-2 sm:inset-4 md:inset-10 lg:inset-20 z-50 bg-slate-900 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl focus:outline-none"
+        className="fixed inset-0 z-50 bg-white overflow-hidden shadow-2xl focus:outline-none"
         style={{
-          paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
-          paddingRight: 'max(0.5rem, env(safe-area-inset-right))',
-          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
-          paddingLeft: 'max(0.5rem, env(safe-area-inset-left))',
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingRight: 'env(safe-area-inset-right)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -125,9 +126,9 @@ export function Modal({ children, title = 'Article' }: ModalProps) {
         <button
           onClick={onDismiss}
           aria-label="Close modal"
-          className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 p-2 sm:p-2 min-w-[44px] min-h-[44px] rounded-full bg-slate-800/80 hover:bg-slate-700 transition-colors text-white flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-900"
+          className="absolute top-4 right-4 z-20 p-2 min-w-[44px] min-h-[44px] rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2 shadow-md"
         >
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5" />
         </button>
 
         {/* Live region for loading status */}

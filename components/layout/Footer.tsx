@@ -27,7 +27,7 @@ const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-const CONTACT_EMAIL = 'vitalii@berbeha.com';
+const CONTACT_EMAIL = 'berbeha@vitalii.no';
 
 export const Footer = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
