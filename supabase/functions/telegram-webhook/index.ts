@@ -941,18 +941,35 @@ serve(async (req) => {
           linkedinStatusText += `🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`
         }
 
+        // Build remaining LinkedIn buttons (for other languages)
+        const allLanguages = ['en', 'no', 'ua']
+        const remainingLanguages = allLanguages.filter(lang => lang !== linkedinLanguage)
+        const remainingButtons = remainingLanguages.map(lang => ({
+          text: `🔗 LinkedIn ${lang.toUpperCase()}`,
+          callback_data: `linkedin_${lang}_${newsId}`
+        }))
+
+        // Only add reply_markup if there are remaining languages
+        const editPayload: any = {
+          chat_id: chatId,
+          message_id: messageId,
+          text: messageText + linkedinStatusText,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
+        }
+
+        if (remainingButtons.length > 0) {
+          editPayload.reply_markup = {
+            inline_keyboard: [remainingButtons]
+          }
+        }
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + linkedinStatusText,
-              parse_mode: 'HTML',
-              disable_web_page_preview: true
-            })
+            body: JSON.stringify(editPayload)
           }
         )
 
