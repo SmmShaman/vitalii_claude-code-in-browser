@@ -368,15 +368,10 @@ async function postToLinkedIn(content: {
   try {
     // Build the share commentary (LinkedIn limit is 3000 chars)
     // Keep it concise for better engagement
-    // Include source link if available (original article source like GitHub, HuggingFace, etc.)
+    // Note: source links are already included in description as "Resources" section from process-news
     let commentary = `${content.title}\n\n${content.description}`
 
-    // Add source link if available (external original source)
-    if (content.sourceLink) {
-      commentary += `\n\n📄 Original source: ${content.sourceLink}`
-      console.log('📎 Including source link in LinkedIn post:', content.sourceLink)
-    }
-
+    // Add link to full article on website
     commentary += `\n\n🔗 Read more: ${content.url}`
     const safeCommentary = commentary.substring(0, 2900)
 
