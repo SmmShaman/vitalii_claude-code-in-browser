@@ -78,6 +78,10 @@ function extractSourceLink(text: string): string | null {
     if (url.includes('twitter.com/intent/') || url.includes('facebook.com/sharer/')) {
       continue
     }
+    // Skip Telegram hashtag search links (like ?q=%23новости)
+    if (url.includes('?q=%23') || url.includes('?q=#')) {
+      continue
+    }
     // Clean up URL (remove trailing punctuation)
     const cleanUrl = url.replace(/[.,;:!?)]+$/, '')
     return cleanUrl
@@ -92,6 +96,11 @@ function extractSourceLink(text: string): string | null {
 function isExternalSourceUrl(url: string): boolean {
   if (!url) return false
 
+  // Must be a full URL starting with http
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return false
+  }
+
   // Skip Telegram URLs
   if (url.includes('t.me/') || url.includes('telegram.me/') || url.includes('telegram.org/')) {
     return false
@@ -102,6 +111,10 @@ function isExternalSourceUrl(url: string): boolean {
   }
   // Skip hashtag links and internal anchors
   if (url.startsWith('#') || url.startsWith('tg://')) {
+    return false
+  }
+  // Skip Telegram hashtag search links (like ?q=%23новости)
+  if (url.includes('?q=%23') || url.includes('?q=#')) {
     return false
   }
 
