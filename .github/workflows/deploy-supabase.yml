@@ -55,5 +55,5 @@ jobs:
       - name: Run database migrations
         if: ${{ github.event_name == 'push' }}
         run: |
-          supabase db push
+          supabase db push --include-all
         continue-on-error: true
