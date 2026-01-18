@@ -522,6 +522,22 @@ serve(async (req) => {
       } else if (callbackData.startsWith('tiktok_')) {
         action = 'tiktok'
         newsId = callbackData.replace('tiktok_', '')
+      // Twitter Share Intent callbacks
+      } else if (callbackData.startsWith('twitter_en_')) {
+        action = 'twitter'
+        socialPlatform = 'twitter'
+        socialLanguage = 'en'
+        newsId = callbackData.replace('twitter_en_', '')
+      } else if (callbackData.startsWith('twitter_no_')) {
+        action = 'twitter'
+        socialPlatform = 'twitter'
+        socialLanguage = 'no'
+        newsId = callbackData.replace('twitter_no_', '')
+      } else if (callbackData.startsWith('twitter_ua_')) {
+        action = 'twitter'
+        socialPlatform = 'twitter'
+        socialLanguage = 'ua'
+        newsId = callbackData.replace('twitter_ua_', '')
       // Skip remaining social platforms
       } else if (callbackData.startsWith('skip_social_')) {
         action = 'skip_social'
@@ -1015,6 +1031,13 @@ serve(async (req) => {
           { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
         ])
 
+        // Twitter buttons
+        buttonRows.push([
+          { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
+          { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
+          { text: '🐦 Twitter UA', callback_data: `twitter_ua_${newsId}` }
+        ])
+
         // TikTok and Skip buttons
         buttonRows.push([
           { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
@@ -1369,6 +1392,147 @@ serve(async (req) => {
               message_id: messageId,
               text: messageText + '\n\n🎵 <b>TikTok content sent below!</b>',
               parse_mode: 'HTML'
+            })
+          }
+        )
+
+      } else if (action === 'twitter' && socialPlatform === 'twitter' && socialLanguage) {
+        // =================================================================
+        // 🐦 Twitter Share Intent Handler
+        // =================================================================
+        console.log(`Generating Twitter Share Intent (${socialLanguage}) for news:`, newsId)
+
+        // Fetch news data
+        const { data: news, error: fetchError } = await supabase
+          .from('news')
+          .select('title_en, title_no, title_ua, slug_en, slug_no, slug_ua, description_en, description_no, description_ua')
+          .eq('id', newsId)
+          .single()
+
+        if (fetchError || !news) {
+          console.error('Failed to fetch news:', fetchError)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Error: News not found',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if content is published
+        const titleField = `title_${socialLanguage}` as keyof typeof news
+        const slugField = `slug_${socialLanguage}` as keyof typeof news
+
+        if (!news[titleField]) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Content not published yet. Publish to News first!',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Get title and slug in the appropriate language
+        const title = news[titleField] as string
+        const slug = (news[slugField] || news.slug_en || newsId.substring(0, 8)) as string
+        const articleUrl = `https://vitalii.no/news/${slug}`
+
+        // Twitter has 280 character limit - account for URL and spacing
+        // t.co wraps URLs to 23 chars, so max text = 280 - 23 - 2 (space + space) = 255 chars
+        const maxTextLength = 255
+        const tweetText = title.length > maxTextLength
+          ? title.substring(0, maxTextLength - 3) + '...'
+          : title
+
+        // Generate Twitter Share Intent URL
+        const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(articleUrl)}`
+
+        // Answer callback
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '🐦 Twitter link generated!',
+              show_alert: false
+            })
+          }
+        )
+
+        // Send message with clickable link (separate message for better UX)
+        const langLabel = socialLanguage.toUpperCase()
+        const shortTitle = title.length > 50 ? title.substring(0, 47) + '...' : title
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `🐦 <b>Twitter Share Ready (${langLabel})!</b>\n\n` +
+                    `📝 «${shortTitle}»\n\n` +
+                    `👉 <a href="${twitterIntentUrl}">Натисніть щоб опублікувати в Twitter</a>\n\n` +
+                    `<i>Відкриється Twitter з готовим текстом. Натисніть "Post" для публікації.</i>`,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            })
+          }
+        )
+
+        // Update original message to show Twitter was used
+        const allLanguages = ['en', 'no', 'ua']
+        const remainingLanguages = allLanguages.filter(lang => lang !== socialLanguage)
+
+        // Build remaining Twitter buttons
+        const remainingTwitterButtons = remainingLanguages.map(lang => ({
+          text: `🐦 Twitter ${lang.toUpperCase()}`,
+          callback_data: `twitter_${lang}_${newsId}`
+        }))
+
+        // Build remaining buttons (TikTok, Skip)
+        const buttonRows = []
+        if (remainingTwitterButtons.length > 0) {
+          buttonRows.push(remainingTwitterButtons)
+        }
+        buttonRows.push([
+          { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+          { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+        ])
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n🐦 <b>Twitter (${langLabel}) link sent!</b>`,
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: buttonRows
+              }
             })
           }
         )
