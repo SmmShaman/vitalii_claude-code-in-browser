@@ -538,6 +538,23 @@ serve(async (req) => {
         socialPlatform = 'twitter'
         socialLanguage = 'ua'
         newsId = callbackData.replace('twitter_ua_', '')
+      // Batch posting: All socials in one language
+      } else if (callbackData.startsWith('all_en_')) {
+        action = 'post_all'
+        socialLanguage = 'en'
+        newsId = callbackData.replace('all_en_', '')
+      } else if (callbackData.startsWith('all_no_')) {
+        action = 'post_all'
+        socialLanguage = 'no'
+        newsId = callbackData.replace('all_no_', '')
+      } else if (callbackData.startsWith('all_ua_')) {
+        action = 'post_all'
+        socialLanguage = 'ua'
+        newsId = callbackData.replace('all_ua_', '')
+      // Combo: LinkedIn EN + Facebook EN
+      } else if (callbackData.startsWith('combo_li_fb_en_')) {
+        action = 'combo_li_fb_en'
+        newsId = callbackData.replace('combo_li_fb_en_', '')
       // Skip remaining social platforms
       } else if (callbackData.startsWith('skip_social_')) {
         action = 'skip_social'
@@ -723,14 +740,48 @@ serve(async (req) => {
           }
         )
 
-        // Edit message with LinkedIn buttons
+        // Edit message with social media buttons
         const statusLabel = publicationType === 'blog' ? 'BLOG' : 'NEWS'
-        const linkedinKeyboard = {
+        const socialKeyboard = {
           inline_keyboard: [
+            // Batch posting - all socials in one language
+            [
+              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
+              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
+              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
+            ],
+            // Quick combo
+            [
+              { text: '🔗+📘 LinkedIn+FB EN', callback_data: `combo_li_fb_en_${newsId}` }
+            ],
+            // LinkedIn individual
             [
               { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
               { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
               { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+            ],
+            // Facebook individual
+            [
+              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
+              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
+              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
+            ],
+            // Instagram individual
+            [
+              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
+              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
+              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
+            ],
+            // Twitter individual
+            [
+              { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
+              { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
+              { text: '🐦 Twitter UA', callback_data: `twitter_ua_${newsId}` }
+            ],
+            // TikTok and Skip
+            [
+              { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
             ]
           ]
         }
@@ -742,9 +793,9 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>`,
+              text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`,
               parse_mode: 'HTML',
-              reply_markup: linkedinKeyboard
+              reply_markup: socialKeyboard
             })
           }
         )
@@ -1532,6 +1583,436 @@ serve(async (req) => {
               parse_mode: 'HTML',
               reply_markup: {
                 inline_keyboard: buttonRows
+              }
+            })
+          }
+        )
+
+      } else if (action === 'post_all' && socialLanguage) {
+        // =================================================================
+        // 🌐 Post to ALL socials in one language
+        // =================================================================
+        console.log(`Posting to ALL socials (${socialLanguage}) for news:`, newsId)
+
+        const langLabel = socialLanguage.toUpperCase()
+
+        // Answer callback immediately
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: `🌐 Публікуємо у всі соцмережі (${langLabel})...`,
+              show_alert: false
+            })
+          }
+        )
+
+        // Fetch news data
+        const { data: news, error: fetchError } = await supabase
+          .from('news')
+          .select('*')
+          .eq('id', newsId)
+          .single()
+
+        if (fetchError || !news) {
+          console.error('Failed to fetch news:', fetchError)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: '❌ Error: News not found'
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if content has translations
+        const titleField = `title_${socialLanguage}`
+        if (!news[titleField]) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `❌ Content not published yet (no ${langLabel} translation). Publish to News first!`
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if has blog post
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentType = blogPost ? 'blog' : 'news'
+        const contentId = blogPost ? blogPost.id : newsId
+
+        // Track results
+        const results: { platform: string; success: boolean; error?: string; url?: string }[] = []
+
+        // 1. Post to LinkedIn
+        console.log(`📤 Posting to LinkedIn (${socialLanguage})...`)
+        try {
+          const linkedinRequestBody: any = {
+            language: socialLanguage,
+            contentType: contentType
+          }
+          if (contentType === 'blog') {
+            linkedinRequestBody.blogPostId = contentId
+          } else {
+            linkedinRequestBody.newsId = contentId
+          }
+
+          const linkedinResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(linkedinRequestBody)
+            }
+          )
+          const linkedinResult = await linkedinResponse.json()
+
+          if (linkedinResponse.ok && linkedinResult.success) {
+            const postUrl = linkedinResult.postId
+              ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
+              : undefined
+            results.push({ platform: 'LinkedIn', success: true, url: postUrl })
+          } else {
+            results.push({ platform: 'LinkedIn', success: false, error: linkedinResult.error || 'Unknown error' })
+          }
+        } catch (e) {
+          results.push({ platform: 'LinkedIn', success: false, error: 'Request failed' })
+        }
+
+        // 2. Post to Facebook
+        console.log(`📤 Posting to Facebook (${socialLanguage})...`)
+        try {
+          const fbRequestBody: any = {
+            language: socialLanguage,
+            contentType: contentType
+          }
+          if (contentType === 'blog') {
+            fbRequestBody.blogPostId = contentId
+          } else {
+            fbRequestBody.newsId = contentId
+          }
+
+          const fbResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/post-to-facebook`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(fbRequestBody)
+            }
+          )
+          const fbResult = await fbResponse.json()
+
+          if (fbResponse.ok && fbResult.success) {
+            results.push({ platform: 'Facebook', success: true, url: fbResult.postUrl })
+          } else {
+            results.push({ platform: 'Facebook', success: false, error: fbResult.error || 'Unknown error' })
+          }
+        } catch (e) {
+          results.push({ platform: 'Facebook', success: false, error: 'Request failed' })
+        }
+
+        // 3. Post to Instagram
+        console.log(`📤 Posting to Instagram (${socialLanguage})...`)
+        try {
+          const igRequestBody: any = {
+            language: socialLanguage,
+            contentType: contentType
+          }
+          if (contentType === 'blog') {
+            igRequestBody.blogPostId = contentId
+          } else {
+            igRequestBody.newsId = contentId
+          }
+
+          const igResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/post-to-instagram`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(igRequestBody)
+            }
+          )
+          const igResult = await igResponse.json()
+
+          if (igResponse.ok && igResult.success) {
+            results.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
+          } else {
+            results.push({ platform: 'Instagram', success: false, error: igResult.error || 'Unknown error' })
+          }
+        } catch (e) {
+          results.push({ platform: 'Instagram', success: false, error: 'Request failed' })
+        }
+
+        // 4. Generate Twitter Share Intent
+        console.log(`📤 Generating Twitter link (${socialLanguage})...`)
+        const slugField = `slug_${socialLanguage}`
+        const title = news[titleField] as string
+        const slug = news[slugField] || news.slug_en || newsId.substring(0, 8)
+        const articleUrl = `https://vitalii.no/news/${slug}`
+        const maxTextLength = 255
+        const tweetText = title.length > maxTextLength
+          ? title.substring(0, maxTextLength - 3) + '...'
+          : title
+        const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(articleUrl)}`
+        results.push({ platform: 'Twitter', success: true, url: twitterIntentUrl })
+
+        // Build results message
+        let resultsText = `\n\n🌐 <b>Результати публікації (${langLabel}):</b>\n`
+        for (const r of results) {
+          if (r.success) {
+            if (r.platform === 'Twitter') {
+              resultsText += `✅ ${r.platform}: <a href="${r.url}">Натисніть для публікації</a>\n`
+            } else if (r.url) {
+              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути</a>\n`
+            } else {
+              resultsText += `✅ ${r.platform}: Опубліковано\n`
+            }
+          } else {
+            resultsText += `❌ ${r.platform}: ${r.error}\n`
+          }
+        }
+
+        // Update message with results
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + resultsText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            })
+          }
+        )
+
+      } else if (action === 'combo_li_fb_en') {
+        // =================================================================
+        // 🔗📘 Combo: LinkedIn EN + Facebook EN
+        // =================================================================
+        console.log('Posting combo LinkedIn EN + Facebook EN for news:', newsId)
+
+        // Answer callback immediately
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '🔗📘 Публікуємо LinkedIn + Facebook EN...',
+              show_alert: false
+            })
+          }
+        )
+
+        // Fetch news data
+        const { data: news, error: fetchError } = await supabase
+          .from('news')
+          .select('*')
+          .eq('id', newsId)
+          .single()
+
+        if (fetchError || !news) {
+          console.error('Failed to fetch news:', fetchError)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: '❌ Error: News not found'
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if content has English translation
+        if (!news.title_en) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: '❌ Content not published yet (no EN translation). Publish to News first!'
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if has blog post
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentType = blogPost ? 'blog' : 'news'
+        const contentId = blogPost ? blogPost.id : newsId
+
+        // Track results
+        const results: { platform: string; success: boolean; error?: string; url?: string }[] = []
+
+        // 1. Post to LinkedIn EN
+        console.log('📤 Posting to LinkedIn EN...')
+        try {
+          const linkedinRequestBody: any = {
+            language: 'en',
+            contentType: contentType
+          }
+          if (contentType === 'blog') {
+            linkedinRequestBody.blogPostId = contentId
+          } else {
+            linkedinRequestBody.newsId = contentId
+          }
+
+          const linkedinResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(linkedinRequestBody)
+            }
+          )
+          const linkedinResult = await linkedinResponse.json()
+
+          if (linkedinResponse.ok && linkedinResult.success) {
+            const postUrl = linkedinResult.postId
+              ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
+              : undefined
+            results.push({ platform: 'LinkedIn EN', success: true, url: postUrl })
+          } else {
+            results.push({ platform: 'LinkedIn EN', success: false, error: linkedinResult.error || 'Unknown error' })
+          }
+        } catch (e) {
+          results.push({ platform: 'LinkedIn EN', success: false, error: 'Request failed' })
+        }
+
+        // 2. Post to Facebook EN
+        console.log('📤 Posting to Facebook EN...')
+        try {
+          const fbRequestBody: any = {
+            language: 'en',
+            contentType: contentType
+          }
+          if (contentType === 'blog') {
+            fbRequestBody.blogPostId = contentId
+          } else {
+            fbRequestBody.newsId = contentId
+          }
+
+          const fbResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/post-to-facebook`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(fbRequestBody)
+            }
+          )
+          const fbResult = await fbResponse.json()
+
+          if (fbResponse.ok && fbResult.success) {
+            results.push({ platform: 'Facebook EN', success: true, url: fbResult.postUrl })
+          } else {
+            results.push({ platform: 'Facebook EN', success: false, error: fbResult.error || 'Unknown error' })
+          }
+        } catch (e) {
+          results.push({ platform: 'Facebook EN', success: false, error: 'Request failed' })
+        }
+
+        // Build results message
+        let resultsText = '\n\n🔗📘 <b>LinkedIn + Facebook EN:</b>\n'
+        for (const r of results) {
+          if (r.success) {
+            if (r.url) {
+              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути</a>\n`
+            } else {
+              resultsText += `✅ ${r.platform}: Опубліковано\n`
+            }
+          } else {
+            resultsText += `❌ ${r.platform}: ${r.error}\n`
+          }
+        }
+
+        // Build remaining buttons
+        const remainingButtons = [
+          [
+            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` },
+            { text: '🌐 Все NO', callback_data: `all_no_${newsId}` }
+          ],
+          [
+            { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
+            { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` }
+          ],
+          [
+            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+          ]
+        ]
+
+        // Update message with results
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + resultsText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: {
+                inline_keyboard: remainingButtons
               }
             })
           }
