@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Linkedin, Sparkles, Image } from 'lucide-react'
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { NewsManager } from '@/components/admin/NewsManager'
 import { BlogManager } from '@/components/admin/BlogManager'
@@ -18,9 +18,12 @@ import { LinkedInPostsManager } from '@/components/admin/LinkedInPostsManager'
 import { SkillsManager } from '@/components/admin/SkillsManager'
 import { ImageProcessingSettings } from '@/components/admin/ImageProcessingSettings'
 import { APIKeysSettings } from '@/components/admin/APIKeysSettings'
+import { SocialMediaPostsManager } from '@/components/admin/SocialMediaPostsManager'
+import { SocialMediaCommentsManager } from '@/components/admin/SocialMediaCommentsManager'
+import { SocialMediaAccountsManager } from '@/components/admin/SocialMediaAccountsManager'
 
-type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'linkedin' | 'skills' | 'settings'
-type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'schedule' | 'automation' | 'debug'
+type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'social' | 'comments' | 'skills' | 'settings'
+type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'debug'
 
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -45,7 +48,8 @@ export default function AdminDashboardPage() {
     { id: 'queue' as TabType, label: 'Queue', icon: List },
     { id: 'news' as TabType, label: 'News', icon: Newspaper },
     { id: 'blog' as TabType, label: 'Blog', icon: BookOpen },
-    { id: 'linkedin' as TabType, label: 'LinkedIn', icon: Linkedin },
+    { id: 'social' as TabType, label: 'Social', icon: Share2 },
+    { id: 'comments' as TabType, label: 'Comments', icon: MessageSquare },
     { id: 'skills' as TabType, label: 'Skills', icon: Sparkles },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ]
@@ -155,6 +159,17 @@ export default function AdminDashboardPage() {
               API Keys
             </button>
             <button
+              onClick={() => setSettingsSubTab('accounts')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                settingsSubTab === 'accounts'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              Accounts
+            </button>
+            <button
               onClick={() => setSettingsSubTab('schedule')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 settingsSubTab === 'schedule'
@@ -202,7 +217,8 @@ export default function AdminDashboardPage() {
           {activeTab === 'queue' && <NewsQueueManager />}
           {activeTab === 'news' && <NewsManager />}
           {activeTab === 'blog' && <BlogManager />}
-          {activeTab === 'linkedin' && <LinkedInPostsManager />}
+          {activeTab === 'social' && <SocialMediaPostsManager />}
+          {activeTab === 'comments' && <SocialMediaCommentsManager />}
           {activeTab === 'skills' && <SkillsManager />}
           {activeTab === 'settings' && (
             <>
@@ -210,6 +226,7 @@ export default function AdminDashboardPage() {
               {settingsSubTab === 'prompts' && <AIPromptsManager />}
               {settingsSubTab === 'images' && <ImageProcessingSettings />}
               {settingsSubTab === 'apikeys' && <APIKeysSettings />}
+              {settingsSubTab === 'accounts' && <SocialMediaAccountsManager />}
               {settingsSubTab === 'schedule' && <AutoPublishSettings />}
               {settingsSubTab === 'automation' && <CronScheduleSettings />}
               {settingsSubTab === 'debug' && <DebugSettings />}
