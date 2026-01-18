@@ -56,6 +56,54 @@ interface LinkedInPostRequest {
 }
 
 /**
+ * Generate or fetch cached LinkedIn teaser
+ */
+async function getLinkedInTeaser(
+  recordId: string,
+  contentType: 'news' | 'blog',
+  language: 'en' | 'no' | 'ua',
+  title: string,
+  content: string
+): Promise<string | null> {
+  try {
+    console.log(`🎯 Fetching/generating LinkedIn teaser (${language})...`)
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        newsId: contentType === 'news' ? recordId : undefined,
+        blogPostId: contentType === 'blog' ? recordId : undefined,
+        title,
+        content,
+        contentType,
+        platform: 'linkedin',
+        language
+      })
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ Teaser generation failed:', await response.text())
+      return null
+    }
+
+    const result = await response.json()
+    if (result.success && result.teaser) {
+      console.log(`✅ Got LinkedIn teaser (cached: ${result.cached})`)
+      return result.teaser
+    }
+
+    return null
+  } catch (error: any) {
+    console.warn('⚠️ Error getting teaser:', error.message)
+    return null
+  }
+}
+
+/**
  * Post content to LinkedIn
  * Supports both news and blog posts in multiple languages
  * Deployed: December 2024
@@ -80,10 +128,14 @@ serve(async (req) => {
     let content: {
       title: string
       description: string
+      fullContent: string  // For teaser generation
       url: string
       imageUrl?: string
       sourceLink?: string
+      teaser?: string      // Generated teaser (priority)
     }
+
+    const recordId = requestData.contentType === 'news' ? requestData.newsId : requestData.blogPostId
 
     if (requestData.contentType === 'news' && requestData.newsId) {
       content = await fetchNewsContent(supabase, requestData.newsId, requestData.language)
@@ -91,6 +143,22 @@ serve(async (req) => {
       content = await fetchBlogContent(supabase, requestData.blogPostId, requestData.language)
     } else {
       throw new Error('Invalid request: must provide either newsId or blogPostId with corresponding contentType')
+    }
+
+    // Generate or fetch cached LinkedIn teaser
+    const teaser = await getLinkedInTeaser(
+      recordId!,
+      requestData.contentType,
+      requestData.language,
+      content.title,
+      content.fullContent
+    )
+
+    if (teaser) {
+      content.teaser = teaser
+      console.log('📝 Using generated teaser instead of full content')
+    } else {
+      console.log('📝 No teaser available, using description as fallback')
     }
 
     console.log('📝 Content to post:', {
@@ -181,7 +249,7 @@ async function fetchNewsContent(
   supabase: any,
   newsId: string,
   language: 'en' | 'no' | 'ua'
-): Promise<{ title: string; description: string; url: string; imageUrl?: string; sourceLink?: string }> {
+): Promise<{ title: string; description: string; fullContent: string; url: string; imageUrl?: string; sourceLink?: string }> {
   const { data: news, error } = await supabase
     .from('news')
     .select('*')
@@ -196,11 +264,12 @@ async function fetchNewsContent(
   const titleField = `title_${language}`
   const descriptionField = `description_${language}`
   const slugField = `slug_${language}`
+  const contentField = `content_${language}`
 
   const title = sanitizeText(news[titleField] || news.title_en || news.original_title, 200)
-  // Use full content for LinkedIn (up to 2500 chars to fit within LinkedIn's 3000 limit)
-  const contentField = `content_${language}`
+  // Get full content for teaser generation (unsanitized)
   const fullContent = news[contentField] || news[descriptionField] || news.description_en || ''
+  // Sanitized description for fallback
   const description = sanitizeText(fullContent, 2500)
   const slug = news[slugField] || news.slug_en
 
@@ -216,6 +285,7 @@ async function fetchNewsContent(
   return {
     title,
     description,
+    fullContent,
     url,
     imageUrl,
     sourceLink
@@ -229,7 +299,7 @@ async function fetchBlogContent(
   supabase: any,
   blogPostId: string,
   language: 'en' | 'no' | 'ua'
-): Promise<{ title: string; description: string; url: string; imageUrl?: string; sourceLink?: string }> {
+): Promise<{ title: string; description: string; fullContent: string; url: string; imageUrl?: string; sourceLink?: string }> {
   const { data: post, error } = await supabase
     .from('blog_posts')
     .select('*')
@@ -244,11 +314,12 @@ async function fetchBlogContent(
   const titleField = `title_${language}`
   const descriptionField = `description_${language}`
   const slugField = `slug_${language}`
+  const contentField = `content_${language}`
 
   const title = sanitizeText(post[titleField] || post.title_en, 200)
-  // Use full content for LinkedIn (up to 2500 chars to fit within LinkedIn's 3000 limit)
-  const contentField = `content_${language}`
+  // Get full content for teaser generation (unsanitized)
   const fullContent = post[contentField] || post[descriptionField] || post.description_en || ''
+  // Sanitized description for fallback
   const description = sanitizeText(fullContent, 2500)
   const slug = post[slugField] || post.slug_en
 
@@ -264,6 +335,7 @@ async function fetchBlogContent(
   return {
     title,
     description,
+    fullContent,
     url,
     imageUrl,
     sourceLink
@@ -361,18 +433,30 @@ async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
 async function postToLinkedIn(content: {
   title: string
   description: string
+  fullContent: string
   url: string
   imageUrl?: string
   sourceLink?: string
+  teaser?: string  // AI-generated teaser (priority)
 }): Promise<{ success: boolean; postId?: string; error?: string }> {
   try {
     // Build the share commentary (LinkedIn limit is 3000 chars)
-    // Keep it concise for better engagement
-    // Note: source links are already included in description as "Resources" section from process-news
-    let commentary = `${content.title}\n\n${content.description}`
+    // Use teaser if available, otherwise fall back to title + description
+    let commentary: string
 
-    // Add link to full article on website
-    commentary += `\n\n🔗 Read more: ${content.url}`
+    if (content.teaser) {
+      // Use AI-generated teaser - already includes emojis and CTA
+      commentary = content.teaser
+      // Add link to full article (teaser should end with CTA like "Читати повністю →")
+      commentary += `\n\n🔗 ${content.url}`
+      console.log('📝 Using AI-generated teaser for LinkedIn post')
+    } else {
+      // Fallback to old behavior: title + description
+      commentary = `${content.title}\n\n${content.description}`
+      commentary += `\n\n🔗 Read more: ${content.url}`
+      console.log('📝 Using title+description fallback for LinkedIn post')
+    }
+
     const safeCommentary = commentary.substring(0, 2900)
 
     console.log('📤 Commentary length:', safeCommentary.length)

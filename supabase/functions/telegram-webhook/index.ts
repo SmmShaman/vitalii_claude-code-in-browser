@@ -1449,14 +1449,16 @@ serve(async (req) => {
 
       } else if (action === 'twitter' && socialPlatform === 'twitter' && socialLanguage) {
         // =================================================================
-        // 🐦 Twitter Share Intent Handler
+        // 🐦 Twitter Share Intent Handler (with AI teaser)
         // =================================================================
         console.log(`Generating Twitter Share Intent (${socialLanguage}) for news:`, newsId)
 
-        // Fetch news data
+        // Fetch news data including content for teaser generation
         const { data: news, error: fetchError } = await supabase
           .from('news')
-          .select('title_en, title_no, title_ua, slug_en, slug_no, slug_ua, description_en, description_no, description_ua')
+          .select(`title_en, title_no, title_ua, slug_en, slug_no, slug_ua,
+                   content_en, content_no, content_ua,
+                   social_teaser_twitter_en, social_teaser_twitter_no, social_teaser_twitter_ua`)
           .eq('id', newsId)
           .single()
 
@@ -1482,6 +1484,8 @@ serve(async (req) => {
         // Check if content is published
         const titleField = `title_${socialLanguage}` as keyof typeof news
         const slugField = `slug_${socialLanguage}` as keyof typeof news
+        const contentField = `content_${socialLanguage}` as keyof typeof news
+        const teaserField = `social_teaser_twitter_${socialLanguage}` as keyof typeof news
 
         if (!news[titleField]) {
           await fetch(
@@ -1501,17 +1505,59 @@ serve(async (req) => {
           })
         }
 
-        // Get title and slug in the appropriate language
+        // Get title, content, and slug in the appropriate language
         const title = news[titleField] as string
+        const content = (news[contentField] || '') as string
         const slug = (news[slugField] || news.slug_en || newsId.substring(0, 8)) as string
         const articleUrl = `https://vitalii.no/news/${slug}`
+
+        // Check for cached teaser or generate new one
+        let tweetText = news[teaserField] as string | null
+
+        if (!tweetText) {
+          console.log('🎯 No cached Twitter teaser, generating...')
+          try {
+            const teaserResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId,
+                title,
+                content,
+                contentType: 'news',
+                platform: 'twitter',
+                language: socialLanguage
+              })
+            })
+
+            if (teaserResponse.ok) {
+              const teaserResult = await teaserResponse.json()
+              if (teaserResult.success && teaserResult.teaser) {
+                tweetText = teaserResult.teaser
+                console.log('✅ Twitter teaser generated:', tweetText.substring(0, 50))
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ Teaser generation failed, using title fallback')
+          }
+        } else {
+          console.log('✅ Using cached Twitter teaser')
+        }
+
+        // Fallback to title if no teaser
+        if (!tweetText) {
+          tweetText = title
+        }
 
         // Twitter has 280 character limit - account for URL and spacing
         // t.co wraps URLs to 23 chars, so max text = 280 - 23 - 2 (space + space) = 255 chars
         const maxTextLength = 255
-        const tweetText = title.length > maxTextLength
-          ? title.substring(0, maxTextLength - 3) + '...'
-          : title
+        if (tweetText.length > maxTextLength) {
+          tweetText = tweetText.substring(0, maxTextLength - 3) + '...'
+        }
 
         // Generate Twitter Share Intent URL
         const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(articleUrl)}`
@@ -1775,16 +1821,60 @@ serve(async (req) => {
           results.push({ platform: 'Instagram', success: false, error: 'Request failed' })
         }
 
-        // 4. Generate Twitter Share Intent
+        // 4. Generate Twitter Share Intent (with AI teaser)
         console.log(`📤 Generating Twitter link (${socialLanguage})...`)
         const slugField = `slug_${socialLanguage}`
+        const contentField = `content_${socialLanguage}`
+        const teaserField = `social_teaser_twitter_${socialLanguage}`
         const title = news[titleField] as string
+        const content = (news[contentField] || '') as string
         const slug = news[slugField] || news.slug_en || newsId.substring(0, 8)
         const articleUrl = `https://vitalii.no/news/${slug}`
         const maxTextLength = 255
-        const tweetText = title.length > maxTextLength
-          ? title.substring(0, maxTextLength - 3) + '...'
-          : title
+
+        // Check for cached teaser or generate new one
+        let tweetText = news[teaserField] as string | null
+
+        if (!tweetText) {
+          console.log('🎯 Generating Twitter teaser for batch post...')
+          try {
+            const teaserResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId,
+                title,
+                content,
+                contentType: 'news',
+                platform: 'twitter',
+                language: socialLanguage
+              })
+            })
+
+            if (teaserResponse.ok) {
+              const teaserResult = await teaserResponse.json()
+              if (teaserResult.success && teaserResult.teaser) {
+                tweetText = teaserResult.teaser
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ Teaser generation failed, using title')
+          }
+        }
+
+        // Fallback to title
+        if (!tweetText) {
+          tweetText = title
+        }
+
+        // Truncate if needed
+        if (tweetText.length > maxTextLength) {
+          tweetText = tweetText.substring(0, maxTextLength - 3) + '...'
+        }
+
         const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(articleUrl)}`
         results.push({ platform: 'Twitter', success: true, url: twitterIntentUrl })
 
