@@ -1,0 +1,63 @@
+name: Sync Social Media Comments
+
+on:
+  # Run every 30 minutes
+  schedule:
+    - cron: '*/30 * * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+  # Repository dispatch for programmatic triggering
+  repository_dispatch:
+    types: [sync-comments]
+
+jobs:
+  sync-comments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Sync Comments from Social Platforms
+        run: |
+          echo "🔄 Starting social media comment sync..."
+          echo "Time: $(date -u)"
+
+          # Call the Supabase Edge Function
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/sync-comments" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json")
+
+          # Extract HTTP status code (last line)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          # Extract response body (all but last line)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "❌ Comment sync failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+          # Parse response for summary
+          SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+          NEW_COMMENTS=$(echo "$BODY" | jq -r '.totalNewComments // 0')
+
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✅ Comment sync completed successfully"
+            echo "📬 New comments found: $NEW_COMMENTS"
+          else
+            ERROR=$(echo "$BODY" | jq -r '.error // "Unknown error"')
+            echo "❌ Comment sync failed: $ERROR"
+            exit 1
+          fi
+
+      - name: Report Status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Workflow completed successfully"
+          else
+            echo "❌ Workflow failed"
+          fi

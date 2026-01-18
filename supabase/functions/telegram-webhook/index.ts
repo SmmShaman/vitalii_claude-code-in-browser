@@ -462,6 +462,10 @@ serve(async (req) => {
 
       let linkedinLanguage: string | null = null
 
+      // Track platform and language for social posting
+      let socialPlatform: string | null = null
+      let socialLanguage: string | null = null
+
       if (callbackData.startsWith('publish_news_')) {
         action = 'publish'
         publicationType = 'news'
@@ -482,6 +486,46 @@ serve(async (req) => {
         action = 'linkedin'
         linkedinLanguage = 'ua'
         newsId = callbackData.replace('linkedin_ua_', '')
+      // Facebook callbacks
+      } else if (callbackData.startsWith('facebook_en_')) {
+        action = 'social_post'
+        socialPlatform = 'facebook'
+        socialLanguage = 'en'
+        newsId = callbackData.replace('facebook_en_', '')
+      } else if (callbackData.startsWith('facebook_no_')) {
+        action = 'social_post'
+        socialPlatform = 'facebook'
+        socialLanguage = 'no'
+        newsId = callbackData.replace('facebook_no_', '')
+      } else if (callbackData.startsWith('facebook_ua_')) {
+        action = 'social_post'
+        socialPlatform = 'facebook'
+        socialLanguage = 'ua'
+        newsId = callbackData.replace('facebook_ua_', '')
+      // Instagram callbacks
+      } else if (callbackData.startsWith('instagram_en_')) {
+        action = 'social_post'
+        socialPlatform = 'instagram'
+        socialLanguage = 'en'
+        newsId = callbackData.replace('instagram_en_', '')
+      } else if (callbackData.startsWith('instagram_no_')) {
+        action = 'social_post'
+        socialPlatform = 'instagram'
+        socialLanguage = 'no'
+        newsId = callbackData.replace('instagram_no_', '')
+      } else if (callbackData.startsWith('instagram_ua_')) {
+        action = 'social_post'
+        socialPlatform = 'instagram'
+        socialLanguage = 'ua'
+        newsId = callbackData.replace('instagram_ua_', '')
+      // TikTok callback (manual workflow)
+      } else if (callbackData.startsWith('tiktok_')) {
+        action = 'tiktok'
+        newsId = callbackData.replace('tiktok_', '')
+      // Skip remaining social platforms
+      } else if (callbackData.startsWith('skip_social_')) {
+        action = 'skip_social'
+        newsId = callbackData.replace('skip_social_', '')
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
@@ -942,26 +986,49 @@ serve(async (req) => {
           linkedinStatusText += `🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`
         }
 
-        // Build remaining LinkedIn buttons (for other languages)
+        // Build remaining social media buttons
         const allLanguages = ['en', 'no', 'ua']
         const remainingLanguages = allLanguages.filter(lang => lang !== linkedinLanguage)
-        const remainingButtons = remainingLanguages.map(lang => ({
-          text: `🔗 LinkedIn ${lang.toUpperCase()}`,
-          callback_data: `linkedin_${lang}_${newsId}`
-        }))
 
-        // Only add reply_markup if there are remaining languages
+        // Build button rows
+        const buttonRows = []
+
+        // Remaining LinkedIn languages
+        if (remainingLanguages.length > 0) {
+          buttonRows.push(remainingLanguages.map(lang => ({
+            text: `🔗 LinkedIn ${lang.toUpperCase()}`,
+            callback_data: `linkedin_${lang}_${newsId}`
+          })))
+        }
+
+        // Facebook buttons
+        buttonRows.push([
+          { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
+          { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
+          { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
+        ])
+
+        // Instagram buttons
+        buttonRows.push([
+          { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
+          { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
+          { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
+        ])
+
+        // TikTok and Skip buttons
+        buttonRows.push([
+          { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+          { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+        ])
+
         const editPayload: any = {
           chat_id: chatId,
           message_id: messageId,
           text: messageText + linkedinStatusText,
           parse_mode: 'HTML',
-          disable_web_page_preview: true
-        }
-
-        if (remainingButtons.length > 0) {
-          editPayload.reply_markup = {
-            inline_keyboard: [remainingButtons]
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: buttonRows
           }
         }
 
@@ -971,6 +1038,372 @@ serve(async (req) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editPayload)
+          }
+        )
+
+      } else if (action === 'social_post' && socialPlatform && socialLanguage) {
+        // =================================================================
+        // 📱 Facebook/Instagram Posting Handler
+        // =================================================================
+        console.log(`Posting to ${socialPlatform} (${socialLanguage}) with ID:`, newsId)
+
+        // Fetch news data
+        const { data: news, error: fetchError } = await supabase
+          .from('news')
+          .select('*')
+          .eq('id', newsId)
+          .single()
+
+        if (fetchError || !news) {
+          console.error('Failed to fetch news:', fetchError)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Error: News not found',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if content has translations
+        const titleField = `title_${socialLanguage}`
+        if (!news[titleField]) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Content not published yet. Publish to News/Blog first!',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if has blog post
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentType = blogPost ? 'blog' : 'news'
+        const contentId = blogPost ? blogPost.id : newsId
+
+        // Determine which endpoint to call
+        const endpoint = socialPlatform === 'facebook' ? 'post-to-facebook' : 'post-to-instagram'
+
+        const requestBody: any = {
+          language: socialLanguage,
+          contentType: contentType
+        }
+
+        if (contentType === 'blog') {
+          requestBody.blogPostId = contentId
+        } else {
+          requestBody.newsId = contentId
+        }
+
+        // Call the posting function
+        const postResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/${endpoint}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          }
+        )
+
+        const postResult = await postResponse.json()
+
+        if (!postResponse.ok || !postResult.success) {
+          // Check if already posted
+          if (postResult.alreadyPosted) {
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  callback_query_id: callbackId,
+                  text: `⚠️ Already posted to ${socialPlatform}!`,
+                  show_alert: true
+                })
+              }
+            )
+          } else {
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  callback_query_id: callbackId,
+                  text: `❌ ${socialPlatform} error: ${postResult.error || 'Unknown error'}`,
+                  show_alert: true
+                })
+              }
+            )
+          }
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        console.log(`✅ Posted to ${socialPlatform} successfully`)
+
+        // Answer callback
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId
+            })
+          }
+        )
+
+        // Get emoji for platform
+        const platformEmoji = socialPlatform === 'facebook' ? '📘' : '📸'
+        const platformName = socialPlatform.charAt(0).toUpperCase() + socialPlatform.slice(1)
+        const langLabel = socialLanguage.toUpperCase()
+
+        // Build status text
+        let statusText = `\n\n${platformEmoji} <b>Опубліковано в ${platformName} (${langLabel})!</b>`
+        if (postResult.postUrl) {
+          statusText += `\n🔗 <a href="${postResult.postUrl}">Переглянути пост</a>`
+        }
+
+        // Build remaining social buttons (for other platforms/languages)
+        const remainingButtons = []
+
+        // Add remaining language buttons for current platform
+        const allLanguages = ['en', 'no', 'ua']
+        const remainingLangs = allLanguages.filter(l => l !== socialLanguage)
+        for (const lang of remainingLangs) {
+          remainingButtons.push({
+            text: `${platformEmoji} ${platformName} ${lang.toUpperCase()}`,
+            callback_data: `${socialPlatform}_${lang}_${newsId}`
+          })
+        }
+
+        // Add other platform buttons
+        if (socialPlatform === 'facebook') {
+          remainingButtons.push({
+            text: '📸 Instagram EN',
+            callback_data: `instagram_en_${newsId}`
+          })
+        } else {
+          remainingButtons.push({
+            text: '📘 Facebook EN',
+            callback_data: `facebook_en_${newsId}`
+          })
+        }
+
+        remainingButtons.push({
+          text: '🎵 TikTok',
+          callback_data: `tiktok_${newsId}`
+        })
+
+        remainingButtons.push({
+          text: '⏭️ Skip',
+          callback_data: `skip_social_${newsId}`
+        })
+
+        // Build keyboard with 2 buttons per row
+        const rows = []
+        for (let i = 0; i < remainingButtons.length; i += 2) {
+          rows.push(remainingButtons.slice(i, i + 2))
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + statusText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: rows.length > 0 ? { inline_keyboard: rows } : undefined
+            })
+          }
+        )
+
+      } else if (action === 'tiktok') {
+        // =================================================================
+        // 🎵 TikTok Content Generation (Manual Workflow)
+        // =================================================================
+        console.log('Generating TikTok content for news:', newsId)
+
+        // Fetch news data
+        const { data: news, error: fetchError } = await supabase
+          .from('news')
+          .select('*')
+          .eq('id', newsId)
+          .single()
+
+        if (fetchError || !news) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Error: News not found',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if content is published
+        if (!news.title_en) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Content not published yet. Publish to News first!',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Check if has blog post
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentType = blogPost ? 'blog' : 'news'
+        const contentId = blogPost ? blogPost.id : newsId
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '🎵 Generating TikTok content...',
+              show_alert: false
+            })
+          }
+        )
+
+        // Call TikTok content generator
+        const tiktokResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/generate-tiktok-content`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId: contentType === 'news' ? contentId : undefined,
+              blogPostId: contentType === 'blog' ? contentId : undefined,
+              language: 'en',
+              contentType: contentType,
+              chatId: chatId.toString()
+            })
+          }
+        )
+
+        const tiktokResult = await tiktokResponse.json()
+
+        if (!tiktokResponse.ok || !tiktokResult.success) {
+          console.error('TikTok content generation failed:', tiktokResult)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `❌ TikTok content generation failed: ${tiktokResult.error || 'Unknown error'}`
+              })
+            }
+          )
+        }
+
+        // Update original message
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n🎵 <b>TikTok content sent below!</b>',
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
+      } else if (action === 'skip_social') {
+        // =================================================================
+        // ⏭️ Skip remaining social platforms
+        // =================================================================
+        console.log('User skipped remaining social platforms for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '✅ Social posting completed',
+              show_alert: false
+            })
+          }
+        )
+
+        // Remove all buttons
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n✅ <b>Social posting completed</b>',
+              parse_mode: 'HTML'
+            })
           }
         )
 

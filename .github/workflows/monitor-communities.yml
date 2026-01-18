@@ -1,0 +1,63 @@
+name: Monitor Professional Communities
+
+on:
+  # Run every 2 hours
+  schedule:
+    - cron: '0 */2 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+  # Repository dispatch for programmatic triggering
+  repository_dispatch:
+    types: [monitor-communities]
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Monitor Communities for Relevant Posts
+        run: |
+          echo "🔍 Starting community monitoring..."
+          echo "Time: $(date -u)"
+
+          # Call the Supabase Edge Function
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/monitor-communities" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json")
+
+          # Extract HTTP status code (last line)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          # Extract response body (all but last line)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "❌ Community monitoring failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+          # Parse response for summary
+          SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+          RELEVANT_POSTS=$(echo "$BODY" | jq -r '.totalRelevantPosts // 0')
+
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✅ Community monitoring completed successfully"
+            echo "📊 Relevant posts found: $RELEVANT_POSTS"
+          else
+            ERROR=$(echo "$BODY" | jq -r '.error // "Unknown error"')
+            echo "⚠️ Community monitoring completed with issues: $ERROR"
+            # Don't fail - some platforms might not be configured
+          fi
+
+      - name: Report Status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Workflow completed successfully"
+          else
+            echo "❌ Workflow failed"
+          fi
