@@ -1986,23 +1986,33 @@ serve(async (req) => {
           ]
         ]
 
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + '\n\n⏳ <b>Публікуємо LinkedIn + Facebook EN...</b>',
-              parse_mode: 'HTML',
-              disable_web_page_preview: true,
-              reply_markup: {
-                inline_keyboard: processingButtons
-              }
-            })
+        // Show processing status in the SAME message
+        try {
+          const editProcessingResponse = await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + '\n\n⏳ <b>Публікуємо LinkedIn + Facebook EN...</b>',
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                reply_markup: {
+                  inline_keyboard: processingButtons
+                }
+              })
+            }
+          )
+
+          if (!editProcessingResponse.ok) {
+            const errText = await editProcessingResponse.text()
+            console.error('⚠️ Failed to edit message (processing):', errText)
           }
-        )
+        } catch (editError) {
+          console.error('⚠️ Error editing message (processing):', editError)
+        }
 
         // Fetch news data
         const { data: news, error: fetchError } = await supabase
@@ -2013,14 +2023,18 @@ serve(async (req) => {
 
         if (fetchError || !news) {
           console.error('Failed to fetch news:', fetchError)
+          // Update the SAME message with error (not sendMessage!)
           await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId,
-                text: '❌ Error: News not found'
+                message_id: messageId,
+                text: messageText + '\n\n❌ <b>Error:</b> News not found',
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
               })
             }
           )
@@ -2031,14 +2045,18 @@ serve(async (req) => {
 
         // Check if content has English translation
         if (!news.title_en) {
+          // Update the SAME message with error (not sendMessage!)
           await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId,
-                text: '❌ Content not published yet (no EN translation). Publish to News first!'
+                message_id: messageId,
+                text: messageText + '\n\n❌ <b>Error:</b> Content not published yet (no EN translation). Publish to News first!',
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
               })
             }
           )
@@ -2203,24 +2221,47 @@ serve(async (req) => {
           ]
         ]
 
-        // Update message with results
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + resultsText,
-              parse_mode: 'HTML',
-              disable_web_page_preview: true,
-              reply_markup: {
-                inline_keyboard: remainingButtons
-              }
-            })
+        // Update message with results in the SAME message
+        // Ensure message doesn't exceed Telegram's 4096 char limit
+        let finalText = messageText + resultsText
+        if (finalText.length > 4000) {
+          // Truncate messageText to fit within limit
+          const maxMessageTextLength = 4000 - resultsText.length - 50
+          finalText = messageText.substring(0, maxMessageTextLength) + '...\n' + resultsText
+          console.log(`⚠️ Message truncated from ${(messageText + resultsText).length} to ${finalText.length} chars`)
+        }
+
+        try {
+          const editResultsResponse = await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: finalText,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                reply_markup: {
+                  inline_keyboard: remainingButtons
+                }
+              })
+            }
+          )
+
+          if (!editResultsResponse.ok) {
+            const errText = await editResultsResponse.text()
+            console.error('⚠️ Failed to edit message (results):', errText)
+            console.error('   Message length:', finalText.length)
+            console.error('   Chat ID:', chatId)
+            console.error('   Message ID:', messageId)
+          } else {
+            console.log('✅ Successfully updated message with results (combo_li_fb_en)')
           }
-        )
+        } catch (editError) {
+          console.error('⚠️ Error editing message (results):', editError)
+        }
 
       } else if (action === 'skip_social') {
         // =================================================================
