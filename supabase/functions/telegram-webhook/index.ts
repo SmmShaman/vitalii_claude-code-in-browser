@@ -1711,44 +1711,81 @@ serve(async (req) => {
         const contentId = blogPost ? blogPost.id : newsId
 
         // Track results
-        const results: { platform: string; success: boolean; error?: string; url?: string }[] = []
+        const results: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
+
+        // 🎬 Check if news has video for LinkedIn native video upload
+        const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
+        let linkedinVideoTriggered = false
 
         // 1. Post to LinkedIn
         console.log(`📤 Posting to LinkedIn (${socialLanguage})...`)
-        try {
-          const linkedinRequestBody: any = {
-            language: socialLanguage,
-            contentType: contentType
-          }
-          if (contentType === 'blog') {
-            linkedinRequestBody.blogPostId = contentId
-          } else {
-            linkedinRequestBody.newsId = contentId
-          }
 
-          const linkedinResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(linkedinRequestBody)
+        // Check for video first - trigger GitHub Action if video exists
+        if (hasVideo && isGitHubActionsEnabled()) {
+          console.log(`🎬 Batch post: News has video - triggering LinkedIn video GitHub Action`)
+          console.log(`   Original video URL: ${news.original_video_url}`)
+
+          try {
+            const triggerResult = await triggerLinkedInVideo({
+              newsId: newsId,
+              language: socialLanguage as 'en' | 'no' | 'ua'
+            })
+
+            if (triggerResult.success) {
+              linkedinVideoTriggered = true
+              results.push({
+                platform: 'LinkedIn',
+                success: true,
+                processing: true,
+                error: '⏳ Відео обробляється... (1-2 хв)'
+              })
+            } else {
+              console.error('❌ Failed to trigger LinkedIn video Action:', triggerResult.error)
+              // Fall through to regular posting below
             }
-          )
-          const linkedinResult = await linkedinResponse.json()
-
-          if (linkedinResponse.ok && linkedinResult.success) {
-            const postUrl = linkedinResult.postId
-              ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-              : undefined
-            results.push({ platform: 'LinkedIn', success: true, url: postUrl })
-          } else {
-            results.push({ platform: 'LinkedIn', success: false, error: linkedinResult.error || 'Unknown error' })
+          } catch (e) {
+            console.error('❌ Error triggering LinkedIn video Action:', e)
+            // Fall through to regular posting below
           }
-        } catch (e) {
-          results.push({ platform: 'LinkedIn', success: false, error: 'Request failed' })
+        }
+
+        // Regular LinkedIn posting (no video or video trigger failed)
+        if (!linkedinVideoTriggered) {
+          try {
+            const linkedinRequestBody: any = {
+              language: socialLanguage,
+              contentType: contentType
+            }
+            if (contentType === 'blog') {
+              linkedinRequestBody.blogPostId = contentId
+            } else {
+              linkedinRequestBody.newsId = contentId
+            }
+
+            const linkedinResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(linkedinRequestBody)
+              }
+            )
+            const linkedinResult = await linkedinResponse.json()
+
+            if (linkedinResponse.ok && linkedinResult.success) {
+              const postUrl = linkedinResult.postId
+                ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
+                : undefined
+              results.push({ platform: 'LinkedIn', success: true, url: postUrl })
+            } else {
+              results.push({ platform: 'LinkedIn', success: false, error: linkedinResult.error || 'Unknown error' })
+            }
+          } catch (e) {
+            results.push({ platform: 'LinkedIn', success: false, error: 'Request failed' })
+          }
         }
 
         // 2. Post to Facebook
@@ -1882,7 +1919,10 @@ serve(async (req) => {
         let resultsText = `\n\n🌐 <b>Результати публікації (${langLabel}):</b>\n`
         for (const r of results) {
           if (r.success) {
-            if (r.platform === 'Twitter') {
+            if ((r as any).processing) {
+              // Video processing in progress via GitHub Action
+              resultsText += `⏳ ${r.platform}: ${r.error || 'Відео обробляється...'}\n`
+            } else if (r.platform === 'Twitter') {
               resultsText += `✅ ${r.platform}: <a href="${r.url}">Натисніть для публікації</a>\n`
             } else if (r.url) {
               resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути</a>\n`
@@ -1984,44 +2024,81 @@ serve(async (req) => {
         const contentId = blogPost ? blogPost.id : newsId
 
         // Track results
-        const results: { platform: string; success: boolean; error?: string; url?: string }[] = []
+        const results: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
+
+        // 🎬 Check if news has video for LinkedIn native video upload
+        const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
+        let linkedinVideoTriggered = false
 
         // 1. Post to LinkedIn EN
         console.log('📤 Posting to LinkedIn EN...')
-        try {
-          const linkedinRequestBody: any = {
-            language: 'en',
-            contentType: contentType
-          }
-          if (contentType === 'blog') {
-            linkedinRequestBody.blogPostId = contentId
-          } else {
-            linkedinRequestBody.newsId = contentId
-          }
 
-          const linkedinResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(linkedinRequestBody)
+        // Check for video first - trigger GitHub Action if video exists
+        if (hasVideo && isGitHubActionsEnabled()) {
+          console.log(`🎬 Combo post: News has video - triggering LinkedIn video GitHub Action`)
+          console.log(`   Original video URL: ${news.original_video_url}`)
+
+          try {
+            const triggerResult = await triggerLinkedInVideo({
+              newsId: newsId,
+              language: 'en'
+            })
+
+            if (triggerResult.success) {
+              linkedinVideoTriggered = true
+              results.push({
+                platform: 'LinkedIn EN',
+                success: true,
+                processing: true,
+                error: '⏳ Відео обробляється... (1-2 хв)'
+              })
+            } else {
+              console.error('❌ Failed to trigger LinkedIn video Action:', triggerResult.error)
+              // Fall through to regular posting below
             }
-          )
-          const linkedinResult = await linkedinResponse.json()
-
-          if (linkedinResponse.ok && linkedinResult.success) {
-            const postUrl = linkedinResult.postId
-              ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-              : undefined
-            results.push({ platform: 'LinkedIn EN', success: true, url: postUrl })
-          } else {
-            results.push({ platform: 'LinkedIn EN', success: false, error: linkedinResult.error || 'Unknown error' })
+          } catch (e) {
+            console.error('❌ Error triggering LinkedIn video Action:', e)
+            // Fall through to regular posting below
           }
-        } catch (e) {
-          results.push({ platform: 'LinkedIn EN', success: false, error: 'Request failed' })
+        }
+
+        // Regular LinkedIn posting (no video or video trigger failed)
+        if (!linkedinVideoTriggered) {
+          try {
+            const linkedinRequestBody: any = {
+              language: 'en',
+              contentType: contentType
+            }
+            if (contentType === 'blog') {
+              linkedinRequestBody.blogPostId = contentId
+            } else {
+              linkedinRequestBody.newsId = contentId
+            }
+
+            const linkedinResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(linkedinRequestBody)
+              }
+            )
+            const linkedinResult = await linkedinResponse.json()
+
+            if (linkedinResponse.ok && linkedinResult.success) {
+              const postUrl = linkedinResult.postId
+                ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
+                : undefined
+              results.push({ platform: 'LinkedIn EN', success: true, url: postUrl })
+            } else {
+              results.push({ platform: 'LinkedIn EN', success: false, error: linkedinResult.error || 'Unknown error' })
+            }
+          } catch (e) {
+            results.push({ platform: 'LinkedIn EN', success: false, error: 'Request failed' })
+          }
         }
 
         // 2. Post to Facebook EN
@@ -2063,7 +2140,10 @@ serve(async (req) => {
         let resultsText = '\n\n🔗📘 <b>LinkedIn + Facebook EN:</b>\n'
         for (const r of results) {
           if (r.success) {
-            if (r.url) {
+            if ((r as any).processing) {
+              // Video processing in progress via GitHub Action
+              resultsText += `⏳ ${r.platform}: ${r.error || 'Відео обробляється...'}\n`
+            } else if (r.url) {
               resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути</a>\n`
             } else {
               resultsText += `✅ ${r.platform}: Опубліковано\n`
