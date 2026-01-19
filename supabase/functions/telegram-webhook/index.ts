@@ -1970,6 +1970,40 @@ serve(async (req) => {
           }
         )
 
+        // Immediately update message to show processing and remove combo button
+        const processingButtons = [
+          [
+            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` },
+            { text: '🌐 Все NO', callback_data: `all_no_${newsId}` }
+          ],
+          [
+            { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
+            { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` }
+          ],
+          [
+            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+          ]
+        ]
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n⏳ <b>Публікуємо LinkedIn + Facebook EN...</b>',
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: {
+                inline_keyboard: processingButtons
+              }
+            })
+          }
+        )
+
         // Fetch news data
         const { data: news, error: fetchError } = await supabase
           .from('news')
@@ -2137,14 +2171,14 @@ serve(async (req) => {
         }
 
         // Build results message
-        let resultsText = '\n\n🔗📘 <b>LinkedIn + Facebook EN:</b>\n'
+        let resultsText = '\n\n✅ <b>Опубліковано LinkedIn + Facebook EN:</b>\n'
         for (const r of results) {
           if (r.success) {
             if ((r as any).processing) {
               // Video processing in progress via GitHub Action
-              resultsText += `⏳ ${r.platform}: ${r.error || 'Відео обробляється...'}\n`
+              resultsText += `⏳ ${r.platform}: Відео обробляється... (1-2 хв)\n`
             } else if (r.url) {
-              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути</a>\n`
+              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути пост</a>\n`
             } else {
               resultsText += `✅ ${r.platform}: Опубліковано\n`
             }
