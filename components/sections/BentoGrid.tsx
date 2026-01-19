@@ -16,6 +16,7 @@ import { BlogSection } from '@/components/sections/BlogSection';
 import { NeonVerticalLabel } from '@/components/ui/NeonVerticalLabel';
 import { translations } from '@/utils/translations';
 import { debugLog } from '@/utils/debug';
+import { trackSectionClick } from '@/utils/gtm';
 
 // Grid layout constants
 const GAP_SIZE_DESKTOP = 20; // Desktop gap between windows in pixels
@@ -462,6 +463,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   const handleCardClick = (section: Section, cardElement: HTMLDivElement | null) => {
     if (!cardElement) return;
 
+    // Track section click for analytics
+    trackSectionClick(section.id);
+
     // Don't open dialog for sections that have their own modals
     if (section.id === 'projects') return;
 
@@ -535,6 +539,8 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   };
 
   const handleProjectsCardClick = (activeIndex: number) => {
+    // Track projects section click for analytics
+    trackSectionClick('projects');
     setActiveProjectIndex(activeIndex);
     setIsProjectsModalOpen(true);
   };

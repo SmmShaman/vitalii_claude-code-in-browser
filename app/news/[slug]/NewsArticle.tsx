@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { getNewsBySlug, getRelatedNews } from '@/integrations/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, ExternalLink, Eye, ChevronRight, Home } from 'lucide-react'
 import { useTranslations } from '@/contexts/TranslationContext'
+import { useTrackingSafe } from '@/contexts/TrackingContext'
 import { ShareButtons } from '@/components/ui/ShareButtons'
 import { ArticleSkeleton } from '@/components/ui/Skeleton'
 import { ScrollReveal } from '@/components/ui/ScrollReveal'
@@ -26,15 +27,25 @@ interface NewsArticleProps {
 
 export function NewsArticle({ slug }: NewsArticleProps) {
   const { currentLanguage } = useTranslations()
+  const tracking = useTrackingSafe()
   const [news, setNews] = useState<any>(null)
   const [relatedNews, setRelatedNews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const hasTrackedView = useRef(false)
 
   useEffect(() => {
     const fetchNews = async () => {
       const data = await getNewsBySlug(slug)
       setNews(data)
       setLoading(false)
+
+      // Track article view once when data is loaded
+      if (data && !hasTrackedView.current) {
+        const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
+        const title = data[`title_${lang}`] || data.title_en
+        tracking?.trackArticleView('news', data.id, title, currentLanguage)
+        hasTrackedView.current = true
+      }
 
       // Fetch related news based on tags
       if (data?.id && data?.tags?.length > 0) {
@@ -43,7 +54,7 @@ export function NewsArticle({ slug }: NewsArticleProps) {
       }
     }
     fetchNews()
-  }, [slug])
+  }, [slug, currentLanguage, tracking])
 
   if (loading) {
     return <ArticleSkeleton />

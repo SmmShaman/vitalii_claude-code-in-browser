@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, type ReactNode } from 'react';
 import { translations, type TranslationKey } from '@/utils/translations';
+import { trackLanguageChange } from '@/utils/gtm';
 
 export type Language = "NO" | "EN" | "UA";
 
@@ -17,12 +18,19 @@ const TranslationContext = createContext<TranslationContextType | undefined>(und
 export const TranslationProvider = ({ children }: { children: ReactNode }) => {
   const [currentLanguage, setCurrentLanguageState] = useState<Language>("EN");
   const [isLoading, setIsLoading] = useState(false);
+  const previousLanguageRef = useRef<Language>("EN");
 
   const changeLanguage = (lang: Language) => {
+    const previousLang = currentLanguage;
     setIsLoading(true);
     setTimeout(() => {
       setCurrentLanguageState(lang);
       setIsLoading(false);
+      // Track language change after the state has been updated
+      if (previousLang !== lang) {
+        trackLanguageChange(lang, previousLang);
+        previousLanguageRef.current = lang;
+      }
     }, 300);
   };
 

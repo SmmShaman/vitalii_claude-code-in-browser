@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Providers } from './providers'
+import { GTMScript, GTMNoScript } from '@/components/analytics/GTMScript'
 import './globals.css'
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vitalii-berbeha.netlify.app'
@@ -70,6 +71,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google Tag Manager */}
+        <GTMScript />
         {/* Comfortaa font - rounded geometric with excellent Cyrillic support */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -79,6 +82,8 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* GTM NoScript fallback */}
+        <GTMNoScript />
         <Providers>
           {children}
           {modal}
