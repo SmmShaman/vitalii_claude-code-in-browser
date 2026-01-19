@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo } from '../_shared/github-actions.ts'
+import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo } from '../_shared/github-actions.ts'
 
 /**
  * Extract external source links from text content
@@ -1205,6 +1205,46 @@ serve(async (req) => {
         )
 
         const postResult = await postResponse.json()
+
+        // Handle video processing response (for Facebook native video upload)
+        if (postResult.videoProcessing && socialPlatform === 'facebook') {
+          console.log(`🎬 Facebook video processing triggered for news: ${newsId}`)
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '🎬 Відео завантажується в Facebook... Зачекайте 1-2 хв',
+                show_alert: true
+              })
+            }
+          )
+
+          // Update message to show video processing status
+          const videoStatusText = `\n\n📘 <b>Facebook (${socialLanguage.toUpperCase()}): 🎬 Відео обробляється...</b>\n⏳ Це може зайняти 1-2 хвилини`
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + videoStatusText,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+              })
+            }
+          )
+
+          return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
 
         if (!postResponse.ok || !postResult.success) {
           // Check if already posted

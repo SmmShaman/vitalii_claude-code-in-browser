@@ -1,0 +1,51 @@
+name: Upload Video to Facebook
+
+on:
+  repository_dispatch:
+    types: [facebook-video]
+  workflow_dispatch:
+    inputs:
+      news_id:
+        description: 'News ID to process'
+        required: true
+      language:
+        description: 'Language for post (en/no/ua)'
+        required: true
+        default: 'en'
+
+jobs:
+  upload-video:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: scripts/facebook-video
+        run: npm ci
+
+      - name: Upload video to Facebook
+        working-directory: scripts/facebook-video
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEWS_ID: ${{ github.event.inputs.news_id || github.event.client_payload.news_id }}
+          LANGUAGE: ${{ github.event.inputs.language || github.event.client_payload.language }}
+        run: node index.js
+
+      - name: Report results
+        run: |
+          echo "Facebook video upload completed"
+          echo "News ID: ${{ github.event.inputs.news_id || github.event.client_payload.news_id }}"
+          echo "Language: ${{ github.event.inputs.language || github.event.client_payload.language }}"

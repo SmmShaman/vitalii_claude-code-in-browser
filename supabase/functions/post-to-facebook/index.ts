@@ -15,6 +15,10 @@ import {
   type ContentType,
   type Language
 } from '../_shared/social-media-helpers.ts'
+import {
+  triggerFacebookVideo,
+  isGitHubActionsEnabled
+} from '../_shared/github-actions.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,7 +38,8 @@ interface FacebookPostRequest {
 /**
  * Post content to Facebook Page
  * Supports both news and blog posts in multiple languages
- * Version: 2025-01-17-v1
+ * Supports native video upload via GitHub Actions
+ * Version: 2025-01-19-v1
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -93,8 +98,46 @@ serve(async (req) => {
     console.log('📝 Content to post:', {
       title: content.title.substring(0, 50) + '...',
       descriptionLength: content.description.length,
-      imageUrl: content.imageUrl?.substring(0, 50)
+      imageUrl: content.imageUrl?.substring(0, 50),
+      videoUrl: content.videoUrl,
+      videoType: content.videoType
     })
+
+    // Check if content has video - trigger GitHub Action for native video upload
+    const hasVideo = content.videoUrl && content.videoUrl.includes('t.me')
+
+    if (hasVideo && isGitHubActionsEnabled()) {
+      console.log('🎬 Content has Telegram video - triggering GitHub Action for native upload')
+
+      // Create tracking record for video upload
+      const socialPost = await createSocialPost({
+        contentType: requestData.contentType,
+        contentId: contentId,
+        platform: 'facebook',
+        language: requestData.language,
+        postContent: `[Video upload in progress] ${content.title}`,
+        mediaUrls: content.videoUrl ? [content.videoUrl] : undefined
+      })
+
+      const triggerResult = await triggerFacebookVideo({
+        newsId: contentId,
+        language: requestData.language as 'en' | 'no' | 'ua'
+      })
+
+      if (triggerResult.success) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            videoProcessing: true,
+            message: `Video upload triggered for Facebook (${requestData.language.toUpperCase()}). Processing may take 1-2 minutes.`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      } else {
+        console.warn('⚠️ GitHub Action trigger failed, falling back to image post:', triggerResult.error)
+        // Fall through to regular image posting
+      }
+    }
 
     // Build article URL
     const articleUrl = buildArticleUrl(requestData.contentType, content.slug)
