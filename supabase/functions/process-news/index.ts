@@ -28,9 +28,9 @@ interface NewsRewriteRequest {
  * Rewrites content in objective journalistic style
  */
 serve(async (req) => {
-  // Version: 2025-01-02-02 - Fix AI response format with explicit structure
-  console.log('🚀 Process News v2025-01-02-02 started')
-  console.log('📦 Features: Fixed system prompt with explicit JSON structure, max_tokens 8000')
+  // Version: 2025-01-20-01 - Add validation for title fields in AI response
+  console.log('🚀 Process News v2025-01-20-01 started')
+  console.log('📦 Features: Validate title fields exist, explicit JSON structure, max_tokens 8000')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -175,12 +175,27 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
     throw new Error(`Failed to parse JSON: ${parseError.message}`)
   }
 
-  // Validate structure
+  // Validate structure - check both language objects AND required fields
   if (!rewrittenContent.en || !rewrittenContent.no || !rewrittenContent.ua) {
     console.error('Missing language fields. Got keys:', Object.keys(rewrittenContent))
     console.error('en:', !!rewrittenContent.en, 'no:', !!rewrittenContent.no, 'ua:', !!rewrittenContent.ua)
     console.error('Raw response (first 500 chars):', aiContent.substring(0, 500))
     throw new Error(`AI response missing required language fields. Got keys: ${Object.keys(rewrittenContent).join(', ')}. Raw: ${aiContent.substring(0, 300)}`)
+  }
+
+  // Validate that each language has required title field
+  const missingTitles: string[] = []
+  if (!rewrittenContent.en?.title) missingTitles.push('en')
+  if (!rewrittenContent.no?.title) missingTitles.push('no')
+  if (!rewrittenContent.ua?.title) missingTitles.push('ua')
+
+  if (missingTitles.length > 0) {
+    console.error('Missing titles for languages:', missingTitles)
+    console.error('EN title:', rewrittenContent.en?.title || 'MISSING')
+    console.error('NO title:', rewrittenContent.no?.title || 'MISSING')
+    console.error('UA title:', rewrittenContent.ua?.title || 'MISSING')
+    console.error('Raw response (first 500 chars):', aiContent.substring(0, 500))
+    throw new Error(`AI response missing titles for: ${missingTitles.join(', ')}. Check AI prompt configuration.`)
   }
 
   // Extract tags from AI response (if available)
