@@ -109,23 +109,51 @@ serve(async (req) => {
       throw new Error(`Content not found: ${contentId}`)
     }
 
-    // For Instagram Reels, we need the original video URL (direct file URL from Telegram)
-    // YouTube URLs won't work - Instagram needs a direct MP4 URL
-    const videoUrlForInstagram = content.originalVideoUrl ||
+    // For Instagram Reels, we need a DIRECT video file URL (not Telegram post URL)
+    // Valid video URLs:
+    // - Direct file URLs ending in .mp4, .mov, etc.
+    // - Telegram file API URLs (api.telegram.org/file/...)
+    // - CDN URLs with video content
+    // INVALID: Telegram post URLs like https://t.me/channel/12345
+    const isValidVideoUrl = (url: string | undefined): boolean => {
+      if (!url) return false
+      // Check if it's a Telegram post URL (NOT a valid video file)
+      if (url.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/)) {
+        console.log(`⚠️ URL is a Telegram post URL, not a direct video file: ${url}`)
+        return false
+      }
+      // Check if it's a valid direct file URL
+      const validExtensions = ['.mp4', '.mov', '.avi', '.webm', '.m4v']
+      const hasVideoExtension = validExtensions.some(ext => url.toLowerCase().includes(ext))
+      const isTelegramFileApi = url.includes('api.telegram.org/file/')
+      return hasVideoExtension || isTelegramFileApi
+    }
+
+    // Get potential video URL (prefer original, fallback to processed)
+    const potentialVideoUrl = content.originalVideoUrl ||
       (content.videoType !== 'youtube' ? content.videoUrl : null)
 
-    // Instagram requires an image or video
-    if (!content.imageUrl && !videoUrlForInstagram) {
-      // Special error message for YouTube videos
+    // Only use video URL if it's a valid direct file URL
+    const videoUrlForInstagram = isValidVideoUrl(potentialVideoUrl) ? potentialVideoUrl : null
+
+    // Determine media type
+    const hasVideo = !!videoUrlForInstagram
+    const hasImage = !!content.imageUrl
+
+    // Instagram requires an image or valid video
+    if (!hasImage && !hasVideo) {
+      // Provide specific error messages
       if (content.videoUrl && content.videoType === 'youtube') {
-        throw new Error('Instagram cannot use YouTube videos. Original video URL from Telegram is required for Reels.')
+        throw new Error('Instagram cannot use YouTube videos. Upload the original video file or add an image.')
+      }
+      if (content.videoUrl && content.videoType === 'telegram_embed') {
+        throw new Error('Instagram cannot use Telegram embed URLs. This post has no direct video file. Please add an image to post to Instagram.')
+      }
+      if (potentialVideoUrl && !isValidVideoUrl(potentialVideoUrl)) {
+        throw new Error(`Instagram requires a direct video file URL (MP4), not a post URL. Current URL: ${potentialVideoUrl?.substring(0, 50)}...`)
       }
       throw new Error('Instagram requires an image or video. This content has no media attached.')
     }
-
-    // Determine media type (prefer video for Reels if available)
-    const hasVideo = !!videoUrlForInstagram
-    const hasImage = !!content.imageUrl
 
     console.log('📝 Content to post:', {
       title: content.title.substring(0, 50) + '...',
