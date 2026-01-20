@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { getBlogPostBySlug, getRelatedBlogPosts } from '@/integrations/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
+import ReactMarkdown from 'react-markdown'
 import { Clock, Calendar, ExternalLink, Eye, ChevronRight, Home } from 'lucide-react'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { useTrackingSafe } from '@/contexts/TrackingContext'
@@ -282,9 +283,46 @@ export function BlogArticle({ slug }: BlogArticleProps) {
             <section aria-labelledby="article-content">
               <h2 id="article-content" className="sr-only">Article Content</h2>
               <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg">
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {children}
+                      </a>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-gray-700 leading-relaxed text-lg mb-4">{children}</p>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold">{children}</strong>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc list-inside mb-4 space-y-1 text-gray-700">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="list-decimal list-inside mb-4 space-y-1 text-gray-700">{children}</ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-gray-700">{children}</li>
+                    ),
+                    h1: ({ children }) => (
+                      <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-4">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-xl font-bold text-gray-900 mt-5 mb-3">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2">{children}</h3>
+                    ),
+                  }}
+                >
                   {content}
-                </p>
+                </ReactMarkdown>
               </div>
             </section>
           </ScrollReveal>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import { X, Search, Calendar, Tag, ExternalLink, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getAllNews, getAllTags, getNewsById } from '@/integrations/supabase/client';
@@ -417,7 +418,46 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
 
                   {/* Content */}
                   <div className="news-content prose prose-lg dark:prose-invert max-w-none mb-6">
-                    <p className="whitespace-pre-wrap">{getTranslatedContent(selectedNews).content}</p>
+                    <ReactMarkdown
+                      components={{
+                        a: ({ href, children }) => (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary/80 underline"
+                          >
+                            {children}
+                          </a>
+                        ),
+                        p: ({ children }) => (
+                          <p className="leading-relaxed mb-4">{children}</p>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-semibold">{children}</strong>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>
+                        ),
+                        li: ({ children }) => (
+                          <li>{children}</li>
+                        ),
+                        h1: ({ children }) => (
+                          <h1 className="text-2xl font-bold mt-6 mb-4">{children}</h1>
+                        ),
+                        h2: ({ children }) => (
+                          <h2 className="text-xl font-bold mt-5 mb-3">{children}</h2>
+                        ),
+                        h3: ({ children }) => (
+                          <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>
+                        ),
+                      }}
+                    >
+                      {getTranslatedContent(selectedNews).content}
+                    </ReactMarkdown>
                   </div>
 
                   {/* Links Section */}
