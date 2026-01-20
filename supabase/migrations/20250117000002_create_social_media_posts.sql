@@ -1,5 +1,6 @@
 -- Social Media Posts table
 -- Tracks all posts across platforms (centralizes LinkedIn data + adds new platforms)
+-- Trigger migration: 2025-01-20
 
 CREATE TABLE IF NOT EXISTS social_media_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
