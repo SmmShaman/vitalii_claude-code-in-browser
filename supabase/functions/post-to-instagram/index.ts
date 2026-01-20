@@ -109,13 +109,22 @@ serve(async (req) => {
       throw new Error(`Content not found: ${contentId}`)
     }
 
+    // For Instagram Reels, we need the original video URL (direct file URL from Telegram)
+    // YouTube URLs won't work - Instagram needs a direct MP4 URL
+    const videoUrlForInstagram = content.originalVideoUrl ||
+      (content.videoType !== 'youtube' ? content.videoUrl : null)
+
     // Instagram requires an image or video
-    if (!content.imageUrl && !content.videoUrl) {
+    if (!content.imageUrl && !videoUrlForInstagram) {
+      // Special error message for YouTube videos
+      if (content.videoUrl && content.videoType === 'youtube') {
+        throw new Error('Instagram cannot use YouTube videos. Original video URL from Telegram is required for Reels.')
+      }
       throw new Error('Instagram requires an image or video. This content has no media attached.')
     }
 
-    // Determine media type
-    const hasVideo = !!content.videoUrl
+    // Determine media type (prefer video for Reels if available)
+    const hasVideo = !!videoUrlForInstagram
     const hasImage = !!content.imageUrl
 
     console.log('📝 Content to post:', {
@@ -123,6 +132,8 @@ serve(async (req) => {
       descriptionLength: content.description.length,
       imageUrl: content.imageUrl?.substring(0, 50),
       videoUrl: content.videoUrl?.substring(0, 50),
+      originalVideoUrl: content.originalVideoUrl?.substring(0, 50),
+      videoUrlForInstagram: videoUrlForInstagram?.substring(0, 50),
       videoType: content.videoType,
       mediaType: hasVideo ? 'VIDEO/REELS' : 'IMAGE'
     })
@@ -139,7 +150,7 @@ serve(async (req) => {
     )
 
     // Determine which media URL to use (prefer video for Reels)
-    const mediaUrl = hasVideo ? content.videoUrl! : content.imageUrl!
+    const mediaUrl = hasVideo ? videoUrlForInstagram! : content.imageUrl!
 
     // Create tracking record
     const socialPost = await createSocialPost({
@@ -154,7 +165,7 @@ serve(async (req) => {
     // Post to Instagram (video as Reels, or image)
     const result = await postToInstagram({
       imageUrl: hasImage && !hasVideo ? content.imageUrl : undefined,
-      videoUrl: hasVideo ? content.videoUrl : undefined,
+      videoUrl: hasVideo ? videoUrlForInstagram : undefined,
       caption
     })
 

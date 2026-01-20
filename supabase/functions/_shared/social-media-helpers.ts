@@ -51,6 +51,7 @@ export interface ContentData {
   imageUrl?: string;
   videoUrl?: string;
   videoType?: string;
+  originalVideoUrl?: string;  // Direct video URL from Telegram (for Instagram Reels)
   tags?: string[];
   sourceLink?: string;
   publishedAt?: string;
@@ -113,6 +114,7 @@ export async function getContent(
     imageUrl: data.processed_image_url || data.image_url || data.cover_image_url || null,
     videoUrl: data.video_url,
     videoType: data.video_type,
+    originalVideoUrl: data.original_video_url || null,  // Direct Telegram video URL for Instagram
     tags: data.tags || [],
     sourceLink: data.source_link,
     publishedAt: data.published_at,
