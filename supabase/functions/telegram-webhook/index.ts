@@ -228,10 +228,198 @@ serve(async (req) => {
       }
 
       // =================================================================
-      // 📸 Check if this is a photo reply for custom image upload
+      // 📸 Check if this is a photo reply for Instagram upload (auto-post after upload)
       // =================================================================
       if (message.reply_to_message && message.photo && message.photo.length > 0) {
         const replyText = message.reply_to_message.text || ''
+
+        // Check for Instagram upload pattern: instagram_lang:newsId
+        const instagramMatch = replyText.match(/instagram_(en|no|ua):([a-f0-9-]+)/)
+        if (instagramMatch && replyText.includes('Instagram потребує зображення')) {
+          const instagramLanguage = instagramMatch[1] as 'en' | 'no' | 'ua'
+          const newsId = instagramMatch[2]
+          console.log(`📸 Received Instagram image for news: ${newsId}, language: ${instagramLanguage}`)
+
+          try {
+            // Get largest photo
+            const photo = message.photo[message.photo.length - 1]
+
+            // Download photo from Telegram
+            const fileResponse = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${photo.file_id}`
+            )
+            const fileData = await fileResponse.json()
+
+            if (!fileData.ok) {
+              throw new Error('Failed to get photo file info')
+            }
+
+            const photoUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`
+            const photoResponse = await fetch(photoUrl)
+            const photoBuffer = await photoResponse.arrayBuffer()
+
+            // Upload to Supabase Storage
+            const fileName = `custom/${newsId}_${Date.now()}.jpg`
+            const { error: uploadError } = await supabase.storage
+              .from('news-images')
+              .upload(fileName, photoBuffer, {
+                contentType: 'image/jpeg',
+                upsert: true,
+              })
+
+            if (uploadError) {
+              throw new Error(`Upload failed: ${uploadError.message}`)
+            }
+
+            const { data: urlData } = supabase.storage
+              .from('news-images')
+              .getPublicUrl(fileName)
+
+            const publicUrl = urlData.publicUrl
+
+            // Update news record with custom image
+            const { error: updateError } = await supabase
+              .from('news')
+              .update({
+                processed_image_url: publicUrl,
+                image_processed_at: new Date().toISOString()
+              })
+              .eq('id', newsId)
+
+            if (updateError) {
+              throw new Error(`Database update failed: ${updateError.message}`)
+            }
+
+            console.log(`✅ Image uploaded: ${publicUrl}`)
+
+            // Update message to show upload success
+            const cleanedText = replyText
+              .replace(/\n\n📸 <b>Instagram потребує зображення!<\/b>[\s\S]*?instagram_[a-z]+:[a-f0-9-]+<\/code>/i, '')
+              .trim()
+
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: message.reply_to_message.message_id,
+                  text: cleanedText + `\n\n✅ <b>Зображення завантажено!</b>\n⏳ <i>Публікую в Instagram (${instagramLanguage.toUpperCase()})...</i>`,
+                  parse_mode: 'HTML',
+                  disable_web_page_preview: true
+                })
+              }
+            )
+
+            // Auto-post to Instagram
+            console.log(`📸 Auto-posting to Instagram (${instagramLanguage})...`)
+
+            const postResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/post-to-instagram`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  newsId: newsId,
+                  language: instagramLanguage,
+                  contentType: 'news'
+                })
+              }
+            )
+
+            const postResult = await postResponse.json()
+
+            if (postResult.success) {
+              console.log(`✅ Posted to Instagram successfully: ${postResult.postUrl}`)
+
+              // Update message with success
+              const successText = cleanedText +
+                `\n\n✅ <b>Опубліковано в Instagram (${instagramLanguage.toUpperCase()})!</b>` +
+                (postResult.postUrl ? `\n🔗 <a href="${postResult.postUrl}">Переглянути пост</a>` : '')
+
+              // Add buttons for other Instagram languages
+              const otherLangs = ['en', 'no', 'ua'].filter(l => l !== instagramLanguage)
+              const instagramButtons = otherLangs.map(lang => ({
+                text: `📸 Instagram ${lang.toUpperCase()}`,
+                callback_data: `instagram_${lang}_${newsId}`
+              }))
+
+              await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    message_id: message.reply_to_message.message_id,
+                    text: successText,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true,
+                    reply_markup: {
+                      inline_keyboard: [instagramButtons]
+                    }
+                  })
+                }
+              )
+            } else {
+              console.error(`❌ Instagram post failed: ${postResult.error}`)
+
+              // Update message with error
+              const errorText = cleanedText +
+                `\n\n❌ <b>Помилка публікації в Instagram:</b>\n<code>${postResult.error || 'Unknown error'}</code>`
+
+              await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    message_id: message.reply_to_message.message_id,
+                    text: errorText,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true,
+                    reply_markup: {
+                      inline_keyboard: [[
+                        { text: '🔄 Спробувати ще', callback_data: `instagram_${instagramLanguage}_${newsId}` }
+                      ]]
+                    }
+                  })
+                }
+              )
+            }
+
+            return new Response(JSON.stringify({ ok: true, instagramPosted: postResult.success }), {
+              headers: { 'Content-Type': 'application/json' }
+            })
+
+          } catch (error: any) {
+            console.error('Error uploading Instagram image:', error)
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: `❌ Помилка: ${error.message}`,
+                  reply_to_message_id: message.message_id
+                })
+              }
+            )
+
+            return new Response(JSON.stringify({ ok: false, error: error.message }), {
+              headers: { 'Content-Type': 'application/json' },
+              status: 500
+            })
+          }
+        }
+
+        // Check for standard custom image upload pattern: newsId:xxx
         const newsIdMatch = replyText.match(/newsId:([a-f0-9-]+)/)
 
         if (newsIdMatch && replyText.includes('Очікую фото')) {
@@ -1145,6 +1333,74 @@ serve(async (req) => {
           return new Response(JSON.stringify({ ok: false }), {
             headers: { 'Content-Type': 'application/json' }
           })
+        }
+
+        // =================================================================
+        // 📸 Instagram Media Validation - Check BEFORE posting
+        // =================================================================
+        if (socialPlatform === 'instagram') {
+          // Check if news has valid media for Instagram
+          const hasImage = !!(news.processed_image_url || news.image_url)
+
+          // Check if video URL is a valid direct file (not Telegram post URL)
+          const isValidVideoUrl = (url: string | null | undefined): boolean => {
+            if (!url) return false
+            // Telegram post URLs are NOT valid video files
+            if (url.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/)) return false
+            // Check for valid video file extensions or Telegram file API
+            const validExtensions = ['.mp4', '.mov', '.avi', '.webm', '.m4v']
+            const hasVideoExtension = validExtensions.some(ext => url.toLowerCase().includes(ext))
+            const isTelegramFileApi = url.includes('api.telegram.org/file/')
+            return hasVideoExtension || isTelegramFileApi
+          }
+
+          const hasValidVideo = isValidVideoUrl(news.original_video_url) ||
+            (news.video_type !== 'youtube' && news.video_type !== 'telegram_embed' && isValidVideoUrl(news.video_url))
+
+          console.log(`📸 Instagram media check: hasImage=${hasImage}, hasValidVideo=${hasValidVideo}`)
+
+          if (!hasImage && !hasValidVideo) {
+            console.log(`⚠️ No valid media for Instagram. Prompting for image upload...`)
+
+            // Answer callback first
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  callback_query_id: callbackId,
+                  text: '📸 Instagram потребує зображення! Завантажте фото.',
+                  show_alert: true
+                })
+              }
+            )
+
+            // Update message to request image upload with Instagram info
+            const uploadPromptText = messageText +
+              `\n\n📸 <b>Instagram потребує зображення!</b>\n` +
+              `<i>Відповідь на це повідомлення з фото для публікації в Instagram (${socialLanguage.toUpperCase()})</i>\n` +
+              `<code>instagram_${socialLanguage}:${newsId}</code>`
+
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: uploadPromptText,
+                  parse_mode: 'HTML',
+                  disable_web_page_preview: true
+                })
+              }
+            )
+
+            return new Response(JSON.stringify({ ok: true, needsImage: true }), {
+              headers: { 'Content-Type': 'application/json' }
+            })
+          }
         }
 
         // Check if content has translations
