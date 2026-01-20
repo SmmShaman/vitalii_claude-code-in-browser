@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo } from '../_shared/github-actions.ts'
+import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 
 /**
  * Extract external source links from text content
@@ -1358,6 +1358,71 @@ serve(async (req) => {
             (news.video_type !== 'youtube' && news.video_type !== 'telegram_embed' && isValidVideoUrl(news.video_url))
 
           console.log(`📸 Instagram media check: hasImage=${hasImage}, hasValidVideo=${hasValidVideo}`)
+
+          // Check if we have a Telegram video URL that can be processed via GitHub Actions
+          const hasTelegramVideo = !!(
+            news.original_video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/) ||
+            (news.video_type === 'telegram_embed' && news.video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/))
+          )
+          console.log(`📸 Instagram: hasTelegramVideo=${hasTelegramVideo}, hasImage=${hasImage}`)
+
+          // If no valid direct video but has Telegram video, try GitHub Actions
+          if (!hasValidVideo && hasTelegramVideo && isGitHubActionsEnabled()) {
+            console.log(`🎬 Instagram: Triggering GitHub Actions for video upload...`)
+
+            try {
+              const result = await triggerInstagramVideo({
+                newsId: newsId,
+                language: socialLanguage as 'en' | 'no' | 'ua'
+              })
+
+              if (result.success) {
+                // Answer callback with processing message
+                await fetch(
+                  `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      callback_query_id: callbackId,
+                      text: '🎬 Відео завантажується в Instagram... Зачекайте 2-5 хв',
+                      show_alert: true
+                    })
+                  }
+                )
+
+                // Update message to show processing status
+                const processingText = messageText +
+                  `\n\n⏳ <b>Instagram Reel (${socialLanguage.toUpperCase()}) обробляється...</b>\n` +
+                  `<i>Відео завантажується з Telegram → Instagram. Це займе 2-5 хвилин.</i>`
+
+                await fetch(
+                  `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      chat_id: chatId,
+                      message_id: messageId,
+                      text: processingText,
+                      parse_mode: 'HTML',
+                      disable_web_page_preview: true
+                    })
+                  }
+                )
+
+                return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
+                  headers: { 'Content-Type': 'application/json' }
+                })
+              } else {
+                console.warn(`⚠️ Instagram video trigger failed: ${result.error}`)
+                // Fall through to image upload prompt
+              }
+            } catch (err: any) {
+              console.error(`❌ Instagram video trigger error: ${err.message}`)
+              // Fall through to image upload prompt
+            }
+          }
 
           if (!hasImage && !hasValidVideo) {
             console.log(`⚠️ No valid media for Instagram. Prompting for image upload...`)

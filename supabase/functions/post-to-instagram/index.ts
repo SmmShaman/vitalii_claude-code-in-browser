@@ -37,7 +37,7 @@ interface InstagramPostRequest {
  * Post content to Instagram Business Account
  * Supports both images and videos (Reels)
  * Uses Facebook Graph API for Instagram Business accounts
- * Version: 2025-01-20-v3 - Added video/Reels support
+ * Version: 2025-01-20-v4 - Added video/Reels support + image fallback logging
  *
  * Debug mode: POST with { debug: true } to check token permissions
  */
@@ -153,6 +153,11 @@ serve(async (req) => {
         throw new Error(`Instagram requires a direct video file URL (MP4), not a post URL. Current URL: ${potentialVideoUrl?.substring(0, 50)}...`)
       }
       throw new Error('Instagram requires an image or video. This content has no media attached.')
+    }
+
+    // Log fallback to image when video URL exists but isn't valid for direct posting
+    if (!hasVideo && potentialVideoUrl && hasImage) {
+      console.log(`📸 Instagram: Falling back to image (video URL "${potentialVideoUrl.substring(0, 50)}..." is not a direct file URL)`)
     }
 
     console.log('📝 Content to post:', {
