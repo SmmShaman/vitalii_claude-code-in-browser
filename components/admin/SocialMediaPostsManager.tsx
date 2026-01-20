@@ -105,14 +105,10 @@ export function SocialMediaPostsManager() {
 
       setTablesExist(true)
 
-      // Fetch posts with related content
+      // Fetch posts (without join - content_id is polymorphic, no FK relationship)
       let query = supabase
         .from('social_media_posts')
-        .select(`
-          *,
-          news:content_id(title_en, title_no, title_ua, slug_en, slug_no, slug_ua),
-          blog_posts:content_id(title_en, title_no, title_ua, slug_en, slug_no, slug_ua)
-        `)
+        .select('*')
         .order('posted_at', { ascending: false })
 
       if (platformFilter !== 'all') {
