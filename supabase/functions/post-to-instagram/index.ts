@@ -3,7 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   postToInstagram,
   formatInstagramCaption,
-  isInstagramConfigured
+  isInstagramConfigured,
+  debugInstagramToken
 } from '../_shared/facebook-helpers.ts'
 import {
   getContent,
@@ -29,13 +30,16 @@ interface InstagramPostRequest {
   blogPostId?: string
   language: Language
   contentType: ContentType
+  debug?: boolean  // Set to true to run token debug instead of posting
 }
 
 /**
  * Post content to Instagram Business Account
- * Requires an image URL - Instagram doesn't support text-only posts
+ * Supports both images and videos (Reels)
  * Uses Facebook Graph API for Instagram Business accounts
- * Version: 2025-01-17-v1
+ * Version: 2025-01-20-v3 - Added video/Reels support
+ *
+ * Debug mode: POST with { debug: true } to check token permissions
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -45,6 +49,20 @@ serve(async (req) => {
   try {
     const requestData: InstagramPostRequest = await req.json()
     console.log('📸 Instagram posting request:', requestData)
+
+    // Debug mode - check token permissions
+    if (requestData.debug) {
+      console.log('🔍 Running Instagram token debug...')
+      const debugInfo = await debugInstagramToken()
+      return new Response(
+        JSON.stringify({
+          success: debugInfo.isValid && !debugInfo.error,
+          debug: true,
+          ...debugInfo
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Validate environment
     if (!isInstagramConfigured()) {
@@ -91,15 +109,22 @@ serve(async (req) => {
       throw new Error(`Content not found: ${contentId}`)
     }
 
-    // Instagram requires an image
-    if (!content.imageUrl) {
-      throw new Error('Instagram requires an image. This content has no image attached.')
+    // Instagram requires an image or video
+    if (!content.imageUrl && !content.videoUrl) {
+      throw new Error('Instagram requires an image or video. This content has no media attached.')
     }
+
+    // Determine media type
+    const hasVideo = !!content.videoUrl
+    const hasImage = !!content.imageUrl
 
     console.log('📝 Content to post:', {
       title: content.title.substring(0, 50) + '...',
       descriptionLength: content.description.length,
-      imageUrl: content.imageUrl?.substring(0, 50)
+      imageUrl: content.imageUrl?.substring(0, 50),
+      videoUrl: content.videoUrl?.substring(0, 50),
+      videoType: content.videoType,
+      mediaType: hasVideo ? 'VIDEO/REELS' : 'IMAGE'
     })
 
     // Build article URL
@@ -113,6 +138,9 @@ serve(async (req) => {
       content.tags || []
     )
 
+    // Determine which media URL to use (prefer video for Reels)
+    const mediaUrl = hasVideo ? content.videoUrl! : content.imageUrl!
+
     // Create tracking record
     const socialPost = await createSocialPost({
       contentType: requestData.contentType,
@@ -120,17 +148,19 @@ serve(async (req) => {
       platform: 'instagram',
       language: requestData.language,
       postContent: caption,
-      mediaUrls: [content.imageUrl]
+      mediaUrls: [mediaUrl]
     })
 
-    // Post to Instagram
+    // Post to Instagram (video as Reels, or image)
     const result = await postToInstagram({
-      imageUrl: content.imageUrl,
+      imageUrl: hasImage && !hasVideo ? content.imageUrl : undefined,
+      videoUrl: hasVideo ? content.videoUrl : undefined,
       caption
     })
 
     if (result.success && result.mediaId) {
-      console.log('✅ Posted to Instagram successfully:', result.mediaId)
+      const mediaTypeLabel = hasVideo ? 'Reel' : 'post'
+      console.log(`✅ Posted ${mediaTypeLabel} to Instagram successfully:`, result.mediaId)
 
       // Update tracking record
       if (socialPost) {
@@ -146,7 +176,8 @@ serve(async (req) => {
           success: true,
           mediaId: result.mediaId,
           postUrl: result.postUrl,
-          message: `Posted to Instagram (${requestData.language.toUpperCase()})`
+          mediaType: hasVideo ? 'reel' : 'image',
+          message: `Posted ${mediaTypeLabel} to Instagram (${requestData.language.toUpperCase()})`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )

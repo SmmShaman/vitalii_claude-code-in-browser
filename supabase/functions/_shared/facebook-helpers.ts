@@ -5,7 +5,7 @@
  * Supports both Facebook Pages and Instagram Business accounts
  */
 
-export const FACEBOOK_HELPERS_VERSION = "2025-01-17-v1";
+export const FACEBOOK_HELPERS_VERSION = "2025-01-20-v3";
 
 const GRAPH_API_VERSION = "v18.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
@@ -64,6 +64,19 @@ export interface InstagramComment {
   timestamp: string;
   like_count?: number;
   replies?: { data: InstagramComment[] };
+}
+
+export interface TokenDebugInfo {
+  isValid: boolean;
+  appId?: string;
+  type?: string;
+  scopes?: string[];
+  expiresAt?: string;
+  error?: string;
+  instagramAccountId?: string;
+  instagramUsername?: string;
+  pageId?: string;
+  pageName?: string;
 }
 
 // ============================================================
@@ -285,13 +298,23 @@ export async function getInstagramAccountInfo(): Promise<InstagramAccountInfo | 
 }
 
 /**
- * Post to Instagram (requires image)
+ * Post to Instagram (image or video/Reels)
  * Instagram Content Publishing API requires a two-step process:
  * 1. Create media container
  * 2. Publish the container
+ *
+ * For Reels (video):
+ * - Use media_type: 'REELS' and video_url parameter
+ * - Video must be MP4, 3-90 seconds, max 1GB
+ *
+ * Common errors:
+ * - Error #10: Application does not have permission (missing instagram_content_publish scope)
+ * - Error #190: Invalid OAuth access token
+ * - Error #100: Invalid parameter (usually media URL issues)
  */
 export async function postToInstagram(options: {
-  imageUrl: string;
+  imageUrl?: string;
+  videoUrl?: string;
   caption: string;
 }): Promise<InstagramPostResult> {
   const pageAccessToken = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN");
@@ -301,48 +324,147 @@ export async function postToInstagram(options: {
     return { success: false, error: "Instagram credentials not configured" };
   }
 
-  const { imageUrl, caption } = options;
+  const { imageUrl, videoUrl, caption } = options;
 
-  if (!imageUrl) {
-    return { success: false, error: "Instagram requires an image URL" };
+  if (!imageUrl && !videoUrl) {
+    return { success: false, error: "Instagram requires an image or video URL" };
   }
 
-  console.log("📸 Posting to Instagram...");
+  const isVideo = !!videoUrl && !imageUrl;
+  const mediaUrl = videoUrl || imageUrl;
+
+  console.log(`📸 Posting to Instagram (${isVideo ? 'REELS/VIDEO' : 'IMAGE'})...`);
+  console.log(`   Instagram Account ID: ${instagramAccountId}`);
   console.log(`   Caption length: ${caption.length} chars`);
-  console.log(`   Image: ${imageUrl.substring(0, 50)}...`);
+  console.log(`   Media URL: ${mediaUrl}`);
+  console.log(`   Media type: ${isVideo ? 'REELS' : 'IMAGE'}`);
 
   try {
     // Step 1: Create media container
     console.log("   Step 1: Creating media container...");
+
+    const containerParams: Record<string, string> = {
+      access_token: pageAccessToken,
+      caption: caption,
+    };
+
+    if (isVideo) {
+      // For Reels/Video
+      containerParams.media_type = 'REELS';
+      containerParams.video_url = videoUrl!;
+      // Share to feed as well
+      containerParams.share_to_feed = 'true';
+    } else {
+      // For Images
+      containerParams.image_url = imageUrl!;
+    }
+
     const containerResponse = await fetch(
       `${GRAPH_API_BASE}/${instagramAccountId}/media`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          access_token: pageAccessToken,
-          image_url: imageUrl,
-          caption: caption,
-        }).toString(),
+        body: new URLSearchParams(containerParams).toString(),
       }
     );
 
     const containerData = await containerResponse.json();
 
     if (!containerResponse.ok || containerData.error) {
-      console.error("❌ Failed to create Instagram container:", containerData.error);
+      const errorCode = containerData.error?.code;
+      const errorType = containerData.error?.type;
+      const errorMessage = containerData.error?.message;
+      const errorSubcode = containerData.error?.error_subcode;
+
+      console.error("❌ Failed to create Instagram container:");
+      console.error(`   Error Code: ${errorCode}`);
+      console.error(`   Error Type: ${errorType}`);
+      console.error(`   Error Message: ${errorMessage}`);
+      console.error(`   Error Subcode: ${errorSubcode}`);
+      console.error(`   Full error: ${JSON.stringify(containerData.error, null, 2)}`);
+
+      // Provide helpful troubleshooting info for common errors
+      let troubleshootingHint = "";
+      if (errorCode === 10) {
+        troubleshootingHint = "\n\n🔧 Error #10 Fix: Your token is missing the 'instagram_content_publish' permission. " +
+          "Go to Graph API Explorer, generate a new Page Access Token with scopes: " +
+          "instagram_basic, instagram_content_publish, pages_read_engagement. " +
+          "Then convert to long-lived token and update FACEBOOK_PAGE_ACCESS_TOKEN.";
+      } else if (errorCode === 190) {
+        troubleshootingHint = "\n\n🔧 Error #190 Fix: Your access token is invalid or expired. " +
+          "Generate a new token from Graph API Explorer.";
+      } else if (errorCode === 100) {
+        troubleshootingHint = `\n\n🔧 Error #100 Fix: Check that the ${isVideo ? 'video' : 'image'} URL is publicly accessible, ` +
+          `uses HTTPS, and the format is supported ${isVideo ? '(MP4, 3-90 seconds, max 1GB)' : '(JPEG/PNG)'}.`;
+      } else if (errorCode === 24) {
+        troubleshootingHint = "\n\n🔧 Error #24 Fix: You've reached the Instagram API rate limit. " +
+          "Wait 24 hours before posting again.";
+      }
+
       return {
         success: false,
-        error: containerData.error?.message || "Failed to create media container",
+        error: `Error #${errorCode}: ${errorMessage}${troubleshootingHint}`,
       };
     }
 
     const containerId = containerData.id;
-    console.log(`   Container created: ${containerId}`);
+    console.log(`   ✅ Container created: ${containerId}`);
 
     // Step 2: Wait for container to be ready (poll status)
-    // Instagram recommends waiting before publishing
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    // For videos, Instagram needs more time to process
+    const waitTime = isVideo ? 30000 : 5000; // 30s for video, 5s for image
+    console.log(`   Waiting ${waitTime/1000}s for container to process...`);
+
+    // For videos, we should poll the status instead of just waiting
+    if (isVideo) {
+      let attempts = 0;
+      const maxAttempts = 30; // Max 5 minutes (30 * 10s)
+      let containerStatus = 'IN_PROGRESS';
+
+      while (containerStatus === 'IN_PROGRESS' && attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10s between checks
+        attempts++;
+
+        console.log(`   Checking container status (attempt ${attempts}/${maxAttempts})...`);
+
+        const statusResponse = await fetch(
+          `${GRAPH_API_BASE}/${containerId}?fields=status_code,status&access_token=${pageAccessToken}`
+        );
+        const statusData = await statusResponse.json();
+
+        containerStatus = statusData.status_code || statusData.status || 'UNKNOWN';
+        console.log(`   Container status: ${containerStatus}`);
+
+        if (statusData.error) {
+          console.error("❌ Container status check failed:", statusData.error);
+          return {
+            success: false,
+            error: `Video processing failed: ${statusData.error.message}`,
+          };
+        }
+
+        if (containerStatus === 'ERROR') {
+          return {
+            success: false,
+            error: 'Video processing failed. Check video format (MP4), duration (3-90s), and size (max 1GB).',
+          };
+        }
+
+        if (containerStatus === 'FINISHED') {
+          console.log(`   ✅ Video processing completed!`);
+          break;
+        }
+      }
+
+      if (containerStatus === 'IN_PROGRESS') {
+        return {
+          success: false,
+          error: 'Video processing timeout. The video may be too large or in an unsupported format.',
+        };
+      }
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
 
     // Step 3: Publish the container
     console.log("   Step 2: Publishing media...");
@@ -361,14 +483,21 @@ export async function postToInstagram(options: {
     const publishData = await publishResponse.json();
 
     if (!publishResponse.ok || publishData.error) {
-      console.error("❌ Failed to publish Instagram media:", publishData.error);
+      const errorCode = publishData.error?.code;
+      const errorMessage = publishData.error?.message;
+      console.error("❌ Failed to publish Instagram media:");
+      console.error(`   Error Code: ${errorCode}`);
+      console.error(`   Error Message: ${errorMessage}`);
+      console.error(`   Full error: ${JSON.stringify(publishData.error, null, 2)}`);
+
       return {
         success: false,
-        error: publishData.error?.message || "Failed to publish media",
+        error: `Publish Error #${errorCode}: ${errorMessage}`,
       };
     }
 
     const mediaId = publishData.id;
+    console.log(`   ✅ Media published: ${mediaId}`);
 
     // Get the permalink
     const permalinkResponse = await fetch(
@@ -377,7 +506,7 @@ export async function postToInstagram(options: {
     const permalinkData = await permalinkResponse.json();
     const postUrl = permalinkData.permalink || `https://instagram.com/p/${mediaId}`;
 
-    console.log(`✅ Instagram post created: ${postUrl}`);
+    console.log(`✅ Instagram ${isVideo ? 'Reel' : 'post'} created: ${postUrl}`);
 
     return {
       success: true,
@@ -481,6 +610,155 @@ export function isInstagramConfigured(): boolean {
     Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN") &&
     Deno.env.get("INSTAGRAM_ACCOUNT_ID")
   );
+}
+
+/**
+ * Debug Instagram token - check permissions and validity
+ * Error #10 usually means missing permissions:
+ * - instagram_basic
+ * - instagram_content_publish
+ * - pages_read_engagement
+ */
+export async function debugInstagramToken(): Promise<TokenDebugInfo> {
+  const pageAccessToken = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN");
+  const instagramAccountId = Deno.env.get("INSTAGRAM_ACCOUNT_ID");
+  const pageId = Deno.env.get("FACEBOOK_PAGE_ID");
+
+  if (!pageAccessToken) {
+    return {
+      isValid: false,
+      error: "FACEBOOK_PAGE_ACCESS_TOKEN not set in environment",
+    };
+  }
+
+  console.log("🔍 Debugging Instagram token...");
+  console.log(`   Instagram Account ID: ${instagramAccountId || "NOT SET"}`);
+  console.log(`   Facebook Page ID: ${pageId || "NOT SET"}`);
+
+  try {
+    // Step 1: Debug the token itself
+    console.log("   Step 1: Checking token validity...");
+    const debugResponse = await fetch(
+      `${GRAPH_API_BASE}/debug_token?input_token=${pageAccessToken}&access_token=${pageAccessToken}`
+    );
+    const debugData = await debugResponse.json();
+
+    if (debugData.error) {
+      console.error("❌ Token debug failed:", debugData.error);
+      return {
+        isValid: false,
+        error: `Token debug failed: ${debugData.error.message} (code: ${debugData.error.code})`,
+      };
+    }
+
+    const tokenInfo = debugData.data;
+    console.log("   Token info:", JSON.stringify(tokenInfo, null, 2));
+
+    const result: TokenDebugInfo = {
+      isValid: tokenInfo.is_valid,
+      appId: tokenInfo.app_id,
+      type: tokenInfo.type,
+      scopes: tokenInfo.scopes || [],
+      expiresAt: tokenInfo.expires_at
+        ? new Date(tokenInfo.expires_at * 1000).toISOString()
+        : "never",
+    };
+
+    // Check required scopes
+    const requiredScopes = [
+      "instagram_basic",
+      "instagram_content_publish",
+      "pages_read_engagement",
+    ];
+    const missingScopes = requiredScopes.filter(
+      (scope) => !result.scopes?.includes(scope)
+    );
+
+    if (missingScopes.length > 0) {
+      console.warn(`⚠️ Missing required scopes: ${missingScopes.join(", ")}`);
+      result.error = `Missing required scopes: ${missingScopes.join(", ")}. ` +
+        `You need to regenerate the token with these permissions.`;
+    }
+
+    // Step 2: Try to get Instagram account info
+    if (instagramAccountId) {
+      console.log("   Step 2: Checking Instagram account access...");
+      try {
+        const igResponse = await fetch(
+          `${GRAPH_API_BASE}/${instagramAccountId}?fields=id,username&access_token=${pageAccessToken}`
+        );
+        const igData = await igResponse.json();
+
+        if (igData.error) {
+          console.error("❌ Instagram account access failed:", igData.error);
+          result.error = (result.error ? result.error + " " : "") +
+            `Instagram account error: ${igData.error.message} (code: ${igData.error.code})`;
+        } else {
+          result.instagramAccountId = igData.id;
+          result.instagramUsername = igData.username;
+          console.log(`   ✅ Instagram account: @${igData.username} (${igData.id})`);
+        }
+      } catch (e: any) {
+        console.error("❌ Instagram account fetch failed:", e.message);
+      }
+    }
+
+    // Step 3: Check if Instagram account is linked to Page
+    if (pageId) {
+      console.log("   Step 3: Checking Page → Instagram link...");
+      try {
+        const pageResponse = await fetch(
+          `${GRAPH_API_BASE}/${pageId}?fields=id,name,instagram_business_account&access_token=${pageAccessToken}`
+        );
+        const pageData = await pageResponse.json();
+
+        if (pageData.error) {
+          console.error("❌ Page access failed:", pageData.error);
+          result.error = (result.error ? result.error + " " : "") +
+            `Page error: ${pageData.error.message} (code: ${pageData.error.code})`;
+        } else {
+          result.pageId = pageData.id;
+          result.pageName = pageData.name;
+          console.log(`   ✅ Page: ${pageData.name} (${pageData.id})`);
+
+          if (pageData.instagram_business_account) {
+            const linkedIgId = pageData.instagram_business_account.id;
+            console.log(`   ✅ Linked Instagram ID: ${linkedIgId}`);
+
+            if (instagramAccountId && linkedIgId !== instagramAccountId) {
+              console.warn(`⚠️ MISMATCH: INSTAGRAM_ACCOUNT_ID (${instagramAccountId}) != linked account (${linkedIgId})`);
+              result.error = (result.error ? result.error + " " : "") +
+                `Instagram ID mismatch! Set INSTAGRAM_ACCOUNT_ID=${linkedIgId}`;
+            }
+          } else {
+            console.warn("⚠️ No Instagram Business account linked to this Page");
+            result.error = (result.error ? result.error + " " : "") +
+              "No Instagram Business account is linked to this Facebook Page. " +
+              "Go to Facebook Page Settings → Instagram and connect your account.";
+          }
+        }
+      } catch (e: any) {
+        console.error("❌ Page fetch failed:", e.message);
+      }
+    }
+
+    // Summary
+    console.log("\n📋 Token Debug Summary:");
+    console.log(`   Valid: ${result.isValid}`);
+    console.log(`   Scopes: ${result.scopes?.join(", ") || "none"}`);
+    console.log(`   Expires: ${result.expiresAt}`);
+    if (result.error) {
+      console.log(`   ⚠️ Issues: ${result.error}`);
+    }
+
+    return result;
+  } catch (error: any) {
+    console.error("❌ Token debug error:", error.message);
+    return {
+      isValid: false,
+      error: `Debug failed: ${error.message}`,
+    };
+  }
 }
 
 /**
