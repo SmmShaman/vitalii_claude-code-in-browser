@@ -763,6 +763,8 @@ export async function debugInstagramToken(): Promise<TokenDebugInfo> {
 
 /**
  * Format text for Instagram (2200 char limit, handles hashtags)
+ * NOTE: Instagram does NOT support clickable links in captions!
+ * Links appear as plain text only. Users must copy/paste or use "link in bio"
  */
 export function formatInstagramCaption(
   title: string,
@@ -770,16 +772,21 @@ export function formatInstagramCaption(
   url: string,
   hashtags: string[] = []
 ): string {
-  const link = `\n\n${url}`;
-  const hashtagText = hashtags.length > 0 ? `\n\n${hashtags.map(t => `#${t}`).join(' ')}` : '';
+  // Instagram doesn't support clickable links - use "link in bio" style
+  // Show domain name only (users can find the article on the website)
+  const linkText = `\n\n🔗 Читати на vitalii.no`;
+
+  const hashtagText = hashtags.length > 0
+    ? `\n\n${hashtags.slice(0, 10).map(t => `#${t.replace(/[^a-zA-Z0-9а-яА-ЯіІїЇєЄ]/g, '')}`).join(' ')}`
+    : '';
 
   // Instagram has 2200 char limit
-  const maxDescLength = 2200 - title.length - link.length - hashtagText.length - 10;
+  const maxDescLength = 2200 - title.length - linkText.length - hashtagText.length - 10;
   const trimmedDesc = description.length > maxDescLength
     ? description.substring(0, maxDescLength - 3) + '...'
     : description;
 
-  return `${title}\n\n${trimmedDesc}${link}${hashtagText}`;
+  return `${title}\n\n${trimmedDesc}${linkText}${hashtagText}`;
 }
 
 /**

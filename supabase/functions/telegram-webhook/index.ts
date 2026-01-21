@@ -2748,6 +2748,22 @@ serve(async (req) => {
         // Check for video
         const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
 
+        // Instagram media validation (same as individual button)
+        const hasImage = !!(news.processed_image_url || news.image_url)
+        const isValidVideoUrl = (url: string | null) => {
+          if (!url) return false
+          // Telegram embed URLs are NOT valid for Instagram
+          if (url.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/)) return false
+          const validExtensions = ['.mp4', '.mov', '.avi', '.webm', '.m4v']
+          return validExtensions.some(ext => url.toLowerCase().includes(ext)) ||
+                 url.includes('api.telegram.org/file/')
+        }
+        const hasValidInstagramVideo = isValidVideoUrl(news.video_url) || isValidVideoUrl(news.original_video_url)
+        const hasTelegramVideo = !!(
+          news.original_video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/) ||
+          (news.video_type === 'telegram_embed' && news.video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/))
+        )
+
         // =====================
         // ENGLISH (EN) Posts
         // =====================
@@ -2813,28 +2829,52 @@ serve(async (req) => {
           resultsEN.push({ platform: 'Facebook', success: false, error: e.message || 'Request failed' })
         }
 
-        // Instagram EN
-        try {
-          const igRequestBody: any = { language: 'en', contentType }
-          if (contentType === 'blog') igRequestBody.blogPostId = contentId
-          else igRequestBody.newsId = contentId
-
-          const igResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-instagram`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(igRequestBody)
-          })
-          const igResult = await igResponse.json()
-          console.log('📸 Instagram EN result:', JSON.stringify(igResult))
-          if (igResponse.ok && igResult.success) {
-            resultsEN.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
-          } else {
-            const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
-            resultsEN.push({ platform: 'Instagram', success: false, error: errMsg })
+        // Instagram EN - with media validation
+        let instagramVideoTriggeredEN = false
+        if (!hasImage && !hasValidInstagramVideo) {
+          // No valid media for Instagram
+          console.log('📸 Instagram EN: No valid media (image or direct video)')
+          if (hasTelegramVideo && isGitHubActionsEnabled()) {
+            // Try to trigger GitHub Actions video upload
+            try {
+              console.log('📸 Instagram EN: Triggering GitHub Actions for Telegram video')
+              const result = await triggerInstagramVideo({ newsId, language: 'en' })
+              if (result.success) {
+                instagramVideoTriggeredEN = true
+                resultsEN.push({ platform: 'Instagram', success: true, processing: true, error: '⏳ Відео...' })
+              }
+            } catch (e) {
+              console.error('❌ Instagram EN video trigger failed:', e)
+            }
           }
-        } catch (e: any) {
-          console.error('📸 Instagram EN exception:', e)
-          resultsEN.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
+          if (!instagramVideoTriggeredEN) {
+            // Skip Instagram - no valid media
+            resultsEN.push({ platform: 'Instagram', success: false, error: 'Немає зображення' })
+          }
+        } else {
+          // Has valid media - proceed with posting
+          try {
+            const igRequestBody: any = { language: 'en', contentType }
+            if (contentType === 'blog') igRequestBody.blogPostId = contentId
+            else igRequestBody.newsId = contentId
+
+            const igResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-instagram`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(igRequestBody)
+            })
+            const igResult = await igResponse.json()
+            console.log('📸 Instagram EN result:', JSON.stringify(igResult))
+            if (igResponse.ok && igResult.success) {
+              resultsEN.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
+            } else {
+              const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
+              resultsEN.push({ platform: 'Instagram', success: false, error: errMsg })
+            }
+          } catch (e: any) {
+            console.error('📸 Instagram EN exception:', e)
+            resultsEN.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
+          }
         }
 
         // =====================
@@ -2902,28 +2942,52 @@ serve(async (req) => {
           resultsNO.push({ platform: 'Facebook', success: false, error: e.message || 'Request failed' })
         }
 
-        // Instagram NO
-        try {
-          const igRequestBody: any = { language: 'no', contentType }
-          if (contentType === 'blog') igRequestBody.blogPostId = contentId
-          else igRequestBody.newsId = contentId
-
-          const igResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-instagram`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(igRequestBody)
-          })
-          const igResult = await igResponse.json()
-          console.log('📸 Instagram NO result:', JSON.stringify(igResult))
-          if (igResponse.ok && igResult.success) {
-            resultsNO.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
-          } else {
-            const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
-            resultsNO.push({ platform: 'Instagram', success: false, error: errMsg })
+        // Instagram NO - with media validation
+        let instagramVideoTriggeredNO = false
+        if (!hasImage && !hasValidInstagramVideo) {
+          // No valid media for Instagram
+          console.log('📸 Instagram NO: No valid media (image or direct video)')
+          if (hasTelegramVideo && isGitHubActionsEnabled()) {
+            // Try to trigger GitHub Actions video upload
+            try {
+              console.log('📸 Instagram NO: Triggering GitHub Actions for Telegram video')
+              const result = await triggerInstagramVideo({ newsId, language: 'no' })
+              if (result.success) {
+                instagramVideoTriggeredNO = true
+                resultsNO.push({ platform: 'Instagram', success: true, processing: true, error: '⏳ Відео...' })
+              }
+            } catch (e) {
+              console.error('❌ Instagram NO video trigger failed:', e)
+            }
           }
-        } catch (e: any) {
-          console.error('📸 Instagram NO exception:', e)
-          resultsNO.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
+          if (!instagramVideoTriggeredNO) {
+            // Skip Instagram - no valid media
+            resultsNO.push({ platform: 'Instagram', success: false, error: 'Немає зображення' })
+          }
+        } else {
+          // Has valid media - proceed with posting
+          try {
+            const igRequestBody: any = { language: 'no', contentType }
+            if (contentType === 'blog') igRequestBody.blogPostId = contentId
+            else igRequestBody.newsId = contentId
+
+            const igResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-instagram`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(igRequestBody)
+            })
+            const igResult = await igResponse.json()
+            console.log('📸 Instagram NO result:', JSON.stringify(igResult))
+            if (igResponse.ok && igResult.success) {
+              resultsNO.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
+            } else {
+              const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
+              resultsNO.push({ platform: 'Instagram', success: false, error: errMsg })
+            }
+          } catch (e: any) {
+            console.error('📸 Instagram NO exception:', e)
+            resultsNO.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
+          }
         }
 
         // Build results message

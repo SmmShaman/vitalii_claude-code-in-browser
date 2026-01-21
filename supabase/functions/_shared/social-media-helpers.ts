@@ -224,30 +224,40 @@ export async function updateSocialPostFailed(
 
 /**
  * Check if content was already posted to a platform in a specific language
+ * Also checks for pending posts to prevent race conditions (duplicate posts)
  */
 export async function wasAlreadyPosted(
   contentId: string,
   contentType: ContentType,
   platform: Platform,
   language: Language
-): Promise<{ posted: boolean; postUrl?: string }> {
+): Promise<{ posted: boolean; pending: boolean; postUrl?: string }> {
   const supabase = getSupabaseClient();
 
+  // Check for ANY existing record (posted OR pending) to prevent race conditions
   const { data } = await supabase
     .from('social_media_posts')
-    .select('platform_post_id, platform_post_url')
+    .select('platform_post_id, platform_post_url, status')
     .eq('content_id', contentId)
     .eq('content_type', contentType)
     .eq('platform', platform)
     .eq('language', language)
-    .eq('status', 'posted')
+    .in('status', ['posted', 'pending'])
+    .order('created_at', { ascending: false })
+    .limit(1)
     .single();
 
-  if (data?.platform_post_id) {
-    return { posted: true, postUrl: data.platform_post_url };
+  if (data) {
+    if (data.status === 'posted' && data.platform_post_id) {
+      return { posted: true, pending: false, postUrl: data.platform_post_url };
+    }
+    if (data.status === 'pending') {
+      console.log(`⏳ ${platform}/${language}: Already has pending post, skipping to prevent duplicate`);
+      return { posted: false, pending: true };
+    }
   }
 
-  return { posted: false };
+  return { posted: false, pending: false };
 }
 
 /**

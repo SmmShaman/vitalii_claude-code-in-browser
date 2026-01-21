@@ -63,8 +63,8 @@ serve(async (req) => {
       throw new Error('Invalid request: must provide either newsId or blogPostId')
     }
 
-    // Check if already posted
-    const { posted, postUrl: existingUrl } = await wasAlreadyPosted(
+    // Check if already posted or pending (prevents race condition duplicates)
+    const { posted, pending, postUrl: existingUrl } = await wasAlreadyPosted(
       contentId,
       requestData.contentType,
       'facebook',
@@ -79,6 +79,18 @@ serve(async (req) => {
           alreadyPosted: true,
           postUrl: existingUrl,
           message: `Already posted to Facebook (${requestData.language.toUpperCase()})`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (pending) {
+      console.log('⏳ Facebook post is already pending/in-progress')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          alreadyPosted: true,
+          message: `Facebook post already in progress (${requestData.language.toUpperCase()})`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
