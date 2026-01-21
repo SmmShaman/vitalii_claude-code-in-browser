@@ -2709,8 +2709,19 @@ serve(async (req) => {
           })
         }
 
-        // Check if content has translations
-        if (!news.title_en || !news.title_no) {
+        // Check if has blog post FIRST (before checking translations)
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentType = blogPost ? 'blog' : 'news'
+        const contentId = blogPost ? blogPost.id : newsId
+        const contentRecord = blogPost || news
+
+        // Check if content has translations (in blog_posts or news table)
+        if (!contentRecord.title_en || !contentRecord.title_no) {
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -2719,7 +2730,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + '\n\n❌ <b>Error:</b> Content not published yet (missing EN or NO translation). Publish to News first!',
+                text: messageText + '\n\n❌ <b>Error:</b> Content not published yet (missing EN or NO translation). Publish to News or Blog first!',
                 parse_mode: 'HTML',
                 disable_web_page_preview: true
               })
@@ -2729,16 +2740,6 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' }
           })
         }
-
-        // Check if has blog post
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
 
         // Track results for both languages
         const resultsEN: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
@@ -2926,13 +2927,14 @@ serve(async (req) => {
         }
 
         // Build results message
-        const titleEN = news.title_en as string
-        const titleNO = news.title_no as string
+        const titleEN = (contentRecord.title_en || news.original_title) as string
+        const titleNO = (contentRecord.title_no || contentRecord.title_en) as string
         const shortTitleEN = titleEN.length > 40 ? titleEN.substring(0, 37) + '...' : titleEN
-        const slugEN = news.slug_en || newsId.substring(0, 8)
-        const slugNO = news.slug_no || news.slug_en || newsId.substring(0, 8)
-        const articleUrlEN = `https://vitalii.no/news/${slugEN}`
-        const articleUrlNO = `https://vitalii.no/news/${slugNO}`
+        const slugEN = contentRecord.slug_en || newsId.substring(0, 8)
+        const slugNO = contentRecord.slug_no || contentRecord.slug_en || newsId.substring(0, 8)
+        const articlePath = blogPost ? 'blog' : 'news'
+        const articleUrlEN = `https://vitalii.no/${articlePath}/${slugEN}`
+        const articleUrlNO = `https://vitalii.no/${articlePath}/${slugNO}`
 
         let resultsText = '\n\n✅ <b>Опубліковано EN + NO:</b>\n\n'
         resultsText += `📰 «${shortTitleEN}»\n`
