@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useAnimation } from 'framer-motion'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { translations } from '@/utils/translations'
 import { Calendar, Eye, ChevronRight, Sparkles, ArrowLeft, Loader2, Instagram, Send, Facebook, Linkedin, Github, Twitter, Mail, X, Copy, ExternalLink, Check } from 'lucide-react'
-import { getLatestNews, getLatestBlogPosts, getAllNews, getAllBlogPosts } from '@/integrations/supabase/client'
+import { getLatestNews, getLatestBlogPosts, getAllNews, getAllBlogPosts, sendContactEmail } from '@/integrations/supabase/client'
 import { BottomNavigation } from '@/components/layout/BottomNavigation'
 import { getSkillLogo } from '@/utils/skillLogos'
 import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage'
@@ -678,7 +678,9 @@ const ContactsOverlay = ({
   })
   const [isSending, setIsSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [emailCopied, setEmailCopied] = useState(false)
+  const [formLoadTime] = useState(Date.now())
 
   const handleCopyLink = async (url: string) => {
     try {
@@ -705,21 +707,29 @@ const ContactsOverlay = ({
     setEmailForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
     setIsSending(true)
+    setEmailError(null)
 
-    // Create mailto link with form data
-    const mailtoLink = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(emailForm.subject)}&body=${encodeURIComponent(
-      `From: ${emailForm.senderEmail}\n\n${emailForm.message}`
-    )}`
+    try {
+      const result = await sendContactEmail({
+        name: emailForm.senderEmail.split('@')[0] || 'Website Visitor',
+        email: emailForm.senderEmail,
+        message: emailForm.subject ? `Subject: ${emailForm.subject}\n\n${emailForm.message}` : emailForm.message,
+        timestamp: formLoadTime,
+      })
 
-    // Open default email client
-    window.location.href = mailtoLink
-
-    setTimeout(() => {
+      if (result.success) {
+        setEmailSent(true)
+      } else {
+        setEmailError(result.message || 'Failed to send message')
+      }
+    } catch (error) {
+      console.error('Error sending email:', error)
+      setEmailError('Failed to send message. Please try again.')
+    } finally {
       setIsSending(false)
-      setEmailSent(true)
-    }, 500)
+    }
   }
 
   const closeEmailModal = () => {
@@ -925,9 +935,9 @@ const ContactsOverlay = ({
                   <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                     <Check className="w-8 h-8 text-green-500" />
                   </div>
-                  <h3 className="font-bold text-gray-900 text-lg mb-2">Email Client Opened!</h3>
+                  <h3 className="font-bold text-gray-900 text-lg mb-2">Message Sent!</h3>
                   <p className="text-gray-500 text-sm mb-4">
-                    Your default email app should open with the message ready to send.
+                    Thank you for your message. We will get back to you soon.
                   </p>
                   <button
                     onClick={closeEmailModal}
@@ -1023,6 +1033,13 @@ const ContactsOverlay = ({
                     </div>
                   </div>
 
+                  {/* Error Message */}
+                  {emailError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                      {emailError}
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
                   <div className="flex gap-2">
                     <button
@@ -1033,18 +1050,18 @@ const ContactsOverlay = ({
                     </button>
                     <button
                       onClick={handleSendEmail}
-                      disabled={isSending || !emailForm.message.trim()}
+                      disabled={isSending || !emailForm.message.trim() || !emailForm.senderEmail.trim()}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-blue-500 to-cyan-500 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSending ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Opening...
+                          Sending...
                         </>
                       ) : (
                         <>
                           <Send className="w-4 h-4" />
-                          Open Email App
+                          Send Message
                         </>
                       )}
                     </button>

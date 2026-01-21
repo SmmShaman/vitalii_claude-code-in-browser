@@ -23,6 +23,63 @@ export interface ContactFormData {
   message: string;
 }
 
+export interface ContactEmailData extends ContactFormData {
+  honeypot?: string;
+  timestamp?: number;
+}
+
+export interface ContactEmailResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Send contact form via Edge Function (with email delivery)
+ * Includes spam protection: honeypot, timestamp check, rate limiting
+ */
+export const sendContactEmail = async (data: ContactEmailData): Promise<ContactEmailResponse> => {
+  // If Supabase is not configured, simulate success for demo purposes
+  if (!isSupabaseConfigured()) {
+    console.log('📧 Contact form submission (Supabase not configured):', data);
+    return {
+      success: true,
+      message: 'Form submitted successfully! (Demo mode - configure Supabase to enable email delivery)'
+    };
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-contact-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: result.message || 'Failed to send message. Please try again.',
+      };
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error calling send-contact-email:', error);
+    return {
+      success: false,
+      message: 'Network error. Please check your connection and try again.',
+    };
+  }
+};
+
+/**
+ * @deprecated Use sendContactEmail instead for email delivery
+ * Legacy function that only saves to database without sending email
+ */
 export const submitContactForm = async (data: ContactFormData) => {
   // If Supabase is not configured, simulate success for demo purposes
   if (!isSupabaseConfigured()) {
