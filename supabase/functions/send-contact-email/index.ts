@@ -204,7 +204,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Vitalii.no Contact <onboarding@resend.dev>',
+        from: 'Vitalii.no Contact <noreply@vitalii.no>',
         to: ADMIN_EMAIL,
         reply_to: requestData.email,
         subject: `📬 New message from ${requestData.name}`,
