@@ -2276,17 +2276,21 @@ serve(async (req) => {
         const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(articleUrl)}`
         results.push({ platform: 'Twitter', success: true, url: twitterIntentUrl })
 
-        // Build results message
-        let resultsText = `\n\n🌐 <b>Результати публікації (${langLabel}):</b>\n`
+        // Build results message with article link
+        const shortTitle = title.length > 50 ? title.substring(0, 47) + '...' : title
+        let resultsText = `\n\n🌐 <b>Результати публікації (${langLabel}):</b>\n\n`
+        resultsText += `📰 «${shortTitle}»\n`
+        resultsText += `📝 <a href="${articleUrl}">Читати на сайті</a>\n\n`
+
         for (const r of results) {
           if (r.success) {
             if ((r as any).processing) {
               // Video processing in progress via GitHub Action
               resultsText += `⏳ ${r.platform}: ${r.error || 'Відео обробляється...'}\n`
             } else if (r.platform === 'Twitter') {
-              resultsText += `✅ ${r.platform}: <a href="${r.url}">Натисніть для публікації</a>\n`
+              resultsText += `🐦 ${r.platform}: <a href="${r.url}">Натисніть для публікації</a>\n`
             } else if (r.url) {
-              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути</a>\n`
+              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути пост</a>\n`
             } else {
               resultsText += `✅ ${r.platform}: Опубліковано\n`
             }
@@ -2549,8 +2553,16 @@ serve(async (req) => {
           results.push({ platform: 'Facebook EN', success: false, error: 'Request failed' })
         }
 
-        // Build results message
-        let resultsText = '\n\n✅ <b>Опубліковано LinkedIn + Facebook EN:</b>\n'
+        // Build results message with article link
+        const title = news.title_en as string
+        const shortTitle = title.length > 50 ? title.substring(0, 47) + '...' : title
+        const slug = news.slug_en || newsId.substring(0, 8)
+        const articleUrl = `https://vitalii.no/news/${slug}`
+
+        let resultsText = '\n\n✅ <b>Опубліковано LinkedIn + Facebook EN:</b>\n\n'
+        resultsText += `📰 «${shortTitle}»\n`
+        resultsText += `📝 <a href="${articleUrl}">Читати на сайті</a>\n\n`
+
         for (const r of results) {
           if (r.success) {
             if ((r as any).processing) {
