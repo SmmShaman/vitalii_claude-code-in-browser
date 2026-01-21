@@ -2800,13 +2800,16 @@ serve(async (req) => {
             body: JSON.stringify(fbRequestBody)
           })
           const fbResult = await fbResponse.json()
+          console.log('📘 Facebook EN result:', JSON.stringify(fbResult))
           if (fbResponse.ok && fbResult.success) {
             resultsEN.push({ platform: 'Facebook', success: true, url: fbResult.postUrl })
           } else {
-            resultsEN.push({ platform: 'Facebook', success: false, error: fbResult.error || 'Error' })
+            const errMsg = fbResult.error || fbResult.message || `HTTP ${fbResponse.status}`
+            resultsEN.push({ platform: 'Facebook', success: false, error: errMsg })
           }
-        } catch (e) {
-          resultsEN.push({ platform: 'Facebook', success: false, error: 'Request failed' })
+        } catch (e: any) {
+          console.error('📘 Facebook EN exception:', e)
+          resultsEN.push({ platform: 'Facebook', success: false, error: e.message || 'Request failed' })
         }
 
         // Instagram EN
@@ -2821,13 +2824,16 @@ serve(async (req) => {
             body: JSON.stringify(igRequestBody)
           })
           const igResult = await igResponse.json()
+          console.log('📸 Instagram EN result:', JSON.stringify(igResult))
           if (igResponse.ok && igResult.success) {
             resultsEN.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
           } else {
-            resultsEN.push({ platform: 'Instagram', success: false, error: igResult.error || 'Error' })
+            const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
+            resultsEN.push({ platform: 'Instagram', success: false, error: errMsg })
           }
-        } catch (e) {
-          resultsEN.push({ platform: 'Instagram', success: false, error: 'Request failed' })
+        } catch (e: any) {
+          console.error('📸 Instagram EN exception:', e)
+          resultsEN.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
         }
 
         // =====================
@@ -2883,13 +2889,16 @@ serve(async (req) => {
             body: JSON.stringify(fbRequestBody)
           })
           const fbResult = await fbResponse.json()
+          console.log('📘 Facebook NO result:', JSON.stringify(fbResult))
           if (fbResponse.ok && fbResult.success) {
             resultsNO.push({ platform: 'Facebook', success: true, url: fbResult.postUrl })
           } else {
-            resultsNO.push({ platform: 'Facebook', success: false, error: fbResult.error || 'Error' })
+            const errMsg = fbResult.error || fbResult.message || `HTTP ${fbResponse.status}`
+            resultsNO.push({ platform: 'Facebook', success: false, error: errMsg })
           }
-        } catch (e) {
-          resultsNO.push({ platform: 'Facebook', success: false, error: 'Request failed' })
+        } catch (e: any) {
+          console.error('📘 Facebook NO exception:', e)
+          resultsNO.push({ platform: 'Facebook', success: false, error: e.message || 'Request failed' })
         }
 
         // Instagram NO
@@ -2904,13 +2913,16 @@ serve(async (req) => {
             body: JSON.stringify(igRequestBody)
           })
           const igResult = await igResponse.json()
+          console.log('📸 Instagram NO result:', JSON.stringify(igResult))
           if (igResponse.ok && igResult.success) {
             resultsNO.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
           } else {
-            resultsNO.push({ platform: 'Instagram', success: false, error: igResult.error || 'Error' })
+            const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
+            resultsNO.push({ platform: 'Instagram', success: false, error: errMsg })
           }
-        } catch (e) {
-          resultsNO.push({ platform: 'Instagram', success: false, error: 'Request failed' })
+        } catch (e: any) {
+          console.error('📸 Instagram NO exception:', e)
+          resultsNO.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
         }
 
         // Build results message
