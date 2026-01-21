@@ -1182,6 +1182,15 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 
     const hasVideo = videoUrl && videoType
     const hasImage = uploadedPhotoUrl // Use uploaded photoUrl, not original post.photoUrl
+
+    // Add warning if no image found (and no video)
+    if (!hasImage && !hasVideo) {
+      message += `
+
+⚠️ <b>Зображення не знайдено!</b>
+📸 Створіть зображення за промптом вище або завантажте своє.`
+    }
+
     let keyboard: { inline_keyboard: any[] }
 
     if (hasVideo) {
@@ -1215,14 +1224,11 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
           ]
         }
       } else {
-        // No image → Upload required or continue without
+        // No image → Must upload/create image (no skip option!)
         keyboard = {
           inline_keyboard: [
             [
-              { text: '📸 Завантажити зображення', callback_data: `create_custom_${newsId}` }
-            ],
-            [
-              { text: '➡️ Продовжити без зображення', callback_data: `confirm_image_${newsId}` }
+              { text: '📸 Створити зображення', callback_data: `create_custom_${newsId}` }
             ],
             [
               { text: '❌ Reject', callback_data: `reject_${newsId}` }
