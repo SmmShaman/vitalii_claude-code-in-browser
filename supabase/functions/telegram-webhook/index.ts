@@ -743,10 +743,15 @@ serve(async (req) => {
       } else if (callbackData.startsWith('combo_li_fb_en_')) {
         action = 'combo_li_fb_en'
         newsId = callbackData.replace('combo_li_fb_en_', '')
-      // Combo: All platforms EN + NO (LinkedIn + Facebook + Instagram)
-      } else if (callbackData.startsWith('combo_all_en_no_')) {
-        action = 'combo_all_en_no'
-        newsId = callbackData.replace('combo_all_en_no_', '')
+      // Combo: LinkedIn + Facebook + Instagram (one language)
+      } else if (callbackData.startsWith('combo_li_fb_ig_en_')) {
+        action = 'combo_li_fb_ig'
+        socialLanguage = 'en'
+        newsId = callbackData.replace('combo_li_fb_ig_en_', '')
+      } else if (callbackData.startsWith('combo_li_fb_ig_no_')) {
+        action = 'combo_li_fb_ig'
+        socialLanguage = 'no'
+        newsId = callbackData.replace('combo_li_fb_ig_no_', '')
       // Skip remaining social platforms
       } else if (callbackData.startsWith('skip_social_')) {
         action = 'skip_social'
@@ -942,10 +947,11 @@ serve(async (req) => {
               { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
               { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
             ],
-            // Quick combo
+            // Quick combo (LinkedIn + Facebook only)
             [
               { text: '🔗+📘 LI+FB EN', callback_data: `combo_li_fb_en_${newsId}` },
-              { text: '🌍 EN+NO All', callback_data: `combo_all_en_no_${newsId}` }
+              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
+              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` }
             ],
             // LinkedIn individual
             [
@@ -2641,11 +2647,12 @@ serve(async (req) => {
           console.error('⚠️ Error editing message (results):', editError)
         }
 
-      } else if (action === 'combo_all_en_no') {
+      } else if (action === 'combo_li_fb_ig' && socialLanguage) {
         // =================================================================
-        // 🌍 Combo: All platforms EN + NO (LinkedIn + Facebook + Instagram)
+        // 🔗📘📸 Combo: LinkedIn + Facebook + Instagram (one language)
         // =================================================================
-        console.log('Posting combo All EN + NO for news:', newsId)
+        const langLabel = socialLanguage.toUpperCase()
+        console.log(`Posting combo LinkedIn + Facebook + Instagram ${langLabel} for news:`, newsId)
 
         // Answer callback immediately
         await fetch(
@@ -2655,11 +2662,28 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: '🌍 Публікуємо EN + NO (LI+FB+IG)...',
+              text: `🔗📘📸 Публікуємо LI+FB+IG ${langLabel}...`,
               show_alert: false
             })
           }
         )
+
+        // Processing buttons (exclude the current language)
+        const otherLang = socialLanguage === 'en' ? 'NO' : 'EN'
+        const otherLangLower = otherLang.toLowerCase()
+        const processingButtonsCombo = [
+          [
+            { text: `🌐 Все ${otherLang}`, callback_data: `all_${otherLangLower}_${newsId}` },
+            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
+          ],
+          [
+            { text: `🐦 Twitter ${langLabel}`, callback_data: `twitter_${socialLanguage}_${newsId}` }
+          ],
+          [
+            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+          ]
+        ]
 
         // Show processing status
         try {
@@ -2671,25 +2695,28 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + '\n\n⏳ <b>Публікуємо EN + NO (LinkedIn + Facebook + Instagram)...</b>',
+                text: messageText + `\n\n⏳ <b>Публікуємо LinkedIn + Facebook + Instagram ${langLabel}...</b>`,
                 parse_mode: 'HTML',
-                disable_web_page_preview: true
+                disable_web_page_preview: true,
+                reply_markup: {
+                  inline_keyboard: processingButtonsCombo
+                }
               })
             }
           )
-        } catch (e) {
-          console.error('⚠️ Error editing message (processing):', e)
+        } catch (editError) {
+          console.error('⚠️ Error editing message (processing):', editError)
         }
 
         // Fetch news data
-        const { data: news, error: fetchError } = await supabase
+        const { data: newsCombo, error: fetchErrorCombo } = await supabase
           .from('news')
           .select('*')
           .eq('id', newsId)
           .single()
 
-        if (fetchError || !news) {
-          console.error('Failed to fetch news:', fetchError)
+        if (fetchErrorCombo || !newsCombo) {
+          console.error('Failed to fetch news:', fetchErrorCombo)
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -2709,19 +2736,9 @@ serve(async (req) => {
           })
         }
 
-        // Check if has blog post FIRST (before checking translations)
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
-        const contentRecord = blogPost || news
-
-        // Check if content has translations (in blog_posts or news table)
-        if (!contentRecord.title_en || !contentRecord.title_no) {
+        // Check if content has translation for the selected language
+        const titleField = `title_${socialLanguage}` as keyof typeof newsCombo
+        if (!newsCombo[titleField]) {
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -2730,7 +2747,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + '\n\n❌ <b>Error:</b> Content not published yet (missing EN or NO translation). Publish to News or Blog first!',
+                text: messageText + `\n\n❌ <b>Error:</b> Content not published yet (no ${langLabel} translation). Publish to News first!`,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true
               })
@@ -2741,322 +2758,238 @@ serve(async (req) => {
           })
         }
 
-        // Track results for both languages
-        const resultsEN: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
-        const resultsNO: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
+        // Check if has blog post
+        const { data: blogPostCombo } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
 
-        // Check for video
-        const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
+        const contentTypeCombo = blogPostCombo ? 'blog' : 'news'
+        const contentIdCombo = blogPostCombo ? blogPostCombo.id : newsId
 
-        // Instagram media validation (same as individual button)
-        const hasImage = !!(news.processed_image_url || news.image_url)
-        const isValidVideoUrl = (url: string | null) => {
-          if (!url) return false
-          // Telegram embed URLs are NOT valid for Instagram
-          if (url.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/)) return false
-          const validExtensions = ['.mp4', '.mov', '.avi', '.webm', '.m4v']
-          return validExtensions.some(ext => url.toLowerCase().includes(ext)) ||
-                 url.includes('api.telegram.org/file/')
-        }
-        const hasValidInstagramVideo = isValidVideoUrl(news.video_url) || isValidVideoUrl(news.original_video_url)
-        const hasTelegramVideo = !!(
-          news.original_video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/) ||
-          (news.video_type === 'telegram_embed' && news.video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/))
-        )
+        // Track results
+        const resultsCombo: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
 
-        // =====================
-        // ENGLISH (EN) Posts
-        // =====================
-        console.log('📤 Posting EN platforms...')
+        // Check if news has video for native video upload
+        const hasVideoCombo = newsCombo.original_video_url && newsCombo.original_video_url.includes('t.me')
+        let linkedinVideoTriggeredCombo = false
+        let instagramVideoTriggeredCombo = false
 
-        // LinkedIn EN
-        let linkedinVideoTriggeredEN = false
-        if (hasVideo && isGitHubActionsEnabled()) {
+        // 1. Post to LinkedIn
+        console.log(`📤 Posting to LinkedIn ${langLabel}...`)
+
+        if (hasVideoCombo && isGitHubActionsEnabled()) {
+          console.log(`🎬 Combo post: News has video - triggering LinkedIn video GitHub Action`)
           try {
-            const triggerResult = await triggerLinkedInVideo({ newsId, language: 'en' })
+            const triggerResult = await triggerLinkedInVideo({
+              newsId: newsId,
+              language: socialLanguage
+            })
+
             if (triggerResult.success) {
-              linkedinVideoTriggeredEN = true
-              resultsEN.push({ platform: 'LinkedIn', success: true, processing: true, error: '⏳ Відео...' })
+              linkedinVideoTriggeredCombo = true
+              resultsCombo.push({
+                platform: `LinkedIn ${langLabel}`,
+                success: true,
+                processing: true,
+                error: '⏳ Відео обробляється... (1-2 хв)'
+              })
             }
           } catch (e) {
-            console.error('❌ LinkedIn EN video trigger failed:', e)
+            console.error('❌ Error triggering LinkedIn video Action:', e)
           }
         }
-        if (!linkedinVideoTriggeredEN) {
+
+        if (!linkedinVideoTriggeredCombo) {
           try {
-            const linkedinRequestBody: any = { language: 'en', contentType }
-            if (contentType === 'blog') linkedinRequestBody.blogPostId = contentId
-            else linkedinRequestBody.newsId = contentId
-
-            const linkedinResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-linkedin`, {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify(linkedinRequestBody)
-            })
-            const linkedinResult = await linkedinResponse.json()
-            if (linkedinResponse.ok && linkedinResult.success) {
-              const postUrl = linkedinResult.postId ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}` : undefined
-              resultsEN.push({ platform: 'LinkedIn', success: true, url: postUrl })
-            } else {
-              resultsEN.push({ platform: 'LinkedIn', success: false, error: linkedinResult.error || 'Error' })
+            const linkedinRequestBodyCombo: any = {
+              language: socialLanguage,
+              contentType: contentTypeCombo
             }
-          } catch (e) {
-            resultsEN.push({ platform: 'LinkedIn', success: false, error: 'Request failed' })
-          }
-        }
+            if (contentTypeCombo === 'blog') {
+              linkedinRequestBodyCombo.blogPostId = contentIdCombo
+            } else {
+              linkedinRequestBodyCombo.newsId = contentIdCombo
+            }
 
-        // Facebook EN
-        try {
-          const fbRequestBody: any = { language: 'en', contentType }
-          if (contentType === 'blog') fbRequestBody.blogPostId = contentId
-          else fbRequestBody.newsId = contentId
-
-          const fbResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-facebook`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(fbRequestBody)
-          })
-          const fbResult = await fbResponse.json()
-          console.log('📘 Facebook EN result:', JSON.stringify(fbResult))
-          if (fbResponse.ok && fbResult.success) {
-            resultsEN.push({ platform: 'Facebook', success: true, url: fbResult.postUrl })
-          } else {
-            const errMsg = fbResult.error || fbResult.message || `HTTP ${fbResponse.status}`
-            resultsEN.push({ platform: 'Facebook', success: false, error: errMsg })
-          }
-        } catch (e: any) {
-          console.error('📘 Facebook EN exception:', e)
-          resultsEN.push({ platform: 'Facebook', success: false, error: e.message || 'Request failed' })
-        }
-
-        // Instagram EN - with media validation
-        let instagramVideoTriggeredEN = false
-        if (!hasImage && !hasValidInstagramVideo) {
-          // No valid media for Instagram
-          console.log('📸 Instagram EN: No valid media (image or direct video)')
-          if (hasTelegramVideo && isGitHubActionsEnabled()) {
-            // Try to trigger GitHub Actions video upload
-            try {
-              console.log('📸 Instagram EN: Triggering GitHub Actions for Telegram video')
-              const result = await triggerInstagramVideo({ newsId, language: 'en' })
-              if (result.success) {
-                instagramVideoTriggeredEN = true
-                resultsEN.push({ platform: 'Instagram', success: true, processing: true, error: '⏳ Відео...' })
+            const linkedinResponseCombo = await fetch(
+              `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(linkedinRequestBodyCombo)
               }
-            } catch (e) {
-              console.error('❌ Instagram EN video trigger failed:', e)
-            }
-          }
-          if (!instagramVideoTriggeredEN) {
-            // Skip Instagram - no valid media
-            resultsEN.push({ platform: 'Instagram', success: false, error: 'Немає зображення' })
-          }
-        } else {
-          // Has valid media - proceed with posting
-          try {
-            const igRequestBody: any = { language: 'en', contentType }
-            if (contentType === 'blog') igRequestBody.blogPostId = contentId
-            else igRequestBody.newsId = contentId
+            )
+            const linkedinResultCombo = await linkedinResponseCombo.json()
 
-            const igResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-instagram`, {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify(igRequestBody)
-            })
-            const igResult = await igResponse.json()
-            console.log('📸 Instagram EN result:', JSON.stringify(igResult))
-            if (igResponse.ok && igResult.success) {
-              resultsEN.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
+            if (linkedinResponseCombo.ok && linkedinResultCombo.success) {
+              const postUrlLi = linkedinResultCombo.postId
+                ? `https://www.linkedin.com/feed/update/${linkedinResultCombo.postId}`
+                : undefined
+              resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: true, url: postUrlLi })
             } else {
-              const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
-              resultsEN.push({ platform: 'Instagram', success: false, error: errMsg })
-            }
-          } catch (e: any) {
-            console.error('📸 Instagram EN exception:', e)
-            resultsEN.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
-          }
-        }
-
-        // =====================
-        // NORWEGIAN (NO) Posts
-        // =====================
-        console.log('📤 Posting NO platforms...')
-
-        // LinkedIn NO
-        let linkedinVideoTriggeredNO = false
-        if (hasVideo && isGitHubActionsEnabled()) {
-          try {
-            const triggerResult = await triggerLinkedInVideo({ newsId, language: 'no' })
-            if (triggerResult.success) {
-              linkedinVideoTriggeredNO = true
-              resultsNO.push({ platform: 'LinkedIn', success: true, processing: true, error: '⏳ Відео...' })
+              resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: false, error: linkedinResultCombo.error || 'Unknown error' })
             }
           } catch (e) {
-            console.error('❌ LinkedIn NO video trigger failed:', e)
-          }
-        }
-        if (!linkedinVideoTriggeredNO) {
-          try {
-            const linkedinRequestBody: any = { language: 'no', contentType }
-            if (contentType === 'blog') linkedinRequestBody.blogPostId = contentId
-            else linkedinRequestBody.newsId = contentId
-
-            const linkedinResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-linkedin`, {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify(linkedinRequestBody)
-            })
-            const linkedinResult = await linkedinResponse.json()
-            if (linkedinResponse.ok && linkedinResult.success) {
-              const postUrl = linkedinResult.postId ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}` : undefined
-              resultsNO.push({ platform: 'LinkedIn', success: true, url: postUrl })
-            } else {
-              resultsNO.push({ platform: 'LinkedIn', success: false, error: linkedinResult.error || 'Error' })
-            }
-          } catch (e) {
-            resultsNO.push({ platform: 'LinkedIn', success: false, error: 'Request failed' })
+            resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: false, error: 'Request failed' })
           }
         }
 
-        // Facebook NO
+        // 2. Post to Facebook
+        console.log(`📤 Posting to Facebook ${langLabel}...`)
         try {
-          const fbRequestBody: any = { language: 'no', contentType }
-          if (contentType === 'blog') fbRequestBody.blogPostId = contentId
-          else fbRequestBody.newsId = contentId
-
-          const fbResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-facebook`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(fbRequestBody)
-          })
-          const fbResult = await fbResponse.json()
-          console.log('📘 Facebook NO result:', JSON.stringify(fbResult))
-          if (fbResponse.ok && fbResult.success) {
-            resultsNO.push({ platform: 'Facebook', success: true, url: fbResult.postUrl })
-          } else {
-            const errMsg = fbResult.error || fbResult.message || `HTTP ${fbResponse.status}`
-            resultsNO.push({ platform: 'Facebook', success: false, error: errMsg })
+          const fbRequestBodyCombo: any = {
+            language: socialLanguage,
+            contentType: contentTypeCombo
           }
-        } catch (e: any) {
-          console.error('📘 Facebook NO exception:', e)
-          resultsNO.push({ platform: 'Facebook', success: false, error: e.message || 'Request failed' })
+          if (contentTypeCombo === 'blog') {
+            fbRequestBodyCombo.blogPostId = contentIdCombo
+          } else {
+            fbRequestBodyCombo.newsId = contentIdCombo
+          }
+
+          const fbResponseCombo = await fetch(
+            `${SUPABASE_URL}/functions/v1/post-to-facebook`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(fbRequestBodyCombo)
+            }
+          )
+          const fbResultCombo = await fbResponseCombo.json()
+
+          if (fbResponseCombo.ok && fbResultCombo.success) {
+            resultsCombo.push({ platform: `Facebook ${langLabel}`, success: true, url: fbResultCombo.postUrl })
+          } else {
+            resultsCombo.push({ platform: `Facebook ${langLabel}`, success: false, error: fbResultCombo.error || 'Unknown error' })
+          }
+        } catch (e) {
+          resultsCombo.push({ platform: `Facebook ${langLabel}`, success: false, error: 'Request failed' })
         }
 
-        // Instagram NO - with media validation
-        let instagramVideoTriggeredNO = false
-        if (!hasImage && !hasValidInstagramVideo) {
-          // No valid media for Instagram
-          console.log('📸 Instagram NO: No valid media (image or direct video)')
-          if (hasTelegramVideo && isGitHubActionsEnabled()) {
-            // Try to trigger GitHub Actions video upload
-            try {
-              console.log('📸 Instagram NO: Triggering GitHub Actions for Telegram video')
-              const result = await triggerInstagramVideo({ newsId, language: 'no' })
-              if (result.success) {
-                instagramVideoTriggeredNO = true
-                resultsNO.push({ platform: 'Instagram', success: true, processing: true, error: '⏳ Відео...' })
-              }
-            } catch (e) {
-              console.error('❌ Instagram NO video trigger failed:', e)
-            }
-          }
-          if (!instagramVideoTriggeredNO) {
-            // Skip Instagram - no valid media
-            resultsNO.push({ platform: 'Instagram', success: false, error: 'Немає зображення' })
-          }
-        } else {
-          // Has valid media - proceed with posting
-          try {
-            const igRequestBody: any = { language: 'no', contentType }
-            if (contentType === 'blog') igRequestBody.blogPostId = contentId
-            else igRequestBody.newsId = contentId
+        // 3. Post to Instagram
+        console.log(`📤 Posting to Instagram ${langLabel}...`)
 
-            const igResponse = await fetch(`${SUPABASE_URL}/functions/v1/post-to-instagram`, {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify(igRequestBody)
+        // Check if has valid media for Instagram
+        const hasValidImage = newsCombo.processed_image_url || newsCombo.image_url
+        const hasValidVideoForIg = newsCombo.original_video_url && newsCombo.original_video_url.includes('t.me')
+
+        if (hasValidVideoForIg && isGitHubActionsEnabled()) {
+          console.log(`🎬 Combo post: News has video - triggering Instagram video GitHub Action`)
+          try {
+            const triggerResultIg = await triggerInstagramVideo({
+              newsId: newsId,
+              language: socialLanguage
             })
-            const igResult = await igResponse.json()
-            console.log('📸 Instagram NO result:', JSON.stringify(igResult))
-            if (igResponse.ok && igResult.success) {
-              resultsNO.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
-            } else {
-              const errMsg = igResult.error || igResult.message || `HTTP ${igResponse.status}`
-              resultsNO.push({ platform: 'Instagram', success: false, error: errMsg })
+
+            if (triggerResultIg.success) {
+              instagramVideoTriggeredCombo = true
+              resultsCombo.push({
+                platform: `Instagram ${langLabel}`,
+                success: true,
+                processing: true,
+                error: '⏳ Reel обробляється... (2-5 хв)'
+              })
             }
-          } catch (e: any) {
-            console.error('📸 Instagram NO exception:', e)
-            resultsNO.push({ platform: 'Instagram', success: false, error: e.message || 'Request failed' })
+          } catch (e) {
+            console.error('❌ Error triggering Instagram video Action:', e)
           }
+        }
+
+        if (!instagramVideoTriggeredCombo && hasValidImage) {
+          try {
+            const igRequestBody: any = {
+              language: socialLanguage,
+              contentType: contentTypeCombo
+            }
+            if (contentTypeCombo === 'blog') {
+              igRequestBody.blogPostId = contentIdCombo
+            } else {
+              igRequestBody.newsId = contentIdCombo
+            }
+
+            const igResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/post-to-instagram`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(igRequestBody)
+              }
+            )
+            const igResult = await igResponse.json()
+
+            if (igResponse.ok && igResult.success) {
+              resultsCombo.push({ platform: `Instagram ${langLabel}`, success: true, url: igResult.postUrl })
+            } else {
+              resultsCombo.push({ platform: `Instagram ${langLabel}`, success: false, error: igResult.error || 'Unknown error' })
+            }
+          } catch (e) {
+            resultsCombo.push({ platform: `Instagram ${langLabel}`, success: false, error: 'Request failed' })
+          }
+        } else if (!instagramVideoTriggeredCombo && !hasValidImage) {
+          resultsCombo.push({ platform: `Instagram ${langLabel}`, success: false, error: 'Немає зображення' })
         }
 
         // Build results message
-        const titleEN = (contentRecord.title_en || news.original_title) as string
-        const titleNO = (contentRecord.title_no || contentRecord.title_en) as string
-        const shortTitleEN = titleEN.length > 40 ? titleEN.substring(0, 37) + '...' : titleEN
-        const slugEN = contentRecord.slug_en || newsId.substring(0, 8)
-        const slugNO = contentRecord.slug_no || contentRecord.slug_en || newsId.substring(0, 8)
-        const articlePath = blogPost ? 'blog' : 'news'
-        const articleUrlEN = `https://vitalii.no/${articlePath}/${slugEN}`
-        const articleUrlNO = `https://vitalii.no/${articlePath}/${slugNO}`
+        const titleCombo = newsCombo[titleField] as string
+        const shortTitleCombo = titleCombo.length > 50 ? titleCombo.substring(0, 47) + '...' : titleCombo
+        const slugField = `slug_${socialLanguage}` as keyof typeof newsCombo
+        const slugCombo = newsCombo[slugField] || newsId.substring(0, 8)
+        const articleUrlCombo = `https://vitalii.no/news/${slugCombo}`
 
-        let resultsText = '\n\n✅ <b>Опубліковано EN + NO:</b>\n\n'
-        resultsText += `📰 «${shortTitleEN}»\n`
-        resultsText += `📝 <a href="${articleUrlEN}">Читати EN</a> | <a href="${articleUrlNO}">Читати NO</a>\n\n`
+        let resultsTextCombo = `\n\n✅ <b>Опубліковано LI+FB+IG ${langLabel}:</b>\n\n`
+        resultsTextCombo += `📰 «${shortTitleCombo}»\n`
+        resultsTextCombo += `📝 <a href="${articleUrlCombo}">Читати на сайті</a>\n\n`
 
-        // EN results
-        resultsText += `<b>🇬🇧 English:</b>\n`
-        for (const r of resultsEN) {
+        for (const r of resultsCombo) {
           if (r.success) {
-            if (r.processing) {
-              resultsText += `⏳ ${r.platform}: Відео обробляється...\n`
+            if ((r as any).processing) {
+              resultsTextCombo += `⏳ ${r.platform}: ${r.error}\n`
             } else if (r.url) {
-              resultsText += `✅ ${r.platform}: <a href="${r.url}">Пост</a>\n`
+              resultsTextCombo += `✅ ${r.platform}: <a href="${r.url}">Переглянути пост</a>\n`
             } else {
-              resultsText += `✅ ${r.platform}: Опубліковано\n`
+              resultsTextCombo += `✅ ${r.platform}: Опубліковано\n`
             }
           } else {
-            resultsText += `❌ ${r.platform}: ${r.error}\n`
+            resultsTextCombo += `❌ ${r.platform}: ${r.error}\n`
           }
         }
 
-        // NO results
-        resultsText += `\n<b>🇳🇴 Norwegian:</b>\n`
-        for (const r of resultsNO) {
-          if (r.success) {
-            if (r.processing) {
-              resultsText += `⏳ ${r.platform}: Відео обробляється...\n`
-            } else if (r.url) {
-              resultsText += `✅ ${r.platform}: <a href="${r.url}">Пост</a>\n`
-            } else {
-              resultsText += `✅ ${r.platform}: Опубліковано\n`
-            }
-          } else {
-            resultsText += `❌ ${r.platform}: ${r.error}\n`
-          }
-        }
-
-        // Remaining buttons
-        const remainingButtons = [
+        // Build remaining buttons
+        const remainingButtonsCombo = [
           [
-            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` },
-            { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` }
+            { text: `🌐 Все ${otherLang}`, callback_data: `all_${otherLangLower}_${newsId}` },
+            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
           ],
           [
-            { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
+            { text: `🐦 Twitter ${langLabel}`, callback_data: `twitter_${socialLanguage}_${newsId}` }
+          ],
+          [
+            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
             { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
           ]
         ]
 
         // Update message with results
-        let finalText = messageText + resultsText
-        if (finalText.length > 4000) {
-          const maxLen = 4000 - resultsText.length - 50
-          finalText = messageText.substring(0, maxLen) + '...\n' + resultsText
+        let finalTextCombo = messageText + resultsTextCombo
+        if (finalTextCombo.length > 4000) {
+          const maxLen = 4000 - resultsTextCombo.length - 50
+          finalTextCombo = messageText.substring(0, maxLen) + '...\n' + resultsTextCombo
+          console.log(`⚠️ Message truncated to ${finalTextCombo.length} chars`)
         }
 
         try {
-          await fetch(
+          const editResultsResponseCombo = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
@@ -3064,14 +2997,22 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: finalText,
+                text: finalTextCombo,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true,
-                reply_markup: { inline_keyboard: remainingButtons }
+                reply_markup: {
+                  inline_keyboard: remainingButtonsCombo
+                }
               })
             }
           )
-          console.log('✅ Successfully updated message with results (combo_all_en_no)')
+
+          if (!editResultsResponseCombo.ok) {
+            const errText = await editResultsResponseCombo.text()
+            console.error('⚠️ Failed to edit message (results):', errText)
+          } else {
+            console.log(`✅ Successfully updated message with results (combo_li_fb_ig_${socialLanguage})`)
+          }
         } catch (editError) {
           console.error('⚠️ Error editing message (results):', editError)
         }
