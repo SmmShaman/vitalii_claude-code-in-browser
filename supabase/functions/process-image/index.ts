@@ -288,25 +288,24 @@ Colors: Vibrant but professional.`
 }
 
 /**
- * Generate image from text prompt using Imagen 3
+ * Generate image from text prompt using Gemini 2.5 Flash Image
  * This is the pure text-to-image generation (no reference image needed)
  */
 async function generateImageFromText(prompt: string, apiKey: string): Promise<string | null> {
   try {
-    console.log('📤 Generating image with Imagen 3 (text-to-image)...')
+    console.log('📤 Generating image with Gemini 2.5 Flash Image (text-to-image)...')
 
-    // Imagen 3 endpoint for text-to-image generation
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`
+    // Gemini 2.5 Flash Image endpoint for text-to-image generation
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`
 
     const requestBody = {
-      instances: [{
-        prompt: prompt
+      contents: [{
+        parts: [{
+          text: `Generate an image based on this description. Make it professional, suitable for LinkedIn/Instagram. Aspect ratio: 16:9 landscape. No text on the image.\n\nDescription: ${prompt}`
+        }]
       }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: '16:9',  // LinkedIn/Instagram friendly landscape
-        personGeneration: 'allow_adult',
-        safetySetting: 'block_few'
+      generationConfig: {
+        responseModalities: ['TEXT', 'IMAGE']
       }
     }
 
@@ -320,7 +319,7 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Imagen 3 API error:', response.status)
+      console.error('❌ Gemini 2.5 Flash Image API error:', response.status)
 
       try {
         const errorJson = JSON.parse(errorText)
@@ -333,14 +332,19 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
 
     const result = await response.json()
 
-    if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
-      console.log('✅ Imagen 3 generated image successfully')
-      // Upload to Supabase Storage
-      const processedImageUrl = await uploadProcessedImage(result.predictions[0].bytesBase64Encoded)
-      return processedImageUrl
+    // Extract image from Gemini response
+    if (result.candidates && result.candidates[0]?.content?.parts) {
+      for (const part of result.candidates[0].content.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          console.log('✅ Gemini 2.5 Flash Image generated image successfully')
+          // Upload to Supabase Storage
+          const processedImageUrl = await uploadProcessedImage(part.inlineData.data)
+          return processedImageUrl
+        }
+      }
     }
 
-    console.log('⚠️ No image in Imagen 3 response')
+    console.log('⚠️ No image in Gemini 2.5 Flash Image response')
     return null
 
   } catch (error: any) {
