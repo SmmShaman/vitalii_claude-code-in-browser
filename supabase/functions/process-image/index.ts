@@ -39,7 +39,7 @@ async function getGoogleApiKey(supabase: any): Promise<string | null> {
 }
 
 interface ProcessImageRequest {
-  imageUrl: string
+  imageUrl?: string  // Now optional - not needed for text-to-image
   newsId?: string
   promptType?: 'enhance' | 'linkedin_optimize' | 'generate' | 'custom'
   customPrompt?: string
@@ -47,6 +47,8 @@ interface ProcessImageRequest {
   newsTitle?: string
   newsDescription?: string
   newsUrl?: string
+  // NEW: Generate image from prompt only (text-to-image mode)
+  generateFromPrompt?: boolean
 }
 
 interface ProcessImageResponse {
@@ -71,14 +73,22 @@ serve(async (req) => {
       imageUrl: requestData.imageUrl?.substring(0, 50) + '...',
       newsId: requestData.newsId,
       promptType: requestData.promptType,
+      generateFromPrompt: requestData.generateFromPrompt,
       hasNewsContext: !!(requestData.newsTitle || requestData.newsDescription)
     })
 
-    if (!requestData.imageUrl) {
-      throw new Error('Image URL is required')
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+    // TEXT-TO-IMAGE MODE: Generate image from prompt stored in DB
+    if (requestData.generateFromPrompt && requestData.newsId) {
+      console.log('🎨 Text-to-image mode: generating from stored prompt')
+      return await handleTextToImageGeneration(supabase, requestData.newsId)
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    // STANDARD MODE: Process existing image
+    if (!requestData.imageUrl) {
+      throw new Error('Image URL is required (or use generateFromPrompt=true with newsId)')
+    }
 
     // Get the prompt from database or use default
     let prompt = await getImagePrompt(supabase, requestData.promptType || 'linkedin_optimize')
@@ -170,6 +180,174 @@ serve(async (req) => {
     )
   }
 })
+
+/**
+ * Handle text-to-image generation mode
+ * Gets prompt from DB and generates image using Imagen 3
+ */
+async function handleTextToImageGeneration(supabase: any, newsId: string): Promise<Response> {
+  console.log('🎨 Starting text-to-image generation for news:', newsId)
+
+  // 1. Get news record with the stored prompt
+  const { data: news, error: newsError } = await supabase
+    .from('news')
+    .select('id, image_generation_prompt, title_en, description_en, processed_image_url')
+    .eq('id', newsId)
+    .single()
+
+  if (newsError || !news) {
+    console.error('❌ News not found:', newsError)
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: `News not found: ${newsId}`
+      } as ProcessImageResponse),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // Check if we already have a processed image
+  if (news.processed_image_url) {
+    console.log('✅ Image already generated:', news.processed_image_url)
+    return new Response(
+      JSON.stringify({
+        success: true,
+        processedImageUrl: news.processed_image_url,
+        message: 'Image already exists'
+      } as ProcessImageResponse),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // 2. Get the prompt - prefer stored prompt, fallback to generating one
+  let imagePrompt = news.image_generation_prompt
+
+  if (!imagePrompt) {
+    console.log('⚠️ No stored prompt, generating a default one from title')
+    // Create a simple prompt from title if no stored prompt
+    imagePrompt = `Create a professional, modern illustration for a LinkedIn article about: ${news.title_en || 'technology news'}.
+Style: Clean, professional, tech-focused.
+Aspect ratio: 16:9 landscape.
+No text on the image.
+Colors: Vibrant but professional.`
+  }
+
+  console.log('📝 Using prompt:', imagePrompt.substring(0, 200) + '...')
+
+  // 3. Get Google API key
+  const googleApiKey = await getGoogleApiKey(supabase)
+  if (!googleApiKey) {
+    console.log('⚠️ GOOGLE_API_KEY not configured')
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'GOOGLE_API_KEY not configured. Please add it in Admin → Settings → API Keys'
+      } as ProcessImageResponse),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // 4. Generate image using Imagen 3 (text-to-image)
+  console.log('🖼️ Calling Imagen 3 for text-to-image generation...')
+  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey)
+
+  if (!processedImageUrl) {
+    console.log('❌ Image generation failed')
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'Image generation failed. Imagen 3 may not be available for this API key.'
+      } as ProcessImageResponse),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // 5. Save to database
+  const { error: updateError } = await supabase
+    .from('news')
+    .update({
+      processed_image_url: processedImageUrl,
+      image_processed_at: new Date().toISOString()
+    })
+    .eq('id', newsId)
+
+  if (updateError) {
+    console.error('⚠️ Failed to update news record:', updateError)
+    // Still return success since image was generated
+  }
+
+  console.log('✅ Image generated and saved:', processedImageUrl)
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      processedImageUrl
+    } as ProcessImageResponse),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+}
+
+/**
+ * Generate image from text prompt using Imagen 3
+ * This is the pure text-to-image generation (no reference image needed)
+ */
+async function generateImageFromText(prompt: string, apiKey: string): Promise<string | null> {
+  try {
+    console.log('📤 Generating image with Imagen 3 (text-to-image)...')
+
+    // Imagen 3 endpoint for text-to-image generation
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`
+
+    const requestBody = {
+      instances: [{
+        prompt: prompt
+      }],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: '16:9',  // LinkedIn/Instagram friendly landscape
+        personGeneration: 'allow_adult',
+        safetySetting: 'block_few'
+      }
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Imagen 3 API error:', response.status)
+
+      try {
+        const errorJson = JSON.parse(errorText)
+        console.error('Error details:', errorJson.error?.message || errorJson)
+      } catch {
+        console.error('Raw error:', errorText.substring(0, 500))
+      }
+      return null
+    }
+
+    const result = await response.json()
+
+    if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
+      console.log('✅ Imagen 3 generated image successfully')
+      // Upload to Supabase Storage
+      const processedImageUrl = await uploadProcessedImage(result.predictions[0].bytesBase64Encoded)
+      return processedImageUrl
+    }
+
+    console.log('⚠️ No image in Imagen 3 response')
+    return null
+
+  } catch (error: any) {
+    console.error('❌ Error in text-to-image generation:', error)
+    return null
+  }
+}
 
 /**
  * Get image processing prompt from database

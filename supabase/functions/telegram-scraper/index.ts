@@ -702,6 +702,45 @@ serve(async (req) => {
                   const promptResult = await promptResponse.json()
                   imagePrompt = promptResult.prompt
                   console.log(`✅ Image prompt generated: ${imagePrompt?.substring(0, 100)}...`)
+
+                  // 🎨 AUTO-GENERATE IMAGE: Call process-image to generate image from prompt
+                  // This happens ONLY if we don't already have an image
+                  if (!photoUrl) {
+                    console.log(`🖼️ Auto-generating image for post ${post.messageId}...`)
+                    try {
+                      const imageGenResponse = await fetch(
+                        `${SUPABASE_URL}/functions/v1/process-image`,
+                        {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            newsId: newsEntry.id,
+                            generateFromPrompt: true  // NEW: text-to-image mode
+                          })
+                        }
+                      )
+
+                      if (imageGenResponse.ok) {
+                        const imageGenResult = await imageGenResponse.json()
+                        if (imageGenResult.success && imageGenResult.processedImageUrl) {
+                          photoUrl = imageGenResult.processedImageUrl
+                          console.log(`✅ Image auto-generated: ${photoUrl}`)
+                        } else {
+                          console.warn(`⚠️ Image generation returned: ${imageGenResult.error || 'no image'}`)
+                        }
+                      } else {
+                        const errorText = await imageGenResponse.text()
+                        console.warn(`⚠️ Image generation failed: ${imageGenResponse.status} - ${errorText.substring(0, 200)}`)
+                      }
+                    } catch (imageGenError) {
+                      console.error(`❌ Error auto-generating image:`, imageGenError)
+                    }
+                  } else {
+                    console.log(`📸 Post already has image, skipping auto-generation`)
+                  }
                 } else {
                   console.warn(`⚠️  Failed to generate image prompt for post ${post.messageId}`)
                 }
@@ -1160,36 +1199,39 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 
 <i>Posted:</i> ${post.date.toISOString()}`
 
-    // Add image prompt if available
-    if (imagePrompt) {
+    // 🎬 SEQUENTIAL WORKFLOW: Start with image selection OR go straight to publish if video
+    const hasVideo = videoUrl && videoType
+    const hasImage = uploadedPhotoUrl // Use uploaded photoUrl, not original post.photoUrl
+
+    // Show image status
+    if (hasImage) {
       message += `
 
-🎨 <b>Image Generation Prompt (копіюй в Google AI Studio):</b>
-<code>${imagePrompt}</code>
+🖼️ <b>Зображення:</b> ✅ Готове
+${uploadedPhotoUrl}`
+    } else if (hasVideo) {
+      message += `
 
-💡 <i>Скопіюй промпт вище та використай в Google AI Studio (Gemini 3 Banana) для генерації зображення</i>`
+🎥 <b>Відео:</b> ✅ Готове`
+    } else if (imagePrompt) {
+      // No image, but we have a prompt - show fallback for manual generation
+      message += `
+
+⚠️ <b>Зображення:</b> Не вдалося згенерувати автоматично
+
+🎨 <b>Промпт (для ручної генерації):</b>
+<code>${imagePrompt.substring(0, 500)}</code>
+
+💡 <i>Використай промпт в Google AI Studio або завантаж своє зображення</i>`
+    } else {
+      message += `
+
+⚠️ <b>Зображення:</b> Не знайдено`
     }
 
     message += `
 
 ⏳ <i>Waiting for moderation...</i>`
-
-    // 🎬 SEQUENTIAL WORKFLOW: Start with image selection OR go straight to publish if video
-    // Step 1: Image workflow (if no video)
-    // Step 2: Publish buttons (В новини / В блог)
-    // Step 3: LinkedIn buttons (shown after publish)
-    // Step 4: Final links (shown after LinkedIn post)
-
-    const hasVideo = videoUrl && videoType
-    const hasImage = uploadedPhotoUrl // Use uploaded photoUrl, not original post.photoUrl
-
-    // Add warning if no image found (and no video)
-    if (!hasImage && !hasVideo) {
-      message += `
-
-⚠️ <b>Зображення не знайдено!</b>
-📸 Створіть зображення за промптом вище або завантажте своє.`
-    }
 
     let keyboard: { inline_keyboard: any[] }
 
@@ -1209,14 +1251,15 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
     } else {
       // 🖼️ No video → Show image workflow first
       if (hasImage) {
-        // Has image → Confirm or upload custom
+        // Has image (auto-generated or from Telegram) → Confirm, regenerate, or upload custom
         keyboard = {
           inline_keyboard: [
             [
-              { text: '✅ Залишити зображення', callback_data: `confirm_image_${newsId}` }
+              { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
+              { text: '🔄 Перегенерувати', callback_data: `regenerate_image_${newsId}` }
             ],
             [
-              { text: '📸 Згенерувати своє', callback_data: `create_custom_${newsId}` }
+              { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
             ],
             [
               { text: '❌ Reject', callback_data: `reject_${newsId}` }
@@ -1224,11 +1267,14 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
           ]
         }
       } else {
-        // No image → Must upload/create image (no skip option!)
+        // No image → Try to generate or upload custom
         keyboard = {
           inline_keyboard: [
             [
-              { text: '📸 Створити зображення', callback_data: `create_custom_${newsId}` }
+              { text: '🎨 Згенерувати', callback_data: `regenerate_image_${newsId}` }
+            ],
+            [
+              { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
             ],
             [
               { text: '❌ Reject', callback_data: `reject_${newsId}` }
