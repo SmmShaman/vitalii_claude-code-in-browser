@@ -541,7 +541,7 @@ serve(async (req) => {
 
                 // Try sending to bot again
                 if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                  const sent = await sendToTelegramBot(
+                  const result = await sendToTelegramBot(
                     existingPost.id,
                     post,
                     channelUsername,
@@ -550,10 +550,22 @@ serve(async (req) => {
                     post.videoType || null,
                     retryPhotoUrl || null
                   )
-                  if (sent) {
+                  if (result.success) {
                     sentToBotCount++
                     totalSentToBot++
                     console.log(`✅ Retry successful - post ${existingPost.id} sent to Telegram bot`)
+
+                    // Save chat_id and message_id for later notifications (e.g., after GitHub Actions)
+                    if (result.chatId && result.messageId) {
+                      await supabase
+                        .from('news')
+                        .update({
+                          telegram_chat_id: result.chatId,
+                          telegram_message_id: result.messageId
+                        })
+                        .eq('id', existingPost.id)
+                      console.log(`📝 Saved Telegram message info for post ${existingPost.id}`)
+                    }
                   } else {
                     console.warn(`⚠️  Retry failed - could not send post ${existingPost.id} to Telegram bot`)
                   }
@@ -749,7 +761,7 @@ serve(async (req) => {
               }
 
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                const sent = await sendToTelegramBot(
+                const result = await sendToTelegramBot(
                   newsEntry.id,
                   post,
                   channelUsername,
@@ -758,10 +770,22 @@ serve(async (req) => {
                   post.videoType || null,
                   photoUrl || null // Pass updated photoUrl from Supabase Storage
                 )
-                if (sent) {
+                if (result.success) {
                   sentToBotCount++
                   totalSentToBot++
                   console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
+
+                  // Save chat_id and message_id for later notifications (e.g., after GitHub Actions)
+                  if (result.chatId && result.messageId) {
+                    await supabase
+                      .from('news')
+                      .update({
+                        telegram_chat_id: result.chatId,
+                        telegram_message_id: result.messageId
+                      })
+                      .eq('id', newsEntry.id)
+                    console.log(`📝 Saved Telegram message info for post ${newsEntry.id}`)
+                  }
                 } else {
                   console.warn(`⚠️  Failed to send post ${post.messageId} to Telegram bot (saved in DB anyway)`)
                 }
@@ -1172,6 +1196,12 @@ function extractUsername(url: string): string | null {
 /**
  * Send post to Telegram bot for moderation
  */
+interface TelegramMessageInfo {
+  success: boolean
+  chatId?: number
+  messageId?: number
+}
+
 async function sendToTelegramBot(
   newsId: string,
   post: ScrapedPost,
@@ -1180,10 +1210,10 @@ async function sendToTelegramBot(
   videoUrl: string | null = null,
   videoType: string | null = null,
   uploadedPhotoUrl: string | null = null // Updated photoUrl from Supabase Storage
-): Promise<boolean> {
+): Promise<TelegramMessageInfo> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
-    return false
+    return { success: false }
   }
 
   try {
@@ -1301,13 +1331,20 @@ ${uploadedPhotoUrl}`
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`❌ Telegram API error: ${errorText}`)
-      return false
+      return { success: false }
     }
 
-    return true
+    // Parse response to get chat_id and message_id for later notifications
+    const responseData = await response.json()
+    const chatId = responseData.result?.chat?.id
+    const messageId = responseData.result?.message_id
+
+    console.log(`📨 Telegram message sent: chat_id=${chatId}, message_id=${messageId}`)
+
+    return { success: true, chatId, messageId }
   } catch (error) {
     console.error('❌ Error sending to Telegram bot:', error)
-    return false
+    return { success: false }
   }
 }
 

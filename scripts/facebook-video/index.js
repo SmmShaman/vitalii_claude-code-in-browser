@@ -317,6 +317,67 @@ async function updateSocialMediaPost(newsId, videoId, postUrl, language, content
 }
 
 /**
+ * Send notification to Telegram bot after successful publish
+ * Uses stored chat_id from when the news was first sent to the bot
+ */
+async function sendTelegramNotification({
+  botToken,
+  chatId,
+  messageId,
+  platform,
+  language,
+  postUrl,
+  articleUrl,
+  title,
+}) {
+  if (!botToken || !chatId) {
+    console.log('⚠️ Cannot send notification: missing bot token or chat ID');
+    return false;
+  }
+
+  try {
+    const message =
+      `✅ <b>Опубліковано в ${platform} (${language.toUpperCase()})!</b>\n\n` +
+      `📰 «${title.substring(0, 80)}${title.length > 80 ? '...' : ''}»\n\n` +
+      `🔗 <a href="${postUrl}">Переглянути пост</a>\n` +
+      `📖 <a href="${articleUrl}">Читати статтю</a>`;
+
+    // If we have message_id, reply to the original message; otherwise send new message
+    const body = {
+      chat_id: chatId,
+      text: message,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    };
+
+    if (messageId) {
+      body.reply_to_message_id = messageId;
+    }
+
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Failed to send Telegram notification:', errorText);
+      return false;
+    }
+
+    console.log('📨 Telegram notification sent successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending Telegram notification:', error.message);
+    return false;
+  }
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -397,6 +458,22 @@ async function main() {
     console.log(`📰 News: ${news.title_en?.substring(0, 50)}...`);
     console.log(`🎬 Video ID: ${result.videoId}`);
     console.log(`🔗 Post URL: ${result.postUrl}`);
+
+    // Send notification to Telegram bot
+    if (news.telegram_chat_id) {
+      await sendTelegramNotification({
+        botToken: config.telegram.botToken,
+        chatId: news.telegram_chat_id,
+        messageId: news.telegram_message_id,
+        platform: 'Facebook',
+        language: config.language,
+        postUrl: result.postUrl,
+        articleUrl: articleUrl,
+        title: title,
+      });
+    } else {
+      console.log('⚠️ No telegram_chat_id stored - skipping notification');
+    }
 
   } finally {
     // Cleanup
