@@ -2,36 +2,28 @@
 
 ## Project Overview
 
-**Vitalii Berbeha Portfolio** - професійне портфоліо з блогом та новинним розділом. Побудовано на Next.js 15 з Supabase як бекендом.
+**Vitalii Berbeha Portfolio** - Professional portfolio with blog and news section. Built on Next.js 15 with Supabase backend.
+
+**Production URL:** https://vitalii.no
+**Admin Panel:** /admin/login → /admin/dashboard
 
 ---
 
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Development
 npm install
+npm run dev              # http://localhost:3000
 
-# Run development server
-npm run dev
-
-# Build for production
+# Production
 npm run build
-
-# Start production server
 npm start
 
-# TypeScript check (no emit)
-npx tsc --noEmit
-
-# Lint code
-npm run lint
+# Quality checks
+npx tsc --noEmit        # TypeScript validation
+npm run lint            # ESLint
 ```
-
-**URLs:**
-- Development: http://localhost:3000
-- Production: https://vitalii.no (via Netlify)
-- Admin Panel: /admin/login → /admin/dashboard
 
 ---
 
@@ -40,3974 +32,268 @@ npm run lint
 | Layer | Technology | Version |
 |-------|------------|---------|
 | **Frontend** | Next.js | 15.1.0 |
-| **UI Library** | React | 19.1.0 |
+| **UI** | React | 19.1.0 |
 | **Language** | TypeScript | 5.9.3 |
 | **Styling** | Tailwind CSS | 3.4.18 |
-| **Animations** | GSAP | 3.13.0 |
-| **Animations** | Framer Motion | 12.23.24 |
-| **Animations** | Anime.js | 4.2.2 |
-| **3D Graphics** | Three.js | 0.180.0 |
+| **Animations** | GSAP, Framer Motion, Three.js | - |
 | **Backend** | Supabase (PostgreSQL) | 2.76.1 |
-| **Edge Functions** | Deno (Supabase) | - |
-| **AI** | Azure OpenAI | GPT-4.1-mini |
-| **AI** | Google Gemini | 2.5 Flash |
-| **Forms** | React Hook Form + Zod | 7.65.0 / 4.1.12 |
-| **HTTP** | TanStack Query | 5.90.5 |
-| **UI Primitives** | Radix UI | Dialog, Tooltip, ScrollArea |
-| **Image Processing** | node-vibrant | 4.0.3 |
+| **Edge Functions** | Deno | - |
+| **AI** | Azure OpenAI (GPT-4.1-mini), Google Gemini (2.5 Flash) | - |
 | **Deployment** | Netlify | - |
 | **CI/CD** | GitHub Actions | - |
-| **Languages** | Мультимовна підтримка | EN, NO, UA |
+| **Languages** | Multilingual support | EN, NO, UA |
 
 ---
 
-## Project Structure (Complete)
+## Project Structure
 
 ```
 ├── app/                          # Next.js App Router
-│   ├── @modal/                   # Parallel routes for modals
-│   │   └── (.)blog/[slug]/       # Intercepted blog modal route
-│   │   └── (.)news/[slug]/       # Intercepted news modal route
-│   ├── admin/                    # Admin panel
-│   │   ├── login/page.tsx        # Login page
-│   │   └── dashboard/page.tsx    # Dashboard with tabs
+│   ├── @modal/                   # Parallel routes (intercepted modals)
+│   ├── admin/                    # Admin dashboard
 │   ├── blog/[slug]/              # Dynamic blog pages
-│   │   ├── page.tsx              # Metadata + data fetching
-│   │   └── BlogArticle.tsx       # Blog article component
 │   ├── news/[slug]/              # Dynamic news pages
-│   │   ├── page.tsx              # Metadata + data fetching
-│   │   └── NewsArticle.tsx       # News article component
-│   ├── page.tsx                  # Home page (BentoGrid)
-│   ├── layout.tsx                # Root layout + fonts
-│   ├── globals.css               # Global styles + utilities
-│   ├── sitemap.ts                # Dynamic XML sitemap
-│   └── robots.ts                 # robots.txt configuration
+│   ├── page.tsx                  # Home (BentoGrid)
+│   ├── layout.tsx                # Root layout
+│   └── sitemap.ts, robots.ts     # SEO
 │
 ├── components/
-│   ├── layout/                   # Layout components
-│   │   ├── Header.tsx            # Hero section with animations
-│   │   ├── Footer.tsx            # Footer with social links
-│   │   ├── Sidebar.tsx           # Language switcher
-│   │   └── ArticleHeader.tsx     # Compact sticky header for articles
-│   ├── sections/                 # Page sections
-│   │   ├── BentoGrid.tsx         # Main 6-section grid (desktop)
-│   │   ├── BentoGridMobile.tsx   # Mobile accordion layout
-│   │   ├── NewsSection.tsx       # News list + detail view
-│   │   ├── BlogSection.tsx       # Blog list + detail view
-│   │   ├── NewsModal.tsx         # News modal overlay
-│   │   └── BlogModal.tsx         # Blog modal overlay
-│   ├── ui/                       # UI components
-│   │   ├── Modal.tsx             # Reusable modal
-│   │   ├── Toast.tsx             # Toast notifications with context
-│   │   ├── ShareButtons.tsx      # Social sharing (LinkedIn, X, Copy)
-│   │   ├── Skeleton.tsx          # Loading skeleton components
-│   │   ├── ScrollReveal.tsx      # Scroll-triggered animations
-│   │   ├── HeroTextAnimation.tsx # Liquid fill text effect
-│   │   ├── ProjectsCarousel.tsx  # Projects carousel + explosion
-│   │   ├── ServicesAnimation.tsx # GSAP services animation
-│   │   ├── SkillsAnimation.tsx   # Skills explosion effect
-│   │   └── AboutAnimation.tsx    # About text animation
-│   ├── admin/                    # Admin components
-│   │   ├── SkillsManager.tsx     # CRUD for skills
-│   │   ├── DebugSettings.tsx     # Debug mode toggle
-│   │   ├── AIPromptsManager.tsx  # AI prompts editor
-│   │   ├── LinkedInPostsManager.tsx  # LinkedIn posts management
-│   │   ├── ImageProcessingSettings.tsx  # Gemini AI image settings
-│   │   └── APIKeysSettings.tsx   # External API keys management
-│   ├── ArticleLayout.tsx         # Reusable article page wrapper
-│   ├── Sidebar.tsx               # Article sidebar (latest news/blog)
-│   └── background/               # Background effects
-│       └── ParticleBackground.tsx
+│   ├── layout/                   # Header, Footer, Sidebar
+│   ├── sections/                 # BentoGrid, NewsSection, BlogSection
+│   ├── ui/                       # Reusable UI components
+│   ├── admin/                    # Admin panel components
+│   └── background/               # ParticleBackground
 │
-├── contexts/                     # React Context
-│   └── TranslationContext.tsx    # Language switching (EN/NO/UA)
-│
-├── hooks/                        # Custom React Hooks
-│   ├── useReducedMotion.ts       # Accessibility: prefers-reduced-motion
-│   └── useIsMobile.ts            # Mobile/tablet detection hooks
-│
-├── lib/                          # Utility libraries
-│   └── utils.ts                  # cn() - Tailwind class merging
-│
-├── integrations/supabase/        # Supabase integration
-│   ├── client.ts                 # Supabase client + API functions
-│   └── types.ts                  # Auto-generated DB types
-│
-├── utils/                        # Utility functions
-│   ├── seo.ts                    # JSON-LD, OG, Twitter Cards
-│   ├── debug.ts                  # Debug logging utilities
-│   ├── translations.ts           # Translation strings (3000+)
-│   ├── skillsStorage.ts          # Skills localStorage CRUD
-│   ├── skillLogos.ts             # SVG logos from SimpleIcons CDN
-│   └── footerApi.ts              # Weather, geolocation APIs
-│
-├── app/
-│   └── providers.tsx             # TranslationProvider + ToastProvider
-│
-├── supabase/                     # Supabase configuration
-│   ├── functions/                # Edge Functions (Deno)
+├── supabase/
+│   ├── functions/                # 17 Edge Functions (Deno)
 │   │   ├── _shared/              # Shared helpers
-│   │   ├── telegram-scraper/     # RSS/Telegram scraper
-│   │   ├── pre-moderate-news/    # AI pre-moderation
-│   │   ├── generate-image-prompt/# AI image descriptions
-│   │   ├── process-news/         # AI content rewriting
-│   │   ├── process-blog-post/    # News → Blog conversion
-│   │   ├── telegram-webhook/     # Bot callback handler
-│   │   ├── post-to-linkedin/     # LinkedIn posting
-│   │   └── [8 more functions]
+│   │   ├── telegram-scraper/     # RSS/Telegram scraping
+│   │   ├── pre-moderate-news/    # AI spam filtering
+│   │   ├── post-to-linkedin/     # LinkedIn publishing
+│   │   ├── post-to-instagram/    # Instagram publishing
+│   │   └── ...                   # 12 more functions
 │   └── migrations/               # SQL migrations
 │
-├── public/                       # Static assets
-│   └── images/
-│
-├── netlify/                      # Netlify configuration
-│
-├── .github/workflows/            # CI/CD pipelines
+├── .github/workflows/            # CI/CD
 │   ├── deploy.yml                # Netlify deployment
-│   ├── deploy-supabase.yml       # Edge Functions deployment
-│   ├── realtime-scraper.yml      # Real-time news scraping (every 10 min)
-│   ├── process-video.yml         # Video processing (Telegram → YouTube)
-│   ├── linkedin-video.yml        # LinkedIn native video upload
-│   └── reprocess-videos.yml      # Batch video reprocessing
+│   ├── deploy-supabase.yml       # Edge Functions
+│   ├── realtime-scraper.yml      # News scraping (every 10 min)
+│   └── process-video.yml         # Video processing
 │
-├── scripts/                      # Node.js scripts for GitHub Actions
-│   ├── video-processor/          # Telegram → YouTube video processor
-│   │   ├── index.js              # Main processor script
-│   │   └── package.json          # Dependencies (@mtkruto/node, googleapis)
-│   └── linkedin-video/           # LinkedIn native video uploader
-│       ├── index.js              # Main uploader script
-│       └── package.json          # Dependencies
-│
-├── package.json                  # Dependencies
-├── next.config.ts                # Next.js config
-├── tailwind.config.ts            # Tailwind config
-├── tsconfig.json                 # TypeScript config
-└── CLAUDE.md                     # This file
-```
-
-## Content Management
-
-### Blog Posts (`blog_posts` table)
-- Мультимовний контент (title_en, title_no, title_ua)
-- SEO-friendly slugs для кожної мови
-- Категорії, теги, reading_time
-- is_published, is_featured флаги
-
-### News (`news` table)
-- Мультимовний контент
-- Система пре-модерації (pre_moderation_status)
-- Підтримка відео (YouTube, Telegram fallback)
-- Поля: `video_type`, `video_url`
-- is_rewritten, is_published флаги
-
-### Moderation Workflow
-1. Новини збираються з RSS/Telegram джерел
-2. AI переписує контент (is_rewritten)
-3. Пре-модерація (pending → approved/rejected)
-4. Публікація (is_published)
-
----
-
-## Supabase Edge Functions Reference
-
-Всі Edge Functions написані на Deno та знаходяться в `/supabase/functions/`.
-
-| Функція | Опис | Тригер | Input → Output |
-|---------|------|--------|----------------|
-| **telegram-scraper** | Скрапінг RSS/Telegram каналів, детекція медіа | Scheduled / Manual | news_sources → news records |
-| **pre-moderate-news** | AI фільтрація спаму/реклами через Azure OpenAI | telegram-scraper | news content → status (approved/rejected) |
-| **generate-image-prompt** | AI генерація описів для зображень | pre-moderate-news | title + content → image prompt |
-| **process-news** | AI переклад контенту на EN/NO/UA | Telegram bot | news + language → translated content |
-| **process-blog-post** | Конвертація новини в блог-пост | Telegram bot "📝 В блог" | news ID → blog_posts record |
-| **post-to-linkedin** | Публікація в LinkedIn через OAuth 2.0 | Telegram bot LinkedIn buttons | news/blog ID → linkedin_post_id |
-| **generate-social-teasers** | AI генерація унікальних тизерів для соцмереж | post-to-linkedin, telegram-webhook | title + content → platform-specific teaser |
-| **telegram-webhook** | Обробка Telegram bot callbacks | Telegram messages | callback_query → DB updates |
-| **find-source-link** | Витягування URL джерел з контенту | telegram-scraper | text content → source_link |
-| **fetch-news** | Завантаження новин з RSS | Manual / Scheduled | RSS URL → raw data |
-| **process-image** | Обробка зображень через Google Gemini AI | telegram-webhook / manual | image + prompt → enhanced image |
-| **resend-to-bot** | Повторна відправка failed submissions | Scheduled | pending news → bot message |
-| **telegram-monitor** | Моніторинг статусу Telegram бота | Scheduled | - → health check logs |
-| **test-youtube-auth** | Тестування YouTube OAuth налаштувань | Manual | - → token validity |
-| **manage-sources** | Управління джерелами новин (enable/disable/delete) | Manual | action + names → updated sources |
-| **resend-stuck-posts** | Повторна відправка застряглих approved постів | Manual | - → resent to bot |
-| **reprocess-videos** | Повторна обробка відео (cleanup mode) | Manual | options → reprocessed videos |
-| **send-contact-email** | Відправка email через контактну форму (Resend API) | Contact form submit | name, email, message → email to admin |
-
-### Shared Helpers (`_shared/`)
-
-```typescript
-// youtube-helpers.ts
-- getAccessToken()           // Refresh YouTube OAuth token
-- uploadVideoToYouTube()     // Upload video with metadata
-- getChannelInfo()           // Get channel details
-
-// github-actions.ts
-- triggerVideoProcessing()   // Trigger process-video GitHub Action
-- triggerLinkedInVideo()     // Trigger linkedin-video GitHub Action
-- isGitHubActionsEnabled()   // Check if GH_PAT is configured
-```
-
-### Deploy Edge Functions
-
-```bash
-cd supabase
-
-# Deploy single function
-supabase functions deploy telegram-scraper --no-verify-jwt
-
-# Deploy all functions
-for dir in supabase/functions/*/; do
-  if [ -d "$dir" ] && [ "$(basename $dir)" != "_shared" ]; then
-    supabase functions deploy $(basename $dir) --no-verify-jwt
-  fi
-done
-
-# Set secrets
-supabase secrets set AZURE_OPENAI_ENDPOINT="https://..."
-supabase secrets set AZURE_OPENAI_API_KEY="..."
+└── scripts/                      # GitHub Actions scripts
+    ├── video-processor/          # Telegram → YouTube
+    └── linkedin-video/           # LinkedIn native video
 ```
 
 ---
 
-## Database Schema (Supabase PostgreSQL)
+## Core Architecture
 
-### Main Tables
+### Database Schema
 
-#### `news` - Новини
-```sql
-id                      UUID PRIMARY KEY
-source_id               UUID (FK → news_sources)
-original_title          TEXT
-original_content        TEXT
-original_url            TEXT
-title_en, title_no, title_ua       TEXT (мультимовні заголовки)
-content_en, content_no, content_ua TEXT (мультимовний контент)
-description_en, description_no, description_ua TEXT
-slug_en, slug_no, slug_ua          TEXT (SEO-friendly URLs)
-image_url               TEXT (оригінальне зображення)
-processed_image_url     TEXT (користувацьке зображення)
-video_url               TEXT
-video_type              TEXT ('youtube' | 'telegram_embed' | 'direct_url')
-tags                    TEXT[] (масив тегів)
-source_link             TEXT (зовнішнє джерело)
-published_at            TIMESTAMPTZ
-created_at, updated_at  TIMESTAMPTZ
-is_rewritten            BOOLEAN (AI переписав)
-is_published            BOOLEAN (опубліковано на сайті)
-pre_moderation_status   TEXT ('pending' | 'approved' | 'rejected')
-rejection_reason        TEXT
-views_count             INTEGER
-linkedin_post_id        TEXT
-linkedin_language       TEXT
-linkedin_posted_at      TIMESTAMPTZ
-image_generation_prompt TEXT (AI prompt для зображення)
-prompt_generated_at     TIMESTAMPTZ
-```
+**Main Tables:**
 
-#### `blog_posts` - Блог-пости
-```sql
-id                      UUID PRIMARY KEY
-author_id               UUID (FK → users, nullable)
-source_news_id          UUID (FK → news, якщо створено з новини)
-title_en, title_no, title_ua       TEXT
-content_en, content_no, content_ua TEXT
-description_en, description_no, description_ua TEXT
-slug_en, slug_no, slug_ua          TEXT
-image_url, cover_image_url         TEXT
-processed_image_url     TEXT
-video_url, video_type   TEXT
-tags                    TEXT[]
-category                TEXT
-reading_time            INTEGER (хвилини)
-is_published            BOOLEAN
-is_featured             BOOLEAN
-views_count             INTEGER
-published_at            TIMESTAMPTZ
-linkedin_post_id, linkedin_language, linkedin_posted_at
-```
+#### `news` - News articles
+- Multilingual fields: `title_en/no/ua`, `content_en/no/ua`, `slug_en/no/ua`
+- Media: `image_url`, `processed_image_url`, `video_url`, `video_type`
+- Moderation: `pre_moderation_status` (pending/approved/rejected)
+- Social: `linkedin_post_id`, `instagram_post_id`, `facebook_post_id`
+- AI: `image_generation_prompt`, `is_rewritten`
 
-#### `news_sources` - Джерела новин
-```sql
-id                      UUID PRIMARY KEY
-name                    TEXT
-url                     TEXT (base URL)
-rss_url                 TEXT (RSS feed URL)
-source_type             TEXT ('rss' | 'telegram' | 'web')
-is_active               BOOLEAN
-fetch_interval          INTEGER (секунди)
-last_fetched_at         TIMESTAMPTZ
-category                TEXT
-```
+#### `blog_posts` - Blog articles
+- Similar structure to news
+- Additional: `author_id`, `category`, `reading_time`, `is_featured`
+- `source_news_id` (FK → news, if converted from news)
 
-#### `ai_prompts` - AI промпти
-```sql
-id                      UUID PRIMARY KEY
-name                    TEXT (назва в UI)
-description             TEXT
-prompt_text             TEXT (повний текст промпту)
-prompt_type             TEXT ('pre_moderation' | 'news_rewrite' | 'blog_rewrite' | 'image_generation')
-is_active               BOOLEAN
-usage_count             INTEGER
-created_at, updated_at  TIMESTAMPTZ
-```
+#### `news_sources` - Content sources
+- Fields: `name`, `url`, `rss_url`, `source_type` (rss/telegram/web)
+- Scraping: `fetch_interval`, `last_fetched_at`, `is_active`
 
-#### `users` - Адміністратори
-```sql
-id                      UUID PRIMARY KEY
-email                   TEXT UNIQUE
-password_hash           TEXT
-full_name               TEXT
-role                    TEXT ('admin' | 'editor')
-is_active               BOOLEAN
-last_login_at           TIMESTAMPTZ
-```
+#### `ai_prompts` - AI prompt templates
+- Types: `pre_moderation`, `news_rewrite`, `blog_rewrite`, `image_generation`, `image_template_*`, `social_teaser_*`
+- Editable via admin panel
+- Used by: pre-moderate-news, process-news, generate-image-prompt, generate-social-teasers
 
-#### `tags` - Теги
-```sql
-id                      UUID PRIMARY KEY
-name_en, name_no, name_ua TEXT
-slug                    TEXT UNIQUE
-usage_count             INTEGER
-```
+#### `social_media_posts` - Social media tracking
+- Fields: `platform`, `post_id`, `post_url`, `language`, `status`
+- Duplicate prevention: checks for existing posted/pending entries
 
-#### `contact_forms` - Контактні форми
-```sql
-id                      UUID PRIMARY KEY
-name                    TEXT
-email                   TEXT
-message                 TEXT
-created_at              TIMESTAMPTZ
-```
+#### `users` - Admin users
+- Authentication for admin panel
+- Fields: `email`, `password_hash`, `role`, `is_active`
 
-### Database Views
+### Supabase Edge Functions
 
-```sql
--- latest_news: Останні опубліковані новини з джерелами
-SELECT n.*, s.name as source_name
-FROM news n
-JOIN news_sources s ON n.source_id = s.id
-WHERE n.is_published = true
-ORDER BY n.published_at DESC
+17 Deno-based serverless functions:
 
--- latest_blog_posts: Останні опубліковані блог-пости
-SELECT * FROM blog_posts
-WHERE is_published = true
-ORDER BY published_at DESC
-```
-
----
-
-## CI/CD Pipelines (GitHub Actions)
-
-### `.github/workflows/deploy.yml` - Netlify Deployment
-
-**Тригери:**
-- Push до `main` branch
-- Pull Requests
-- Manual dispatch
-
-**Кроки:**
-1. Checkout коду
-2. Setup Node.js 20
-3. Install dependencies (`npm ci`)
-4. Build Next.js (`netlify build`)
-5. Deploy (preview для PR, production для push)
-
-### `.github/workflows/deploy-supabase.yml` - Edge Functions
-
-**Тригери:**
-- Push до `main` з змінами в `supabase/functions/**` або `supabase/migrations/**`
-- Manual dispatch
-
-**Кроки:**
-1. Checkout коду
-2. Setup Supabase CLI
-3. Login з access token
-4. Link project
-5. Deploy всі functions (loop через директорії)
-6. Run migrations
-
-**Environment Secrets (GitHub):**
-- `SUPABASE_ACCESS_TOKEN`
-- `SUPABASE_PROJECT_REF`
-- `NETLIFY_AUTH_TOKEN`
-- `NETLIFY_SITE_ID`
-
-### `.github/workflows/realtime-scraper.yml` - Real-time News Scraper
-
-**Тригери:**
-- Cron: `*/10 * * * *` (кожні 10 хвилин)
-- Manual dispatch
-
-**Логіка:**
-- Round-robin вибір каналу на основі хвилини годин
-- 6 каналів × 10 хв = 60 хв повний цикл
-- Уникає Edge Function timeout обробляючи по одному каналу
-
-| Хвилина | Індекс | Канал |
-|---------|--------|-------|
-| 00-09 | 0 | HOT DIGITAL |
-| 10-19 | 1 | tips_ai |
-| 20-29 | 2 | geekneural |
-| 30-39 | 3 | TheOpen_Ai |
-| 40-49 | 4 | dailyprompts |
-| 50-59 | 5 | Нейронавт |
-
-### `.github/workflows/process-video.yml` - Video Processing
-
-**Тригери:**
-- Cron: `*/30 * * * *` (кожні 30 хвилин)
-- Repository dispatch: `process-video`
-- Manual dispatch
-
-**Процес:**
-1. Завантаження відео з Telegram через MTKruto (MTProto)
-2. Завантаження на YouTube (unlisted)
-3. Оновлення `video_url` та `video_type` в БД
-
-**Environment Variables:**
-- `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_BOT_TOKEN`
-- `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`
-- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-
-### `.github/workflows/linkedin-video.yml` - LinkedIn Native Video
-
-**Тригери:**
-- Repository dispatch: `linkedin-video`
-- Manual dispatch
-
-**Процес:**
-1. Завантаження відео з Telegram (original_video_url)
-2. Реєстрація upload в LinkedIn API
-3. Завантаження відео на LinkedIn
-4. Створення поста з native video
-
-### Netlify Configuration
-
-**ВАЖЛИВО:** Netlify auto-builds вимкнено (`stop_builds: true`).
-
-Deployment відбувається тільки через GitHub Actions:
-```
-git push → GitHub Actions → netlify build → netlify deploy --prod → vitalii.no
-```
-
-Це запобігає дублюванню білдів та помилкам через відсутність env vars в Netlify auto-build.
-
----
-
-## Translation System
-
-### Як працює
-
-1. **TranslationContext** (`contexts/TranslationContext.tsx`)
-   - Зберігає поточну мову (`en` | `no` | `ua`)
-   - Надає функцію `t(key)` для перекладу
-
-2. **Translations** (`utils/translations.ts`)
-   - 3000+ ключів перекладу
-   - Структура: `{ en: {...}, no: {...}, ua: {...} }`
-
-3. **Використання в компонентах:**
-```tsx
-import { useTranslations } from '@/contexts/TranslationContext'
-
-function MyComponent() {
-  const { t, language, setLanguage } = useTranslations()
-
-  return (
-    <div>
-      <h1>{t('welcome_title')}</h1>
-      <button onClick={() => setLanguage('ua')}>UA</button>
-    </div>
-  )
-}
-```
-
-### Мультимовний контент в БД
-
-Кожен запис має окремі поля для кожної мови:
-- `title_en`, `title_no`, `title_ua`
-- `content_en`, `content_no`, `content_ua`
-- `slug_en`, `slug_no`, `slug_ua`
-
----
-
-## SEO Optimization (December 2024)
-
-### Виконані роботи
-
-#### 1. SEO Utilities (`utils/seo.ts`)
-Створено централізований модуль для SEO:
-
-```typescript
-// JSON-LD Schema generators
-- generateBlogPostSchema()    // BlogPosting schema
-- generateNewsArticleSchema() // NewsArticle schema
-- generateBreadcrumbSchema()  // BreadcrumbList schema
-- generatePersonSchema()      // Person schema (author)
-- generateWebsiteSchema()     // WebSite schema
-
-// Metadata helpers
-- generateAlternates()        // canonical + hreflang
-- generateOpenGraph()         // Full OG metadata
-- generateTwitterCard()       // Twitter Cards
-- generateRobots()            // Robots meta
-- truncateDescription()       // Meta description helper
-- formatDate()                // Date formatting
-- calculateReadingTime()      // Reading time calculation
-```
-
-#### 2. Blog Pages (`app/blog/[slug]/`)
-**page.tsx:**
-- Canonical URLs
-- Hreflang теги (en, no, uk, x-default)
-- Повний Open Graph (publishedTime, modifiedTime, authors, tags, section)
-- Twitter Cards (summary_large_image)
-- Keywords meta tag
-- Robots meta (index, follow, googleBot settings)
-
-**BlogArticle.tsx:**
-- JSON-LD `BlogPosting` schema
-- JSON-LD `BreadcrumbList` schema
-- `next/image` оптимізація зображень
-- Семантична HTML розмітка:
-  - `<article>`, `<header>`, `<footer>`, `<aside>`
-  - `<time dateTime="...">`
-  - `<nav aria-label="Breadcrumb">`
-  - Schema.org microdata (itemScope, itemProp)
-- Author info section з Person schema
-
-#### 3. News Pages (`app/news/[slug]/`)
-**page.tsx:**
-- Ідентичні SEO покращення як для блогу
-
-**NewsArticle.tsx:**
-- JSON-LD `NewsArticle` schema
-- Breadcrumb навігація
-- YouTube embed підтримка
-- Оптимізовані зображення
-- rel="noopener noreferrer" для зовнішніх посилань
-
-#### 4. Sitemap (`app/sitemap.ts`)
-- Мультимовна підтримка з alternates
-- Окремі URL для EN, NO, UK версій
-- Правильні пріоритети (1.0 для homepage, 0.8 для primary lang, 0.7 для alternates)
-- changeFrequency налаштування
-
-#### 5. Robots (`app/robots.ts`)
-- Специфічні правила для Googlebot та Bingbot
-- Заблоковані маршрути: /api/, /_next/, /admin/, /@modal/, /private/
-- Host директива
-- Sitemap посилання
-
-#### 6. BlogModal SEO Navigation (`components/sections/BlogModal.tsx`)
-- Додано `<Link>` компонент для переходу на окрему сторінку блог-посту
-- Функція `getBlogSlug()` для мультимовних slug-ів
-- Кнопка "View full article" з правильним URL
-- Тепер BlogModal працює ідентично NewsModal
-
-#### 7. BlogSection SEO URL Update (`components/sections/BlogSection.tsx`)
-- Додано `window.history.replaceState` для оновлення URL при виборі блог-посту
-- Функція `getBlogSlug()` для мультимовних slug-ів
-- URL в браузері автоматично оновлюється на `/blog/[slug]` при виборі посту
-- Працює ідентично NewsSection - без додаткових кнопок
-
-### SEO Checklist
-
-- [x] JSON-LD Schema (BlogPosting, NewsArticle, BreadcrumbList)
-- [x] Canonical URLs
-- [x] Hreflang tags (en, no, uk)
-- [x] Open Graph metadata (full)
-- [x] Twitter Cards
-- [x] Image optimization (next/image)
-- [x] Semantic HTML (<article>, <time>, <nav>)
-- [x] Schema.org microdata
-- [x] Multilingual sitemap
-- [x] Enhanced robots.txt
-- [x] Author/Person schema
-- [x] Reading time calculation
-- [x] Meta description truncation (160 chars)
-- [x] BlogModal SEO navigation link
-- [x] BlogSection SEO URL update (window.history.replaceState)
-
-### Testing SEO
-
-1. **JSON-LD:** [Google Rich Results Test](https://search.google.com/test/rich-results)
-2. **Open Graph:** [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
-3. **Twitter Cards:** [Twitter Card Validator](https://cards-dev.twitter.com/validator)
-4. **Lighthouse:** Chrome DevTools → Lighthouse → SEO Audit
-5. **Sitemap:** `https://your-site.com/sitemap.xml`
-6. **Robots:** `https://your-site.com/robots.txt`
-
----
-
-## Debug Mode (December 2024)
-
-### Опис
-
-Система debug-логування для анімацій з можливістю вмикання/вимикання через адмін панель.
-
-### Файли
-
-```
-├── utils/debug.ts                    # Debug утиліти
-├── components/admin/DebugSettings.tsx # UI для адмін панелі
-```
-
-### Debug Utilities (`utils/debug.ts`)
-
-```typescript
-// Основні функції
-- isDebugEnabled()     // Перевірка чи debug увімкнений
-- setDebugMode(bool)   // Увімкнути/вимкнути debug
-- debugLog(msg, ...args)   // Логування (тільки коли debug ON)
-- debugWarn(msg, ...args)  // Попередження (тільки коли debug ON)
-- debugError(msg, ...args) // Помилки (завжди показуються)
-```
-
-### Використання в компонентах
-
-Debug-логи використовуються в:
-- `components/sections/BentoGrid.tsx` - стани секцій, mouse events
-- `components/ui/ServicesAnimation.tsx` - GSAP анімації сервісів
-- `components/ui/SkillsAnimation.tsx` - explosion анімація скілів
-- `components/ui/AboutAnimation.tsx` - текстова анімація About
-
-### Як увімкнути
-
-1. Зайти в **Admin Panel → Settings → Debug**
-2. Увімкнути toggle "Console Logging"
-3. Натиснути **Refresh Page Now**
-
-### Зберігання
-
-Debug mode зберігається в `localStorage` під ключем `vitalii_debug_mode`.
-
-### Що логується
-
-- Цикли анімацій (ANIMATION CYCLE)
-- Mouse enter/leave події
-- Стани секцій (expanded, hiding, fullscreen)
-- GSAP timeline події
-- Component lifecycle (mount/unmount)
-- Grid bounds calculations
-
----
-
-## Background Highlight & Hero Text Animation (December 2024)
-
-### Опис
-
-Динамічна зміна кольору фону та анімація заливки тексту Hero секції при наведенні курсора на кожне з 6 вікон BentoGrid.
-
-### Файли
-
-```
-├── app/page.tsx                          # Background overlay + hoveredSection state
-├── app/layout.tsx                        # Comfortaa font import
-├── app/globals.css                       # Body background (light gray)
-├── components/layout/Header.tsx          # Hero text fill animation
-├── components/ui/HeroTextAnimation.tsx   # Liquid fill component with wave effect
-├── components/sections/BentoGrid.tsx     # Section colors + opposite mapping
-├── tailwind.config.ts                    # font-comfortaa class
-```
-
-### Шрифт Comfortaa
-
-Округлий геометричний шрифт з відмінною підтримкою кирилиці:
-
-```html
-<!-- app/layout.tsx -->
-<link
-  href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap"
-  rel="stylesheet"
-/>
-```
-
-- **Підтримка:** Latin, Cyrillic (Ukrainian)
-- **Tailwind клас:** `font-comfortaa`
-- **Особливість:** Однакове відображення латиниці та кирилиці
-
-### Кольори секцій
-
-| Секція | Назва кольору | HEX | RGB |
-|--------|---------------|-----|-----|
-| About | Насичений коричнево-оранжевий | `#AF601A` | (175, 96, 26) |
-| Services | Яскравий фуксієвий рожевий | `#EC008C` | (236, 0, 140) |
-| Projects | Emerald | `#009B77` | (0, 155, 119) |
-| Skills | Light Pink | `#fde5e5` | (253, 229, 229) |
-| News | Greenery | `#88B04B` | (136, 176, 75) |
-| Blog | Classic Blue | `#0F4C81` | (15, 76, 129) |
-
-### Контрастні кольори для Hero тексту
-
-Для анімації тексту Hero використовуються **комплементарні кольори** на основі теорії кольору для максимального контрасту:
-
-```typescript
-export const heroContrastColors: { [key: string]: string } = {
-  about: '#009B77',      // Teal/Cyan для коричнево-оранжевого
-  services: '#00FF80',   // Lime Green для фуксії
-  projects: '#FF4040',   // Vibrant Red для смарагдового
-  skills: '#0F4C81',     // Navy Blue для світло-рожевого
-  news: '#734BB0',       // Royal Purple для зеленого
-  blog: '#AF601A',       // Warm Orange для синього
-};
-```
-
-| Секція | Колір секції | Контрастний колір Hero | Принцип |
-|--------|--------------|------------------------|---------|
-| About | #AF601A (Brown-Orange) | #009B77 (Teal) | Тепла vs холодна |
-| Services | #EC008C (Fuchsia) | #00FF80 (Lime Green) | Магента vs зелений |
-| Projects | #009B77 (Emerald) | #FF4040 (Red) | Зелений vs червоний |
-| Skills | #fde5e5 (Light Pink) | #0F4C81 (Navy Blue) | Рожевий vs синій |
-| News | #88B04B (Greenery) | #734BB0 (Purple) | Зелений vs фіолетовий |
-| Blog | #0F4C81 (Classic Blue) | #AF601A (Orange) | Синій vs оранжевий |
-
-### Background Overlay
-
-```typescript
-// app/page.tsx
-<div
-  className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out"
-  style={{
-    backgroundColor: currentNeonColor || 'transparent',
-    opacity: currentNeonColor ? 0.4 : 0,
-  }}
-/>
-```
-
-- Фон: світло-сірий (`bg-gray-200`)
-- При hover: overlay з кольором секції (opacity 40%)
-- Transition: 700ms ease-in-out
-
-### Hero Text Fill Animation
-
-#### Компонент `HeroTextAnimation`
-
-Ефект "наливання фарби в прозорий стакан":
-
-```typescript
-// components/ui/HeroTextAnimation.tsx
-interface HeroTextAnimationProps {
-  text: string;
-  fillColor: string | null;
-  isActive: boolean;
-  direction?: 'ltr' | 'rtl';  // напрямок заливки
-  fontSize?: string;
-  fontWeight?: string;
-}
-```
-
-#### Glass Effect (базовий стан)
-
-- Текст повністю **прозорий** (`color: 'transparent'`)
-- Тонка **чорна кайомка** (`WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.4)'`)
-- Шрифт: **Comfortaa**
-
-#### Liquid Fill (при hover)
-
-- **Хвилеподібний край** заливки (polygon clip-path з синусоїдою)
-- Анімована хвиля під час заповнення
-- Легке світіння кольору (`textShadow`)
-
-#### Напрямки заливки
-
-**Subtitle** ("Marketing & Analytics Expert | Creator of Elvarika"):
-- Напрямок: **справа наліво** (RTL)
-- Розмір: `clamp(1rem, 1.7vw, 1.5rem)`
-
-**Description** ("I help organisations grow..."):
-- Напрямок: **зліва направо** (LTR)
-- Розмір: `clamp(0.95rem, 1.4vw, 1.35rem)`
-
-### Debounce для плавних переходів
-
-При швидкому переміщенні курсора між секціями використовується debounce:
-
-```typescript
-// components/layout/Header.tsx
-const [debouncedSection, setDebouncedSection] = useState<string | null>(null);
-const [isTransitioning, setIsTransitioning] = useState(false);
-
-// При переході між секціями: 150ms затримка
-// При виході з усіх секцій: 300ms затримка
-```
-
-### Transitions
-
-| Властивість | Тривалість | Призначення |
-|-------------|------------|-------------|
-| `clip-path` | 700ms | Анімація заливки тексту |
-| `color` | 400ms | Плавна зміна кольору |
-| `background-color` | 700ms | Зміна фону |
-
-### Як це працює
-
-1. Користувач наводить курсор на вікно (напр. Services)
-2. `BentoGrid` викликає `onHoveredSectionChange('services')`
-3. `page.tsx` оновлює background overlay кольором Services (`#EC008C`)
-4. `Header.tsx` отримує `hoveredSection='services'`
-5. Знаходить протилежну секцію: `oppositeSections['services'] = 'news'`
-6. Заливає текст Hero кольором News (`#88B04B`)
-7. При швидкому переході - debounce забезпечує плавність
-
----
-
-## Projects Hover Explosion (December 2024)
-
-### Опис
-
-При затримці курсора на секції Projects більше 3 секунд, карусель проектів "розсипається" на сітку маленьких блоків з назвами проектів. При виведенні курсора все повертається до нормальної каруселі.
-
-### Файли
-
-```
-├── components/sections/BentoGrid.tsx    # Стан isProjectsExploding + hover таймер
-├── components/ui/ProjectsCarousel.tsx   # Explosion grid view + GSAP карусель
-```
-
-### Стани та Refs
-
-```typescript
-// BentoGrid.tsx
-const [isProjectsExploding, setIsProjectsExploding] = useState(false);
-const projectsHoverTimeoutRef = useRef<number | null>(null);
-```
-
-### Логіка взаємодії
-
-1. **Наведення курсора на Projects** → запускається таймер 3 секунди
-2. **Курсор тримається 3+ секунди** → `isProjectsExploding = true`
-3. **Виведення курсора** → таймер скасовується, `isProjectsExploding = false`
-4. **Клік на блок проекту** → відкривається модальне вікно з деталями
-
-### Mouse Event Handlers
-
-```typescript
-// onMouseEnter для Projects
-if (section.id === 'projects') {
-  projectsHoverTimeoutRef.current = window.setTimeout(() => {
-    setIsProjectsExploding(true);
-  }, 3000); // 3 секунди затримки
-}
-
-// onMouseLeave для Projects
-if (section.id === 'projects') {
-  clearTimeout(projectsHoverTimeoutRef.current);
-  setIsProjectsExploding(false);
-}
-```
-
-### ProjectsCarousel Explosion View
-
-При `isExploding = true`:
-- GSAP timeline паузиться
-- Карусель ховається через `opacity: 0`
-- З'являється сітка блоків проектів
-
-### Адаптивна сітка
-
-```typescript
-const getGridLayout = () => {
-  const count = projects.length;
-  if (count <= 4) return { cols: 2, rows: 2 };
-  if (count <= 6) return { cols: 3, rows: 2 };
-  if (count <= 9) return { cols: 3, rows: 3 };
-  if (count <= 12) return { cols: 4, rows: 3 };
-  return { cols: 4, rows: 4 }; // Max 16 проектів
-};
-```
-
-### Анімація блоків
-
-```typescript
-<motion.div
-  initial={{ opacity: 0, scale: 0.5 }}
-  animate={{ opacity: 1, scale: 1 }}
-  transition={{
-    duration: 0.4,
-    delay: index * 0.05, // Stagger effect
-    ease: 'backOut'
-  }}
-  whileHover={{ scale: 1.05 }}
-/>
-```
-
-### Стилі блоків проектів
-
-- Градієнтний фон з кольорами проекту
-- Фонове зображення проекту (opacity 30%)
-- Градієнтний overlay знизу для читабельності тексту
-- Hover індикатор (кольорова точка)
-
-### Прозорий фон секції
-
-При explosion фон секції Projects стає прозорим:
-
-```typescript
-// BentoGrid.tsx - Projects background
-<div style={{ opacity: isProjectsExploding ? 0 : 1 }} /> {/* White layer */}
-<div style={{ opacity: isProjectsExploding ? 0 : 1 }} /> {/* Project image */}
-```
-
-### Кольори проектів
-
-```typescript
-const projectColors = [
-  { from: '#fc51c9', via: '#e707f7', to: '#9c27b0' }, // Pink/Magenta
-  { from: '#05ddfa', via: '#00bfff', to: '#4169e1' }, // Cyan/Blue
-  { from: '#ffeb3b', via: '#ffc107', to: '#ff9800' }, // Yellow/Orange
-  { from: '#4caf50', via: '#8bc34a', to: '#cddc39' }, // Green/Lime
-  { from: '#ff6b6b', via: '#ff5252', to: '#f44336' }, // Red/Pink
-];
-```
-
-### Transitions
-
-| Елемент | Тривалість | Призначення |
-|---------|------------|-------------|
-| Блоки появи | 400ms + stagger | Анімація появи блоків |
-| Фон секції | 500ms | Зникнення білого фону |
-| Карусель | 300ms | Приховування/показ |
-
----
-
-## LinkedIn Integration (December 2024, Updated December 2024)
-
-### Опис
-
-Публікація новин та блог-постів у LinkedIn через Telegram бота. Підтримка трьох мов: English, Norwegian, Ukrainian. Нативне завантаження зображень.
-
-### Файли
-
-```
-├── supabase/functions/post-to-linkedin/index.ts  # LinkedIn API + native image upload
-├── supabase/functions/telegram-webhook/index.ts  # Callback handlers + bot messages
-├── supabase/functions/telegram-scraper/index.ts  # Кнопки модерації
-```
-
-### Workflow
-
-1. Новина проходить модерацію в Telegram боті
-2. Модератор натискає "📰 В новини" або "📝 В блог" для публікації
-3. Після публікації модератор може натиснути одну з кнопок LinkedIn:
-   - `🔗 LinkedIn EN` - публікація англійською
-   - `🔗 LinkedIn NO` - публікація норвезькою
-   - `🔗 LinkedIn UA` - публікація українською
-4. Контент публікується в LinkedIn з посиланням на статтю
-
-### Telegram Bot Keyboard
-
-```
-┌─────────────────────┬─────────────────────┐
-│    📰 В новини      │     📝 В блог       │
-├─────────────────────┼──────────┬──────────┤
-│   🔗 LinkedIn EN    │ LinkedIn │ LinkedIn │
-│                     │    NO    │    UA    │
-├─────────────────────┴──────────┴──────────┤
-│               ❌ Reject                    │
-└───────────────────────────────────────────┘
-```
-
-### 📨 Сповіщення в боті (не popup!)
-
-Всі сповіщення про LinkedIn публікацію відправляються як **повідомлення в боті**, а не як popup alert:
-
-**При успішній публікації:**
-```
-✅ Опубліковано в LinkedIn (UA)!
-
-📰 «Заголовок статті»
-🔗 Переглянути пост
-```
-
-**При спробі повторної публікації:**
-```
-⚠️ Вже опубліковано в LinkedIn (UA)!
-
-🔗 Переглянути пост
-```
-
-### 🛡️ Захист від дублікатів (Duplicate Safeguards)
-
-Система запобігає повторній публікації:
-
-**Для News/Blog:**
-```typescript
-if (news.is_published || news.is_rewritten) {
-  // Показує: "⚠️ Ця новина вже опублікована!"
-  // Прибирає кнопки публікації, залишає тільки LinkedIn
-}
-```
-
-**Для LinkedIn:**
-```typescript
-if (news.linkedin_post_id) {
-  // Відправляє повідомлення в бот (не popup!)
-  // Прибирає LinkedIn кнопки, показує посилання на пост
-}
-```
-
-### 🖼️ Нативне завантаження зображень (Native Image Upload)
-
-LinkedIn тепер отримує зображення через **нативний upload** замість thumbnail URL:
-
-```typescript
-// Workflow завантаження зображення
-async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
-  // 1. Реєстрація завантаження
-  const registerResponse = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
-    body: JSON.stringify({
-      registerUploadRequest: {
-        recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
-        owner: LINKEDIN_PERSON_URN,
-        // ...
-      }
-    })
-  })
-
-  // 2. Завантаження зображення з джерела
-  const imageBuffer = await fetch(imageUrl).then(r => r.arrayBuffer())
-
-  // 3. Завантаження на LinkedIn
-  await fetch(uploadUrl, {
-    method: 'PUT',
-    body: imageBuffer
-  })
-
-  return asset // urn:li:digitalmediaAsset:xxxxx
-}
-```
-
-**Дві категорії постів:**
-- **IMAGE** - коли зображення успішно завантажено (з asset URN)
-- **ARTICLE** - fallback коли зображення немає або upload не вдався
-
-> **Примітка:** Native video upload реалізовано через GitHub Actions. Див. секцію "Video Processing via GitHub Actions" нижче.
-
-### LinkedIn API
-
-Використовується **UGC Post API** (User Generated Content):
-- Endpoint: `https://api.linkedin.com/v2/ugcPosts`
-- Assets API: `https://api.linkedin.com/v2/assets?action=registerUpload`
-- Метод: POST
-- Формат: IMAGE (з завантаженим зображенням) або ARTICLE (link preview)
-- URL: `https://vitalii.no/news/{slug}` (реальний домен)
-
-### Що публікується
-
-```
-{Заголовок статті}
-
-{Повний опис статті - до 2500 символів}
-
-🔗 Read more: https://vitalii.no/news/{slug}
-```
-
-### Database Fields
-
-Після публікації в LinkedIn додаються поля:
-- `linkedin_post_id` - ID поста в LinkedIn
-- `linkedin_posted_at` - Дата публікації
-- `linkedin_language` - Мова публікації (en/no/ua)
-
-### Environment Variables (LinkedIn)
-
-```env
-LINKEDIN_ACCESS_TOKEN=your_linkedin_access_token
-LINKEDIN_PERSON_URN=urn:li:person:your_person_id
-```
-
-### Отримання LinkedIn Access Token
-
-1. Створити додаток на [LinkedIn Developer Portal](https://www.linkedin.com/developers/)
-2. Додати продукт "Share on LinkedIn" та "Sign In with LinkedIn using OpenID Connect"
-3. Отримати OAuth 2.0 токен через authorization flow
-4. Scope: `w_member_social` (для публікації постів)
-
-### Важливо
-
-- LinkedIn Access Token має обмежений термін дії (60 днів)
-- Для оновлення токена потрібен refresh flow
-- `LINKEDIN_PERSON_URN` - це ваш унікальний ID в форматі `urn:li:person:xxxxx`
-- Можна знайти через LinkedIn API: `GET /v2/me`
-
-### Deploy
-
-```bash
-# Deploy LinkedIn function
-cd supabase
-supabase functions deploy post-to-linkedin
-supabase functions deploy telegram-webhook
-
-# Set secrets
-supabase secrets set LINKEDIN_ACCESS_TOKEN="your_token"
-supabase secrets set LINKEDIN_PERSON_URN="urn:li:person:xxxxx"
-```
-
----
-
-## Instagram Integration (January 2025)
-
-### Опис
-
-Публікація новин та блог-постів у Instagram через Facebook Graph API. Instagram Business акаунт повинен бути з'єднаний з Facebook Page.
-
-### Файли
-
-```
-├── supabase/functions/post-to-instagram/index.ts    # Edge Function для публікації
-├── supabase/functions/_shared/facebook-helpers.ts   # Instagram API helpers
-```
-
-### Environment Variables
-
-| Variable | Опис | Де знайти |
-|----------|------|-----------|
-| `FACEBOOK_PAGE_ACCESS_TOKEN` | Page Access Token з Instagram дозволами | Meta Business Suite / Graph API Explorer |
-| `INSTAGRAM_ACCOUNT_ID` | ID Instagram Business акаунта | Facebook Page Settings → Instagram |
-| `FACEBOOK_PAGE_ID` | ID Facebook Page (optional) | Facebook Page → About |
-
-### Необхідні Scopes (дозволи токена)
-
-```
-instagram_basic          - Базовий доступ до Instagram API
-instagram_content_publish - Публікація контенту (ОБОВ'ЯЗКОВИЙ!)
-pages_read_engagement    - Читання даних сторінки
-pages_manage_posts       - Управління постами
-```
-
-### Типові помилки
-
-| Error Code | Опис | Рішення |
-|------------|------|---------|
-| **#10** | Application does not have permission | Токен не має `instagram_content_publish` scope. Перегенеруйте токен. |
-| **#190** | Invalid OAuth access token | Токен недійсний або прострочений. Створіть новий. |
-| **#100** | Invalid parameter | Перевірте що image URL публічно доступний та використовує HTTPS. |
-| **#24** | Rate limit exceeded | Досягнуто ліміт API. Зачекайте 24 години. |
-
-### Debug Mode
-
-Для діагностики токена відправте POST запит з `{ "debug": true }`:
-
-```bash
-curl -X POST "${SUPABASE_URL}/functions/v1/post-to-instagram" \
-  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{"debug": true}'
-```
-
-**Відповідь покаже:**
-- Чи токен дійсний
-- Які scopes має токен
-- Чи Instagram акаунт пов'язаний з Page
-- Конкретні проблеми та як їх виправити
-
-### Як виправити Error #10
-
-**Крок 1:** Відкрийте [Graph API Explorer](https://developers.facebook.com/tools/explorer/)
-
-**Крок 2:** Виберіть ваш App
-
-**Крок 3:** Натисніть "Generate Access Token" → виберіть вашу Facebook Page
-
-**Крок 4:** Додайте дозволи (клікніть "Add a Permission"):
-- ✅ `instagram_basic`
-- ✅ `instagram_content_publish`
-- ✅ `pages_read_engagement`
-- ✅ `pages_manage_posts`
-
-**Крок 5:** Натисніть "Generate Access Token" та авторизуйте
-
-**Крок 6:** Конвертуйте в Long-Lived Token (60 днів):
-```bash
-curl "https://graph.facebook.com/v18.0/oauth/access_token?\
-grant_type=fb_exchange_token&\
-client_id={APP_ID}&\
-client_secret={APP_SECRET}&\
-fb_exchange_token={SHORT_LIVED_TOKEN}"
-```
-
-**Крок 7:** Оновіть Supabase Secrets:
-```bash
-supabase secrets set FACEBOOK_PAGE_ACCESS_TOKEN="новий_long_lived_токен"
-```
-
-### Отримання INSTAGRAM_ACCOUNT_ID
-
-```bash
-# Знайти Instagram Business Account ID через Facebook Page
-curl "https://graph.facebook.com/v18.0/{PAGE_ID}?fields=instagram_business_account&access_token={TOKEN}"
-
-# Відповідь:
-# { "instagram_business_account": { "id": "17841234567890" }, "id": "PAGE_ID" }
-```
-
-Скопіюйте `id` з `instagram_business_account` та оновіть:
-```bash
-supabase secrets set INSTAGRAM_ACCOUNT_ID="17841234567890"
-```
-
-### Вимоги до Instagram акаунта
-
-1. **Business Account** - не Personal, не Creator
-2. **Пов'язаний з Facebook Page** - через Facebook Page Settings → Instagram
-3. **Facebook App** повинен мати затверджені Instagram permissions (для production)
-
-### Deploy
-
-```bash
-cd supabase
-supabase functions deploy post-to-instagram
-supabase functions deploy telegram-webhook
-
-# Set secrets
-supabase secrets set FACEBOOK_PAGE_ACCESS_TOKEN="your_token"
-supabase secrets set INSTAGRAM_ACCOUNT_ID="your_ig_account_id"
-supabase secrets set FACEBOOK_PAGE_ID="your_page_id"  # optional
-```
-
----
-
-## Instagram Video/Reels via GitHub Actions (January 2025)
-
-### Опис
-
-Завантаження відео в Instagram Reels через GitHub Actions. Необхідно тому що Instagram API вимагає **прямий URL на MP4 файл**, а не Telegram post URL (`https://t.me/channel/123`).
-
-### Архітектура
-
-```
-Telegram канал (оригінальне відео)
-         │
-         ├──► process-video.yml ──► YouTube (для сайту)
-         │
-         ├──► linkedin-video.yml ──► LinkedIn (native upload)
-         │
-         ├──► facebook-video.yml ──► Facebook (native upload)
-         │
-         └──► instagram-video.yml ──► Instagram Reels (native upload)
-```
-
-### Файли
-
-```
-├── .github/workflows/instagram-video.yml      # GitHub Actions workflow
-├── scripts/instagram-video/
-│   ├── index.js                               # Main uploader script
-│   └── package.json                           # Dependencies (@mtkruto/node)
-├── supabase/functions/_shared/github-actions.ts  # triggerInstagramVideo()
-├── supabase/functions/telegram-webhook/index.ts  # Тригер при кліку на кнопку
-└── supabase/functions/post-to-instagram/index.ts # Fallback до зображення
-```
-
-### Workflow
-
-```
-User clicks "📸 Instagram EN" in Telegram bot
-    │
-    ├─► Has Telegram video URL + GH_PAT configured?
-    │       │
-    │       ├─► YES → Trigger instagram-video GitHub Action
-    │       │         → Download video from Telegram (MTKruto)
-    │       │         → Upload to Supabase Storage (public URL)
-    │       │         → Create Instagram Reel via Graph API
-    │       │         → Update DB with instagram_post_id
-    │       │
-    │       └─► NO → Continue to fallback
-    │
-    ├─► Has valid image?
-    │       │
-    │       └─► YES → Post image via post-to-instagram Edge Function
-    │
-    └─► NO image, NO valid video
-            │
-            └─► Prompt user to upload image
-```
-
-### Instagram Reels API Flow (в scripts/instagram-video/index.js)
-
-```javascript
-// 1. Upload video to Supabase Storage for public URL
-const publicUrl = await uploadToSupabaseStorage(videoBuffer, newsId)
-
-// 2. Create media container (REELS type)
-POST /{ig-user-id}/media
-{
-  media_type: 'REELS',
-  video_url: publicUrl,
-  caption: '...',
-  share_to_feed: true
-}
-
-// 3. Poll container status until FINISHED (max 5 min)
-GET /{container-id}?fields=status_code
-// status_code: IN_PROGRESS → FINISHED | ERROR
-
-// 4. Publish the Reel
-POST /{ig-user-id}/media_publish
-{ creation_id: container_id }
-```
-
-### Вимоги до відео для Instagram Reels
-
-| Параметр | Вимога |
-|----------|--------|
-| Формат | MP4 (H.264, AAC) |
-| Тривалість | 3-90 секунд |
-| Розмір | до 1 GB |
-| Aspect ratio | 9:16 (вертикальне) або 1:1 |
-| URL | Публічний HTTPS |
-
-### Database Fields
-
-Після успішної публікації оновлюються поля в таблиці `news`:
-
-```sql
-instagram_post_id      TEXT      -- ID поста в Instagram
-instagram_posted_at    TIMESTAMPTZ -- Час публікації
-instagram_language     TEXT      -- Мова публікації (en/no/ua)
-```
-
-### Environment Variables (GitHub Secrets)
-
-```env
-# Telegram MTProto (MTKruto)
-TELEGRAM_API_ID=xxxxx
-TELEGRAM_API_HASH=xxxxx
-TELEGRAM_BOT_TOKEN=xxxxx
-
-# Instagram (via Facebook Graph API)
-FACEBOOK_PAGE_ACCESS_TOKEN=xxxxx
-INSTAGRAM_ACCOUNT_ID=xxxxx
-
-# Supabase
-SUPABASE_URL=xxxxx
-SUPABASE_SERVICE_ROLE_KEY=xxxxx
-
-# GitHub (для тригеру з Edge Function)
-GH_PAT=xxxxx  # Personal Access Token з repo scope
-```
-
-### Telegram Bot UI
-
-При натисканні на Instagram кнопку з відео:
-
-```
-⏳ Instagram Reel (EN) обробляється...
-Відео завантажується з Telegram → Instagram. Це займе 2-5 хвилин.
-```
-
-### Fallback логіка
-
-1. **Є Telegram відео + GH_PAT** → GitHub Actions завантажує як Reel
-2. **GH Actions не налаштований або помилка + є зображення** → Постить зображення
-3. **Немає ні відео ні зображення** → Просить завантажити фото
-
-### Manual Trigger
-
-```bash
-# Через GitHub Actions UI
-# Settings → Secrets → Add repository secrets
-
-# Або через API
-curl -X POST \
-  -H "Authorization: token ${GH_PAT}" \
-  -H "Accept: application/vnd.github.v3+json" \
-  https://api.github.com/repos/SmmShaman/vitalii_claude-code-in-browser/dispatches \
-  -d '{"event_type":"instagram-video","client_payload":{"news_id":"uuid-here","language":"en"}}'
-```
-
-### Troubleshooting
-
-| Проблема | Причина | Рішення |
+| Function | Purpose | Trigger |
 |----------|---------|---------|
-| "Video processing timeout" | Відео занадто велике або формат не підтримується | Перевірте розмір (<1GB) та формат (MP4) |
-| "Error #100: Invalid parameter" | URL не публічний або не HTTPS | Перевірте Supabase Storage bucket публічний |
-| "Error #10: Permission denied" | Токен без `instagram_content_publish` | Перегенеруйте токен з потрібними scopes |
-| GitHub Action не тригериться | GH_PAT не налаштований | Додайте GH_PAT в Supabase Secrets |
+| `telegram-scraper` | RSS/Telegram channel scraping (MTKruto) | Scheduled (every 10 min) |
+| `pre-moderate-news` | AI spam/ad filtering | After scraper |
+| `generate-image-prompt` | AI image description generation | After moderation |
+| `process-news` | AI translation to EN/NO/UA | Telegram bot |
+| `process-blog-post` | News → Blog conversion | Telegram bot |
+| `post-to-linkedin` | LinkedIn publishing (native upload) | Telegram bot |
+| `post-to-instagram` | Instagram publishing | Telegram bot |
+| `post-to-facebook` | Facebook publishing | Telegram bot |
+| `generate-social-teasers` | Platform-specific AI content | Social publishing |
+| `telegram-webhook` | Bot callback handling | Telegram |
+| `process-image` | Gemini AI image processing | Manual/Telegram |
+| `send-contact-email` | Contact form emails (Resend API) | Contact form |
+| `manage-sources` | Source management | Manual |
+| `resend-to-bot` | Retry failed posts | Scheduled |
+| `reprocess-videos` | Batch video reprocessing | Manual |
+| `test-youtube-auth` | YouTube OAuth testing | Manual |
+| `telegram-monitor` | Bot health checks | Scheduled |
 
----
+**Shared Helpers** (`_shared/`):
+- `youtube-helpers.ts` - YouTube OAuth & upload
+- `github-actions.ts` - Trigger workflows
+- `facebook-helpers.ts` - Instagram/Facebook API
+- `social-media-helpers.ts` - Duplicate prevention
 
-## AI Social Media Teasers (January 2025)
-
-### Опис
-
-Генерація унікальних тизерів для кожної соцмережі (LinkedIn, Facebook, Instagram, Twitter) замість копіювання повного тексту статті. Кожна платформа отримує контент, оптимізований під її аудиторію та формат.
-
-### Файли
-
-```
-├── supabase/functions/generate-social-teasers/index.ts  # Edge Function для генерації тизерів
-├── supabase/migrations/20250118000003_add_social_teasers.sql    # Поля для тизерів в БД
-├── supabase/migrations/20250118000004_add_social_teaser_prompts.sql  # AI промпти для платформ
-```
-
-### Workflow
-
-```
-User clicks LinkedIn button → post-to-linkedin
-  → Checks DB for cached teaser
-  → If not cached: calls generate-social-teasers(linkedin, {lang})
-  → AI generates unique teaser
-  → Saves to DB for future use
-  → Posts teaser + link to LinkedIn
-
-User clicks Twitter button → telegram-webhook
-  → Same flow for Twitter teaser
-  → Creates Twitter Intent with teaser
-```
-
-### Database Fields
-
-**Таблиці `news` та `blog_posts`:**
-```sql
--- LinkedIn teasers
-social_teaser_linkedin_en TEXT
-social_teaser_linkedin_no TEXT
-social_teaser_linkedin_ua TEXT
-
--- Facebook teasers
-social_teaser_facebook_en TEXT
-social_teaser_facebook_no TEXT
-social_teaser_facebook_ua TEXT
-
--- Instagram teasers (with hashtags)
-social_teaser_instagram_en TEXT
-social_teaser_instagram_no TEXT
-social_teaser_instagram_ua TEXT
-
--- Twitter teasers (max 250 chars)
-social_teaser_twitter_en TEXT
-social_teaser_twitter_no TEXT
-social_teaser_twitter_ua TEXT
-
-teasers_generated_at TIMESTAMPTZ  -- Час генерації
-```
-
-### AI Prompts (в таблиці `ai_prompts`)
-
-| prompt_type | Платформа | Особливості |
-|-------------|-----------|-------------|
-| `social_teaser_linkedin` | LinkedIn | Професійний тон, 2+ абзаци, 2-3 емодзі, CTA |
-| `social_teaser_facebook` | Facebook | Дружній тон, curiosity gap, 3-5 емодзі |
-| `social_teaser_instagram` | Instagram | Візуальний стиль, 5-7 емодзі, хештеги |
-| `social_teaser_twitter` | Twitter/X | Короткий (max 250 символів), провокативний |
-
-### Приклад результату
-
-**Оригінальна стаття:**
-> Meta Unveils SAM Audio: A Breakthrough in AI Sound Processing...
-
-**LinkedIn тизер:**
-> 🎵 **Революція в обробці звуку вже тут**
->
-> Meta тихо випустила SAM Audio — AI модель, яка робить те, що здавалося неможливим: розділяє будь-який трек на інструменти в реальному часі.
->
-> 🔗 Читати повністю →
-
-**Twitter тизер:**
-> 🔥 Meta тихо убила всіх конкурентів в AI-аудіо
->
-> SAM Audio розділяє БУДЬ-ЯКИЙ трек на інструменти в реальному часі. Безкоштовно. Open source.
-
-### Кешування
-
-Тизери генеруються **on-demand** (при натисканні кнопки) і зберігаються в БД. При повторному натисканні тієї ж кнопки повертається кешований тизер.
-
-### Deploy
-
+**Deploy:**
 ```bash
 cd supabase
-supabase functions deploy generate-social-teasers
-supabase functions deploy post-to-linkedin
-supabase functions deploy telegram-webhook
+supabase functions deploy <function-name> --no-verify-jwt
 ```
+
+### Component Architecture
+
+**Desktop Layout:**
+- `BentoGrid` - 6-section grid with hover effects (About, Services, Projects, Skills, News, Blog)
+- Hover interactions: background color change, hero text fill animation
+- Section-specific animations: ProjectsCarousel (explosion grid), SkillsAnimation (particle effect)
+
+**Mobile Layout:**
+- `BentoGridMobile` - Bottom navigation app-style
+- Swipe gestures for carousels
+- Compact animations (typewriter, rotation, horizontal scroll)
+
+**Modal System:**
+- Next.js parallel routes (`@modal`)
+- Intercepts `/blog/[slug]` and `/news/[slug]` routes
+- Shows modal overlay on homepage, full page on direct navigation
+
+**Admin Panel:**
+- Skills Manager - CRUD for tech skills (drag & drop)
+- AI Prompts Manager - Edit AI templates
+- LinkedIn Posts Manager - Social media tracking
+- Image Processing Settings - Seasonal themes
+- API Keys Settings - External API management
 
 ---
 
-## Video Handling & YouTube Integration (December 2024)
-
-### Опис
-
-Автоматичне завантаження відео з Telegram каналів на YouTube для надійного вбудовування на сайті. Використовується MTKruto (MTProto для Deno) для обходу ліміту 20 MB в Telegram Bot API.
-
-### Чому YouTube + MTKruto?
-
-| Критерій | YouTube | Альтернативи |
-|----------|---------|--------------|
-| Вартість | ✅ Безкоштовно | Bunny.net ~$1-3/міс |
-| Інфраструктура | ✅ Вже налаштовано | Нові сервіси |
-| Зміни в коді | ✅ Мінімальні | Значні |
-
-**Проблема була не в YouTube, а в Telegram Bot API (ліміт 20 MB).**
-
-### Файли
-
-```
-├── supabase/functions/telegram-scraper/index.ts   # Video extraction + YouTube upload
-├── supabase/functions/_shared/youtube-helpers.ts  # YouTube API helpers
-├── components/sections/NewsSection.tsx            # Video player (YouTube/fallback)
-├── components/sections/NewsModal.tsx              # Video player (YouTube/fallback)
-├── app/news/[slug]/NewsArticle.tsx                # Standalone news page with video
-```
-
-### Video Types
-
-| Type | Опис | Джерело |
-|------|------|---------|
-| `youtube` | YouTube embed URL | Завантажено на YouTube |
-| `telegram_embed` | Telegram post URL | Fallback коли YouTube недоступний |
-| `direct_url` | Пряме посилання на .mp4 | Рідко використовується |
-
-### Workflow обробки відео
-
-```
-1. Scraper знаходить відео в Telegram пості
-   ↓
-2. MTKruto скачує відео в /tmp (до 512 MB на Pro)
-   ↓
-3. YouTube credentials налаштовані?
-   ├─ ТАК → Перекласти заголовок (Azure OpenAI)
-   │        → Завантажити на YouTube (unlisted)
-   │        → video_type = 'youtube'
-   │        → video_url = 'https://youtube.com/embed/...'
-   │
-   └─ НІ (або помилка) → Fallback на Telegram embed
-                        → video_type = 'telegram_embed'
-                        → video_url = 'https://t.me/channel/123?embed=1'
-   ↓
-4. Файл в /tmp автоматично видаляється
-```
-
-### MTKruto (MTProto для Deno)
-
-Замінює Telegram Bot API для обходу ліміту 20 MB:
-
-```typescript
-import { Client } from "https://deno.land/x/mtkruto/mod.ts";
-
-const client = new Client({
-  apiId: Number(Deno.env.get("TELEGRAM_API_ID")),
-  apiHash: Deno.env.get("TELEGRAM_API_HASH")!,
-});
-
-async function downloadVideo(chatId: number, messageId: number): Promise<string> {
-  await client.start({ botToken: Deno.env.get("TELEGRAM_BOT_TOKEN")! });
-
-  const message = await client.getMessage(chatId, messageId);
-
-  // Скачати в /tmp (до 512 MB на Supabase Pro)
-  const tempPath = `/tmp/video_${messageId}.mp4`;
-  await client.downloadMedia(message, tempPath);
-
-  return tempPath;
-}
-```
-
-**Переваги MTKruto:**
-- ✅ Нативна Deno бібліотека — працює в Supabase Edge Functions
-- ✅ Ліміт 2 GB замість 20 MB
-- ✅ Використовує Bot Token — не потрібен user session
-- ✅ Активно підтримується
-
-### Supabase Edge Function ліміти
-
-| Ресурс | Free | Pro |
-|--------|------|-----|
-| Ephemeral storage (/tmp) | 256 MB | **512 MB** |
-| Wall clock time | 150 сек | **400 сек** |
-| Background tasks | ✅ | ✅ |
-
-> Типові відео 5-10 хв = 100-400 MB — влазить в /tmp
-
-### Fallback стратегія
-
-```typescript
-try {
-  // Спробувати MTKruto
-  videoPath = await downloadWithMTKruto(chatId, messageId);
-  youtubeUrl = await uploadToYouTube(videoPath, title);
-  return { video_type: 'youtube', video_url: youtubeUrl };
-} catch (error) {
-  console.error('Video processing failed:', error);
-  // Fallback на telegram_embed
-  return { video_type: 'telegram_embed', video_url: telegramPostUrl };
-}
-```
-
-### YouTube OAuth Setup
-
-**Credentials (вже налаштовані):**
-```env
-YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=GOCSPX-...
-YOUTUBE_REFRESH_TOKEN=1//04...
-```
-
-**Отримання Refresh Token:**
-1. Відкрити [Google OAuth Playground](https://developers.google.com/oauthplayground/)
-2. ⚙️ → "Use your own OAuth credentials" → ввести Client ID та Secret
-3. Вибрати scope: `https://www.googleapis.com/auth/youtube.upload`
-4. Authorize APIs → Exchange authorization code for tokens
-5. Скопіювати Refresh Token
-
-### Environment Variables
-
-```env
-# Telegram MTProto (MTKruto)
-TELEGRAM_API_ID=35388773
-TELEGRAM_API_HASH=aa3d654a6327701da78c0f44e1a47993
-TELEGRAM_BOT_TOKEN=existing_bot_token
-
-# YouTube API
-YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=GOCSPX-...
-YOUTUBE_REFRESH_TOKEN=1//04...
-
-# Azure OpenAI (для перекладу заголовків)
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_API_KEY=your_key
-```
-
-### Telegram Video Fallback UI
-
-Коли `video_type = 'telegram_embed'`, показується плейсхолдер:
-
-```
-┌─────────────────────────────────────────┐
-│     [Gradient: #2AABEE → #229ED9]       │
-│                                         │
-│           [Telegram Logo]               │
-│                                         │
-│          @channelname                   │
-│                                         │
-│    ▶ Дивитись в Telegram                │
-│                                         │
-└─────────────────────────────────────────┘
-```
-
-### Документація
-
-- [MTKruto GitHub](https://github.com/MTKruto/MTKruto)
-- [MTKruto Deno](https://deno.land/x/mtkruto)
-- [YouTube Data API](https://developers.google.com/youtube/v3)
-- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
-
----
-
-## Video Processing via GitHub Actions (January 2025)
-
-### Опис
-
-Обробка відео винесена в GitHub Actions для обходу лімітів Supabase Edge Functions. Це дозволяє:
-- Обробляти великі відео (>512 MB)
-- Уникати timeout Edge Functions (150-400 сек)
-- Завантажувати native video в LinkedIn
-
-### Архітектура
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    GitHub Actions Runners                        │
-│  ┌──────────────────┐       ┌──────────────────────────────┐    │
-│  │  process-video   │       │     linkedin-video           │    │
-│  │  (Telegram→YT)   │       │  (Telegram→LinkedIn native)  │    │
-│  └────────┬─────────┘       └──────────────┬───────────────┘    │
-│           │                                 │                    │
-│           └───────────┬─────────────────────┘                    │
-│                       ▼                                          │
-│               MTKruto (MTProto)                                  │
-│               Download from Telegram                             │
-└─────────────────────────────────────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      External APIs                               │
-│  ┌──────────────────┐       ┌──────────────────────────────┐    │
-│  │   YouTube API    │       │      LinkedIn API             │    │
-│  │  (unlisted upload)│       │  (native video upload)       │    │
-│  └──────────────────┘       └──────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Скрипти
-
-#### `scripts/video-processor/index.js`
-- Завантажує відео з Telegram через MTKruto
-- Завантажує на YouTube (unlisted)
-- Оновлює `video_url` та `video_type` в Supabase
-- Зберігає `original_video_url` для LinkedIn
-
-#### `scripts/linkedin-video/index.js`
-- Завантажує відео з Telegram (original_video_url)
-- Реєструє upload в LinkedIn API
-- Завантажує як native video
-- Створює пост з відео
-
-### Database Fields
-
-```sql
--- Додано в таблицю news
-original_video_url      TEXT    -- Оригінальний Telegram URL для LinkedIn
-video_processing_error  TEXT    -- Помилка обробки (для debug)
-video_processing_attempted_at TIMESTAMPTZ -- Час останньої спроби
-```
-
-### Тригери
-
-**Автоматичний:**
-- `process-video` запускається кожні 30 хвилин для batch processing
-
-**Через Edge Function:**
-```typescript
-// telegram-webhook викликає при публікації новини з відео
-if (news.original_video_url && news.is_published) {
-  await triggerLinkedInVideo({ newsId: news.id, language: 'en' })
-}
-```
-
-### Environment Variables (GitHub Secrets)
-
-```env
-# Telegram MTProto
-TELEGRAM_API_ID=xxxxx
-TELEGRAM_API_HASH=xxxxx
-TELEGRAM_BOT_TOKEN=xxxxx
-
-# YouTube
-YOUTUBE_CLIENT_ID=xxxxx
-YOUTUBE_CLIENT_SECRET=xxxxx
-YOUTUBE_REFRESH_TOKEN=xxxxx
-
-# LinkedIn
-LINKEDIN_ACCESS_TOKEN=xxxxx
-LINKEDIN_PERSON_URN=urn:li:person:xxxxx
-
-# Supabase
-SUPABASE_URL=xxxxx
-SUPABASE_SERVICE_ROLE_KEY=xxxxx
-```
-
----
-
-## News Article Page (December 2024)
-
-### Опис
-
-Окрема сторінка для новин (`/news/[slug]`) з білим фоном та підтримкою всіх типів відео. Використовується для прямих посилань (LinkedIn, SEO).
-
-### Файл
-
-```
-app/news/[slug]/NewsArticle.tsx
-```
-
-### Дизайн
-
-- **Фон:** Білий (`bg-white`)
-- **Текст:** Темно-сірий (`text-gray-900`, `text-gray-700`)
-- **Посилання:** Синій (`text-blue-600`)
-- **Tags:** Світло-сірий бейдж (`bg-gray-100`)
-- **Author block:** Світло-сірий з рамкою (`bg-gray-50 border-gray-100`)
-
-### Структура сторінки
-
-```
-┌─────────────────────────────────────────────────┐
-│  Home / News / Article Title...                 │
-│  ← Back to Home                                 │
-│                                                 │
-│  [Featured Image або Video]                     │
-│                                                 │
-│  Meta Unveils SAM Audio: A Breakthrough...      │
-│  📅 December 17, 2025  👁 2 views               │
-│                                                 │
-│  [Article content - description_en]             │
-│                                                 │
-│  #ai #technology #meta                          │
-│                                                 │
-│  [Read Original Article] ← кнопка              │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ Curated by                               │   │
-│  │ Vitalii Berbeha                          │   │
-│  │ E-commerce & Marketing Expert            │   │
-│  └─────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
-```
-
-### Video Support
-
-Підтримуються всі типи відео:
-- **YouTube:** Нативний iframe player
-- **Telegram embed:** Красивий fallback з кнопкою "Дивитись в Telegram"
-- **Direct URL:** HTML5 video player
-
-### SEO Features
-
-- JSON-LD `NewsArticle` schema
-- JSON-LD `BreadcrumbList` schema
-- Open Graph metadata
+## Key Features
+
+### Content Management
+
+**Multilingual Content (EN/NO/UA):**
+- TranslationContext manages language state
+- 3000+ translation strings in `utils/translations.ts`
+- Database: separate fields per language (`title_en`, `title_no`, `title_ua`)
+
+**Content Workflow:**
+1. Telegram scraper collects content from RSS/Telegram channels
+2. AI pre-moderation filters spam (Azure OpenAI)
+3. AI generates image description prompt
+4. Moderator reviews in Telegram bot
+5. Publish to News or Blog
+6. Post to social media (LinkedIn/Instagram/Facebook)
+
+**Video Handling:**
+- Types: `youtube` (embedded), `telegram_embed` (fallback), `direct_url`
+- MTKruto bypasses Telegram Bot API 20MB limit (supports up to 2GB)
+- GitHub Actions workflows for heavy processing
+- YouTube upload for site embeds (unlisted videos)
+
+### Social Media Integration
+
+**LinkedIn:**
+- OAuth 2.0 UGC Post API
+- Native image upload via Assets API
+- Three languages support
+- Duplicate prevention via `social_media_posts` table
+
+**Instagram:**
+- Facebook Graph API (Business accounts only)
+- Required scopes: `instagram_basic`, `instagram_content_publish`
+- IMAGE posts (native upload) or ARTICLE posts
+- Video/Reels via GitHub Actions (scripts/instagram-video/)
+
+**Facebook:**
+- Similar to Instagram (shares codebase)
+- Facebook Page API
+
+**AI Social Teasers:**
+- Platform-specific content generation
+- Optimized for each platform's style and character limits
+- Cached in database (`social_teaser_linkedin_en`, etc.)
+
+### AI Systems
+
+**Image Prompt Generation:**
+- Two-stage system: Classifier (extracts JSON) → Template (fills placeholders)
+- Categories: tech_product, marketing_campaign, ai_research, business_news, science, lifestyle
+- Based on awesome-nanobanana-pro methodology
+- Editable templates in admin panel
+
+**Content Moderation:**
+- Azure OpenAI pre-moderation for spam detection
+- Custom prompts via `ai_prompts` table
+- Status: pending → approved/rejected
+
+**Content Rewriting:**
+- AI translation to multiple languages
+- Style adaptation for blog posts
+- Maintains source attribution
+
+### SEO Optimization
+
+**Implemented:**
+- JSON-LD schemas (BlogPosting, NewsArticle, BreadcrumbList)
+- Open Graph metadata (full support)
 - Twitter Cards
-- Canonical URLs
+- Multilingual sitemap with alternates
 - Hreflang tags
+- Canonical URLs
+- Semantic HTML markup
+- Image optimization (next/image)
+
+**Files:**
+- `utils/seo.ts` - SEO utility functions
+- `app/sitemap.ts` - Dynamic sitemap
+- `app/robots.ts` - Robots.txt configuration
+
+### Analytics
+
+**Google Tag Manager (GTM-5XBL8L8S):**
+- Centralized tracking hub
+- Events: page_view, article_view, form_submit, share, language_change, section_click
+- Integrations: GA4, Meta Pixel, LinkedIn Insight Tag
+- Context: `TrackingContext` with auto page view tracking
 
 ---
 
-## Admin Skills Management (December 2024)
-
-### Опис
-
-Адмін-панель для керування скілами (технологіями), які відображаються в секції Skills на головній сторінці. Кожен скіл має назву та категорію, яка визначає колір бейджу.
-
-### Файли
-
-```
-├── utils/skillsStorage.ts              # Утиліти для зберігання скілів
-├── components/admin/SkillsManager.tsx  # Адмін-компонент для керування скілами
-├── components/ui/SkillsAnimation.tsx   # Анімація скілів (використовує dynamic data)
-├── app/admin/dashboard/page.tsx        # Адмін дашборд з вкладкою Skills
-```
-
-### Категорії та кольори
-
-| Категорія | Label | Tailwind Classes | HEX |
-|-----------|-------|------------------|-----|
-| development | Development | `bg-green-100 text-green-800` | `#dcfce7` |
-| ui | UI/Design | `bg-purple-100 text-purple-800` | `#f3e8ff` |
-| automation | Automation | `bg-blue-100 text-blue-800` | `#dbeafe` |
-| ai | AI/ML | `bg-orange-100 text-orange-800` | `#ffedd5` |
-| marketing | Marketing | `bg-pink-100 text-pink-800` | `#fce7f3` |
-| integration | Integration | `bg-cyan-100 text-cyan-800` | `#cffafe` |
-
-### Структура даних
-
-```typescript
-interface Skill {
-  id: string;
-  name: string;
-  category: SkillCategory;
-}
-
-type SkillCategory = 'development' | 'ui' | 'ai' | 'automation' | 'marketing' | 'integration';
-```
-
-### Зберігання
-
-Скіли зберігаються в `localStorage` під ключем `vitalii_skills_list`.
-
-### Функції утиліт (`utils/skillsStorage.ts`)
-
-```typescript
-// Отримати скіли з localStorage або повернути defaults
-getStoredSkills(): Skill[]
-
-// Зберегти скіли в localStorage
-saveSkills(skills: Skill[]): void
-
-// Скинути до дефолтних скілів
-resetSkillsToDefault(): Skill[]
-
-// Генерувати унікальний ID для нового скілу
-generateSkillId(): string
-
-// Конвертувати для SkillsAnimation
-convertSkillsForAnimation(skills: Skill[]): { name: string; category: string }[]
-```
-
-### Дефолтні скіли
-
-При першому завантаженні або після скидання використовуються дефолтні скіли:
-
-**Development:** React, TypeScript, Tailwind CSS, Python, FastAPI, Docker
-**Integration:** Supabase, Firebase, Vercel, Netlify
-**AI/ML:** Azure OpenAI, Claude MCP, spaCy, ElevenLabs API, Zvukogram API, OCR.space
-**Automation:** n8n
-**Marketing:** Helium10, Meta Ads Manager
-**UI/Design:** Bolt.new, Canva
-
-### Використання в адмін-панелі
-
-1. Перейти в **Admin Panel → Skills**
-2. Додавати нові скіли через форму (назва + категорія)
-3. Редагувати існуючі скіли inline
-4. Видаляти скіли кнопкою trash
-5. Перетягувати скіли для зміни порядку (drag & drop)
-6. Натиснути **Save Changes** для збереження
-7. Оновити сторінку для застосування змін на сайті
-
-### Функціонал адмін-компонента
-
-- Додавання нових скілів з preview
-- Inline редагування назви та категорії
-- Видалення скілів
-- Drag & drop сортування (Framer Motion Reorder)
-- Групування по категоріях
-- Preview як на сайті
-- Reset to Default
-- Індикатор незбережених змін
-
----
-
-## Mobile Responsiveness Improvements (December 2024)
-
-### Опис
-
-Комплексне покращення мобільної версії сайту: виправлення проблем з viewport, адаптивна сітка, підтримка тач-жестів, safe area insets для пристроїв з notch, та reduced motion для accessibility.
-
-### Файли
-
-```
-├── app/globals.css                      # Утиліти h-screen-safe, safe-area-inset, reduced-motion
-├── app/page.tsx                         # Responsive padding, h-screen-safe клас
-├── components/sections/BentoGrid.tsx    # Responsive gap, mobile heights
-├── components/ui/Modal.tsx              # Safe area insets, responsive sizing
-├── components/sections/NewsSection.tsx  # Responsive grid layout
-├── components/ui/ProjectsCarousel.tsx   # Touch/swipe підтримка
-├── components/layout/Footer.tsx         # Touch-friendly social buttons
-├── hooks/useReducedMotion.ts            # Hook для prefers-reduced-motion
-```
-
-### Виправлені проблеми
-
-#### 1. 100vh проблема на мобільних (Safari address bar)
-
-**Проблема:** `height: 100vh` на iOS не враховує динамічну адресну строку Safari, що призводить до обрізаного контенту.
-
-**Рішення:**
-```css
-/* globals.css */
-body {
-  height: 100dvh;        /* Dynamic viewport height */
-  height: 100vh;         /* Fallback */
-}
-
-.h-screen-safe {
-  height: 100vh;
-  height: 100dvh;
-}
-
-@supports (height: 100dvh) {
-  body { height: 100dvh; }
-}
-```
-
-#### 2. Responsive Gap у BentoGrid
-
-**Проблема:** Фіксований gap 20px займає занадто багато місця на маленьких екранах.
-
-**Рішення:**
-```typescript
-const GAP_SIZE_DESKTOP = 20; // Desktop gap
-const GAP_SIZE_MOBILE = 12;  // Mobile gap
-
-// Використання
-gap: `${isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP}px`
-```
-
-#### 3. Safe Area Insets для Modal
-
-**Проблема:** На iPhone X+ контент перекривається notch та home indicator.
-
-**Рішення:**
-```tsx
-<div style={{
-  paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
-  paddingRight: 'max(0.5rem, env(safe-area-inset-right))',
-  paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
-  paddingLeft: 'max(0.5rem, env(safe-area-inset-left))',
-}} />
-```
-
-#### 4. NewsSection Responsive Grid
-
-**Проблема:** Фіксована колонка 448px не адаптується до планшетів.
-
-**Рішення:**
-```css
-/* Mobile: Stack */
-.news-section-detail-grid {
-  flex-direction: column;
-}
-
-/* Tablet (640px+): Single column */
-@media (min-width: 640px) {
-  grid-template-columns: 1fr;
-}
-
-/* Medium (768px+): Two columns */
-@media (min-width: 768px) {
-  grid-template-columns: minmax(280px, 45%) 1fr;
-}
-
-/* Large (1024px+): Fixed media width */
-@media (min-width: 1024px) {
-  grid-template-columns: 400px 1fr;
-}
-```
-
-#### 5. Touch/Swipe Support для ProjectsCarousel
-
-**Рішення:**
-```typescript
-// Touch event handlers
-const handleTouchStart = (e: React.TouchEvent) => {
-  touchStartRef.current = {
-    x: e.touches[0].clientX,
-    y: e.touches[0].clientY,
-    time: Date.now(),
-  };
-};
-
-const handleTouchEnd = (e: React.TouchEvent) => {
-  const deltaX = touch.clientX - touchStartRef.current.x;
-  if (Math.abs(deltaX) > SWIPE_THRESHOLD) {
-    if (deltaX < 0) nextProject();
-    else prevProject();
-  }
-};
-```
-
-#### 6. Prefers Reduced Motion
-
-**CSS рішення:**
-```css
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-```
-
-**React Hook:**
-```typescript
-// hooks/useReducedMotion.ts
-export const useReducedMotion = (): boolean => {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-    // ... listener
-  }, []);
-
-  return prefersReducedMotion;
-};
-```
-
-#### 7. Touch-Friendly Targets
-
-**Мінімальний розмір:** 44x44px для всіх інтерактивних елементів на тач-пристроях.
-
-```css
-@media (pointer: coarse) {
-  button, a, [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-```
-
-### Mobile-First CSS Utilities
-
-```css
-/* globals.css */
-
-/* Safe viewport heights */
-.h-screen-safe { height: 100vh; height: 100dvh; }
-.min-h-screen-safe { min-height: 100vh; min-height: 100dvh; }
-
-/* Safe area padding for notched devices */
-.safe-area-inset {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-           env(safe-area-inset-bottom) env(safe-area-inset-left);
-}
-
-/* Prevent iOS bounce */
-body {
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
-}
-```
-
-### Breakpoints
-
-| Breakpoint | Ширина | Призначення |
-|------------|--------|-------------|
-| `sm` | 640px | Малі планшети, великі телефони (landscape) |
-| `md` | 768px | Планшети (portrait) |
-| `lg` | 1024px | Планшети (landscape), малі десктопи |
-| `xl` | 1280px | Десктопи |
-
-### Testing Mobile
-
-1. **Chrome DevTools:** Toggle device toolbar (Ctrl+Shift+M)
-2. **Safari Responsive Mode:** Develop → Enter Responsive Design Mode
-3. **Real Device Testing:** Критично для iOS Safari address bar
-4. **Lighthouse Mobile Audit:** Performance, Accessibility, Best Practices
-
-### Checklist для нових компонентів
-
-- [ ] Використовуй `dvh` замість `vh` для повноекранних layouts
-- [ ] Додай safe-area-inset для fixed/absolute positioned елементів
-- [ ] Мінімальний touch target 44x44px
-- [ ] Перевір на landscape orientation
-- [ ] Тестуй swipe gestures якщо є carousel/slider
-- [ ] Додай `active:` states для touch feedback
-- [ ] Використовуй responsive Tailwind classes (sm:, md:, lg:)
-
----
-
-## Bug Fixes & Improvements (December 2024 - Session 2)
-
-### Опис
-
-Виправлення критичних помилок у Supabase Edge Functions для коректної роботи пре-модерації та публікації контенту.
-
-### Файли
-
-```
-├── supabase/functions/pre-moderate-news/index.ts   # Azure OpenAI deployment fix
-├── supabase/functions/post-to-linkedin/index.ts    # URL format fix
-├── supabase/functions/process-blog-post/index.ts   # Video data saving fix
-```
-
-### 1. Azure OpenAI Deployment Fix (`pre-moderate-news`)
-
-**Проблема:** Функція пре-модерації використовувала неіснуючий deployment `gpt-4`, що призводило до помилки `DeploymentNotFound` і тихого провалу пре-модерації.
-
-**Симптоми:**
-- `usage_count` не інкрементувався
-- Пре-модерація не працювала
-- Помилка в логах: `DeploymentNotFound`
-
-**Рішення:**
-```typescript
-// До
-const deploymentName = 'gpt-4';
-
-// Після
-const deploymentName = 'Jobbot-gpt-4.1-mini';
-```
-
-Тепер використовується той самий deployment, що й в інших функціях проекту.
-
-### 2. LinkedIn URL Format Fix (`post-to-linkedin`)
-
-**Проблема:** Функція додавала мовні префікси (`/no/`, `/uk/`) до URL, але Next.js роути не мають таких префіксів - мова обробляється client-side через контекст.
-
-**Симптоми:**
-- Посилання в LinkedIn постах вели на 404
-- URL виглядав як: `https://vitalii.no/no/news/slug`
-
-**Рішення:**
-```typescript
-// До
-const articleUrl = `https://vitalii.no/${language === 'en' ? '' : language + '/'}news/${slug}`;
-
-// Після
-const articleUrl = `https://vitalii.no/news/${slug}`;
-```
-
-Тепер URL коректний: `https://vitalii.no/news/slug`
-
-### 3. Blog Post Video Data Fix (`process-blog-post`)
-
-**Проблема:** При створенні блог-постів `video_url` та `video_type` передавались з `telegram-webhook`, але не зберігались в базу даних.
-
-**Симптоми:**
-- Блог-пости без відео, навіть якщо оригінальна новина мала відео
-- `video_url` та `video_type` завжди `null` в `blog_posts`
-
-**Рішення:**
-```typescript
-// Додано до INSERT запиту
-const { data, error } = await supabaseClient
-  .from('blog_posts')
-  .insert({
-    // ... інші поля
-    video_url: videoUrl,      // Додано
-    video_type: videoType,    // Додано
-  })
-```
-
-### Deploy команди
-
-```bash
-cd supabase
-supabase functions deploy pre-moderate-news
-supabase functions deploy post-to-linkedin
-supabase functions deploy process-blog-post
-```
-
----
-
-## AI Prompts Selection Fix (December 2024)
-
-### Опис
-
-Виправлення вибору AI промптів з бази даних. Тепер завжди береться **останній оновлений** промпт замість випадкового.
-
-### Проблема
-
-При наявності кількох промптів з однаковим `prompt_type` (напр. два `blog_rewrite`), запит `.limit(1)` без сортування повертав **перший знайдений** в непередбачуваному порядку. Це призводило до використання старого промпту замість відредагованого.
-
-### Рішення
-
-Додано `.order('updated_at', { ascending: false })` перед `.limit(1)`:
-
-```typescript
-// До (неправильно)
-const { data: prompts } = await supabase
-  .from('ai_prompts')
-  .select('*')
-  .eq('is_active', true)
-  .eq('prompt_type', 'blog_rewrite')
-  .limit(1)  // ❌ Може повернути будь-який промпт
-
-// Після (правильно)
-const { data: prompts } = await supabase
-  .from('ai_prompts')
-  .select('*')
-  .eq('is_active', true)
-  .eq('prompt_type', 'blog_rewrite')
-  .order('updated_at', { ascending: false })  // ✅ Найновіший перший
-  .limit(1)
-```
-
-### Виправлені функції
-
-| Функція | Тип промпту | Файл |
-|---------|-------------|------|
-| `process-blog-post` | `blog_rewrite` | `supabase/functions/process-blog-post/index.ts` |
-| `pre-moderate-news` | `pre_moderation` | `supabase/functions/pre-moderate-news/index.ts` |
-| `process-news` | `news_rewrite`, `rewrite` | `supabase/functions/process-news/index.ts` |
-
-### Як працює
-
-1. Якщо в базі є кілька промптів з однаковим `prompt_type`
-2. Обидва можуть бути `is_active = true`
-3. Тепер береться той, що має найновіший `updated_at`
-4. Редагування промпту в адмін-панелі автоматично оновлює `updated_at`
-
-### Deploy
-
-```bash
-cd supabase
-supabase functions deploy process-blog-post
-supabase functions deploy pre-moderate-news
-supabase functions deploy process-news
-```
-
----
-
-## AI Image Generation & Upload (December 2024)
-
-### Опис
-
-Інтеграція генерації промптів для зображень через Azure OpenAI та завантаження власних зображень через Telegram бота. Користувач може використовувати згенерований промпт в Google AI Studio (Gemini 3 Banana) для створення зображень або завантажити власне зображення з галереї.
-
-### Файли
-
-```
-├── supabase/functions/generate-image-prompt/index.ts  # Edge Function для генерації промпту
-├── supabase/functions/telegram-scraper/index.ts       # Виклик generate-image-prompt після пре-модерації
-├── supabase/functions/telegram-webhook/index.ts       # Обробка завантаження зображень та callback кнопок
-├── supabase/migrations/20251221_add_image_generation_prompt.sql  # Додавання полів для промпту
-```
-
-### Workflow
-
-```
-1. Новина проходить пре-модерацію (AI)
-   ↓
-2. Azure OpenAI генерує короткий промпт для зображення (1-3 речення, max 200 символів)
-   ↓
-3. Промпт показується користувачу в Telegram боті
-   ↓
-4. Користувач має 2 опції:
-   ├─ 🖼️ Залишити поточне зображення (якщо є)
-   │  → Підтверджується, що зображення залишено
-   │
-   └─ 📸 Завантажити власне зображення
-      → Бот просить відповісти фото на це повідомлення
-      → Користувач відправляє фото
-      → Зображення завантажується в Supabase Storage (/custom/)
-      → processed_image_url оновлюється в базі
-      → Підтвердження з URL зображення
-   ↓
-5. Користувач може продовжити з публікацією (📰 В новини / 📝 В блог)
-```
-
-### Database Fields
-
-**Таблиця `news` (і `blog_posts`):**
-- `image_generation_prompt` (TEXT) - AI-згенерований промпт для Google AI Studio
-- `prompt_generated_at` (TIMESTAMPTZ) - Час створення промпту
-- `processed_image_url` (TEXT) - URL завантаженого зображення (власне або AI-згенероване)
-- `image_processed_at` (TIMESTAMPTZ) - Час завантаження зображення
-
-### Telegram Bot UI
-
-```
-┌─────────────────────────────────────────────────────┐
-│  🆕 New Post from Telegram Channel                  │
-│                                                     │
-│  Channel: @geekneural                              │
-│  Message ID: 12345                                 │
-│  Content: Meta Unveils SAM Audio...                │
-│                                                     │
-│  🎨 Image Generation Prompt (копіюй в Google...): │
-│  Professional illustration of audio waveforms...   │
-│                                                     │
-│  💡 Скопіюй промпт вище та використай в Google...  │
-│  ⏳ Waiting for moderation...                       │
-├─────────────────────────────────────────────────────┤
-│  [📰 В новини]  [📝 В блог]                        │
-│  [🖼️ Залишити зображення]  [📸 Завантажити власне]│
-│  [🔗 LinkedIn EN] [LinkedIn NO] [LinkedIn UA]      │
-│  [❌ Reject]                                        │
-└─────────────────────────────────────────────────────┘
-```
-
-### Callbacks
-
-| Callback Data | Дія |
-|---------------|-----|
-| `keep_image_${newsId}` | Залишити поточне зображення |
-| `upload_image_${newsId}` | Почати процес завантаження власного зображення |
-
-### Upload Flow
-
-**1. Користувач натискає "📸 Завантажити власне":**
-```
-✅ Popup: "📸 Відправте фото у відповідь на це повідомлення"
-✏️ Повідомлення оновлюється:
-   "📸 Очікую фото...
-    Reply to this message with your photo
-    newsId:abc-123-def-456"
-```
-
-**2. Користувач відправляє фото у reply:**
-```
-1. Telegram webhook перевіряє:
-   - Чи це reply на повідомлення?
-   - Чи містить фото?
-   - Чи текст містить "Очікую фото" та newsId?
-
-2. Завантажує фото з Telegram Bot API
-   → Зберігає в Supabase Storage (bucket: news-images, path: custom/${newsId}_${timestamp}.jpg)
-   → Отримує публічний URL
-
-3. Оновлює news запис:
-   - processed_image_url = publicUrl
-   - image_processed_at = now()
-
-4. Підтверджує користувачу:
-   "✅ Зображення завантажено!
-    📸 URL: https://...
-    🆔 News ID: abc-123-def-456"
-
-5. Оновлює оригінальне повідомлення:
-   "✅ Власне зображення завантажено"
-```
-
-### Generate Image Prompt Function
-
-**Input:**
-```json
-{
-  "newsId": "abc-123-def-456",
-  "title": "Meta Unveils SAM Audio: A Breakthrough...",
-  "content": "Meta has announced..."
-}
-```
-
-**Output:**
-```json
-{
-  "success": true,
-  "prompt": "Professional illustration of audio waveforms transforming into colorful AI neural networks, modern tech style, vibrant blues and purples"
-}
-```
-
-### Azure OpenAI Prompt Engineering
-
-**Промпт зберігається в базі даних** (`ai_prompts` таблиця) з типом `image_generation` та може бути відредагований через Admin Panel → Settings → AI Prompts.
-
-**Дефолтний промпт (людино-орієнтований підхід):**
-```
-Подивися на статтю очима людини якій далека тема але при цьому щось їй ну дуже цікаво.
-Як ти вважаєш що саме було б цікаво цій людині? Яка картинка постала перед очима цієї людини?
-Напиши одне коротке речення на основі якого я б передав би художнику реалісту твоє бачення!
-Це може бути ілюстрація, фото реалістична картинка, футуристична, і тд.
-Стиль повинен бути максимально наближений до духу статті.
-Сам опис картини повинен бути детальним та зрозумілим з першого погляду навіть без тексту.
-
-Ось стаття:
-
-Заголовок: {title}
-
-Текст: {content}
-
-Твоє бачення (одне речення, max 200 символів):
-```
-
-**Плейсхолдери:**
-- `{title}` - замінюється на заголовок статті
-- `{content}` - замінюється на текст статті (перші 1000 символів)
-
-**Характеристики промпту:**
-- Емоційний, людино-орієнтований підхід
-- Дивиться на статтю очима звичайної цікавої людини
-- Створює детальний візуальний опис
-- Виводить одне речення (max 200 символів)
-- Адаптується до духу статті
-
-**Як редагувати:**
-1. Зайти в Admin Panel → Settings → AI Prompts
-2. Знайти промпт "🎨 Генерація опису зображення" (тип: `image_generation`)
-3. Відредагувати текст промпту
-4. Зберегти зміни
-5. Наступні генерації використовуватимуть новий промпт
-
-**Приклади згенерованих описів:**
-
-| Стаття | Згенерований опис (українською) |
-|--------|----------------------------------|
-| "Meta представила SAM Audio" | Футуристична ілюстрація де звукові хвилі перетворюються на кольорову нейронну мережу ШІ, сучасний tech-стиль з яскравими синьо-фіолетовими тонами |
-| "Вчені виявили нову екзопланету" | Художня візуалізація синьо-зеленої планети схожої на Землю з двома сонцями на горизонті, космічний стиль ілюстрації |
-| "Новий ШІ інструмент допомагає лікарям" | Чиста медична ілюстрація де штучний інтелект у вигляді світного мозку аналізує дані пацієнтів на голографічних дисплеях |
-
-### Storage Structure
-
-```
-news-images/
-├── telegram/               # Оригінальні зображення з Telegram
-│   └── channelname/
-│       ├── 12345.jpg
-│       ├── 12345_1.jpg     # Multiple images support
-│       └── 12345_2.jpg
-└── custom/                 # Власні завантажені зображення
-    ├── abc-123_1703123456789.jpg
-    └── def-456_1703123456790.jpg
-```
-
-### Error Handling
-
-**1. Генерація промпту не вдалася:**
-- Новина все одно відправляється в бот
-- Промпт не показується
-- Кнопки вибору зображення залишаються
-
-**2. Завантаження фото не вдалося:**
-- Користувачу показується помилка
-- Можна спробувати ще раз
-- Оригінальне зображення залишається незмінним
-
-**3. Azure OpenAI недоступний:**
-- Функція логує помилку
-- Повертає `success: false`
-- Telegram бот продовжує працювати без промпту
-
-### Використання промпту
-
-**Google AI Studio (Gemini 3 Banana):**
-1. Відкрити [Google AI Studio](https://aistudio.google.com/)
-2. Вибрати модель Gemini 3 Banana (або інша з підтримкою генерації зображень)
-3. Вставити скопійований промпт
-4. Згенерувати зображення
-5. Завантажити та відправити в Telegram бота
-
-### Deploy
-
-```bash
-cd supabase
-
-# Apply migrations (додає поля та оновлює промпт)
-# Виконати SQL з файлів:
-# - 20251221_add_image_generation_prompt.sql (додає поля)
-# - 20251221_update_image_generation_prompt.sql (оновлює промпт)
-
-# Функції задеплояться автоматично через GitHub Actions при merge в main
-# Або вручну:
-supabase functions deploy generate-image-prompt
-supabase functions deploy telegram-webhook
-supabase functions deploy telegram-scraper
-```
-
-**ВАЖЛИВО:** Перед deploy переконайтеся що в Supabase Secrets є всі необхідні змінні:
-- `AZURE_OPENAI_ENDPOINT`
-- `AZURE_OPENAI_API_KEY`
-- `TELEGRAM_BOT_TOKEN`
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
----
-
-## Professional Image Prompt Generation System (January 2026)
-
-### Опис
-
-Нова система генерації промптів для зображень на основі **двоетапного підходу**: класифікатор витягує структуровані дані зі статті, потім шаблон заповнюється цими даними. Замінює творчий AI-підхід на детермінований template-based підхід.
-
-**Методологія:** Базується на [awesome-nanobanana-pro](https://github.com/ZeroLu/awesome-nanobanana-pro) репозиторії.
-
-### Архітектура
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. ВХІДНІ ДАНІ (зі статті)                                 │
-│     • title, content, tags, source_link                     │
-└─────────────────────────┬───────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  2. CLASSIFIER (Azure OpenAI)                               │
-│                                                             │
-│     Витягує JSON:                                           │
-│     {                                                       │
-│       "company_name": "Higgsfield",                         │
-│       "company_domain": "higgsfield.ai",                    │
-│       "category": "tech_product",                           │
-│       "product_type": "AI Platform",                        │
-│       "key_features": ["30 sec videos", "customization"],   │
-│       "visual_elements": ["AI avatar", "UI panels"],        │
-│       "visual_concept": "AI influencer emerging from UI",   │
-│       "color_scheme": "electric blue, magenta",             │
-│       "style_hint": "tech infographic"                      │
-│     }                                                       │
-└─────────────────────────┬───────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  3. TEMPLATE SELECTION                                      │
-│                                                             │
-│     category → template                                     │
-│     "tech_product" → image_template_tech_product            │
-└─────────────────────────┬───────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  4. TEMPLATE FILLING                                        │
-│                                                             │
-│     {company_name} → "Higgsfield"                           │
-│     {visual_elements} → "AI avatar, UI panels"              │
-│     {key_features_formatted} → "□ 30 SEC VIDEOS..."         │
-└─────────────────────────┬───────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  5. ГОТОВИЙ ПРОМПТ                                          │
-│                                                             │
-│     Professional tech infographic poster...                 │
-│     Logo: "HIGGSFIELD" in white uppercase...                │
-│     Visual: AI influencer emerging from UI...               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Категорії та шаблони
-
-| Категорія | prompt_type | Приклади контенту |
-|-----------|-------------|-------------------|
-| **Tech Product** | `image_template_tech_product` | Higgsfield, HeyGen, SaaS платформи |
-| **Marketing Campaign** | `image_template_marketing_campaign` | Icelandair, бренд-активації |
-| **AI Research** | `image_template_ai_research` | GPT-5, нові моделі, дослідження |
-| **Business News** | `image_template_business_news` | Корпоративні новини, M&A |
-| **Science** | `image_template_science` | Наукові відкриття, освіта |
-| **Lifestyle** | `image_template_lifestyle` | Подорожі, культура, розваги |
-| **General** | `image_template_general` | Універсальний fallback |
-
-### Database: Нові промпти в `ai_prompts`
-
-| prompt_type | Назва | Призначення |
-|-------------|-------|-------------|
-| `image_classifier` | 🔍 Image Prompt Classifier | Витягує JSON з даними |
-| `image_template_tech_product` | 🖥️ Tech Product Template | Шаблон для tech/SaaS |
-| `image_template_marketing_campaign` | 📢 Marketing Campaign Template | Шаблон для маркетингу |
-| `image_template_ai_research` | 🤖 AI Research Template | Шаблон для AI новин |
-| `image_template_business_news` | 📊 Business News Template | Шаблон для бізнесу |
-| `image_template_science` | 🔬 Science Template | Шаблон для науки |
-| `image_template_lifestyle` | ✨ Lifestyle Template | Шаблон для lifestyle |
-| `image_template_general` | 📰 General Template | Універсальний fallback |
-
-### Кольори за категоріями
-
-```typescript
-const CATEGORY_COLORS = {
-  'tech_product':       { primary: '#00E5FF', secondary: '#FF2D92' },
-  'marketing_campaign': { primary: '#FF6B35', secondary: '#004E89' },
-  'ai_research':        { primary: '#7C3AED', secondary: '#00E5FF' },
-  'business_news':      { primary: '#0066CC', secondary: '#00AA55' },
-  'science':            { primary: '#10B981', secondary: '#3B82F6' },
-  'lifestyle':          { primary: '#F59E0B', secondary: '#EC4899' },
-  'general':            { primary: '#6366F1', secondary: '#8B5CF6' },
-}
-```
-
-### Placeholders в шаблонах
-
-| Placeholder | Заміна | Приклад |
-|-------------|--------|---------|
-| `{company_name}` | Назва компанії | "Higgsfield" |
-| `{company_domain}` | Домен сайту | "higgsfield.ai" |
-| `{product_type}` | Тип продукту | "AI Platform" |
-| `{visual_concept}` | Візуальна концепція | "AI avatar emerging from UI" |
-| `{visual_elements}` | Список елементів | "AI avatar, UI panels, video preview" |
-| `{key_features_formatted}` | Фічі як bullets | "□ 30 SEC VIDEOS\n□ CUSTOMIZATION" |
-| `{color_primary}` | Основний колір | "#00E5FF" |
-| `{color_secondary}` | Додатковий колір | "#FF2D92" |
-| `{color_scheme}` | Опис кольорів | "electric blue, magenta" |
-| `{cta_text}` | Call-to-action | "Learn More" |
-
-### Edge Function Response
-
-**Новий формат відповіді:**
-```json
-{
-  "success": true,
-  "prompt": "Professional tech infographic poster...",
-  "classifierData": {
-    "company_name": "Higgsfield",
-    "category": "tech_product",
-    "visual_concept": "..."
-  },
-  "templateUsed": "image_template_tech_product"
-}
-```
-
-### Приклад: Icelandair Marketing Campaign
-
-**Вхідна стаття:**
-> Icelandair Invites Londoners to Distinguish Real Icelandic Landscapes from AI-Generated Images...
-
-**Classifier Output:**
-```json
-{
-  "company_name": "Icelandair",
-  "company_domain": "icelandair.com",
-  "category": "marketing_campaign",
-  "product_type": "Airline",
-  "key_features": ["Real vs AI challenge", "London activation", "Iceland tourism"],
-  "visual_elements": ["glacier", "volcanic beach", "waterfall", "northern lights"],
-  "visual_concept": "Split-screen comparing real Iceland landscape with AI-generated version",
-  "color_scheme": "icy blues, volcanic blacks, aurora green",
-  "style_hint": "travel advertising meets tech exhibition"
-}
-```
-
-**Template:** `image_template_marketing_campaign`
-
-**Final Prompt:**
-```
-Professional marketing campaign poster with brand identity.
-
-HEADER:
-- Logo: "Icelandair" brand wordmark prominently displayed
-- Campaign tagline or event name below
-
-CENTRAL VISUAL:
-Split-screen comparing real Iceland landscape with AI-generated version
-- Main visual elements: glacier, volcanic beach, waterfall, northern lights
-- Human silhouettes or figures for scale and engagement
-- Dynamic composition with visual tension/contrast
-
-CAMPAIGN INFO:
-- Key message or question that creates curiosity
-- Location/event details if applicable
-- Call-to-action: "Learn More"
-
-STYLE:
-- Color palette: icy blues, volcanic blacks, aurora green
-- Premium advertising aesthetic
-- National Geographic meets modern brand campaign
-- High contrast, attention-grabbing
-- 4:5 aspect ratio
-
-BOTTOM:
-- Website URL: "icelandair.com"
-- Brand logo repeated smaller
-
-CRITICAL: "Icelandair" logo must be perfectly legible. Create visual that makes viewers stop scrolling.
-```
-
-### Переваги нового підходу
-
-| Було (Creative AI) | Стало (Template-based) |
-|--------------------|------------------------|
-| AI придумує опис | AI тільки витягує факти |
-| Непередбачуваний результат | Детермінований результат |
-| Абстрактні образи | Конкретна інфографіка |
-| Без логотипу | Точна назва компанії |
-| Творчий підхід | Професійний підхід |
-
-### Файли
-
-```
-├── supabase/functions/generate-image-prompt/index.ts     # Edge Function (v2)
-├── supabase/migrations/20260122_add_image_prompt_templates.sql  # Шаблони
-```
-
-### Редагування шаблонів
-
-Шаблони можна редагувати через **Admin Panel → Settings → AI Prompts**.
-
-Шукайте промпти з типами:
-- `image_classifier`
-- `image_template_*`
-
-### Deploy
-
-```bash
-cd supabase
-
-# Міграція виконається автоматично через GitHub Actions
-# Або вручну:
-supabase functions deploy generate-image-prompt
-```
-
----
-
-## Telegram Bot Workflow Improvements (December 22, 2024)
-
-### Опис
-
-Комплексне покращення Telegram бота для модерації новин: секвенційний workflow, автоматична детекція медіа, покращений контекст для AI промптів, та відображення посилань на джерела.
-
-### Виправлені проблеми
-
-#### 1. Sequential Workflow (Секвенційний робочий процес)
-
-**Проблема:** Всі кнопки показувались одночасно, що було незрозуміло та заплутано.
-
-**Рішення:** Покроковий workflow з автоматичною зміною кнопок:
-
-```
-┌─────────────────────────────────────────────────────┐
-│  STEP 1: Image Selection (якщо немає відео)        │
-│  ┌───────────────────────────────────────────────┐ │
-│  │  ✅ Залишити зображення                       │ │
-│  │  📸 Згенерувати своє                           │ │
-│  │  ❌ Reject                                     │ │
-│  └───────────────────────────────────────────────┘ │
-│                        ↓                            │
-│  STEP 2: Publication (після підтвердження)         │
-│  ┌───────────────────────────────────────────────┐ │
-│  │  📰 В новини    │    📝 В блог                 │ │
-│  │  ❌ Reject                                     │ │
-│  └───────────────────────────────────────────────┘ │
-│                        ↓                            │
-│  STEP 3: LinkedIn (після публікації)               │
-│  ┌───────────────────────────────────────────────┐ │
-│  │  🔗 LinkedIn EN │ LinkedIn NO │ LinkedIn UA    │ │
-│  └───────────────────────────────────────────────┘ │
-│                        ↓                            │
-│  STEP 4: Final Links (після LinkedIn поста)        │
-│  ┌───────────────────────────────────────────────┐ │
-│  │  ✅ LINKEDIN EN                                │ │
-│  │  📰 «Article Title»                            │ │
-│  │  📝 Читати статтю (website link)               │ │
-│  │  🔗 Переглянути пост (LinkedIn link)           │ │
-│  └───────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────┘
-```
-
-**Виконані зміни:**
-
-| Файл | Зміни |
-|------|-------|
-| `telegram-scraper/index.ts` | Початкові кнопки: тільки image workflow або publish (якщо є відео) |
-| `telegram-webhook/index.ts` | Нові callback handlers: `confirm_image`, `create_custom` |
-| `telegram-webhook/index.ts` | Photo upload показує publish buttons після завантаження |
-| `telegram-webhook/index.ts` | LinkedIn handler додає article URL + LinkedIn URL в кінці |
-
-#### 2. Media Detection (Автоматична детекція медіа)
-
-**Проблема:** Бот показував кнопки вибору зображення навіть коли пост містив відео.
-
-**Рішення:** Автоматична детекція типу медіа:
-
-```typescript
-// telegram-scraper/index.ts
-const hasVideo = videoUrl && videoType
-
-if (hasVideo) {
-  // 🎥 Video exists → Skip image workflow
-  keyboard = {
-    inline_keyboard: [
-      [
-        { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
-        { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
-      ],
-      [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
-    ]
-  }
-} else {
-  // 🖼️ No video → Show image workflow
-  // ...
-}
-```
-
-**Результат:**
-- Якщо `video_url` існує → Одразу показуються кнопки публікації
-- Якщо немає відео → Показується image workflow (Step 1)
-
-**CRITICAL FIX (Dec 22):** Використання `uploadedPhotoUrl` замість `post.photoUrl`
-
-**Проблема:** Бот використовував `post.photoUrl` (оригінальний URL з парсингу каналу), а не оновлений `photoUrl` після завантаження в Supabase Storage. Через це image workflow пропускався навіть коли зображення було успішно завантажено.
-
-**Рішення:**
-```typescript
-// telegram-scraper/index.ts:471
-sendToTelegramBot(..., photoUrl || null) // Pass uploaded photoUrl
-
-// telegram-scraper/index.ts:875
-const hasImage = uploadedPhotoUrl // Use uploaded, not original post.photoUrl
-```
-
-Тепер image workflow кнопки показуються **тільки** коли зображення реально завантажено в Supabase Storage.
-
-#### 3. Longer Prompt Context (Більше контексту для AI)
-
-**Проблема:** AI промпт для генерації опису зображення отримував тільки перші 1000 символів статті, що було недостатньо для розуміння контексту.
-
-**Рішення:**
-
-```typescript
-// generate-image-prompt/index.ts (line 150)
-// До
-promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 1000))
-
-// Після
-promptTemplate = promptTemplate.replace(/{content}/g, content.substring(0, 5000))
-```
-
-**Результат:** AI отримує в 5 разів більше контексту (5000 символів), що дозволяє краще зрозуміти суть статті та згенерувати релевантніший опис зображення.
-
-#### 4. Display Source Links (Відображення посилань на джерела)
-
-**Проблема:** Поле `source_link` (зовнішнє джерело статті, знайдене LLM) не відображалось у фінальній UI новин та блогу.
-
-**Рішення:**
-
-**NewsArticle.tsx (lines 226-238):**
-```typescript
-{(news.source_link || news.original_url) && (
-  <div className="mb-8">
-    <a
-      href={news.source_link || news.original_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl"
-    >
-      <ExternalLink className="w-4 h-4" />
-      Read Original Article
-    </a>
-  </div>
-)}
-```
-
-**NewsModal.tsx (lines 445-448):**
-```typescript
-{((selectedNews as any).source_link || selectedNews.original_url) && (
-  <a href={(selectedNews as any).source_link || selectedNews.original_url}>
-    {t('news_read_more')}
-  </a>
-)}
-```
-
-**Результат:**
-- `source_link` має пріоритет над `original_url`
-- Показується як помітна кнопка "Read Original Article"
-- Відкривається у новій вкладці з `noopener noreferrer`
-
-### New Callback Handlers
-
-| Callback | Опис | Наступний крок |
-|----------|------|----------------|
-| `confirm_image_${newsId}` | Підтверджує існуюче зображення або продовжує без зображення | Показує кнопки публікації |
-| `create_custom_${newsId}` | Ініціює завантаження власного зображення | Чекає reply з фото |
-| `publish_news_${newsId}` | Публікує як новину | Показує LinkedIn кнопки |
-| `publish_blog_${newsId}` | Публікує як блог-пост | Показує LinkedIn кнопки |
-| `linkedin_en/no/ua_${newsId}` | Публікує в LinkedIn | Показує фінальні посилання |
-
-### Photo Upload Flow
-
-```
-1. Користувач натискає "📸 Створити своє"
-   ↓
-2. Бот оновлює повідомлення: "📸 Очікую фото..."
-   ↓
-3. Користувач відправляє фото як reply (Telegram Bot API)
-   ↓
-4. Бот завантажує фото через getFile API
-   ↓
-5. Зберігає в Supabase Storage (custom/ folder)
-   ↓
-6. Оновлює processed_image_url в базі даних
-   ↓
-7. Показує кнопки публікації [📰 В новини] [📝 В блог]
-   ↓
-8. При публікації: processed_image_url має ПРІОРИТЕТ над image_url
-```
-
-### Image Priority Logic
-
-**Проблема:** Раніше завантажене зображення (`processed_image_url`) не використовувалось при публікації.
-
-**Рішення:**
-```typescript
-// telegram-webhook/index.ts:611
-imageUrl: news.processed_image_url || news.image_url || null
-```
-
-**Пріоритет:**
-1. `processed_image_url` - власне завантажене зображення
-2. `image_url` - оригінальне з Telegram каналу
-3. `null` - немає зображення
-
-Це гарантує що користувацькі зображення **реально використовуються** в опублікованих статтях.
-
-### Deploy
-
-```bash
-cd supabase
-
-# Deploy оновлені функції
-supabase functions deploy telegram-scraper
-supabase functions deploy telegram-webhook
-supabase functions deploy generate-image-prompt
-```
-
-### Testing Checklist
-
-- [ ] Posts з відео пропускають image workflow
-- [ ] Posts без відео показують image workflow з правильними кнопками:
-  - [ ] ✅ Залишити зображення
-  - [ ] 📸 Згенерувати своє
-- [ ] Підтвердження зображення показує publish buttons
-- [ ] Custom image upload показує publish buttons після завантаження
-- [ ] **Custom image реально використовується в публікації** (processed_image_url priority)
-- [ ] **Image workflow показується тільки коли зображення завантажено** (uploadedPhotoUrl check)
-- [ ] Публікація показує LinkedIn buttons
-- [ ] LinkedIn post показує фінальні посилання (article + LinkedIn)
-- [ ] Source links відображаються у NewsArticle та NewsModal
-- [ ] AI промпт генерується з більшим контекстом (5000 chars)
-
-### 5. Retry Logic для Pending News (December 22, 2024)
-
-**Проблема:** Новини які пройшли AI модерацію (`approved`) але не були відправлені в Telegram бот (помилка/збій) застрягали в БД назавжди. При наступному скрапінгу вони пропускались як дублікати.
-
-**Симптоми:**
-- 200+ новин в Queue (admin panel)
-- Новини не надходять в Telegram бот
-- `pre_moderation_status = 'approved'` але `is_published = false`
-
-**Рішення:**
-```typescript
-// telegram-scraper/index.ts:318-395
-if (existingPost.pre_moderation_status === 'approved' &&
-    !existingPost.is_published &&
-    !existingPost.is_rewritten) {
-
-  // 1. Generate image prompt
-  // 2. Re-upload photo if needed
-  // 3. Retry sending to Telegram bot
-  console.log(`🔄 Retry sending approved but unpublished post to bot`)
-}
-```
-
-**Що відбувається при retry:**
-1. Генерується image prompt через Edge Function
-2. Фото завантажується в Supabase Storage (якщо потрібно)
-3. Повторна спроба відправки в Telegram бот
-4. Логування результату (success/fail)
-
-**Результат:** Всі approved новини які застрягли в черзі будуть автоматично відправлені в бот при наступному запуску scraper.
-
-### 6. Debug Logging для Queue Diagnostics (December 22, 2024)
-
-**Проблема:** 200+ новин в черзі, але жодні нові новини не надходять в Telegram бот. Логи показували що пости знайдені, але не оброблені.
-
-**Симптоми:**
-- Логи: "✅ Found 17 message elements"
-- Але НЕ БУЛО логів: "🔄 Processing post ${messageId}"
-- Всі пости відсіювалися, але невідомо чому
-
-**Рішення:** Додано детальне логування для діагностики:
-
-```typescript
-// telegram-scraper/index.ts
-
-// 1. Date range parsing
-console.log(`📨 Found ${posts.length} posts`)
-if (posts.length > 0) {
-  const dates = posts.map(p => p.date).sort((a, b) => a.getTime() - b.getTime())
-  const oldestDate = dates[0]
-  const newestDate = dates[dates.length - 1]
-  console.log(`📅 Parsed posts date range: ${oldestDate.toISOString()} to ${newestDate.toISOString()}`)
-}
-
-// 2. Date filtering with warnings
-console.log(`📊 Filtering ${posts.length} parsed posts by date...`)
-const newPosts = posts.filter(post => {
-  const passesFilter = filterToDate
-    ? (post.date >= filterFromDate && post.date <= filterToDate)
-    : (post.date > filterFromDate)
-
-  if (!passesFilter) {
-    console.log(`⏭️ Skipping post ${post.messageId} (date ${post.date.toISOString()} outside filter range)`)
-  }
-  return passesFilter
-})
-
-// 3. Final count and warning
-console.log(`✅ Found ${newPosts.length} post(s) matching date filter (out of ${posts.length} parsed)`)
-if (newPosts.length === 0) {
-  console.log(`⚠️ No posts passed date filter. Filter range: ${filterFromDate.toISOString()} to ${filterToDate ? filterToDate.toISOString() : 'now'}`)
-}
-
-// 4. Missing datetime warning
-if (!datetime) {
-  console.log(`⚠️ Post ${messageId} has no datetime attribute, using current time`)
-}
-```
-
-**Що логується тепер:**
-
-| Етап | Лог | Мета |
-|------|-----|------|
-| Parsing | `📅 Parsed posts date range: X to Y` | Показати діапазон спарсених дат |
-| Filtering | `📊 Filtering N parsed posts by date...` | Скільки постів до фільтру |
-| Skipped | `⏭️ Skipping post X (date Y outside filter range)` | Чому пост відсіяний |
-| Result | `✅ Found N post(s) matching date filter (out of M parsed)` | Скільки пройшло фільтр |
-| Warning | `⚠️ No posts passed date filter. Filter range: X to Y` | Якщо жоден не пройшов |
-| Missing date | `⚠️ Post X has no datetime attribute` | Коли дата не спарсилась |
-
-**Результат:** Тепер можемо точно діагностувати чому пости не обробляються:
-- Чи всі пости старіші за last_fetched_at?
-- Чи є проблеми з парсингом дат?
-- Чи filter range налаштований правильно?
-
-### 7. Deployment Troubleshooting & Version Logging (December 24, 2024)
-
-**Проблема:** Supabase Edge Functions не оновлювались після GitHub Actions deployment, навіть коли workflow показував success. Функції продовжували виконувати старий код.
-
-**Симптоми:**
-- GitHub Actions workflow "Deploy Supabase Edge Functions" завершувався успішно
-- Але Supabase function logs показували старий код (відсутні нові debug логи)
-- Workflow output показував: "No change found in Function: telegram-scraper"
-- Навіть після додавання dummy коментарів та merge PR
-
-**Діагностика:**
-
-1. **Перевірка версії в логах:**
-```
-# Старий код (до fix)
-🕷️  Telegram Scraper started
-
-# Новий код (після fix)
-🕷️  Telegram Scraper v2024-12-24-01 started
-📦 Features: Sequential workflow, media detection, debug logging, retry logic
-```
-
-2. **Перевірка GitHub Actions logs:**
-- Відкрити https://github.com/SmmShaman/vitalii_claude-code-in-browser/actions
-- Знайти workflow run "Deploy Supabase Edge Functions"
-- Відкрити job "deploy"
-- Розгорнути step "Deploy all functions"
-- Шукати: `Deploying function: telegram-scraper`
-
-**Очікуваний output при успішному deployment:**
-```
-Deploying function: telegram-scraper
-Bundling Function: telegram-scraper
-Deploying Function: telegram-scraper (script size: X.XXX MB)
-Deployed Functions on project ***: telegram-scraper
-```
-
-**Очікуваний output коли Supabase пропускає deployment:**
-```
-No change found in Function: telegram-scraper
-```
-
-**Рішення:** Додано version logging для верифікації deployment:
-
-```typescript
-// supabase/functions/telegram-scraper/index.ts:89-91
-// Version: 2024-12-24-01 - Sequential workflow + debug logging
-console.log('🕷️  Telegram Scraper v2024-12-24-01 started')
-console.log('📦 Features: Sequential workflow, media detection, debug logging, retry logic')
-
-// supabase/functions/telegram-scraper/index.ts:636
-console.log(`✅ Telegram Scraper v2024-12-24-01 finished successfully`)
-```
-
-**Як перевірити що deployment відбувся:**
-
-1. Запустити функцію через Admin Panel або Edge Function endpoint
-2. Перевірити Supabase Function Logs
-3. Шукати рядок: `🕷️  Telegram Scraper v2024-12-24-01 started`
-4. Якщо version присутній → deployment successful
-5. Якщо version відсутній → функція все ще на старій версії
-
-**Checksum Issue:**
-
-Supabase CLI використовує checksums для визначення чи змінився код функції:
-- Тільки зміни в коді викликають checksum change
-- Зміни в коментарях можуть не змінити checksum (залежить від bundler)
-- Найкращий спосіб force redeploy: змінити actual код (log statements, constants, тощо)
-
-**Deployment через GitHub Actions:**
-
-GitHub Actions workflow (`/.github/workflows/deploy-supabase.yml`) автоматично деплоїть при:
-- Push до `main` branch
-- Зміни в `supabase/functions/**` або `supabase/migrations/**`
-- Manual workflow dispatch
-
-**Manual deployment (альтернатива):**
-
-Якщо GitHub Actions не спрацьовує:
-```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Login
-supabase login --token YOUR_ACCESS_TOKEN
-
-# Link project
-supabase link --project-ref YOUR_PROJECT_REF
-
-# Deploy specific function
-supabase functions deploy telegram-scraper --no-verify-jwt
-
-# Deploy all functions
-for dir in supabase/functions/*/; do
-  if [ -d "$dir" ] && [ "$(basename $dir)" != "_shared" ]; then
-    func_name=$(basename $dir)
-    supabase functions deploy $func_name --no-verify-jwt
-  fi
-done
-```
-
----
-
-## Component Architecture
-
-### BentoGrid Layout
-
-Головна сторінка побудована на **6 інтерактивних секцій** у grid-layout:
-
-```
-┌─────────────┬─────────────┬─────────────┐
-│   About     │  Services   │  Projects   │
-│  (Profile)  │   (Cards)   │ (Carousel)  │
-├─────────────┼─────────────┼─────────────┤
-│   Skills    │    News     │    Blog     │
-│ (Explosion) │   (List)    │   (List)    │
-└─────────────┴─────────────┴─────────────┘
-```
-
-**Взаємодія:**
-- Hover на секцію → фон сторінки змінює колір
-- Hover на секцію → Hero текст заповнюється контрастним кольором
-- 3 секунди hover на Projects → "explosion" у сітку проектів
-- Hover на Skills → particle explosion effect
-- Click на News/Blog → modal з деталями
-
-### Key UI Components
-
-| Компонент | Файл | Опис |
-|-----------|------|------|
-| `BentoGrid` | `components/sections/BentoGrid.tsx` | Головний grid з 6 секцій (desktop) |
-| `BentoGridMobile` | `components/sections/BentoGridMobile.tsx` | Accordion layout (mobile) |
-| `HeroTextAnimation` | `components/ui/HeroTextAnimation.tsx` | Liquid fill ефект для тексту |
-| `ProjectsCarousel` | `components/ui/ProjectsCarousel.tsx` | GSAP карусель + explosion grid |
-| `ServicesAnimation` | `components/ui/ServicesAnimation.tsx` | GSAP анімація сервісів |
-| `SkillsAnimation` | `components/ui/SkillsAnimation.tsx` | Particle explosion на hover |
-| `AboutAnimation` | `components/ui/AboutAnimation.tsx` | Text morph анімація |
-| `Modal` | `components/ui/Modal.tsx` | Reusable modal з safe-area |
-| `Toast` | `components/ui/Toast.tsx` | Toast notifications + Context |
-| `ShareButtons` | `components/ui/ShareButtons.tsx` | Social sharing (LinkedIn, X) |
-| `Skeleton` | `components/ui/Skeleton.tsx` | Loading skeleton components |
-| `ScrollReveal` | `components/ui/ScrollReveal.tsx` | Scroll-triggered animations |
-| `NewsSection` | `components/sections/NewsSection.tsx` | News list + detail view |
-| `BlogSection` | `components/sections/BlogSection.tsx` | Blog list + detail view |
-| `ArticleLayout` | `components/ArticleLayout.tsx` | Standalone article wrapper |
-
-### Modal System (Parallel Routes)
-
-Next.js App Router parallel routes для модалів:
-
-```
-app/
-├── @modal/                    # Modal slot
-│   ├── (.)blog/[slug]/        # Intercepted blog route
-│   │   └── page.tsx           # Shows BlogModal
-│   └── (.)news/[slug]/        # Intercepted news route
-│       └── page.tsx           # Shows NewsModal
-├── blog/[slug]/page.tsx       # Full blog page (direct navigation)
-└── news/[slug]/page.tsx       # Full news page (direct navigation)
-```
-
-**Як працює:**
-1. Click на картку → URL змінюється на `/blog/[slug]`
-2. Parallel route `@modal/(.)blog/[slug]` перехоплює
-3. Показується modal overlay
-4. Прямий перехід на `/blog/[slug]` → повна сторінка
-
----
-
-## Animation Libraries
-
-### GSAP (GreenSock)
-
-Використовується для:
-- `ProjectsCarousel` — infinite scroll carousel
-- `ServicesAnimation` — staggered card animations
-- `SkillsAnimation` — particle positioning
-
-```typescript
-import gsap from 'gsap'
-
-// Timeline example
-const tl = gsap.timeline({ repeat: -1 })
-tl.to('.card', { x: 100, duration: 0.5, stagger: 0.1 })
-```
-
-### Framer Motion
-
-Використовується для:
-- Page transitions
-- Modal animations
-- Drag & drop (Skills manager)
-- Hover states
-
-```tsx
-import { motion, AnimatePresence } from 'framer-motion'
-
-<motion.div
-  initial={{ opacity: 0, scale: 0.9 }}
-  animate={{ opacity: 1, scale: 1 }}
-  exit={{ opacity: 0, scale: 0.9 }}
-  whileHover={{ scale: 1.05 }}
-/>
-```
-
-### Three.js
-
-Використовується для:
-- `ParticleBackground` — 3D частинки на фоні
-
-```typescript
-import * as THREE from 'three'
-
-const scene = new THREE.Scene()
-const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000)
-const renderer = new THREE.WebGLRenderer({ alpha: true })
-```
-
----
-
-## Admin Panel
-
-### Доступ
-
-1. URL: `/admin/login`
-2. Email + Password authentication
-3. Redirect до `/admin/dashboard`
-
-### Вкладки Dashboard
-
-| Вкладка | Функціонал |
-|---------|------------|
-| **Queue** | Перегляд pending/approved/rejected новин |
-| **AI Prompts** | Редагування AI промптів (pre_moderation, rewrite, image_generation) |
-| **Skills** | CRUD для технологій (drag & drop сортування) |
-| **LinkedIn** | Управління LinkedIn публікаціями (repost, статистика) |
-| **Image Processing** | Налаштування Gemini AI для обробки зображень (сезонні теми) |
-| **API Keys** | Управління зовнішніми API ключами (Google, LinkedIn) |
-| **Debug** | Toggle console logging для анімацій |
-| **Settings** | Загальні налаштування |
-
-### Skills Manager
-
-- Додавання нових скілів (назва + категорія)
-- Inline редагування
-- Drag & drop сортування (Framer Motion Reorder)
-- Групування по категоріях
-- Зберігання в localStorage
-
----
-
-## Mobile Layout System (January 2025)
-
-### BentoGridMobile Component
-
-Мобільна версія головної сторінки з **Bottom Navigation App-стилем** та портованими ефектами з desktop версії.
-
-**Файл:** `components/sections/BentoGridMobile.tsx`
-
-### Архітектура
-
-```
-┌─────────────────────────────────────┐
-│          Header (Fixed)             │
-├─────────────────────────────────────┤
-│                                     │
-│        Scrollable Content           │
-│     (Active Section Content)        │
-│                                     │
-│    ╭──────────────────────────╮     │
-│    │  Section-specific        │     │
-│    │  content with animations │     │
-│    ╰──────────────────────────╯     │
-│                                     │
-├─────────────────────────────────────┤
-│ 🏠   💼   📁   ✨   📰   📖  │
-│ Bottom Navigation (Fixed)           │
-└─────────────────────────────────────┘
-```
-
-### Портовані ефекти з Desktop
-
-#### 1. About Section - Typewriter Effect
-
-```typescript
-// Typewriter animation (30ms per character)
-const [typedText, setTypedText] = useState('')
-const [isTyping, setIsTyping] = useState(true)
-
-useEffect(() => {
-  const aboutText = (t('about_content') as string).split('\n\n')[0]
-  if (!isTyping || expandedAbout) return
-  if (typedText.length < aboutText.length) {
-    const timer = setTimeout(() => {
-      setTypedText(aboutText.substring(0, typedText.length + 1))
-    }, 30)
-    return () => clearTimeout(timer)
-  }
-}, [typedText, isTyping])
-```
-
-**Функціонал:**
-- Друкує текст посимвольно (30ms інтервал)
-- Блимаючий курсор в кінці
-- Кнопка "Show more" розгортає повний текст
-- При розгортанні typewriter зупиняється
-
-#### 2. Services Section - Rotation Animation
-
-```typescript
-// Service title rotation every 3 seconds
-const [currentServiceIndex, setCurrentServiceIndex] = useState(0)
-
-useEffect(() => {
-  const interval = setInterval(() => {
-    setCurrentServiceIndex(prev => (prev + 1) % services.length)
-  }, 3000)
-  return () => clearInterval(interval)
-}, [])
-```
-
-**Функціонал:**
-- Автоматична ротація заголовків сервісів (3 сек)
-- AnimatePresence для плавних переходів
-- Горизонтальний скролл карточок сервісів
-- Індикатор активного сервісу (кольорова крапка)
-
-#### 3. Projects Section - Carousel + Explosion Grid
-
-```typescript
-// Touch/swipe support
-const handleProjectTouchStart = (e: React.TouchEvent) => {
-  touchStartRef.current = { x: e.touches[0].clientX, time: Date.now() }
-}
-
-const handleProjectTouchEnd = (e: React.TouchEvent) => {
-  if (!touchStartRef.current) return
-  const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x
-  const deltaTime = Date.now() - touchStartRef.current.time
-  if (Math.abs(deltaX) > 50 && deltaTime < 300) {
-    if (deltaX < 0) nextProject()
-    else prevProject()
-  }
-}
-```
-
-**Функціонал:**
-- **Carousel mode:** Один проект на весь екран зі swipe
-- **Progress bar:** Візуальний індикатор до наступного проекту
-- **Explosion grid:** Кнопка "Show all" → сітка всіх проектів
-- **Swipe gesture:** 50px threshold, 300ms max duration
-- **Унікальні градієнти** для кожного проекту
-
-#### 4. Skills Section - Tags/Logos Toggle
-
-```typescript
-const [isSkillsExpanded, setIsSkillsExpanded] = useState(false)
-
-// Toggle between tags view and logos grid
-<motion.button onClick={() => setIsSkillsExpanded(!isSkillsExpanded)}>
-  {isSkillsExpanded ? 'Show Tags' : 'Show Logos'}
-</motion.button>
-```
-
-**Функціонал:**
-- **Tags view:** Компактні бейджі з категоріями (кольоровані)
-- **Logos view:** Сітка логотипів технологій (explosion-like)
-- Spring animation при перемиканні
-- Категорії: development, ui, ai, automation, marketing, integration
-
-#### 5. News Section - Horizontal Scroll Cards
-
-```typescript
-// Staggered animation on mount
-<motion.div
-  initial={{ opacity: 0, x: 50 }}
-  animate={{ opacity: 1, x: 0 }}
-  transition={{ delay: index * 0.1 }}
-/>
-```
-
-**Функціонал:**
-- Горизонтальний скролл карточок новин
-- Зображення, заголовок, дата, кількість переглядів
-- Stagger animation (100ms delay per card)
-- Посилання на повну статтю
-
-#### 6. Blog Section - Horizontal Scroll Cards
-
-Ідентично News Section з власними стилями та даними з Supabase.
-
-### Bottom Navigation
-
-**Файл:** `components/layout/BottomNavigation.tsx`
-
-```typescript
-const navItems = [
-  { id: 'home', icon: Home, labelKey: 'nav_home' },
-  { id: 'services', icon: Briefcase, labelKey: 'nav_services' },
-  { id: 'projects', icon: FolderOpen, labelKey: 'nav_projects' },
-  { id: 'news', icon: Newspaper, labelKey: 'nav_news' },
-  { id: 'blog', icon: BookOpen, labelKey: 'nav_blog' },
-  { id: 'contact', icon: Mail, labelKey: 'nav_contact' },
-]
-```
-
-**Стилі:**
-- Glassmorphism ефект (blur + transparency)
-- Safe area insets для iPhone X+
-- Кольорова індикація активної секції
-- Animated dot indicator
-
-### Кольори секцій
-
-| Section | Color | HEX |
-|---------|-------|-----|
-| Home/About | Brown-Orange | `#AF601A` |
-| Services | Fuchsia | `#EC008C` |
-| Projects | Emerald | `#009B77` |
-| Skills | Light Pink | `#fde5e5` |
-| News | Greenery | `#88B04B` |
-| Blog | Classic Blue | `#0F4C81` |
-| Contact | Purple | `#764BB0` |
-
-### Використання
-
-```tsx
-// app/page.tsx
-import { useIsMobile } from '@/hooks/useIsMobile'
-import { BentoGridMobile } from '@/components/sections/BentoGridMobile'
-
-export default function Home() {
-  const isMobile = useIsMobile()
-
-  return isMobile ? (
-    <BentoGridMobile onHoveredSectionChange={handleHover} />
-  ) : (
-    <BentoGrid onHoveredSectionChange={handleHover} />
-  )
-}
-```
-
-### Desktop vs Mobile Effects Comparison
-
-| Feature | Desktop | Mobile |
-|---------|---------|--------|
-| About Text | GSAP SplitText explosion | Typewriter effect |
-| Services | GSAP scatter/gather chars | AnimatePresence rotation |
-| Projects | GSAP timeline carousel | Swipe carousel + grid toggle |
-| Skills | Particle logo explosion | Tags/Logos toggle view |
-| News/Blog | Expand/fullscreen modal | Horizontal scroll cards |
-| Navigation | Hover on sections | Bottom Navigation tabs |
-
----
-
-## Mobile Detection Hooks
-
-**Файл:** `hooks/useIsMobile.ts`
-
-### useIsMobile()
-
-Визначає чи пристрій мобільний (ширина < 768px).
-
-```typescript
-export const useIsMobile = (): boolean => {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  return isMobile
-}
-```
-
-### useIsTablet()
-
-Визначає чи пристрій планшет (768px ≤ ширина < 1024px).
-
-```typescript
-export const useIsTablet = (): boolean => {
-  const [isTablet, setIsTablet] = useState(false)
-
-  useEffect(() => {
-    const checkTablet = () => {
-      const width = window.innerWidth
-      setIsTablet(width >= 768 && width < 1024)
-    }
-    checkTablet()
-    window.addEventListener('resize', checkTablet)
-    return () => window.removeEventListener('resize', checkTablet)
-  }, [])
-
-  return isTablet
-}
-```
-
-**SSR-безпечність:** Initial state `false`, оновлюється при mount.
-
----
-
-## Article Layout System
-
-### ArticleLayout Component
-
-**Файл:** `components/ArticleLayout.tsx`
-
-Обгортка для standalone сторінок статей (news/blog).
-
-```tsx
-interface ArticleLayoutProps {
-  children: React.ReactNode
-  backHref?: string      // Default: '/'
-  backLabel?: string     // Default: 'Back to Home'
-}
-
-export function ArticleLayout({ children, backHref = '/', backLabel }: ArticleLayoutProps) {
-  return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <ArticleHeader backHref={backHref} backLabel={backLabel} />
-      <main className="flex-1">{children}</main>
-      <Footer />
-    </div>
-  )
-}
-```
-
-### ArticleHeader Component
-
-**Файл:** `components/layout/ArticleHeader.tsx`
-
-Compact sticky header для сторінок статей:
-- Кнопка "Back" з посиланням
-- Language switcher
-- Sticky positioning при скролі
-
----
-
-## Toast Notification System
-
-**Файл:** `components/ui/Toast.tsx`
-
-Global toast система з React Context API.
-
-### Типи toast:
-
-| Type | Колір | Auto-dismiss |
-|------|-------|--------------|
-| `success` | Зелений | 3 секунди |
-| `error` | Червоний | 5 секунд |
-| `warning` | Amber | 3 секунди |
-| `info` | Синій | 3 секунди |
-
-### Використання:
-
-```tsx
-import { useToast } from '@/components/ui/Toast'
-
-function MyComponent() {
-  const { showToast } = useToast()
-
-  return (
-    <button onClick={() => showToast('Link copied!', 'success')}>
-      Copy Link
-    </button>
-  )
-}
-```
-
-### Provider Setup:
-
-```tsx
-// app/providers.tsx
-import { ToastProvider } from '@/components/ui/Toast'
-
-export function Providers({ children }) {
-  return (
-    <TranslationProvider>
-      <ToastProvider>
-        {children}
-      </ToastProvider>
-    </TranslationProvider>
-  )
-}
-```
-
-### Accessibility:
-
-- `role="status"` для screen readers
-- `aria-live="polite"` для announcements
-- Manual dismiss button
-
----
-
-## Social Sharing Buttons
-
-**Файл:** `components/ui/ShareButtons.tsx`
-
-Кнопки для поширення статей у соцмережах.
-
-### Підтримувані платформи:
-
-| Платформа | Метод | Callback |
-|-----------|-------|----------|
-| LinkedIn | Share offsite URL | Opens in popup |
-| X (Twitter) | Intent URL with text | Opens in popup |
-| Copy Link | Clipboard API | Toast notification |
-
-### Props:
-
-```typescript
-interface ShareButtonsProps {
-  url: string           // Relative URL (e.g., '/news/slug')
-  title: string         // Article title
-  description?: string  // Article description (for Twitter)
-}
-```
-
-### Використання:
-
-```tsx
-<ShareButtons
-  url="/news/meta-unveils-sam-audio"
-  title="Meta Unveils SAM Audio"
-  description="A breakthrough in AI audio processing"
-/>
-```
-
----
-
-## Loading Skeleton Components
-
-**Файл:** `components/ui/Skeleton.tsx`
-
-Компоненти для loading states.
-
-### Skeleton (Base)
-
-```tsx
-<Skeleton className="h-4 w-32" />
-```
-
-### ArticleSkeleton
-
-Повний скелетон для сторінки статті:
-- Hero image placeholder
-- Meta info (date, views)
-- Title (2 lines)
-- Tags
-- Content paragraphs
-- Share buttons
-- Related articles grid
-
-### NewsCardSkeleton
-
-Скелетон для карточки новини у списку.
-
-### Features:
-
-- Pulse animation
-- Dark mode support
-- Accessible (`role="status"`, `aria-label`)
-
----
-
-## Scroll Reveal Animations
-
-**Файл:** `components/ui/ScrollReveal.tsx`
-
-Intersection Observer-based анімації при скролі.
-
-### ScrollReveal Component
-
-```tsx
-interface ScrollRevealProps {
-  children: ReactNode
-  delay?: number           // Seconds (default: 0)
-  direction?: 'up' | 'down' | 'left' | 'right' | 'none'  // Default: 'up'
-  duration?: number        // Seconds (default: 0.5)
-  once?: boolean           // Animate only once (default: true)
-}
-```
-
-**Використання:**
-
-```tsx
-<ScrollReveal direction="up" delay={0.2}>
-  <h2>This slides up when scrolled into view</h2>
-</ScrollReveal>
-```
-
-### StaggerReveal Component
-
-Staggered animation для списків:
-
-```tsx
-<StaggerReveal staggerDelay={0.1} direction="up">
-  {items.map(item => (
-    <Card key={item.id}>{item.title}</Card>
-  ))}
-</StaggerReveal>
-```
-
----
-
-## Skill Logos Utility
-
-**Файл:** `utils/skillLogos.ts`
-
-SVG логотипи з SimpleIcons CDN для секції Skills.
-
-### Визначені логотипи:
-
-```typescript
-const skillLogos: Record<string, string> = {
-  'React': 'https://cdn.simpleicons.org/react/61DAFB',
-  'TypeScript': 'https://cdn.simpleicons.org/typescript/3178C6',
-  'Tailwind CSS': 'https://cdn.simpleicons.org/tailwindcss/06B6D4',
-  'Python': 'https://cdn.simpleicons.org/python/3776AB',
-  'Supabase': 'https://cdn.simpleicons.org/supabase/3FCF8E',
-  'n8n': 'https://cdn.simpleicons.org/n8n/EA4B71',
-  // ... 20+ logos
-}
-```
-
-### getSkillLogo(skillName)
-
-Повертає URL логотипу або генерує fallback з ініціалами:
-
-```typescript
-const logo = getSkillLogo('React')      // SimpleIcons URL
-const logo = getSkillLogo('CustomTool') // SVG with "CT" initials
-```
-
----
-
-## Admin Panel - New Components
-
-### LinkedInPostsManager
-
-**Файл:** `components/admin/LinkedInPostsManager.tsx`
-
-Управління LinkedIn публікаціями.
-
-**Функціонал:**
-- Список всіх news/blog з LinkedIn post ID
-- Metadata: тип, заголовок, мова, дата
-- Статистика (загальна кількість, по мовах)
-- Repost функціональність (перепублікація іншою мовою)
-- Зовнішні посилання на статті та LinkedIn пости
-
-### ImageProcessingSettings
-
-**Файл:** `components/admin/ImageProcessingSettings.tsx`
-
-Налаштування AI промптів для обробки зображень через Google Gemini.
-
-**Сезонні теми:**
-
-| ID | Назва | Іконка | Опис |
-|-----|-------|--------|------|
-| christmas | 🎄 Різдвяний | Snowflake | Warm holiday lighting, cozy winter |
-| spring | 🌸 Весняний | Flower2 | Fresh, vibrant, optimistic |
-| easter | 🐰 Пасхальний | Star | Warm, pastel tones |
-| summer | ☀️ Літній | Sun | Bright, energetic |
-| autumn | 🍂 Осінній | Leaf | Golden/orange, cozy |
-| valentine | 💝 Валентина | Heart | Romantic, pink/red accents |
-
-**База даних:** Промпти зберігаються в `ai_prompts` з типом `image_linkedin_optimize`
-
-### APIKeysSettings
-
-**Файл:** `components/admin/APIKeysSettings.tsx`
-
-Управління зовнішніми API ключами.
-
-**Підтримувані ключі:**
-
-| Key Name | Опис | Документація |
-|----------|------|--------------|
-| `GOOGLE_API_KEY` | Gemini AI image processing | [Google AI Studio](https://aistudio.google.com/app/apikey) |
-| `LINKEDIN_ACCESS_TOKEN` | OAuth2 token | [LinkedIn Developer Portal](https://linkedin.com/developers/apps) |
-| `LINKEDIN_PERSON_URN` | User ID (urn:li:person:xxx) | LinkedIn API /v2/me |
-
-**Функції:**
-- Show/hide password fields
-- Copy to clipboard
-- Test API key
-- Save to `api_settings` table
-
----
-
-## New Database Tables
-
-### `api_settings` - API Keys Storage
-
-**Міграція:** `20251220_add_api_settings.sql`
-
-```sql
-CREATE TABLE api_settings (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  key_name        TEXT UNIQUE NOT NULL,
-  key_value       TEXT,
-  description     TEXT,
-  is_active       BOOLEAN DEFAULT true,
-  created_at      TIMESTAMPTZ DEFAULT now(),
-  updated_at      TIMESTAMPTZ DEFAULT now()
-);
-
--- Default keys
-INSERT INTO api_settings (key_name, description) VALUES
-  ('GOOGLE_API_KEY', 'Google API Key for Gemini image processing'),
-  ('LINKEDIN_ACCESS_TOKEN', 'LinkedIn OAuth2 access token'),
-  ('LINKEDIN_PERSON_URN', 'LinkedIn Person URN');
-```
-
-**RLS:** Authenticated users read, service role manages.
-
-### `daily_images` - Background Images Cache
-
-**Міграція:** `20250102000000_create_daily_images.sql`
-
-```sql
-CREATE TABLE daily_images (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date            DATE UNIQUE NOT NULL,
-  title           TEXT,
-  description     TEXT,
-  image_url       TEXT NOT NULL,
-  thumbnail_url   TEXT,
-  source          TEXT,                    -- 'bing', 'nasa', 'unsplash'
-  colors          JSONB,                   -- Vibrant.js color palette
-  theme           TEXT,                    -- 'winter', 'space', 'nature', 'abstract'
-  effect          TEXT,                    -- 'snow', 'rain', 'stars', 'sparkles'
-  fetch_duration_ms INTEGER,
-  last_viewed_at  TIMESTAMPTZ,
-  created_at      TIMESTAMPTZ DEFAULT now()
-);
-```
-
-**Use Case:** Динамічні фони з детекцією теми та екстракцією кольорів.
-
-### New Columns
-
-**`images` array (news table):**
-```sql
-ALTER TABLE news ADD COLUMN images TEXT[];
-```
-Підтримка кількох зображень на пост (Telegram albums).
-
----
-
-## Google Gemini Image Processing
-
-**Edge Function:** `supabase/functions/process-image/index.ts`
-
-Обробка зображень через Google Gemini 2.5 Flash.
-
-### Prompt Types:
-
-| Type | Опис |
-|------|------|
-| `enhance` | General quality enhancement |
-| `linkedin_optimize` | Professional look for LinkedIn (1200x627) |
-| `generate` | Generate new image from context |
-| `custom` | Custom prompt from user |
-
-### Request Schema:
-
-```typescript
-interface ProcessImageRequest {
-  imageUrl: string
-  newsId?: string
-  promptType?: 'enhance' | 'linkedin_optimize' | 'generate' | 'custom'
-  customPrompt?: string
-  newsTitle?: string        // For context injection
-  newsDescription?: string
-  newsUrl?: string
-}
-```
-
-### Placeholders for prompts:
-
-- `{title}` - Article title
-- `{description}` - Article description
-- `{url}` - Article URL
-
-### API Key Source:
-
-1. Environment variable `GOOGLE_API_KEY`
-2. Fallback to `api_settings` table
-
----
-
-## Utility Function: cn()
-
-**Файл:** `lib/utils.ts`
-
-Merge Tailwind CSS classes з правильним precedence.
-
-```typescript
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-```
-
-**Використання:**
-
-```tsx
-<div className={cn(
-  'base-class',
-  isActive && 'active-class',
-  className
-)} />
-```
+## CI/CD Pipelines
+
+**GitHub Actions Workflows:**
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `deploy.yml` | Push to main | Netlify deployment |
+| `deploy-supabase.yml` | Changes in `supabase/**` | Edge Functions + migrations |
+| `realtime-scraper.yml` | Every 10 min | Round-robin channel scraping |
+| `process-video.yml` | Every 30 min | Batch video upload to YouTube |
+| `linkedin-video.yml` | Repository dispatch | LinkedIn native video upload |
+| `instagram-video.yml` | Repository dispatch | Instagram Reels upload |
+| `facebook-video.yml` | Repository dispatch | Facebook video upload |
+| `reprocess-videos.yml` | Manual | Batch video cleanup |
+
+**Netlify Configuration:**
+- Auto-builds DISABLED (`stop_builds: true`)
+- Deployment only via GitHub Actions
+- Prevents env var issues
 
 ---
 
@@ -4015,430 +301,255 @@ export function cn(...inputs: ClassValue[]) {
 
 ```env
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SUPABASE_URL=https://...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_SITE_URL=https://vitalii.no
 
 # Telegram (Bot API + MTProto)
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
-TELEGRAM_API_ID=35388773
-TELEGRAM_API_HASH=aa3d654a6327701da78c0f44e1a47993
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
+TELEGRAM_API_ID=...
+TELEGRAM_API_HASH=...
 
 # YouTube API
-YOUTUBE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=GOCSPX-...
-YOUTUBE_REFRESH_TOKEN=1//04...
+YOUTUBE_CLIENT_ID=...
+YOUTUBE_CLIENT_SECRET=...
+YOUTUBE_REFRESH_TOKEN=...
 
-# LinkedIn Integration
-LINKEDIN_ACCESS_TOKEN=your_linkedin_access_token
-LINKEDIN_PERSON_URN=urn:li:person:your_person_id
+# LinkedIn
+LINKEDIN_ACCESS_TOKEN=...
+LINKEDIN_PERSON_URN=urn:li:person:...
+
+# Instagram/Facebook
+FACEBOOK_PAGE_ACCESS_TOKEN=...
+INSTAGRAM_ACCOUNT_ID=...
+FACEBOOK_PAGE_ID=...
 
 # Azure OpenAI
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_API_KEY=your_key
+AZURE_OPENAI_ENDPOINT=https://...
+AZURE_OPENAI_API_KEY=...
 
 # Google AI (Gemini)
-GOOGLE_API_KEY=your_google_api_key
+GOOGLE_API_KEY=...
 
-# Analytics (GTM)
+# Analytics
 NEXT_PUBLIC_GTM_ID=GTM-5XBL8L8S
 
-# Contact Form Email (Resend)
-RESEND_API_KEY=re_xxxxxxxxxxxxx
+# Email (Contact form)
+RESEND_API_KEY=re_...
 ADMIN_EMAIL=berbeha@vitalii.no
+
+# GitHub Actions
+GH_PAT=ghp_... (for triggering workflows)
 ```
 
 ---
 
-## Contact Form Email System (January 2025)
-
-### Опис
-
-Система відправки email через контактні форми на сайті з 3-рівневою захистом від спаму. Повідомлення відправляються на email адміністратора через Resend API.
-
-### Архітектура
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   Contact Forms (Frontend)                   │
-│  - ContactForm.tsx (desktop BentoGrid)                       │
-│  - Footer.tsx (footer email modal)                           │
-│  - BentoGridMobile.tsx (mobile contact modal)                │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │ Spam Protection:                                        ││
-│  │ - Honeypot field (hidden)                               ││
-│  │ - Timestamp check (< 3 sec = bot)                       ││
-│  │ - Client-side rate limiting (localStorage)              ││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────┬───────────────────────────┘
-                                  │ POST
-                                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│           Supabase Edge Function: send-contact-email         │
-│  1. Honeypot check (spam filter)                             │
-│  2. Timestamp check (< 3 sec = bot)                          │
-│  3. Rate limiting: max 3 requests per 10 min per IP          │
-│  4. Save to contact_forms table                              │
-│  5. Send email via Resend API                                │
-└─────────────────────────────────┬───────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Resend Email Service                    │
-│  - From: Vitalii.no Contact <onboarding@resend.dev>         │
-│  - To: berbeha@vitalii.no                                    │
-│  - Reply-To: sender's email                                  │
-│  - HTML template with styled content                         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Файли
-
-```
-├── supabase/functions/send-contact-email/index.ts  # Edge Function
-├── components/sections/ContactForm.tsx              # Desktop contact form
-├── components/layout/Footer.tsx                     # Footer email modal
-├── components/sections/BentoGridMobile.tsx          # Mobile contact modal
-├── integrations/supabase/client.ts                  # sendContactEmail() function
-```
-
-### Spam Protection (3 рівні)
-
-| Рівень | Метод | Опис |
-|--------|-------|------|
-| 1 | **Honeypot** | Приховане поле, яке боти заповнюють автоматично |
-| 2 | **Timestamp** | Форма заповнена < 3 секунд = бот |
-| 3 | **Rate Limiting** | Max 3 повідомлення за 10 хвилин з одного IP |
-
-### API Response
-
-```typescript
-interface ContactEmailResponse {
-  success: boolean;
-  message: string;
-}
-
-// Success
-{ success: true, message: "Message sent successfully! We will get back to you soon." }
-
-// Rate limited
-{ success: false, message: "Too many requests. Please try again later." }
-
-// Validation error
-{ success: false, message: "All fields are required." }
-```
-
-### Environment Variables (Supabase Secrets)
+## Development Commands
 
 ```bash
-# Set via Supabase CLI
-supabase secrets set RESEND_API_KEY="re_xxxxxxxxxxxxx"
-supabase secrets set ADMIN_EMAIL="berbeha@vitalii.no"
+# Development
+npm run dev                    # Start dev server
+npm run build                  # Production build
+npm start                      # Start production server
+
+# Quality checks
+npx tsc --noEmit              # TypeScript check
+npm run lint                   # ESLint
+
+# Supabase
+cd supabase
+supabase functions deploy <name> --no-verify-jwt
+supabase secrets set KEY="value"
+
+# ByteRover (context management)
+brv query "How is authentication implemented?"
+brv curate "Context to store" --files path/to/file.ts
+brv status
 ```
-
-### Resend Setup
-
-1. Зареєструватися на [resend.com](https://resend.com) (безкоштовно: 3,000 emails/місяць)
-2. Створити API ключ в Dashboard
-3. Для production: верифікувати домен vitalii.no
-4. Додати ключ в Supabase Secrets
-
-### Deploy
-
-```bash
-# Deploy Edge Function
-supabase functions deploy send-contact-email --no-verify-jwt
-
-# Set secrets
-supabase secrets set RESEND_API_KEY="re_xxxxxxxxxxxxx"
-supabase secrets set ADMIN_EMAIL="berbeha@vitalii.no"
-```
-
-### Email Template
-
-Edge Function відправляє styled HTML email:
-- Gradient header з іконкою
-- Поля: Name, Email (clickable mailto:), Message
-- Footer з датою та IP адресою відправника
-- Reply-To встановлено на email відправника
 
 ---
-
-## Commands
-
-```bash
-npm run dev      # Development server
-npm run build    # Production build
-npm run start    # Start production server
-npx tsc --noEmit # TypeScript check
-```
 
 ## Deployment
 
-Автоматичний деплой через Netlify при пуші в main branch.
-
-## Supabase Integration (December 2025)
-
-### Fixes & Improvements
-
-#### 1. Graceful Degradation
-Updated \integrations/supabase/client.ts\ to handle missing credentials gracefully.
-- **Problem**: The app crashed or logged errors when \NEXT_PUBLIC_SUPABASE_URL\ was missing.
-- **Solution**: Added \isSupabaseConfigured()\ check.
-- **Behavior**: If keys are missing, data fetching functions return empty arrays/objects instead of failing. This allows the UI to show "No news available" states.
-
----
-
-## Analytics via Google Tag Manager (January 2025)
-
-### Опис
-
-Комплексна аналітика через Google Tag Manager (GTM) як центральний хаб для всіх трекінг-пікселів: GA4, Meta Pixel, LinkedIn Insight Tag, Hotjar.
-
-### Архітектура
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Google Tag Manager                    │
-│                     (GTM-5XBL8L8S)                       │
-├─────────────┬─────────────┬─────────────┬───────────────┤
-│   GA4       │  Meta Pixel │  LinkedIn   │   Hotjar      │
-│  G-XXXXX    │ 239052299.. │ Insight Tag │   (optional)  │
-└─────────────┴─────────────┴─────────────┴───────────────┘
-                         ▲
-                         │ dataLayer.push()
-                         │
-┌─────────────────────────────────────────────────────────┐
-│              Next.js 15 Application                      │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │          TrackingContext                         │    │
-│  │  - trackPageView() (auto)                        │    │
-│  │  - trackFormSubmit()                             │    │
-│  │  - trackArticleView()                            │    │
-│  │  - trackShare()                                  │    │
-│  │  - trackLanguageChange()                         │    │
-│  │  - trackSectionClick()                           │    │
-│  └─────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Файли
-
-```
-├── utils/gtm.ts                        # GTM utility functions (dataLayer)
-├── contexts/TrackingContext.tsx        # React Context для трекінгу
-├── components/analytics/GTMScript.tsx  # GTM скрипт + noscript fallback
-```
-
-### GTM Utility Functions (`utils/gtm.ts`)
-
-```typescript
-// Основні функції
-pageview(url, title?)                    // Автоматичний page view
-trackEvent(eventName, data)              // Custom event
-trackFormSubmit(formName, formData?)     // Form submission
-trackArticleView(type, id, title, lang?) // News/Blog view
-trackShare(platform, url, title?)        // Social sharing
-trackLanguageChange(newLang, prevLang?)  // Language switch
-trackSectionClick(sectionName)           // BentoGrid section
-trackOutboundLink(url, text?)            // External links
-trackVideoInteraction(action, url, title?) // Video play/pause/complete
-```
-
-### TrackingContext (`contexts/TrackingContext.tsx`)
-
-```typescript
-import { useTracking } from '@/contexts/TrackingContext'
-
-function MyComponent() {
-  const { trackShare, trackFormSubmit } = useTracking()
-
-  const handleShare = () => {
-    trackShare('linkedin', '/blog/my-post', 'My Post Title')
-  }
-}
-```
-
-**Автоматичний page view:** Context автоматично відправляє `page_view` при зміні route.
-
-### Події для трекінгу
-
-| Подія | Компонент | Дані |
-|-------|-----------|------|
-| `page_view` | Auto (pathname change) | page_path, page_title |
-| `form_submit` | ContactForm | form_name, email_domain |
-| `article_view` | NewsArticle, BlogArticle | content_type, content_id, content_title, language |
-| `share` | ShareButtons | method (linkedin/twitter/copy), content_url |
-| `language_change` | TranslationContext | language (en/no/ua), previous_language |
-| `section_click` | BentoGrid | section_name (about/services/projects/skills/news/blog) |
-| `outbound_link` | External links | link_url, link_domain |
-
-### Інтеграція в компоненти
-
-**ShareButtons.tsx:**
-```typescript
-const { trackShare } = useTracking()
-// При копіюванні посилання
-trackShare('copy', fullUrl, title)
-```
-
-**NewsArticle.tsx / BlogArticle.tsx:**
-```typescript
-const tracking = useTrackingSafe()
-// При завантаженні статті
-tracking?.trackArticleView('news', data.id, title, currentLanguage)
-```
-
-**TranslationContext.tsx:**
-```typescript
-import { trackLanguageChange } from '@/utils/gtm'
-// При зміні мови
-trackLanguageChange(lang, previousLang)
-```
-
-**BentoGrid.tsx:**
-```typescript
-import { trackSectionClick } from '@/utils/gtm'
-// При кліку на секцію
-trackSectionClick(section.id)
-```
-
-### Environment Variables
-
-```env
-NEXT_PUBLIC_GTM_ID=GTM-5XBL8L8S
-```
-
-**Важливо:** Додати в Netlify Environment Variables для production.
-
-### GTM Console Configuration
-
-Піксели налаштовуються в [GTM Console](https://tagmanager.google.com):
-
-#### 1. Meta Pixel (Facebook/Instagram)
-- **Tag Type:** Custom HTML
-- **Pixel ID:** 239052299989404
-- **Trigger:** All Pages
-
-#### 2. Google Analytics 4
-- **Tag Type:** GA4 Configuration
-- **Measurement ID:** G-XXXXXXXXXX
-- **Trigger:** All Pages
-
-#### 3. LinkedIn Insight Tag
-- **Tag Type:** Custom HTML
-- **Partner ID:** від LinkedIn Campaign Manager
-- **Trigger:** All Pages
-
-### Верифікація
-
-**Локально:**
-```javascript
-// DevTools Console
-console.log(window.dataLayer)
-```
-
 **Production:**
-- [Facebook Pixel Helper](https://chrome.google.com/webstore/detail/facebook-pixel-helper) (Chrome extension)
-- [Google Tag Assistant](https://tagassistant.google.com/)
-- GA4 DebugView (realtime)
+1. Push to `main` branch
+2. GitHub Actions runs `deploy.yml`
+3. Netlify builds and deploys
+4. If Edge Functions changed, `deploy-supabase.yml` runs
 
-### Checklist
+**Manual Deployment:**
+```bash
+# Netlify
+netlify deploy --prod
 
-- [x] GTM скрипт додано в layout.tsx
-- [x] TrackingContext працює
-- [x] page_view події відправляються автоматично
-- [x] article_view трекається (news/blog)
-- [x] share трекається (LinkedIn, Twitter, Copy)
-- [x] language_change трекається
-- [x] section_click трекається (BentoGrid)
-- [x] Meta Pixel налаштовано в GTM
-- [ ] GA4 налаштовано в GTM (optional)
-- [ ] LinkedIn Insight налаштовано в GTM (optional)
+# Supabase Edge Functions
+cd supabase
+for dir in functions/*/; do
+  if [ -d "$dir" ] && [ "$(basename $dir)" != "_shared" ]; then
+    supabase functions deploy $(basename $dir) --no-verify-jwt
+  fi
+done
+```
 
 ---
 
-## Social Media Duplicate Prevention & Instagram Fixes (January 2025)
+## Common Tasks
 
-### Опис
-
-Виправлення дублікатів постів в соцмережах та покращення Instagram інтеграції.
-
-### Проблема 1: Дублікати постів (Race Condition)
-
-**Симптоми:**
-- Два однакових пости в Instagram при натисканні combo button
-- "Already posted" показується хоча пост ще не публікувався
-
-**Причина:**
-Функція `wasAlreadyPosted` перевіряла тільки записи зі статусом `'posted'`. Але запис створюється зі статусом `'pending'` **ДО** фактичної публікації:
-
-```
-Запит 1: wasAlreadyPosted() → false → createSocialPost(pending) → публікуємо...
-Запит 2: wasAlreadyPosted() → false (запис 1 ще 'pending'!) → createSocialPost(pending) → публікуємо...
-→ Обидва пости публікуються! ❌
+### Add New Edge Function
+```bash
+cd supabase/functions
+mkdir my-function
+cd my-function
+# Create index.ts
+supabase functions deploy my-function --no-verify-jwt
 ```
 
-**Рішення:**
-Тепер `wasAlreadyPosted` перевіряє **і `posted` і `pending`** записи:
+### Update AI Prompts
+1. Go to Admin Panel → Settings → AI Prompts
+2. Edit prompt text
+3. Save changes
+4. Next generation uses updated prompt
 
-```typescript
-// Було
-.eq('status', 'posted')
+### Add New Social Media Platform
+1. Create Edge Function: `post-to-{platform}`
+2. Add helpers to `_shared/{platform}-helpers.ts`
+3. Update `telegram-webhook` with callback handlers
+4. Add fields to `news`/`blog_posts` tables
+5. Update `social_media_posts` table support
 
-// Стало
-.in('status', ['posted', 'pending'])
+### Debug Edge Functions
+```bash
+# View logs
+supabase functions logs <function-name>
+
+# Test locally
+supabase functions serve <function-name>
 ```
 
-### Проблема 2: Instagram не підтримує клікабельні посилання
+---
 
-**Факт:** Instagram **НЕ ПІДТРИМУЄ** гіперлінки в підписах до постів. Це обмеження платформи Instagram, а не баг.
+## Important Notes
 
-**Рішення:**
-Замінено повний URL на короткий текст:
+### Video Processing
+- MTKruto (MTProto) bypasses Telegram Bot API 20MB limit
+- GitHub Actions used for heavy video processing (LinkedIn, Instagram, YouTube)
+- Fallback to Telegram embed if processing fails
 
-```typescript
-// Було
-const link = `\n\n${url}`;  // https://vitalii.no/news/long-slug-here
+### Social Media Posting
+- Duplicate prevention via `social_media_posts` table (status: pending/posted/failed)
+- Native image/video uploads for better quality
+- Platform-specific AI-generated teasers
 
-// Стало
-const linkText = `\n\n🔗 Читати на vitalii.no`;
+### AI Prompts
+- All prompts editable via admin panel
+- Stored in `ai_prompts` table
+- Latest `updated_at` prompt used (handles multiple active prompts)
+
+### Mobile Layout
+- Different component (`BentoGridMobile`) vs desktop (`BentoGrid`)
+- Bottom navigation app-style
+- Touch/swipe gestures implemented
+- Safe area insets for notched devices
+
+### Supabase Integration
+- Graceful degradation if credentials missing
+- RLS policies for security
+- Service role key for Edge Functions
+
+---
+
+## Troubleshooting
+
+### Edge Function Not Updating
+- Check GitHub Actions logs for deployment status
+- Verify function checksum changed (add version log)
+- Manual deploy if needed
+
+### Social Media Errors
+**LinkedIn:**
+- Token expires after 60 days → regenerate
+- Check person URN format: `urn:li:person:xxxxx`
+
+**Instagram:**
+- Error #10: Missing `instagram_content_publish` scope
+- Error #190: Token expired
+- Must be Business account linked to Facebook Page
+
+### Video Processing Fails
+- Check MTKruto credentials (TELEGRAM_API_ID, TELEGRAM_API_HASH)
+- Verify YouTube OAuth refresh token
+- Check GitHub Actions secrets
+
+### Telegram Bot Not Working
+- Verify webhook URL in BotFather
+- Check Edge Function logs
+- Test with manual trigger
+
+---
+
+## Additional Documentation
+
+### 📚 Complete Project History (ByteRover Context)
+
+This condensed CLAUDE.md contains essential quick reference info (15k chars).
+
+**For complete implementation details, bug fix history, and architectural decisions:**
+
+📁 **`docs/byterover-context/`** - Full project history (42 files, ~130k chars)
+
+Organized by:
+- **`integrations/`** (6 files) - LinkedIn, Instagram, Video processing, AI teasers
+- **`features/`** (11 files) - AI systems, SEO, Mobile layout, Analytics
+- **`bugfixes/`** (6 files) - Complete bug fix history with dates
+- **`architecture/`** (7 files) - Database, Edge Functions, Components, CI/CD
+- **`implementation/`** (12 files) - Detailed implementation guides
+
+#### Curate to ByteRover
+
+```bash
+cd docs/byterover-context
+./curate-all.sh
 ```
 
-### Проблема 3: Instagram media validation в combo_all_en_no
+This will curate all 42 files to ByteRover context service (~5-10 min).
 
-**Симптоми:**
-- Кнопка "🌍 EN+NO All" показувала довгу помилку про Telegram embed URLs
-- Instagram не перевіряв наявність медіа перед публікацією
+#### Query Examples
 
-**Рішення:**
-Додано перевірку медіа перед Instagram публікацією в combo handler:
-- Якщо є Telegram відео + GitHub Actions → тригерить `instagram-video` workflow
-- Якщо немає валідного медіа → показує коротке "Немає зображення"
-- Якщо є зображення/відео → публікує нормально
+After curation, use ByteRover to query project history:
 
-### Змінені файли
+```bash
+# Troubleshooting
+brv query "How to fix Instagram Error #10?"
+brv query "Why is LinkedIn token expiring?"
 
-| Файл | Зміни |
-|------|-------|
-| `_shared/social-media-helpers.ts` | `wasAlreadyPosted` повертає `{ posted, pending, postUrl }` |
-| `_shared/facebook-helpers.ts` | `formatInstagramCaption` - короткий link text |
-| `post-to-facebook/index.ts` | Обробка `pending` статусу |
-| `post-to-instagram/index.ts` | Обробка `pending` статусу |
-| `telegram-webhook/index.ts` | Instagram media validation в combo_all_en_no |
+# Architecture decisions
+brv query "Why was YouTube chosen over Bunny.net?"
+brv query "How does video processing workflow work?"
 
-### Як працює захист від дублікатів
+# Bug history
+brv query "What bugs were fixed in December 2024?"
+brv query "How was duplicate social media posts issue resolved?"
 
-```
-1. Запит на публікацію
-2. wasAlreadyPosted() перевіряє:
-   - status = 'posted' → Already posted!
-   - status = 'pending' → Already in progress!
-   - немає записів → Продовжуємо
-3. createSocialPost(status: 'pending')
-4. Публікуємо в соцмережу
-5. updateSocialPostSuccess(status: 'posted')
+# Implementation details
+brv query "How does two-stage AI image prompt system work?"
+brv query "What is Telegram bot sequential workflow?"
 ```
 
-Тепер другий запит побачить `pending` запис і пропустить публікацію.
+**See** `docs/byterover-context/README.md` for complete index with curate commands for each file.
+
+---
+
+### External Resources
+
+- [Next.js 15 Docs](https://nextjs.org/docs)
+- [Supabase Docs](https://supabase.com/docs)
+- [LinkedIn UGC API](https://learn.microsoft.com/en-us/linkedin/marketing/integrations/community-management/shares/ugc-post-api)
+- [Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
+- [MTKruto (Telegram MTProto)](https://github.com/MTKruto/MTKruto)
+- [ByteRover Docs](https://docs.byterover.dev)
+
+---
+
+**Last Updated:** January 22, 2025
+**Maintained By:** Vitalii Berbeha (@SmmShaman)
