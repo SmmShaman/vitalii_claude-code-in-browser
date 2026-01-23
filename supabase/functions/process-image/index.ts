@@ -359,10 +359,10 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
     if (result.candidates && result.candidates[0]?.content?.parts) {
       console.log('📦 Found', result.candidates[0].content.parts.length, 'parts in response')
       for (const part of result.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
+        if (part.inline_data && part.inline_data.data) {
           console.log('✅ Gemini 3 Pro Image generated image successfully')
           // Upload to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(part.inlineData.data)
+          const processedImageUrl = await uploadProcessedImage(part.inline_data.data)
           return processedImageUrl
         }
         if (part.text) {
