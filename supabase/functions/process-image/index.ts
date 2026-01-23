@@ -659,20 +659,20 @@ async function uploadProcessedImage(base64Image: string): Promise<string> {
   const fileName = `processed/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`
 
   const { data, error } = await supabase.storage
-    .from('images')
+    .from('news-images')
     .upload(fileName, bytes, {
       contentType: 'image/jpeg',
       upsert: false
     })
 
   if (error) {
-    console.error('Failed to upload processed image:', error)
+    console.error('Failed to upload processed image:', error.message, JSON.stringify(error))
     throw new Error('Failed to upload processed image')
   }
 
   // Get public URL
   const { data: urlData } = supabase.storage
-    .from('images')
+    .from('news-images')
     .getPublicUrl(fileName)
 
   return urlData.publicUrl
