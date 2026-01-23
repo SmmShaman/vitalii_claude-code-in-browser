@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 
 /**
@@ -3346,6 +3346,9 @@ serve(async (req) => {
           } else {
             // Failed - show error and keep regenerate button
             const errorMsg = imageGenResult.error || 'Невідома помилка'
+            const debugInfo = imageGenResult.debug
+              ? `\n\n🔍 <b>Debug:</b> v${imageGenResult.debug.version}, ${imageGenResult.debug.lastApiError || 'no details'}`
+              : ''
 
             const newKeyboard = {
               inline_keyboard: [
@@ -3369,7 +3372,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
+                  text: messageText + `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}${debugInfo}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })

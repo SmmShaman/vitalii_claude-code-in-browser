@@ -1,6 +1,6 @@
 // Version: 2025-01-01-v9-mtcute - Use mtcute for Telegram MTProto (supports bot tokens!)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts'
 import {
   getYouTubeAccessToken,

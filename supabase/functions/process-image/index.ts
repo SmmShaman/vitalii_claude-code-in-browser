@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-01-23-gemini3-pro-image'
+const VERSION = '2026-01-23-v2-force-redeploy'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -59,6 +59,12 @@ interface ProcessImageResponse {
   processedImageUrl?: string
   originalImageUrl?: string
   error?: string
+  message?: string
+  debug?: {
+    version: string
+    timestamp: string
+    lastApiError: string | null
+  }
 }
 
 /**
@@ -259,7 +265,12 @@ Colors: Vibrant but professional.`
     return new Response(
       JSON.stringify({
         success: false,
-        error: `Image generation failed: ${lastApiError || 'Unknown error'}. Check Supabase function logs for details.`
+        error: `Image generation failed: ${lastApiError || 'Unknown error'}`,
+        debug: {
+          version: VERSION,
+          timestamp: new Date().toISOString(),
+          lastApiError: lastApiError
+        }
       } as ProcessImageResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -358,17 +369,25 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
     // Extract image from Gemini response
     if (result.candidates && result.candidates[0]?.content?.parts) {
       console.log('📦 Found', result.candidates[0].content.parts.length, 'parts in response')
+      console.log('📋 Parts structure:', JSON.stringify(result.candidates[0].content.parts.map((p: any) => Object.keys(p)), null, 2))
       for (const part of result.candidates[0].content.parts) {
-        if (part.inline_data && part.inline_data.data) {
+        // Check both snake_case (inline_data) and camelCase (inlineData) formats
+        const imageData = part.inline_data || part.inlineData
+        if (imageData && imageData.data) {
           console.log('✅ Gemini 3 Pro Image generated image successfully')
+          console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
           // Upload to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(part.inline_data.data)
+          const processedImageUrl = await uploadProcessedImage(imageData.data)
           return processedImageUrl
         }
         if (part.text) {
           console.log('📝 Text part found:', part.text.substring(0, 100))
           lastApiError = `No image generated. Model returned text: ${part.text.substring(0, 200)}`
         }
+      }
+      // If we got here, no image was found in parts
+      if (!lastApiError) {
+        lastApiError = `No image found in ${result.candidates[0].content.parts.length} parts. Keys: ${JSON.stringify(result.candidates[0].content.parts.map((p: any) => Object.keys(p)))}`
       }
     } else {
       // Log what we got instead
@@ -558,13 +577,18 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
     console.log('Response structure:', JSON.stringify(result, null, 2).substring(0, 1000))
 
     // Extract processed image from response
-    // Gemini returns images in candidates[0].content.parts[].inline_data
+    // Gemini returns images in candidates[0].content.parts[].inline_data or inlineData
     if (result.candidates && result.candidates[0]?.content?.parts) {
+      console.log('📦 Found', result.candidates[0].content.parts.length, 'parts in response')
+      console.log('📋 Parts structure:', JSON.stringify(result.candidates[0].content.parts.map((p: any) => Object.keys(p)), null, 2))
       for (const part of result.candidates[0].content.parts) {
-        if (part.inline_data && part.inline_data.data) {
+        // Check both snake_case (inline_data) and camelCase (inlineData) formats
+        const imageData = part.inline_data || part.inlineData
+        if (imageData && imageData.data) {
           console.log('✅ Found generated image in response')
+          console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
           // Upload processed image to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(part.inline_data.data)
+          const processedImageUrl = await uploadProcessedImage(imageData.data)
           return processedImageUrl
         }
         if (part.text) {
