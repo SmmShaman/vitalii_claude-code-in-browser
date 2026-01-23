@@ -4,7 +4,7 @@
  * Common utilities for cross-platform social media operations
  */
 
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 export const SOCIAL_MEDIA_HELPERS_VERSION = "2025-01-17-v1";
 
