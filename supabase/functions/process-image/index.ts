@@ -358,9 +358,11 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
     }
 
     const result = await response.json()
+    console.log('📥 Gemini response received, checking for image...')
 
     // Extract image from Gemini response
     if (result.candidates && result.candidates[0]?.content?.parts) {
+      console.log('📦 Found', result.candidates[0].content.parts.length, 'parts in response')
       for (const part of result.candidates[0].content.parts) {
         if (part.inlineData && part.inlineData.data) {
           console.log('✅ Gemini 2.5 Flash Image generated image successfully')
@@ -368,7 +370,15 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
           const processedImageUrl = await uploadProcessedImage(part.inlineData.data)
           return processedImageUrl
         }
+        if (part.text) {
+          console.log('📝 Text part found:', part.text.substring(0, 100))
+          lastApiError = `No image generated. Model returned text: ${part.text.substring(0, 200)}`
+        }
       }
+    } else {
+      // Log what we got instead
+      lastApiError = `Unexpected response structure: ${JSON.stringify(result).substring(0, 300)}`
+      console.log('⚠️ Unexpected response:', lastApiError)
     }
 
     console.log('⚠️ No image in Gemini 2.5 Flash Image response')
