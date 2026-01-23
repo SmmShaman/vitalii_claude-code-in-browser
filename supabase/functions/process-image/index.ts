@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const VERSION = '2026-01-23-gemini3-pro-image'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -185,7 +186,7 @@ serve(async (req) => {
 
 /**
  * Handle text-to-image generation mode
- * Gets prompt from DB and generates image using Gemini 2.5 Flash Image
+ * Gets prompt from DB and generates image using Gemini 3 Pro Image
  */
 async function handleTextToImageGeneration(supabase: any, newsId: string): Promise<Response> {
   console.log('🎨 Starting text-to-image generation for news:', newsId)
@@ -249,8 +250,8 @@ Colors: Vibrant but professional.`
     )
   }
 
-  // 4. Generate image using Gemini 2.5 Flash Image (text-to-image)
-  console.log('🖼️ Calling Gemini 2.5 Flash Image for text-to-image generation...')
+  // 4. Generate image using Gemini 3 Pro Image (text-to-image)
+  console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')')
   const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey)
 
   if (!processedImageUrl) {
@@ -290,7 +291,7 @@ Colors: Vibrant but professional.`
 }
 
 /**
- * Generate image from text prompt using Gemini 2.5 Flash Image
+ * Generate image from text prompt using Gemini 3 Pro Image
  * This is the pure text-to-image generation (no reference image needed)
  */
 // Store last API error for debugging
@@ -300,11 +301,11 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
   lastApiError = null
 
   try {
-    console.log('📤 Generating image with Gemini 2.5 Flash Image (text-to-image)...')
+    console.log('📤 Generating image with Gemini 3 Pro Image (text-to-image)...')
     console.log('📝 Prompt length:', prompt.length, 'chars')
 
-    // Gemini 2.5 Flash Image endpoint for text-to-image generation
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`
+    // Gemini 3 Pro Image endpoint for text-to-image generation
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
 
     const requestBody = {
       contents: [{
@@ -328,7 +329,7 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Gemini 2.5 Flash Image API error:', response.status)
+      console.error('❌ Gemini 3 Pro Image API error:', response.status)
 
       try {
         const errorJson = JSON.parse(errorText)
@@ -359,7 +360,7 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
       console.log('📦 Found', result.candidates[0].content.parts.length, 'parts in response')
       for (const part of result.candidates[0].content.parts) {
         if (part.inlineData && part.inlineData.data) {
-          console.log('✅ Gemini 2.5 Flash Image generated image successfully')
+          console.log('✅ Gemini 3 Pro Image generated image successfully')
           // Upload to Supabase Storage
           const processedImageUrl = await uploadProcessedImage(part.inlineData.data)
           return processedImageUrl
@@ -375,11 +376,12 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
       console.log('⚠️ Unexpected response:', lastApiError)
     }
 
-    console.log('⚠️ No image in Gemini 2.5 Flash Image response')
+    console.log('⚠️ No image in Gemini 3 Pro Image response')
     return null
 
   } catch (error: any) {
     console.error('❌ Error in text-to-image generation:', error)
+    lastApiError = error.message || String(error)
     return null
   }
 }
@@ -499,16 +501,16 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Gemini 2.5 Flash Image (Nano Banana)
- * Native image generation model from Google
+ * Process image with Google Gemini 3 Pro Image
+ * Native image generation model from Google with advanced text rendering
  * See: https://ai.google.dev/gemini-api/docs/image-generation
  */
 async function processImageWithAI(imageBase64: string, prompt: string, apiKey: string): Promise<string | null> {
   try {
-    // Try Gemini 2.5 Flash Image (Nano Banana) - native image generation
-    console.log('📤 Generating image with Gemini 2.5 Flash Image (Nano Banana)...')
+    // Try Gemini 3 Pro Image - native image generation with advanced text rendering
+    console.log('📤 Generating image with Gemini 3 Pro Image...')
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
 
     // Request body with image config for LinkedIn (16:9 landscape)
     const requestBody = {
@@ -571,7 +573,7 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
       }
     }
 
-    console.log('⚠️ No image in Gemini 2.5 Flash Image response, trying fallback...')
+    console.log('⚠️ No image in Gemini 3 Pro Image response, trying fallback...')
 
     // Fallback: Try Imagen 3 (requires Vertex AI access)
     const imagenResult = await tryImagenGeneration(prompt, apiKey)
@@ -579,7 +581,7 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
       return imagenResult
     }
 
-    console.log('❌ All image generation methods failed (Gemini Flash Image + Imagen 3 fallback)')
+    console.log('❌ All image generation methods failed (Gemini 3 Pro Image + Imagen 3 fallback)')
     return null
 
   } catch (error: any) {
