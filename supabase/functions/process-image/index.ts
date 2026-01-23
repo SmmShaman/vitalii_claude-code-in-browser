@@ -183,7 +183,7 @@ serve(async (req) => {
 
 /**
  * Handle text-to-image generation mode
- * Gets prompt from DB and generates image using Imagen 3
+ * Gets prompt from DB and generates image using Gemini 2.5 Flash Image
  */
 async function handleTextToImageGeneration(supabase: any, newsId: string): Promise<Response> {
   console.log('🎨 Starting text-to-image generation for news:', newsId)
@@ -247,8 +247,8 @@ Colors: Vibrant but professional.`
     )
   }
 
-  // 4. Generate image using Imagen 3 (text-to-image)
-  console.log('🖼️ Calling Imagen 3 for text-to-image generation...')
+  // 4. Generate image using Gemini 2.5 Flash Image (text-to-image)
+  console.log('🖼️ Calling Gemini 2.5 Flash Image for text-to-image generation...')
   const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey)
 
   if (!processedImageUrl) {
@@ -256,7 +256,7 @@ Colors: Vibrant but professional.`
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Image generation failed. Imagen 3 may not be available for this API key.'
+        error: 'Image generation failed. Check GOOGLE_API_KEY has Gemini API access enabled in Google Cloud Console.'
       } as ProcessImageResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -294,9 +294,10 @@ Colors: Vibrant but professional.`
 async function generateImageFromText(prompt: string, apiKey: string): Promise<string | null> {
   try {
     console.log('📤 Generating image with Gemini 2.5 Flash Image (text-to-image)...')
+    console.log('📝 Prompt length:', prompt.length, 'chars')
 
     // Gemini 2.5 Flash Image endpoint for text-to-image generation
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`
 
     const requestBody = {
       contents: [{
@@ -312,7 +313,8 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
       },
       body: JSON.stringify(requestBody)
     })
@@ -323,7 +325,17 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
 
       try {
         const errorJson = JSON.parse(errorText)
-        console.error('Error details:', errorJson.error?.message || errorJson)
+        const errorMessage = errorJson.error?.message || JSON.stringify(errorJson)
+        console.error('Error details:', errorMessage)
+
+        // Log specific error hints
+        if (response.status === 400) {
+          console.error('💡 Hint: Check if API key has Gemini API enabled in Google Cloud Console')
+        } else if (response.status === 403) {
+          console.error('💡 Hint: API key may not have permission for image generation')
+        } else if (response.status === 429) {
+          console.error('💡 Hint: Rate limit exceeded, try again later')
+        }
       } catch {
         console.error('Raw error:', errorText.substring(0, 500))
       }
@@ -477,7 +489,7 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
     // Try Gemini 2.5 Flash Image (Nano Banana) - native image generation
     console.log('📤 Generating image with Gemini 2.5 Flash Image (Nano Banana)...')
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`
 
     // Request body with image config for LinkedIn (16:9 landscape)
     const requestBody = {
@@ -500,7 +512,8 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
       },
       body: JSON.stringify(requestBody)
     })
@@ -539,17 +552,15 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
       }
     }
 
-    console.log('⚠️ No image in Gemini 2.5 Flash Image response')
+    console.log('⚠️ No image in Gemini 2.5 Flash Image response, trying fallback...')
 
-    // Fallback: Try Imagen 3
-    console.log('📤 Trying Imagen 3 as fallback...')
+    // Fallback: Try Imagen 3 (requires Vertex AI access)
     const imagenResult = await tryImagenGeneration(prompt, apiKey)
     if (imagenResult) {
-      console.log('✅ Image generated with Imagen 3')
       return imagenResult
     }
 
-    console.log('❌ All image generation methods failed')
+    console.log('❌ All image generation methods failed (Gemini Flash Image + Imagen 3 fallback)')
     return null
 
   } catch (error: any) {
@@ -560,13 +571,14 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
 
 /**
  * Fallback: Try to generate image using Google Imagen 3 API
+ * Note: Imagen 3 requires Vertex AI access, may not work with standard Gemini API key
  */
 async function tryImagenGeneration(prompt: string, apiKey: string): Promise<string | null> {
   try {
-    console.log('📤 Trying Imagen 3 for image generation...')
+    console.log('📤 Trying Imagen 3 as fallback (requires Vertex AI access)...')
 
-    // Imagen 3 endpoint
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`
+    // Imagen 3 endpoint - note: may require Vertex AI, not standard Gemini API
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict`
 
     const requestBody = {
       instances: [{
@@ -583,15 +595,15 @@ async function tryImagenGeneration(prompt: string, apiKey: string): Promise<stri
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
       },
       body: JSON.stringify(requestBody)
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.log('Imagen 3 not available:', response.status)
-      // Don't log as error - Imagen might not be enabled for this API key
+      console.log('⚠️ Imagen 3 not available:', response.status, '(requires Vertex AI access)')
+      // Don't log as error - Imagen typically requires Vertex AI, not standard Gemini API key
       return null
     }
 
@@ -605,7 +617,7 @@ async function tryImagenGeneration(prompt: string, apiKey: string): Promise<stri
 
     return null
   } catch (error) {
-    console.log('Imagen 3 generation failed:', error)
+    console.log('⚠️ Imagen 3 generation failed:', error)
     return null
   }
 }
