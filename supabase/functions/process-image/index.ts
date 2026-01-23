@@ -258,7 +258,13 @@ Colors: Vibrant but professional.`
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Image generation failed. Check GOOGLE_API_KEY has Gemini API access enabled in Google Cloud Console.'
+        error: 'Image generation failed. Check GOOGLE_API_KEY has Gemini API access enabled in Google Cloud Console.',
+        debug: {
+          keyFound: !!googleApiKey,
+          keyPrefix: googleApiKey ? googleApiKey.substring(0, 10) + '...' : null,
+          promptLength: imagePrompt?.length || 0,
+          apiError: lastApiError
+        }
       } as ProcessImageResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -293,7 +299,12 @@ Colors: Vibrant but professional.`
  * Generate image from text prompt using Gemini 2.5 Flash Image
  * This is the pure text-to-image generation (no reference image needed)
  */
+// Store last API error for debugging
+let lastApiError: string | null = null
+
 async function generateImageFromText(prompt: string, apiKey: string): Promise<string | null> {
+  lastApiError = null
+
   try {
     console.log('📤 Generating image with Gemini 2.5 Flash Image (text-to-image)...')
     console.log('📝 Prompt length:', prompt.length, 'chars')
@@ -329,6 +340,7 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
         const errorJson = JSON.parse(errorText)
         const errorMessage = errorJson.error?.message || JSON.stringify(errorJson)
         console.error('Error details:', errorMessage)
+        lastApiError = `Status ${response.status}: ${errorMessage}`
 
         // Log specific error hints
         if (response.status === 400) {
@@ -340,6 +352,7 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
         }
       } catch {
         console.error('Raw error:', errorText.substring(0, 500))
+        lastApiError = `Status ${response.status}: ${errorText.substring(0, 200)}`
       }
       return null
     }
