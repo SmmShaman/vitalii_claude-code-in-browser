@@ -13,6 +13,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
   // First try environment variable
   const envKey = Deno.env.get('GOOGLE_API_KEY')
+  console.log('🔑 GOOGLE_API_KEY from env:', envKey ? `found (${envKey.substring(0, 10)}...)` : 'NOT FOUND')
+
   if (envKey) {
     console.log('📍 Using GOOGLE_API_KEY from environment')
     return envKey
