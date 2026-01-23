@@ -12,7 +12,7 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-01-22-v2-templates'
+const VERSION = '2026-01-23-v3-no-text-prompts'
 
 interface GeneratePromptRequest {
   newsId: string
@@ -306,30 +306,36 @@ function fillTemplate(template: string, data: ClassifierOutput): string {
 
 /**
  * Default fallback template if database is unavailable
+ * NOTE: Gemini 2.5 Flash Image cannot render specific text reliably.
+ * This template focuses on VISUAL CONCEPTS only, no exact text requests.
  */
 function getDefaultTemplate(): string {
-  return `Professional infographic poster about {company_name}.
+  return `Professional technology news illustration.
 
-HEADER:
-- Brand: "{company_name}" prominently displayed
-- Type: {product_type}
-
-CENTRAL VISUAL:
+MAIN SUBJECT:
 {visual_concept}
-Visual elements: {visual_elements}
 
-KEY POINTS:
-{key_features_formatted}
+VISUAL ELEMENTS to include:
+{visual_elements}
 
-STYLE:
-- Modern, professional aesthetic
-- Color scheme: {color_primary} primary, {color_secondary} secondary
-- Clean typography
-- 4:5 aspect ratio
+COMPOSITION:
+- Central focus on the main visual concept
+- Professional, editorial quality suitable for tech news
+- Clean, modern aesthetic with balanced composition
+- 4:5 aspect ratio (portrait orientation)
 
-BOTTOM:
-- Website: {company_domain}
-- Professional news quality
+COLOR PALETTE:
+- Primary accent: {color_primary}
+- Secondary accent: {color_secondary}
+- Professional gradient backgrounds
 
-CRITICAL: All text must be perfectly legible. "{company_name}" spelled exactly correct.`
+STYLE GUIDE:
+- Photorealistic 3D rendering with soft lighting
+- Subtle depth of field effect
+- Abstract geometric elements in background
+- High-end product photography aesthetic
+- NO text, logos, or written words in the image
+- Focus purely on visual storytelling
+
+MOOD: Professional, innovative, forward-thinking technology`
 }

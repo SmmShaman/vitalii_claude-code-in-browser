@@ -258,13 +258,7 @@ Colors: Vibrant but professional.`
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Image generation failed. Check GOOGLE_API_KEY has Gemini API access enabled in Google Cloud Console.',
-        debug: {
-          keyFound: !!googleApiKey,
-          keyPrefix: googleApiKey ? googleApiKey.substring(0, 10) + '...' : null,
-          promptLength: imagePrompt?.length || 0,
-          apiError: lastApiError
-        }
+        error: `Image generation failed: ${lastApiError || 'Unknown error'}. Check Supabase function logs for details.`
       } as ProcessImageResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
