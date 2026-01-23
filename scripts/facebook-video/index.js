@@ -317,64 +317,127 @@ async function updateSocialMediaPost(newsId, videoId, postUrl, language, content
 }
 
 /**
- * Send notification to Telegram bot after successful publish
- * Uses stored chat_id from when the news was first sent to the bot
+ * Edit the original Telegram message to show success status
+ * Replaces the "processing" status with "published" status
  */
-async function sendTelegramNotification({
+async function editTelegramMessage({
   botToken,
   chatId,
   messageId,
+  currentText,
   platform,
   language,
   postUrl,
   articleUrl,
   title,
 }) {
-  if (!botToken || !chatId) {
-    console.log('⚠️ Cannot send notification: missing bot token or chat ID');
+  if (!botToken || !chatId || !messageId) {
+    console.log('⚠️ Cannot edit message: missing bot token, chat ID, or message ID');
     return false;
   }
 
   try {
-    const message =
-      `✅ <b>Опубліковано в ${platform} (${language.toUpperCase()})!</b>\n\n` +
-      `📰 «${title.substring(0, 80)}${title.length > 80 ? '...' : ''}»\n\n` +
+    const langLabel = language.toUpperCase();
+    const shortTitle = title.substring(0, 80) + (title.length > 80 ? '...' : '');
+
+    // Build new success status
+    const successStatus =
+      `\n\n✅ <b>${platform} (${langLabel}): Опубліковано!</b>\n` +
+      `📰 «${shortTitle}»\n` +
       `🔗 <a href="${postUrl}">Переглянути пост</a>\n` +
       `📖 <a href="${articleUrl}">Читати статтю</a>`;
 
-    // If we have message_id, reply to the original message; otherwise send new message
-    const body = {
-      chat_id: chatId,
-      text: message,
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-    };
+    // Remove old processing status from text
+    // Patterns for different platforms:
+    // LinkedIn: ⏳ <b>Відео завантажується в LinkedIn (EN)...</b>...
+    // Instagram: ⏳ <b>Instagram Reel (EN) обробляється...</b>...
+    // Facebook: 📘 <b>Facebook (EN): 🎬 Відео обробляється...</b>...
+    const processingPatterns = [
+      /\n\n⏳ <b>Відео завантажується в LinkedIn.*?<\/b>[\s\S]*?хвилин[и]?/gi,
+      /\n\n⏳ <b>Instagram Reel.*?обробляється.*?<\/b>[\s\S]*?хвилин/gi,
+      /\n\n📘 <b>Facebook.*?Відео обробляється.*?<\/b>[\s\S]*?хвилин[и]?/gi,
+    ];
 
-    if (messageId) {
-      body.reply_to_message_id = messageId;
+    let newText = currentText || '';
+    for (const pattern of processingPatterns) {
+      newText = newText.replace(pattern, '');
     }
 
+    // Add success status
+    newText = newText + successStatus;
+
     const response = await fetch(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      `https://api.telegram.org/bot${botToken}/editMessageText`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          text: newText,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Failed to send Telegram notification:', errorText);
+      console.error('❌ Failed to edit Telegram message:', errorText);
+
+      // Fallback: if edit failed (>48 hours), send new message
+      if (errorText.includes("message can't be edited") || errorText.includes('message is not modified')) {
+        console.log('⚠️ Message cannot be edited, sending new message as fallback...');
+        return await sendFallbackMessage(botToken, chatId, messageId, platform, langLabel, postUrl, articleUrl, shortTitle);
+      }
       return false;
     }
 
-    console.log('📨 Telegram notification sent successfully');
+    console.log('✅ Telegram message edited successfully');
     return true;
   } catch (error) {
-    console.error('❌ Error sending Telegram notification:', error.message);
+    console.error('❌ Error editing Telegram message:', error.message);
     return false;
   }
+}
+
+/**
+ * Fallback: send a new message if edit fails (message too old)
+ */
+async function sendFallbackMessage(botToken, chatId, replyToMessageId, platform, langLabel, postUrl, articleUrl, shortTitle) {
+  const message =
+    `✅ <b>Опубліковано в ${platform} (${langLabel})!</b>\n\n` +
+    `📰 «${shortTitle}»\n\n` +
+    `🔗 <a href="${postUrl}">Переглянути пост</a>\n` +
+    `📖 <a href="${articleUrl}">Читати статтю</a>`;
+
+  const body = {
+    chat_id: chatId,
+    text: message,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+  };
+
+  if (replyToMessageId) {
+    body.reply_to_message_id = replyToMessageId;
+  }
+
+  const response = await fetch(
+    `https://api.telegram.org/bot${botToken}/sendMessage`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    console.error('❌ Fallback message also failed');
+    return false;
+  }
+
+  console.log('📨 Fallback message sent successfully');
+  return true;
 }
 
 /**
@@ -459,12 +522,13 @@ async function main() {
     console.log(`🎬 Video ID: ${result.videoId}`);
     console.log(`🔗 Post URL: ${result.postUrl}`);
 
-    // Send notification to Telegram bot
-    if (news.telegram_chat_id) {
-      await sendTelegramNotification({
+    // Edit original Telegram message to show success status
+    if (news.telegram_chat_id && news.telegram_message_id) {
+      await editTelegramMessage({
         botToken: config.telegram.botToken,
         chatId: news.telegram_chat_id,
         messageId: news.telegram_message_id,
+        currentText: news.telegram_message_text || '',
         platform: 'Facebook',
         language: config.language,
         postUrl: result.postUrl,
@@ -472,7 +536,7 @@ async function main() {
         title: title,
       });
     } else {
-      console.log('⚠️ No telegram_chat_id stored - skipping notification');
+      console.log('⚠️ No telegram_chat_id or telegram_message_id stored - skipping notification');
     }
 
   } finally {

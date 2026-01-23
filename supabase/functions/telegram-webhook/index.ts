@@ -1100,6 +1100,8 @@ serve(async (req) => {
 
             // Update message to show processing status
             const langLabel = linkedinLanguage.toUpperCase()
+            const processingTextLinkedIn = messageText + `\n\n⏳ <b>Відео завантажується в LinkedIn (${langLabel})...</b>\n🎬 Це може зайняти 1-2 хвилини`
+
             await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -1108,11 +1110,21 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n⏳ <b>Відео завантажується в LinkedIn (${langLabel})...</b>\n🎬 Це може зайняти 1-2 хвилини`,
+                  text: processingTextLinkedIn,
                   parse_mode: 'HTML'
                 })
               }
             )
+
+            // Save message context for editing after GitHub Actions completes
+            await supabaseAdmin
+              .from('news')
+              .update({
+                telegram_chat_id: chatId,
+                telegram_message_id: messageId,
+                telegram_message_text: processingTextLinkedIn
+              })
+              .eq('id', newsId)
 
             return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
               headers: { 'Content-Type': 'application/json' }
@@ -1403,7 +1415,7 @@ serve(async (req) => {
                 )
 
                 // Update message to show processing status
-                const processingText = messageText +
+                const processingTextInstagram = messageText +
                   `\n\n⏳ <b>Instagram Reel (${socialLanguage.toUpperCase()}) обробляється...</b>\n` +
                   `<i>Відео завантажується з Telegram → Instagram. Це займе 2-5 хвилин.</i>`
 
@@ -1415,12 +1427,22 @@ serve(async (req) => {
                     body: JSON.stringify({
                       chat_id: chatId,
                       message_id: messageId,
-                      text: processingText,
+                      text: processingTextInstagram,
                       parse_mode: 'HTML',
                       disable_web_page_preview: true
                     })
                   }
                 )
+
+                // Save message context for editing after GitHub Actions completes
+                await supabaseAdmin
+                  .from('news')
+                  .update({
+                    telegram_chat_id: chatId,
+                    telegram_message_id: messageId,
+                    telegram_message_text: processingTextInstagram
+                  })
+                  .eq('id', newsId)
 
                 return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
                   headers: { 'Content-Type': 'application/json' }
@@ -1625,7 +1647,7 @@ serve(async (req) => {
           )
 
           // Update message to show video processing status
-          const videoStatusText = `\n\n📘 <b>Facebook (${socialLanguage.toUpperCase()}): 🎬 Відео обробляється...</b>\n⏳ Це може зайняти 1-2 хвилини`
+          const processingTextFacebook = messageText + `\n\n📘 <b>Facebook (${socialLanguage.toUpperCase()}): 🎬 Відео обробляється...</b>\n⏳ Це може зайняти 1-2 хвилини`
 
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
@@ -1635,12 +1657,22 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + videoStatusText,
+                text: processingTextFacebook,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true
               })
             }
           )
+
+          // Save message context for editing after GitHub Actions completes
+          await supabaseAdmin
+            .from('news')
+            .update({
+              telegram_chat_id: chatId,
+              telegram_message_id: messageId,
+              telegram_message_text: processingTextFacebook
+            })
+            .eq('id', newsId)
 
           return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
             headers: { 'Content-Type': 'application/json' }
