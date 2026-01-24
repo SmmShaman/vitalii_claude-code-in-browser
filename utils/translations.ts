@@ -95,50 +95,38 @@ export const translations = {
 
     services: "Services",
     services_title: "Services",
-    services_content: "**AI Integration & Automation**\nFrom concept to production using OpenAI, LangChain, and other cutting-edge AI technologies. I help businesses integrate artificial intelligence into their workflows, automate processes, and build intelligent systems that scale.\n\n**Growth Marketing & Analytics**\nConversion optimization, user behavior analysis, and data-driven marketing strategies. Implementing analytics frameworks that identify growth opportunities and maximize ROI across all channels.\n\n**Marketing Analytics & Dashboarding**\nPower BI, Supabase, SQL - creating comprehensive business intelligence solutions that turn raw data into actionable insights. Custom dashboards for real-time monitoring and data-driven decision making.\n\n**Digital Strategy & Automation**\nDigital transformation guidance for businesses looking to modernize their operations, adopt new technologies, and stay competitive. Streamline workflows through intelligent automation using Zapier, Make, and custom solutions.\n\n**EdTech Product Development (Elvarika)**\nDevelopment of innovative educational technology solutions, including my flagship SaaS platform for language learning using AI algorithms and personalized audio playlists. Full-cycle product development from concept to market launch.\n\n**E-commerce Optimization (Amazon / Etsy / Shopify)**\nStrategic optimization for online marketplaces and e-commerce platforms. Product launches, listing optimization, sales analytics, and conversion rate improvement for Amazon, Etsy, and Shopify stores.\n\n**AI Workshops & Practical Training**\nHands-on sessions for teams to upskill in modern AI technologies, automation tools, and digital transformation strategies. Tailored training programs designed to boost productivity and technical capabilities.",
+    services_content: "**Business Automation**\nIntegration of digital ecosystems and API orchestration to eliminate human error from operational processes and optimize FTE. An hour of specialist work in Norway costs 500–1500 NOK. I set up automated workflows where data flows automatically into Visma, Tripletex, or Fiken.\n\n**AI Integration**\nImplementation of LLM algorithms for semantic data analysis and automation of cognitive tasks. Your digital employee who doesn't need sick leave — handling customer inquiries 24/7, analyzing documents, sorting mail. GDPR-compliant.\n\n**Bots & Messaging**\nDevelopment of interactive communication interfaces (ChatOps) for internal management and omnichannel customer interaction. Slack/MS Teams bots for reporting, messenger bots for order status and bookings.\n\n**Web Applications**\nDesign of custom web solutions (SaaS, ERP, CRM) with focus on fault-tolerance, data security, and WCAG accessibility. Client portals, dashboards, admin panels — stable and secure for the Scandinavian market.\n\n**Data & Content Pipelines**\nBuilding ETL processes for automated collection, aggregation, and structuring of business analytics. Systems that monitor Brønnøysund registries, Finn.no listings, or stock reports and deliver clean reports for decision-making.",
 
     services_list: [
       {
-        title: "AI Integration & Automation",
-        description: "from concept to production",
-        detailedDescription: "Implementation of artificial intelligence and automation to accelerate routine processes — communications, request processing, content creation, and reporting.",
-        simpleExplanation: "I help companies use artificial intelligence to save time and make work faster — for example, so that emails, texts, or customer responses are created automatically."
+        title: "Business Automation",
+        description: "automation & integrations",
+        detailedDescription: "Integration of digital ecosystems and API orchestration to eliminate human error from operational processes and optimize FTE (Full-Time Equivalent).",
+        simpleExplanation: "An hour of specialist work in Norway costs 500–1500 NOK. Spending that time manually copying data from emails into spreadsheets is burning money. I set up automated workflows: data from your website automatically flows into Visma, Tripletex, or Fiken, and the client gets an SMS confirmation. Result: direct savings on administrative costs and zero accounting errors."
       },
       {
-        title: "Growth Marketing & Analytics",
-        description: "data-driven growth strategies",
-        detailedDescription: "Analysis of advertising campaign effectiveness and budget optimization to increase business profitability.",
-        simpleExplanation: "I check which advertising really brings results and help spend money on what actually works."
+        title: "AI Integration",
+        description: "smart automation solutions",
+        detailedDescription: "Implementation of LLM algorithms (Large Language Models) for semantic data analysis and automation of cognitive tasks in corporate environments.",
+        simpleExplanation: "This is your digital employee who doesn't need sick leave or vacations. I integrate secure AI solutions (GDPR-compliant) that can handle customer inquiries in Norwegian and English 24/7, analyze legal documents, or sort incoming mail. This lets you scale your business without inflating your support staff during talent shortages."
       },
       {
-        title: "Marketing Analytics & Dashboarding",
-        description: "actionable insights & visualization",
-        detailedDescription: "Creating convenient analytical reports and dashboards in Power BI or Google Sheets to monitor advertising and sales results.",
-        simpleExplanation: "I make clear tables and charts so the manager can see which campaigns give the best results."
+        title: "Bots & Messaging",
+        description: "Telegram, Slack, MS Teams",
+        detailedDescription: "Development of interactive communication interfaces (ChatOps) for internal management automation and omnichannel customer interaction.",
+        simpleExplanation: "Norwegians value efficiency and minimalism. For internal processes, I create bots in Slack or MS Teams that automate reporting and reminders. For customers — convenient messenger bots where they can check order status or book a service without calling. This reduces phone line load and speeds up communication dramatically."
       },
       {
-        title: "Digital Strategy & Automation",
-        description: "transform & optimize workflows",
-        detailedDescription: "Development of digitalization strategy — how to combine company services (CRM, advertising, AI, reporting) into a single effective system.",
-        simpleExplanation: "I help the company organize its online services so that everything works smoothly and without unnecessary manual work."
+        title: "Web Applications",
+        description: "custom SaaS, portals, dashboards",
+        detailedDescription: "Design of custom web solutions (SaaS, ERP, CRM) with focus on architecture fault-tolerance, data security, and accessibility standards compliance (WCAG).",
+        simpleExplanation: "If off-the-shelf solutions don't fit your business specifics, I develop custom tools — client portals, dashboards, or admin panels. Main focus — stability and data security, which is critical for the Scandinavian market. Your data stays protected, and the interface remains intuitive for users."
       },
       {
-        title: "EdTech Product Development",
-        description: "innovative learning solutions",
-        detailedDescription: "Creation of language and educational applications using AI and audio for interactive learning.",
-        simpleExplanation: "I develop modern educational products that help people learn languages faster through listening and practice."
-      },
-      {
-        title: "E-commerce Optimization",
-        description: "Amazon / Etsy / Shopify",
-        detailedDescription: "Increasing sales in online stores through market analysis, page optimization, and advertising campaigns.",
-        simpleExplanation: "I help online sellers update product descriptions, set up advertising, and increase the number of buyers."
-      },
-      {
-        title: "AI Workshops & Practical Training",
-        description: "hands-on learning sessions",
-        detailedDescription: "Conducting practical training for teams on effective use of AI and automation tools.",
-        simpleExplanation: "I teach employees how to use artificial intelligence in daily work — to do less manually and more productively."
+        title: "Data & Content Pipelines",
+        description: "ETL, monitoring, analytics",
+        detailedDescription: "Building ETL processes (Extract, Transform, Load) for automated collection, aggregation, and structuring of business analytics from heterogeneous sources.",
+        simpleExplanation: "Data is a resource, but only when processed. I build systems that automatically monitor sources you need (e.g., Brønnøysund registries, Finn.no listings, or stock reports), filter information, and deliver clean reports for decision-making. You save hundreds of hours of analytical work, getting insights automatically."
       }
     ],
     services_label: "my services",
@@ -348,50 +336,38 @@ export const translations = {
 
     services: "Tjenester",
     services_title: "Tjenester",
-    services_content: "**AI-integrasjon & Automatisering**\nFra konsept til produksjon ved hjelp av OpenAI, LangChain og andre banebrytende AI-teknologier. Jeg hjelper bedrifter med å integrere kunstig intelligens i sine arbeidsflyter, automatisere prosesser og bygge intelligente systemer som skalerer.\n\n**Vekstmarkedsføring & Analyse**\nKonverteringsoptimalisering, brukeratferdsanalyse og datadrevne markedsføringsstrategier. Implementering av analyserammeverk som identifiserer vekstmuligheter og maksimerer ROI på tvers av alle kanaler.\n\n**Marketing Analytics & Dashboarding**\nPower BI, Supabase, SQL - skaper omfattende business intelligence-løsninger som gjør rådata om til handlingsrettet innsikt. Tilpassede dashboards for sanntidsovervåking og datadrevet beslutningstaking.\n\n**Digital Strategi & Automatisering**\nDigital transformasjonsveiledning for bedrifter som ønsker å modernisere sine operasjoner, ta i bruk nye teknologier og forbli konkurransedyktige. Strømlinjeforme arbeidsflyter gjennom intelligent automatisering ved hjelp av Zapier, Make og tilpassede løsninger.\n\n**EdTech Produktutvikling (Elvarika)**\nUtvikling av innovative pedagogiske teknologiløsninger, inkludert min flaggskip SaaS-plattform for språklæring ved bruk av AI-algoritmer og personaliserte lydspillelister. Full syklus produktutvikling fra konsept til markedslansering.\n\n**E-handelsoptimalisering (Amazon / Etsy / Shopify)**\nStrategisk optimalisering for nettbaserte markedsplasser og e-handelsplattformer. Produktlanseringer, oppføringsoptimalisering, salgsanalyse og forbedring av konverteringsrate for Amazon, Etsy og Shopify butikker.\n\n**AI Workshops & Praktisk Opplæring**\nHåndson-økter for team for å oppgradere ferdigheter i moderne AI-teknologier, automatiseringsverktøy og digital transformasjon. Skreddersydde opplæringsprogrammer designet for å øke produktivitet og tekniske evner.",
+    services_content: "**Forretningsautomatisering**\nIntegrasjon av digitale økosystemer og API-orkestrering for å eliminere menneskelig feil fra operasjonelle prosesser. En times spesialistarbeid i Norge koster 500–1500 NOK. Jeg setter opp automatiserte arbeidsflyter hvor data flyter automatisk inn i Visma, Tripletex eller Fiken.\n\n**AI-integrasjon**\nImplementering av LLM-algoritmer for semantisk dataanalyse og automatisering av kognitive oppgaver. Din digitale ansatt som ikke trenger sykefravær — håndterer kundeforespørsler 24/7, analyserer dokumenter, sorterer post. GDPR-kompatibel.\n\n**Boter og Meldinger**\nUtvikling av interaktive kommunikasjonsgrensesnitt (ChatOps) for intern ledelse og omnikanal kundeinteraksjon. Slack/MS Teams-boter for rapportering, messenger-boter for ordrestatus og bestillinger.\n\n**Webapplikasjoner**\nDesign av tilpassede webløsninger (SaaS, ERP, CRM) med fokus på feiltoleranse, datasikkerhet og WCAG-tilgjengelighet. Kundeportaler, dashbord, admin-paneler — stabile og sikre for det skandinaviske markedet.\n\n**Data- og Innholdspipelines**\nBygging av ETL-prosesser for automatisert innsamling, aggregering og strukturering av forretningsanalyse. Systemer som overvåker Brønnøysund-registre, Finn.no-annonser eller børsrapporter og leverer rene rapporter for beslutningstaking.",
 
     services_list: [
       {
-        title: "AI-integrasjon & Automatisering",
-        description: "fra konsept til produksjon",
-        detailedDescription: "Implementering av kunstig intelligens og automatisering for å akselerere rutineprosesser — kommunikasjon, behandling av forespørsler, innholdsproduksjon og rapportering.",
-        simpleExplanation: "Jeg hjelper bedrifter med å bruke kunstig intelligens for å spare tid og gjøre arbeidet raskere — for eksempel slik at e-poster, tekster eller kundesvar opprettes automatisk."
+        title: "Forretningsautomatisering",
+        description: "automatisering og integrasjoner",
+        detailedDescription: "Integrasjon av digitale økosystemer og API-orkestrering for å eliminere menneskelig feil fra operasjonelle prosesser og optimalisere FTE (Full-Time Equivalent).",
+        simpleExplanation: "En times spesialistarbeid i Norge koster 500–1500 NOK. Å bruke den tiden på å manuelt kopiere data fra e-poster til regneark er å brenne penger. Jeg setter opp automatiserte arbeidsflyter: data fra nettstedet ditt flyter automatisk inn i Visma, Tripletex eller Fiken, og kunden får SMS-bekreftelse. Resultat: direkte besparelser på administrative kostnader og null regnskapsfeil."
       },
       {
-        title: "Vekstmarkedsføring & Analyse",
-        description: "datadrevne vekststrategier",
-        detailedDescription: "Analyse av effektiviteten til reklamekampanjer og budsjettoptimalisering for å øke bedriftens lønnsomhet.",
-        simpleExplanation: "Jeg sjekker hvilken reklame som faktisk gir resultater og hjelper med å bruke penger på det som virkelig fungerer."
+        title: "AI-integrasjon",
+        description: "smarte automatiseringsløsninger",
+        detailedDescription: "Implementering av LLM-algoritmer (Large Language Models) for semantisk dataanalyse og automatisering av kognitive oppgaver i bedriftsmiljøer.",
+        simpleExplanation: "Dette er din digitale ansatt som ikke trenger sykefravær eller ferie. Jeg integrerer sikre AI-løsninger (GDPR-kompatible) som kan håndtere kundeforespørsler på norsk og engelsk 24/7, analysere juridiske dokumenter eller sortere innkommende post. Dette lar deg skalere virksomheten uten å blåse opp støttestaben under talentmangel."
       },
       {
-        title: "Marketing Analytics & Dashboarding",
-        description: "handlingsrettet innsikt & visualisering",
-        detailedDescription: "Oppretting av praktiske analytiske rapporter og dashboards i Power BI eller Google Sheets for å overvåke reklame- og salgsresultater.",
-        simpleExplanation: "Jeg lager tydelige tabeller og grafer slik at lederen kan se hvilke kampanjer som gir de beste resultatene."
+        title: "Boter og Meldinger",
+        description: "Telegram, Slack, MS Teams",
+        detailedDescription: "Utvikling av interaktive kommunikasjonsgrensesnitt (ChatOps) for intern ledelsesautomatisering og omnikanal kundeinteraksjon.",
+        simpleExplanation: "Nordmenn verdsetter effektivitet og minimalisme. For interne prosesser lager jeg boter i Slack eller MS Teams som automatiserer rapportering og påminnelser. For kunder — praktiske messenger-boter hvor de kan sjekke ordrestatus eller bestille en tjeneste uten å ringe. Dette reduserer belastningen på telefonlinjer og fremskynder kommunikasjonen dramatisk."
       },
       {
-        title: "Digital Strategi & Automatisering",
-        description: "transformer & optimaliser arbeidsflyter",
-        detailedDescription: "Utvikling av digitaliseringsstrategi — hvordan å kombinere bedriftens tjenester (CRM, reklame, AI, rapportering) i ett effektivt system.",
-        simpleExplanation: "Jeg hjelper bedriften med å organisere sine nettjenester slik at alt fungerer smidig og uten unødvendig manuelt arbeid."
+        title: "Webapplikasjoner",
+        description: "tilpasset SaaS, portaler, dashbord",
+        detailedDescription: "Design av tilpassede webløsninger (SaaS, ERP, CRM) med fokus på arkitekturfeiltoleranse, datasikkerhet og overholdelse av tilgjengelighetsstandarder (WCAG).",
+        simpleExplanation: "Hvis hyllevareløsninger ikke passer din virksomhets spesifikasjoner, utvikler jeg tilpassede verktøy — kundeportaler, dashbord eller admin-paneler. Hovedfokus — stabilitet og datasikkerhet, som er kritisk for det skandinaviske markedet. Dataene dine forblir beskyttet, og grensesnittet forblir intuitivt for brukerne."
       },
       {
-        title: "EdTech Produktutvikling",
-        description: "innovative læringsløsninger",
-        detailedDescription: "Opprettelse av språk- og pedagogiske applikasjoner ved bruk av AI og lyd for interaktiv læring.",
-        simpleExplanation: "Jeg utvikler moderne pedagogiske produkter som hjelper folk med å lære språk raskere gjennom lytting og praksis."
-      },
-      {
-        title: "E-handelsoptimalisering",
-        description: "Amazon / Etsy / Shopify",
-        detailedDescription: "Økning av salg i nettbutikker gjennom markedsanalyse, sideoptimalisering og reklamekampanjer.",
-        simpleExplanation: "Jeg hjelper nettselgere med å oppdatere produktbeskrivelser, sette opp reklame og øke antall kjøpere."
-      },
-      {
-        title: "AI Workshops & Praktisk Opplæring",
-        description: "hands-on læringssessjoner",
-        detailedDescription: "Gjennomføring av praktisk opplæring for team om effektiv bruk av AI og automatiseringsverktøy.",
-        simpleExplanation: "Jeg lærer ansatte hvordan de bruker kunstig intelligens i daglig arbeid — for å gjøre mindre manuelt og mer produktivt."
+        title: "Data- og Innholdspipelines",
+        description: "ETL, overvåking, analyse",
+        detailedDescription: "Bygging av ETL-prosesser (Extract, Transform, Load) for automatisert innsamling, aggregering og strukturering av forretningsanalyse fra heterogene kilder.",
+        simpleExplanation: "Data er en ressurs, men bare når de er behandlet. Jeg bygger systemer som automatisk overvåker kilder du trenger (f.eks. Brønnøysund-registre, Finn.no-annonser eller børsrapporter), filtrerer informasjon og leverer rene rapporter for beslutningstaking. Du sparer hundrevis av timer med analytisk arbeid og får innsikt automatisk."
       }
     ],
     services_label: "mine tjenester",
@@ -601,50 +577,38 @@ export const translations = {
 
     services: "Послуги",
     services_title: "Послуги",
-    services_content: "**AI-інтеграція та Автоматизація**\nВід концепції до продакшену з використанням OpenAI, LangChain та інших передових AI-технологій. Допомагаю бізнесам інтегрувати штучний інтелект у їхні робочі процеси, автоматизувати процеси та створювати інтелектуальні системи, які масштабуються.\n\n**Маркетинг Зростання та Аналітика**\nОптимізація конверсії, аналіз поведінки користувачів та маркетингові стратегії на основі даних. Впровадження аналітичних фреймворків, які визначають можливості зростання та максимізують ROI по всіх каналах.\n\n**Маркетингова Аналітика та Дашбординг**\nPower BI, Supabase, SQL - створення комплексних рішень бізнес-аналітики, які перетворюють сирі дані на практичні висновки. Індивідуальні дашборди для моніторингу в реальному часі та прийняття рішень на основі даних.\n\n**Цифрова Стратегія та Автоматизація**\nКерівництво цифровою трансформацією для бізнесів, які прагнуть модернізувати свої операції, впроваджувати нові технології та залишатися конкурентоспроможними. Оптимізація робочих процесів через інтелектуальну автоматизацію з використанням Zapier, Make та індивідуальних рішень.\n\n**EdTech Розробка Продуктів (Elvarika)**\nРозробка інноваційних освітніх технологічних рішень, включаючи мою флагманську SaaS-платформу для вивчення мов з використанням AI-алгоритмів та персоналізованих аудіоплейлистів. Повний цикл розробки продукту від концепції до виходу на ринок.\n\n**E-commerce Оптимізація (Amazon / Etsy / Shopify)**\nСтратегічна оптимізація для онлайн-маркетплейсів та e-commerce платформ. Запуск продуктів, оптимізація лістингів, аналітика продажів та покращення конверсій для Amazon, Etsy та Shopify магазинів.\n\n**AI Воркшопи та Практичне Навчання**\nПрактичні сесії для команд для підвищення кваліфікації в сучасних AI-технологіях, інструментах автоматизації та стратегіях цифрової трансформації. Індивідуальні навчальні програми, розроблені для підвищення продуктивності та технічних можливостей.",
+    services_content: "**Автоматизація бізнесу**\nІнтеграція цифрових екосистем та API-оркестрація для виключення людського фактора з операційних процесів. Година роботи спеціаліста в Норвегії коштує 500–1500 NOK. Я налаштовую автоматизовані сценарії, де дані автоматично потрапляють у Visma, Tripletex або Fiken.\n\n**AI-рішення**\nІмплементація LLM-алгоритмів для семантичного аналізу даних та автоматизації когнітивних завдань. Ваш цифровий співробітник, який не вимагає лікарняних — обробляє запити клієнтів 24/7, аналізує документи, сортує пошту. GDPR-сумісний.\n\n**Боти та Месенджери**\nРозробка інтерактивних комунікаційних інтерфейсів (ChatOps) для внутрішнього менеджменту та омніканальної взаємодії з клієнтами. Боти в Slack/MS Teams для звітності, боти в месенджерах для статусу замовлення та запису на послуги.\n\n**Веб-додатки**\nПроектування кастомних веб-рішень (SaaS, ERP, CRM) з фокусом на відмовостійкість архітектури, безпеку даних та WCAG-доступність. Клієнтські портали, дашборди, адмін-панелі — стабільні та безпечні для скандинавського ринку.\n\n**Потоки даних**\nПобудова ETL-процесів для автоматизованого збору, агрегації та структурування бізнес-аналітики. Системи, що моніторять реєстри Brønnøysund, оголошення на Finn.no або біржові зведення та надають чисті звіти для прийняття рішень.",
 
     services_list: [
       {
-        title: "AI-інтеграція та Автоматизація",
-        description: "від концепції до продакшену",
-        detailedDescription: "Впровадження штучного інтелекту та автоматизації для прискорення рутинних процесів — комунікацій, обробки заявок, створення контенту чи звітів.",
-        simpleExplanation: "Я допомагаю компаніям використовувати штучний інтелект, щоб зекономити час і зробити роботу швидшою — наприклад, щоб листи, тексти чи відповіді клієнтам створювалися автоматично."
+        title: "Автоматизація бізнесу",
+        description: "автоматизація та інтеграції",
+        detailedDescription: "Інтеграція цифрових екосистем та API-оркестрація для виключення людського фактора з операційних процесів та оптимізації FTE (Full-Time Equivalent).",
+        simpleExplanation: "Година роботи спеціаліста в Норвегії коштує 500–1500 NOK. Витрачати цей час на ручне копіювання даних з емейлів у таблиці — це спалювання грошей. Я налаштовую автоматизовані сценарії: наприклад, дані з сайту автоматично потрапляють у Visma, Tripletex або Fiken, а клієнт отримує SMS-підтвердження. Результат: пряма економія на адміністративних витратах та нуль помилок у бухгалтерії."
       },
       {
-        title: "Маркетинг Зростання та Аналітика",
-        description: "стратегії зростання на основі даних",
-        detailedDescription: "Аналіз ефективності рекламних кампаній і оптимізація бюджетів для підвищення прибутковості бізнесу.",
-        simpleExplanation: "Я перевіряю, яка реклама справді приносить результат, і допомагаю витрачати гроші на те, що реально працює."
+        title: "AI-рішення",
+        description: "розумні рішення автоматизації",
+        detailedDescription: "Імплементація LLM-алгоритмів (Large Language Models) для семантичного аналізу даних та автоматизації когнітивних завдань у корпоративному середовищі.",
+        simpleExplanation: "Це ваш цифровий співробітник, який не вимагає лікарняних та відпусток. Я інтегрую безпечні AI-рішення (з урахуванням GDPR), які можуть обробляти запити клієнтів норвезькою та англійською мовами 24/7, аналізувати юридичні документи або сортувати вхідну пошту. Це дозволяє масштабувати бізнес без необхідності роздувати штат служби підтримки в умовах дефіциту кадрів."
       },
       {
-        title: "Маркетингова Аналітика та Дашбординг",
-        description: "практичні висновки та візуалізація",
-        detailedDescription: "Створення зручних аналітичних звітів і панелей у Power BI або Google Sheets для контролю результатів реклами та продажів.",
-        simpleExplanation: "Я роблю наочні таблиці й графіки, щоб керівник бачив, які кампанії дають кращі результати."
+        title: "Боти та Месенджери",
+        description: "Telegram, Slack, MS Teams",
+        detailedDescription: "Розробка інтерактивних комунікаційних інтерфейсів (ChatOps) для автоматизації внутрішнього менеджменту та омніканальної взаємодії з клієнтами.",
+        simpleExplanation: "Норвежці цінують ефективність та мінімалізм. Для внутрішніх процесів я створюю ботів у Slack або MS Teams, які автоматизують звітність та нагадування. Для клієнтів — це зручні боти в месенджерах, де можна перевірити статус замовлення чи записатися на послугу без дзвінків. Це знижує навантаження на телефонні лінії та пришвидшує комунікацію в рази."
       },
       {
-        title: "Цифрова Стратегія та Автоматизація",
-        description: "трансформація та оптимізація процесів",
-        detailedDescription: "Розробка стратегії цифровізації — як об'єднати сервіси компанії (CRM, реклама, AI, звітність) в єдину ефективну систему.",
-        simpleExplanation: "Я допомагаю компанії навести порядок у своїх онлайн-сервісах, щоб усе працювало злагоджено й без зайвої ручної роботи."
+        title: "Веб-додатки",
+        description: "кастомні SaaS, портали, дашборди",
+        detailedDescription: "Проектування кастомних веб-рішень (SaaS, ERP, CRM) з фокусом на відмовостійкість архітектури, безпеку даних та відповідність стандартам доступності (WCAG).",
+        simpleExplanation: "Якщо готові «коробкові» рішення не задовольняють специфіку вашого бізнесу, я розробляю індивідуальні інструменти — клієнтські портали, дашборди або адмін-панелі. Головний акцент — на стабільності та безпеці даних, що є критичним для скандинавського ринку. Ваші дані залишаються захищеними, а інтерфейс — інтуїтивно зрозумілим для користувачів."
       },
       {
-        title: "EdTech Розробка Продуктів",
-        description: "інноваційні навчальні рішення",
-        detailedDescription: "Створення мовних і навчальних додатків із використанням AI та аудіо для інтерактивного навчання.",
-        simpleExplanation: "Я розробляю сучасні навчальні продукти, які допомагають людям швидше вивчати мови через слухання і практику."
-      },
-      {
-        title: "E-commerce Оптимізація",
-        description: "Amazon / Etsy / Shopify",
-        detailedDescription: "Підвищення продажів в інтернет-магазинах через аналіз ринку, оптимізацію сторінок і рекламних кампаній.",
-        simpleExplanation: "Я допомагаю продавцям у мережі оновити опис товарів, налаштувати рекламу й збільшити кількість покупців."
-      },
-      {
-        title: "AI Воркшопи та Практичне Навчання",
-        description: "практичні навчальні сесії",
-        detailedDescription: "Проведення практичних навчань для команд щодо ефективного використання AI та автоматизаційних інструментів.",
-        simpleExplanation: "Я навчаю співробітників, як користуватися штучним інтелектом у щоденній роботі — щоб робити менше вручну, а більше результативно."
+        title: "Потоки даних",
+        description: "ETL, моніторинг, аналітика",
+        detailedDescription: "Побудова ETL-процесів (Extract, Transform, Load) для автоматизованого збору, агрегації та структурування бізнес-аналітики з гетерогенних джерел.",
+        simpleExplanation: "Дані — це ресурс, але лише коли вони оброблені. Я будую системи, які автоматично моніторять потрібні вам джерела (наприклад, реєстри Brønnøysund, оголошення на Finn.no або біржові зведення), фільтрують інформацію та надають вам «чистий» звіт для прийняття рішень. Ви економите сотні годин аналітичної роботи, отримуючи інсайти автоматично."
       }
     ],
     services_label: "мої послуги",
