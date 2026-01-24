@@ -2212,8 +2212,19 @@ serve(async (req) => {
         // 1. Post to LinkedIn
         console.log(`📤 Posting to LinkedIn (${socialLanguage})...`)
 
-        // Check for video first - trigger GitHub Action if video exists
-        if (hasVideo && isGitHubActionsEnabled()) {
+        // 🛡️ DUPLICATE CHECK: Skip LinkedIn if already posted
+        const linkedinAlreadyPostedAll = !!checkRecord.linkedin_post_id
+        if (linkedinAlreadyPostedAll) {
+          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
+          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), skipping`)
+          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
+          results.push({
+            platform: 'LinkedIn',
+            success: true,
+            url: linkedinPostUrl,
+            error: `Вже опубліковано (${existingLang})`
+          })
+        } else if (hasVideo && isGitHubActionsEnabled()) {
           console.log(`🎬 Batch post: News has video - triggering LinkedIn video GitHub Action`)
           console.log(`   Original video URL: ${news.original_video_url}`)
 
@@ -2242,7 +2253,7 @@ serve(async (req) => {
         }
 
         // Regular LinkedIn posting (no video or video trigger failed)
-        if (!linkedinVideoTriggered) {
+        if (!linkedinAlreadyPostedAll && !linkedinVideoTriggered) {
           try {
             const linkedinRequestBody: any = {
               language: socialLanguage,
@@ -2583,8 +2594,19 @@ serve(async (req) => {
         // 1. Post to LinkedIn EN
         console.log('📤 Posting to LinkedIn EN...')
 
-        // Check for video first - trigger GitHub Action if video exists
-        if (hasVideo && isGitHubActionsEnabled()) {
+        // 🛡️ DUPLICATE CHECK: Skip LinkedIn if already posted
+        const linkedinAlreadyPostedEN = !!checkRecord.linkedin_post_id
+        if (linkedinAlreadyPostedEN) {
+          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
+          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), skipping`)
+          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
+          results.push({
+            platform: 'LinkedIn EN',
+            success: true,
+            url: linkedinPostUrl,
+            error: `Вже опубліковано (${existingLang})`
+          })
+        } else if (hasVideo && isGitHubActionsEnabled()) {
           console.log(`🎬 Combo post: News has video - triggering LinkedIn video GitHub Action`)
           console.log(`   Original video URL: ${news.original_video_url}`)
 
@@ -2613,7 +2635,7 @@ serve(async (req) => {
         }
 
         // Regular LinkedIn posting (no video or video trigger failed)
-        if (!linkedinVideoTriggered) {
+        if (!linkedinAlreadyPostedEN && !linkedinVideoTriggered) {
           try {
             const linkedinRequestBody: any = {
               language: 'en',
@@ -2904,7 +2926,19 @@ serve(async (req) => {
         // 1. Post to LinkedIn
         console.log(`📤 Posting to LinkedIn ${langLabel}...`)
 
-        if (hasVideoCombo && isGitHubActionsEnabled()) {
+        // 🛡️ DUPLICATE CHECK: Skip LinkedIn if already posted
+        const linkedinAlreadyPosted = !!checkRecordCombo.linkedin_post_id
+        if (linkedinAlreadyPosted) {
+          const existingLang = (checkRecordCombo.linkedin_language || 'unknown').toUpperCase()
+          console.log(`⚠️ ${contentTypeCombo} ${contentIdCombo} already posted to LinkedIn (${existingLang}), skipping`)
+          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecordCombo.linkedin_post_id}`
+          resultsCombo.push({
+            platform: `LinkedIn ${langLabel}`,
+            success: true,
+            url: linkedinPostUrl,
+            error: `Вже опубліковано (${existingLang})`
+          })
+        } else if (hasVideoCombo && isGitHubActionsEnabled()) {
           console.log(`🎬 Combo post: News has video - triggering LinkedIn video GitHub Action`)
           try {
             const triggerResult = await triggerLinkedInVideo({
@@ -2926,7 +2960,7 @@ serve(async (req) => {
           }
         }
 
-        if (!linkedinVideoTriggeredCombo) {
+        if (!linkedinAlreadyPosted && !linkedinVideoTriggeredCombo) {
           try {
             const linkedinRequestBodyCombo: any = {
               language: socialLanguage,
