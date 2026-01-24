@@ -502,7 +502,7 @@ Organized by:
 - **`integrations/`** (6 files) - LinkedIn, Instagram, Video processing, AI teasers
 - **`features/`** (11 files) - AI systems, SEO, Mobile layout, Analytics
 - **`bugfixes/`** (6 files) - Complete bug fix history with dates
-- **`architecture/`** (7 files) - Database, Edge Functions, Components, CI/CD
+- **`architecture/`** (8 files) - Database, Edge Functions, Components, CI/CD, **Supabase Workflow**
 - **`implementation/`** (12 files) - Detailed implementation guides
 
 #### Curate to ByteRover
@@ -534,6 +534,10 @@ brv query "How was duplicate social media posts issue resolved?"
 # Implementation details
 brv query "How does two-stage AI image prompt system work?"
 brv query "What is Telegram bot sequential workflow?"
+
+# Supabase workflow
+brv query "How to push Supabase migrations?"
+brv query "How to fix migration sync issues?"
 ```
 
 **See** `docs/byterover-context/README.md` for complete index with curate commands for each file.
@@ -551,5 +555,5 @@ brv query "What is Telegram bot sequential workflow?"
 
 ---
 
-**Last Updated:** January 22, 2025
+**Last Updated:** January 24, 2025
 **Maintained By:** Vitalii Berbeha (@SmmShaman)
