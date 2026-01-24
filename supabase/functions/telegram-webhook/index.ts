@@ -292,11 +292,7 @@ serve(async (req) => {
 
             console.log(`✅ Image uploaded: ${publicUrl}`)
 
-            // Update message to show upload success
-            const cleanedText = replyText
-              .replace(/\n\n📸 <b>Instagram потребує зображення!<\/b>[\s\S]*?instagram_[a-z]+:[a-f0-9-]+<\/code>/i, '')
-              .trim()
-
+            // Update message to show upload success (APPEND only, don't remove anything)
             await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -305,7 +301,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: message.reply_to_message.message_id,
-                  text: cleanedText + `\n\n✅ <b>Зображення завантажено!</b>\n⏳ <i>Публікую в Instagram (${instagramLanguage.toUpperCase()})...</i>`,
+                  text: replyText + `\n\n✅ <b>Зображення завантажено!</b>\n🖼️ <a href="${publicUrl}">Переглянути</a>\n⏳ <i>Публікую в Instagram (${instagramLanguage.toUpperCase()})...</i>`,
                   parse_mode: 'HTML',
                   disable_web_page_preview: true
                 })
@@ -336,10 +332,11 @@ serve(async (req) => {
             if (postResult.success) {
               console.log(`✅ Posted to Instagram successfully: ${postResult.postUrl}`)
 
-              // Update message with success
-              const successText = cleanedText +
-                `\n\n✅ <b>Опубліковано в Instagram (${instagramLanguage.toUpperCase()})!</b>` +
-                (postResult.postUrl ? `\n🔗 <a href="${postResult.postUrl}">Переглянути пост</a>` : '')
+              // Update message with success (APPEND to original, include image link)
+              const successText = replyText +
+                `\n\n✅ <b>Зображення завантажено!</b>\n🖼️ <a href="${publicUrl}">Переглянути</a>` +
+                `\n\n📸 Instagram ${instagramLanguage.toUpperCase()}: ` +
+                (postResult.postUrl ? `<a href="${postResult.postUrl}">Переглянути пост</a>` : 'Опубліковано')
 
               // Add buttons for other Instagram languages
               const otherLangs = ['en', 'no', 'ua'].filter(l => l !== instagramLanguage)
@@ -368,9 +365,10 @@ serve(async (req) => {
             } else {
               console.error(`❌ Instagram post failed: ${postResult.error}`)
 
-              // Update message with error
-              const errorText = cleanedText +
-                `\n\n❌ <b>Помилка публікації в Instagram:</b>\n<code>${postResult.error || 'Unknown error'}</code>`
+              // Update message with error (APPEND to original, include image link)
+              const errorText = replyText +
+                `\n\n✅ <b>Зображення завантажено!</b>\n🖼️ <a href="${publicUrl}">Переглянути</a>` +
+                `\n\n❌ <b>Instagram ${instagramLanguage.toUpperCase()}:</b> ${postResult.error || 'Unknown error'}`
 
               await fetch(
                 `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
@@ -489,11 +487,7 @@ serve(async (req) => {
               ]
             }
 
-            // Remove entire "Очікую фото" block (including technical info) and add success status
-            const cleanedText = replyText
-              .replace(/\n\n📸 <b>Очікую фото\.\.\.<\/b>[\s\S]*?newsId:[a-f0-9-]+<\/code>/i, '')
-              .trim()
-
+            // APPEND success status (don't remove anything from original)
             await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -502,7 +496,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: message.reply_to_message.message_id,
-                  text: cleanedText + '\n\n✅ <b>Зображення прикріплено</b>\n📝 <i>Оберіть де опублікувати...</i>',
+                  text: replyText + `\n\n✅ <b>Зображення прикріплено</b>\n🖼️ <a href="${publicUrl}">Переглянути</a>\n📝 <i>Оберіть де опублікувати...</i>`,
                   parse_mode: 'HTML',
                   reply_markup: publishKeyboard
                 })
@@ -1256,13 +1250,10 @@ serve(async (req) => {
         const articlePath = contentType === 'blog' ? 'blog' : 'news'
         const articleUrl = `https://vitalii.no/${articlePath}/${articleSlug}`
 
-        // Update original message to show LinkedIn status (NO separate message!)
-        let linkedinStatusText = `\n\n✅ <b>Опубліковано в LinkedIn (${langLabel})!</b>\n`
-        linkedinStatusText += `📰 «${shortTitle}»\n`
-        linkedinStatusText += `📝 <a href="${articleUrl}">Читати статтю</a>\n`
-        if (linkedinPostUrl) {
-          linkedinStatusText += `🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`
-        }
+        // Update original message to show LinkedIn status (one-line format)
+        const linkedinStatusText = linkedinPostUrl
+          ? `\n\n🔗 LinkedIn ${langLabel}: <a href="${linkedinPostUrl}">Переглянути пост</a>`
+          : `\n\n✅ LinkedIn ${langLabel}: Опубліковано`
 
         // Build remaining social media buttons
         const allLanguages = ['en', 'no', 'ua']
@@ -1513,6 +1504,22 @@ serve(async (req) => {
                       // Update local reference - now we have an image!
                       // Continue with Instagram posting (fall through to normal flow)
                       console.log(`✅ Instagram: Continuing with auto-generated image`)
+
+                      // Notify user that AI generated the image (APPEND to message)
+                      await fetch(
+                        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            chat_id: chatId,
+                            message_id: messageId,
+                            text: messageText + `\n\n🤖 <b>AI згенерував зображення!</b>\n🖼️ <a href="${autoGeneratedImageUrl}">Переглянути</a>\n⏳ <i>Публікую в Instagram (${socialLanguage.toUpperCase()})...</i>`,
+                            parse_mode: 'HTML',
+                            disable_web_page_preview: true
+                          })
+                        }
+                      )
                     }
                   }
                 }
@@ -1570,9 +1577,20 @@ serve(async (req) => {
           }
         }
 
+        // Check if has blog post FIRST (before validation)
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentType = blogPost ? 'blog' : 'news'
+        const contentId = blogPost ? blogPost.id : newsId
+        const checkRecord = blogPost || news
+
         // Check if content has translations
         const titleField = `title_${socialLanguage}`
-        if (!news[titleField]) {
+        if (!checkRecord[titleField]) {
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
             {
@@ -1589,16 +1607,6 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' }
           })
         }
-
-        // Check if has blog post
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
 
         // Determine which endpoint to call
         const endpoint = socialPlatform === 'facebook' ? 'post-to-facebook' : 'post-to-instagram'
@@ -1732,11 +1740,10 @@ serve(async (req) => {
         const platformName = socialPlatform.charAt(0).toUpperCase() + socialPlatform.slice(1)
         const langLabel = socialLanguage.toUpperCase()
 
-        // Build status text
-        let statusText = `\n\n${platformEmoji} <b>Опубліковано в ${platformName} (${langLabel})!</b>`
-        if (postResult.postUrl) {
-          statusText += `\n🔗 <a href="${postResult.postUrl}">Переглянути пост</a>`
-        }
+        // Build status text (one-line format)
+        const statusText = postResult.postUrl
+          ? `\n\n${platformEmoji} ${platformName} ${langLabel}: <a href="${postResult.postUrl}">Переглянути пост</a>`
+          : `\n\n✅ ${platformName} ${langLabel}: Опубліковано`
 
         // Build remaining social buttons (for other platforms/languages)
         const remainingButtons = []
@@ -1827,26 +1834,7 @@ serve(async (req) => {
           })
         }
 
-        // Check if content is published
-        if (!news.title_en) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Content not published yet. Publish to News first!',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Check if has blog post
+        // Check if has blog post FIRST (before validation)
         const { data: blogPost } = await supabase
           .from('blog_posts')
           .select('*')
@@ -1855,6 +1843,26 @@ serve(async (req) => {
 
         const contentType = blogPost ? 'blog' : 'news'
         const contentId = blogPost ? blogPost.id : newsId
+        const checkRecord = blogPost || news
+
+        // Check if content is published
+        if (!checkRecord.title_en) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Content not published yet. Publish to News/Blog first!',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -1954,13 +1962,23 @@ serve(async (req) => {
           })
         }
 
-        // Check if content is published
-        const titleField = `title_${socialLanguage}` as keyof typeof news
-        const slugField = `slug_${socialLanguage}` as keyof typeof news
-        const contentField = `content_${socialLanguage}` as keyof typeof news
-        const teaserField = `social_teaser_twitter_${socialLanguage}` as keyof typeof news
+        // Check if has blog post FIRST (before validation)
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
 
-        if (!news[titleField]) {
+        const contentType = blogPost ? 'blog' : 'news'
+        const checkRecord = blogPost || news
+
+        // Check if content is published
+        const titleField = `title_${socialLanguage}` as keyof typeof checkRecord
+        const slugField = `slug_${socialLanguage}` as keyof typeof checkRecord
+        const contentField = `content_${socialLanguage}` as keyof typeof checkRecord
+        const teaserField = `social_teaser_twitter_${socialLanguage}` as keyof typeof checkRecord
+
+        if (!checkRecord[titleField]) {
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
             {
@@ -1968,7 +1986,7 @@ serve(async (req) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 callback_query_id: callbackId,
-                text: '❌ Content not published yet. Publish to News first!',
+                text: '❌ Content not published yet. Publish to News/Blog first!',
                 show_alert: true
               })
             }
@@ -1979,13 +1997,13 @@ serve(async (req) => {
         }
 
         // Get title, content, and slug in the appropriate language
-        const title = news[titleField] as string
-        const content = (news[contentField] || '') as string
-        const slug = (news[slugField] || news.slug_en || newsId.substring(0, 8)) as string
-        const articleUrl = `https://vitalii.no/news/${slug}`
+        const title = checkRecord[titleField] as string
+        const content = (checkRecord[contentField] || '') as string
+        const slug = (checkRecord[slugField] || checkRecord.slug_en || newsId.substring(0, 8)) as string
+        const articleUrl = `https://vitalii.no/${contentType === 'blog' ? 'blog' : 'news'}/${slug}`
 
         // Check for cached teaser or generate new one
-        let tweetText = news[teaserField] as string | null
+        let tweetText = checkRecord[teaserField] as string | null
 
         if (!tweetText) {
           console.log('🎯 No cached Twitter teaser, generating...')
@@ -2154,26 +2172,7 @@ serve(async (req) => {
           })
         }
 
-        // Check if content has translations
-        const titleField = `title_${socialLanguage}`
-        if (!news[titleField]) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: `❌ Content not published yet (no ${langLabel} translation). Publish to News first!`
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Check if has blog post
+        // Check if has blog post FIRST (before validation)
         const { data: blogPost } = await supabase
           .from('blog_posts')
           .select('*')
@@ -2182,6 +2181,26 @@ serve(async (req) => {
 
         const contentType = blogPost ? 'blog' : 'news'
         const contentId = blogPost ? blogPost.id : newsId
+        const checkRecord = blogPost || news
+
+        // Check if content has translations
+        const titleField = `title_${socialLanguage}`
+        if (!checkRecord[titleField]) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `❌ Content not published yet (no ${langLabel} translation). Publish to News/Blog first!`
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
 
         // Track results
         const results: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
@@ -2520,8 +2539,19 @@ serve(async (req) => {
           })
         }
 
+        // Check if has blog post FIRST (before validation)
+        const { data: blogPost } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentType = blogPost ? 'blog' : 'news'
+        const contentId = blogPost ? blogPost.id : newsId
+        const checkRecord = blogPost || news
+
         // Check if content has English translation
-        if (!news.title_en) {
+        if (!checkRecord.title_en) {
           // Update the SAME message with error (not sendMessage!)
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
@@ -2531,7 +2561,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + '\n\n❌ <b>Error:</b> Content not published yet (no EN translation). Publish to News first!',
+                text: messageText + '\n\n❌ <b>Error:</b> Content not published yet (no EN translation). Publish to News/Blog first!',
                 parse_mode: 'HTML',
                 disable_web_page_preview: true
               })
@@ -2541,16 +2571,6 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' }
           })
         }
-
-        // Check if has blog post
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
 
         // Track results
         const results: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
@@ -2707,25 +2727,21 @@ serve(async (req) => {
         ]
 
         // Update message with results in the SAME message
-        // Ensure message doesn't exceed Telegram's 4096 char limit
-        let finalText = messageText + resultsText
+        // If message is too long, send results as a SEPARATE reply (don't truncate original!)
+        const finalText = messageText + resultsText
         if (finalText.length > 4000) {
-          // Truncate messageText to fit within limit
-          const maxMessageTextLength = 4000 - resultsText.length - 50
-          finalText = messageText.substring(0, maxMessageTextLength) + '...\n' + resultsText
-          console.log(`⚠️ Message truncated from ${(messageText + resultsText).length} to ${finalText.length} chars`)
-        }
+          console.log(`⚠️ Message too long (${finalText.length}), sending results as separate reply`)
 
-        try {
-          const editResultsResponse = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          // Send results as a separate reply message (preserve original message)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId,
-                message_id: messageId,
-                text: finalText,
+                reply_to_message_id: messageId,
+                text: `📊 <b>Результати публікації:</b>\n${resultsText}`,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true,
                 reply_markup: {
@@ -2734,18 +2750,38 @@ serve(async (req) => {
               })
             }
           )
+        } else {
+          try {
+            const editResultsResponse = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: finalText,
+                  parse_mode: 'HTML',
+                  disable_web_page_preview: true,
+                  reply_markup: {
+                    inline_keyboard: remainingButtons
+                  }
+                })
+              }
+            )
 
-          if (!editResultsResponse.ok) {
-            const errText = await editResultsResponse.text()
-            console.error('⚠️ Failed to edit message (results):', errText)
-            console.error('   Message length:', finalText.length)
-            console.error('   Chat ID:', chatId)
-            console.error('   Message ID:', messageId)
-          } else {
-            console.log('✅ Successfully updated message with results (combo_li_fb_en)')
+            if (!editResultsResponse.ok) {
+              const errText = await editResultsResponse.text()
+              console.error('⚠️ Failed to edit message (results):', errText)
+              console.error('   Message length:', finalText.length)
+              console.error('   Chat ID:', chatId)
+              console.error('   Message ID:', messageId)
+            } else {
+              console.log('✅ Successfully updated message with results (combo_li_fb_en)')
+            }
+          } catch (editError) {
+            console.error('⚠️ Error editing message (results):', editError)
           }
-        } catch (editError) {
-          console.error('⚠️ Error editing message (results):', editError)
         }
 
       } else if (action === 'combo_li_fb_ig' && socialLanguage) {
@@ -2837,9 +2873,20 @@ serve(async (req) => {
           })
         }
 
+        // Check if has blog post FIRST (before validation)
+        const { data: blogPostCombo } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('source_news_id', newsId)
+          .single()
+
+        const contentTypeCombo = blogPostCombo ? 'blog' : 'news'
+        const contentIdCombo = blogPostCombo ? blogPostCombo.id : newsId
+        const checkRecordCombo = blogPostCombo || newsCombo
+
         // Check if content has translation for the selected language
-        const titleField = `title_${socialLanguage}` as keyof typeof newsCombo
-        if (!newsCombo[titleField]) {
+        const titleField = `title_${socialLanguage}` as keyof typeof checkRecordCombo
+        if (!checkRecordCombo[titleField]) {
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -2848,7 +2895,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + `\n\n❌ <b>Error:</b> Content not published yet (no ${langLabel} translation). Publish to News first!`,
+                text: messageText + `\n\n❌ <b>Error:</b> Content not published yet (no ${langLabel} translation). Publish to News/Blog first!`,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true
               })
@@ -2858,16 +2905,6 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' }
           })
         }
-
-        // Check if has blog post
-        const { data: blogPostCombo } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentTypeCombo = blogPostCombo ? 'blog' : 'news'
-        const contentIdCombo = blogPostCombo ? blogPostCombo.id : newsId
 
         // Track results
         const resultsCombo: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
@@ -3082,23 +3119,21 @@ serve(async (req) => {
         ]
 
         // Update message with results
-        let finalTextCombo = messageText + resultsTextCombo
+        // If message is too long, send results as a SEPARATE reply (don't truncate original!)
+        const finalTextCombo = messageText + resultsTextCombo
         if (finalTextCombo.length > 4000) {
-          const maxLen = 4000 - resultsTextCombo.length - 50
-          finalTextCombo = messageText.substring(0, maxLen) + '...\n' + resultsTextCombo
-          console.log(`⚠️ Message truncated to ${finalTextCombo.length} chars`)
-        }
+          console.log(`⚠️ Message too long (${finalTextCombo.length}), sending results as separate reply`)
 
-        try {
-          const editResultsResponseCombo = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          // Send results as a separate reply message (preserve original message)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId,
-                message_id: messageId,
-                text: finalTextCombo,
+                reply_to_message_id: messageId,
+                text: `📊 <b>Результати публікації:</b>\n${resultsTextCombo}`,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true,
                 reply_markup: {
@@ -3107,15 +3142,35 @@ serve(async (req) => {
               })
             }
           )
+        } else {
+          try {
+            const editResultsResponseCombo = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: finalTextCombo,
+                  parse_mode: 'HTML',
+                  disable_web_page_preview: true,
+                  reply_markup: {
+                    inline_keyboard: remainingButtonsCombo
+                  }
+                })
+              }
+            )
 
-          if (!editResultsResponseCombo.ok) {
-            const errText = await editResultsResponseCombo.text()
-            console.error('⚠️ Failed to edit message (results):', errText)
-          } else {
-            console.log(`✅ Successfully updated message with results (combo_li_fb_ig_${socialLanguage})`)
+            if (!editResultsResponseCombo.ok) {
+              const errText = await editResultsResponseCombo.text()
+              console.error('⚠️ Failed to edit message (results):', errText)
+            } else {
+              console.log(`✅ Successfully updated message with results (combo_li_fb_ig_${socialLanguage})`)
+            }
+          } catch (editError) {
+            console.error('⚠️ Error editing message (results):', editError)
           }
-        } catch (editError) {
-          console.error('⚠️ Error editing message (results):', editError)
         }
 
       } else if (action === 'skip_social') {
