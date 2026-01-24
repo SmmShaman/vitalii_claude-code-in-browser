@@ -322,7 +322,7 @@ COMPOSITION:
 - Central focus on the main visual concept
 - Professional, editorial quality suitable for tech news
 - Clean, modern aesthetic with balanced composition
-- 4:5 aspect ratio (portrait orientation)
+- 1:1 aspect ratio (square)
 
 COLOR PALETTE:
 - Primary accent: {color_primary}
