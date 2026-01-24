@@ -2729,21 +2729,26 @@ serve(async (req) => {
         ]
 
         // Update message with results in the SAME message
-        // If message is too long, send results as a SEPARATE reply (don't truncate original!)
-        const finalText = messageText + resultsText
+        // ALWAYS edit original message - truncate content if needed, but PRESERVE results
+        let finalText = messageText + resultsText
         if (finalText.length > 4000) {
-          console.log(`⚠️ Message too long (${finalText.length}), sending results as separate reply`)
+          console.log(`⚠️ Message too long (${finalText.length}), truncating original content to fit results`)
+          // Truncate ORIGINAL text, but preserve ALL results
+          const maxOriginalLength = 4000 - resultsText.length - 50
+          const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+          finalText = truncatedOriginal + resultsText
+        }
 
-          // Send results as a separate reply message (preserve original message)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        try {
+          const editResultsResponse = await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId,
-                reply_to_message_id: messageId,
-                text: `📊 <b>Результати публікації:</b>\n${resultsText}`,
+                message_id: messageId,
+                text: finalText,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true,
                 reply_markup: {
@@ -2752,38 +2757,18 @@ serve(async (req) => {
               })
             }
           )
-        } else {
-          try {
-            const editResultsResponse = await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  message_id: messageId,
-                  text: finalText,
-                  parse_mode: 'HTML',
-                  disable_web_page_preview: true,
-                  reply_markup: {
-                    inline_keyboard: remainingButtons
-                  }
-                })
-              }
-            )
 
-            if (!editResultsResponse.ok) {
-              const errText = await editResultsResponse.text()
-              console.error('⚠️ Failed to edit message (results):', errText)
-              console.error('   Message length:', finalText.length)
-              console.error('   Chat ID:', chatId)
-              console.error('   Message ID:', messageId)
-            } else {
-              console.log('✅ Successfully updated message with results (combo_li_fb_en)')
-            }
-          } catch (editError) {
-            console.error('⚠️ Error editing message (results):', editError)
+          if (!editResultsResponse.ok) {
+            const errText = await editResultsResponse.text()
+            console.error('⚠️ Failed to edit message (results):', errText)
+            console.error('   Message length:', finalText.length)
+            console.error('   Chat ID:', chatId)
+            console.error('   Message ID:', messageId)
+          } else {
+            console.log('✅ Successfully updated message with results (combo_li_fb_en)')
           }
+        } catch (editError) {
+          console.error('⚠️ Error editing message (results):', editError)
         }
 
       } else if (action === 'combo_li_fb_ig' && socialLanguage) {
@@ -3122,21 +3107,26 @@ serve(async (req) => {
         ]
 
         // Update message with results
-        // If message is too long, send results as a SEPARATE reply (don't truncate original!)
-        const finalTextCombo = messageText + resultsTextCombo
+        // ALWAYS edit original message - truncate content if needed, but PRESERVE results
+        let finalTextCombo = messageText + resultsTextCombo
         if (finalTextCombo.length > 4000) {
-          console.log(`⚠️ Message too long (${finalTextCombo.length}), sending results as separate reply`)
+          console.log(`⚠️ Message too long (${finalTextCombo.length}), truncating original content to fit results`)
+          // Truncate ORIGINAL text, but preserve ALL results
+          const maxOriginalLength = 4000 - resultsTextCombo.length - 50
+          const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+          finalTextCombo = truncatedOriginal + resultsTextCombo
+        }
 
-          // Send results as a separate reply message (preserve original message)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        try {
+          const editResultsResponseCombo = await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId,
-                reply_to_message_id: messageId,
-                text: `📊 <b>Результати публікації:</b>\n${resultsTextCombo}`,
+                message_id: messageId,
+                text: finalTextCombo,
                 parse_mode: 'HTML',
                 disable_web_page_preview: true,
                 reply_markup: {
@@ -3145,35 +3135,15 @@ serve(async (req) => {
               })
             }
           )
-        } else {
-          try {
-            const editResultsResponseCombo = await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  message_id: messageId,
-                  text: finalTextCombo,
-                  parse_mode: 'HTML',
-                  disable_web_page_preview: true,
-                  reply_markup: {
-                    inline_keyboard: remainingButtonsCombo
-                  }
-                })
-              }
-            )
 
-            if (!editResultsResponseCombo.ok) {
-              const errText = await editResultsResponseCombo.text()
-              console.error('⚠️ Failed to edit message (results):', errText)
-            } else {
-              console.log(`✅ Successfully updated message with results (combo_li_fb_ig_${socialLanguage})`)
-            }
-          } catch (editError) {
-            console.error('⚠️ Error editing message (results):', editError)
+          if (!editResultsResponseCombo.ok) {
+            const errText = await editResultsResponseCombo.text()
+            console.error('⚠️ Failed to edit message (results):', errText)
+          } else {
+            console.log(`✅ Successfully updated message with results (combo_li_fb_ig_${socialLanguage})`)
           }
+        } catch (editError) {
+          console.error('⚠️ Error editing message (results):', editError)
         }
 
       } else if (action === 'skip_social') {
