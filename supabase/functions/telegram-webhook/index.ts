@@ -1226,10 +1226,10 @@ serve(async (req) => {
         const newsTitle = news[titleField] || news.title_en || news.original_title || 'Untitled'
         const shortTitle = newsTitle.length > 50 ? newsTitle.substring(0, 47) + '...' : newsTitle
 
-        // Build LinkedIn post URL (if we have post ID)
-        const linkedinPostUrl = linkedinResult.postId
+        // Build LinkedIn post URL (use postUrl from response, or construct from postId as fallback)
+        const linkedinPostUrl = linkedinResult.postUrl || (linkedinResult.postId
           ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-          : null
+          : null)
 
         // Answer callback silently (required by Telegram API)
         const langLabel = linkedinLanguage.toUpperCase()
@@ -2268,9 +2268,10 @@ serve(async (req) => {
             const linkedinResult = await linkedinResponse.json()
 
             if (linkedinResponse.ok && linkedinResult.success) {
-              const postUrl = linkedinResult.postId
+              // Use postUrl directly from response (or construct from postId as fallback)
+              const postUrl = linkedinResult.postUrl || (linkedinResult.postId
                 ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-                : undefined
+                : undefined)
               results.push({ platform: 'LinkedIn', success: true, url: postUrl })
             } else {
               results.push({ platform: 'LinkedIn', success: false, error: linkedinResult.error || 'Unknown error' })
@@ -2638,9 +2639,10 @@ serve(async (req) => {
             const linkedinResult = await linkedinResponse.json()
 
             if (linkedinResponse.ok && linkedinResult.success) {
-              const postUrl = linkedinResult.postId
+              // Use postUrl directly from response (or construct from postId as fallback)
+              const postUrl = linkedinResult.postUrl || (linkedinResult.postId
                 ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-                : undefined
+                : undefined)
               results.push({ platform: 'LinkedIn EN', success: true, url: postUrl })
             } else {
               results.push({ platform: 'LinkedIn EN', success: false, error: linkedinResult.error || 'Unknown error' })
@@ -2965,9 +2967,10 @@ serve(async (req) => {
             const linkedinResultCombo = await linkedinResponseCombo.json()
 
             if (linkedinResponseCombo.ok && linkedinResultCombo.success) {
-              const postUrlLi = linkedinResultCombo.postId
+              // Use postUrl directly from response (or construct from postId as fallback)
+              const postUrlLi = linkedinResultCombo.postUrl || (linkedinResultCombo.postId
                 ? `https://www.linkedin.com/feed/update/${linkedinResultCombo.postId}`
-                : undefined
+                : undefined)
               resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: true, url: postUrlLi })
             } else {
               resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: false, error: linkedinResultCombo.error || 'Unknown error' })

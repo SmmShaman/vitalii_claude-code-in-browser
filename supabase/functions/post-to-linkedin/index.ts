@@ -1,5 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import {
+  wasAlreadyPosted,
+  createSocialPost,
+  updateSocialPostSuccess,
+  updateSocialPostFailed,
+  type ContentType,
+  type Language
+} from '../_shared/social-media-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -124,6 +132,62 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+    const contentId = requestData.contentType === 'news'
+      ? requestData.newsId
+      : requestData.blogPostId
+
+    if (!contentId) {
+      throw new Error('Invalid request: must provide either newsId or blogPostId')
+    }
+
+    // Check if already posted or pending (prevents duplicate posts)
+    const { posted, pending, postUrl: existingUrl } = await wasAlreadyPosted(
+      contentId,
+      requestData.contentType as ContentType,
+      'linkedin',
+      requestData.language as Language
+    )
+
+    if (posted) {
+      console.log('⚠️ Already posted to LinkedIn:', existingUrl)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          alreadyPosted: true,
+          postUrl: existingUrl,
+          message: `Already posted to LinkedIn (${requestData.language.toUpperCase()})`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (pending) {
+      console.log('⏳ LinkedIn post is already pending/in-progress')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          alreadyPosted: true,
+          message: `LinkedIn post already in progress (${requestData.language.toUpperCase()})`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Create pending social media post record
+    const socialPost = await createSocialPost(
+      contentId,
+      requestData.contentType as ContentType,
+      'linkedin',
+      requestData.language as Language,
+      '', // post content will be set later
+      []  // media urls
+    )
+
+    if (!socialPost) {
+      console.error('❌ Failed to create social post record')
+      // Continue anyway - don't block posting
+    }
+
     // Fetch content based on type
     let content: {
       title: string
@@ -202,6 +266,11 @@ serve(async (req) => {
     if (result.success) {
       console.log('✅ Posted to LinkedIn successfully:', result.postId)
 
+      // Build LinkedIn post URL
+      const linkedinPostUrl = result.postId
+        ? `https://www.linkedin.com/feed/update/${result.postId}`
+        : undefined
+
       // Update the record with LinkedIn post info
       const updateTable = requestData.contentType === 'news' ? 'news' : 'blog_posts'
       const updateId = requestData.contentType === 'news' ? requestData.newsId : requestData.blogPostId
@@ -215,15 +284,26 @@ serve(async (req) => {
         })
         .eq('id', updateId)
 
+      // Update social_media_posts record
+      if (socialPost && result.postId) {
+        await updateSocialPostSuccess(socialPost.id, result.postId, linkedinPostUrl || '')
+        console.log('✅ Updated social_media_posts record')
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
           postId: result.postId,
+          postUrl: linkedinPostUrl,
           message: `Posted to LinkedIn (${requestData.language.toUpperCase()})`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } else {
+      // Update social_media_posts record with error
+      if (socialPost) {
+        await updateSocialPostFailed(socialPost.id, result.error || 'Unknown error')
+      }
       throw new Error(result.error || 'Unknown LinkedIn API error')
     }
 
