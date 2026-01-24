@@ -206,7 +206,14 @@ async function finishFacebookUpload(uploadSessionId, title, description) {
   }
 
   const data = await response.json();
+  console.log('📊 Facebook finish response:', JSON.stringify(data, null, 2));
+
   const videoId = data.id || data.video_id;
+  if (!videoId) {
+    console.error('⚠️ No video ID in response. Available fields:', Object.keys(data));
+    throw new Error(`Facebook API did not return video ID. Response: ${JSON.stringify(data)}`);
+  }
+
   const postUrl = `https://facebook.com/${videoId}`;
 
   console.log(`✅ Facebook video published: ${postUrl}`);
@@ -510,8 +517,8 @@ async function main() {
     // Upload video to Facebook
     const result = await uploadVideoToFacebook(tempFile, title, fbDescription);
 
-    if (!result.success && !result.videoId) {
-      throw new Error('Facebook video upload failed');
+    if (!result.videoId) {
+      throw new Error('Facebook video upload failed: no video ID returned');
     }
 
     // Update social_media_posts tracking table
@@ -523,7 +530,8 @@ async function main() {
     console.log(`🔗 Post URL: ${result.postUrl}`);
 
     // Edit original Telegram message to show success status
-    if (news.telegram_chat_id && news.telegram_message_id) {
+    // Skip if URL contains 'undefined' (API response issue)
+    if (news.telegram_chat_id && news.telegram_message_id && result.postUrl && !result.postUrl.includes('undefined')) {
       await editTelegramMessage({
         botToken: config.telegram.botToken,
         chatId: news.telegram_chat_id,
@@ -535,8 +543,10 @@ async function main() {
         articleUrl: articleUrl,
         title: title,
       });
-    } else {
+    } else if (!news.telegram_chat_id || !news.telegram_message_id) {
       console.log('⚠️ No telegram_chat_id or telegram_message_id stored - skipping notification');
+    } else if (!result.postUrl || result.postUrl.includes('undefined')) {
+      console.log('⚠️ Post URL is invalid or contains undefined - skipping Telegram notification');
     }
 
   } finally {

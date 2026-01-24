@@ -5,7 +5,7 @@
  * Supports both Facebook Pages and Instagram Business accounts
  */
 
-export const FACEBOOK_HELPERS_VERSION = "2025-01-20-v3";
+export const FACEBOOK_HELPERS_VERSION = "2025-01-23-v4";
 
 const GRAPH_API_VERSION = "v18.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
@@ -179,6 +179,11 @@ export async function postToFacebookPage(options: {
 
     // For photos, the response has post_id, for feed it has id
     const postId = data.post_id || data.id;
+    if (!postId) {
+      console.error("⚠️ Facebook API response missing post ID:", JSON.stringify(data));
+      return { success: false, error: "No post ID in Facebook response" };
+    }
+
     const postUrl = `https://facebook.com/${postId}`;
 
     console.log(`✅ Facebook post created: ${postUrl}`);
