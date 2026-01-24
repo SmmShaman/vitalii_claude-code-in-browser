@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw } from 'lucide-react'
+import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff } from 'lucide-react'
+import { supabase } from '@/integrations/supabase/client'
 
 const CRON_PRESETS = [
   { value: '*/5 * * * *', label: 'Every 5 minutes', seconds: 300 },
@@ -23,6 +24,10 @@ export const CronScheduleSettings = () => {
   const [telegramScraperSchedule, setTelegramScraperSchedule] = useState('*/10 * * * *')
   const [fetchNewsSchedule, setFetchNewsSchedule] = useState('0 * * * *')
 
+  // Pre-moderation toggle state
+  const [preModerationEnabled, setPreModerationEnabled] = useState(true)
+  const [preModerationLoading, setPreModerationLoading] = useState(false)
+
   useEffect(() => {
     loadCronJobs()
   }, [])
@@ -32,10 +37,67 @@ export const CronScheduleSettings = () => {
       setLoading(true)
       setTelegramScraperSchedule('*/10 * * * *')
       setFetchNewsSchedule('0 * * * *')
+
+      // Load pre-moderation setting
+      const { data: preModerationSetting, error } = await supabase
+        .from('api_settings')
+        .select('key_value')
+        .eq('key_name', 'ENABLE_PRE_MODERATION')
+        .single()
+
+      if (!error && preModerationSetting) {
+        setPreModerationEnabled(preModerationSetting.key_value !== 'false')
+      }
     } catch (error) {
       console.error('Failed to load cron jobs:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const togglePreModeration = async () => {
+    try {
+      setPreModerationLoading(true)
+      setSaveResult(null)
+
+      const newValue = !preModerationEnabled
+
+      const { error } = await supabase
+        .from('api_settings')
+        .update({ key_value: newValue.toString() })
+        .eq('key_name', 'ENABLE_PRE_MODERATION')
+
+      if (error) {
+        // If update fails (setting doesn't exist), try insert
+        const { error: insertError } = await supabase
+          .from('api_settings')
+          .insert({
+            key_name: 'ENABLE_PRE_MODERATION',
+            key_value: newValue.toString(),
+            description: 'Global toggle for enabling/disabling AI pre-moderation of news',
+            is_active: true
+          })
+
+        if (insertError) {
+          throw insertError
+        }
+      }
+
+      setPreModerationEnabled(newValue)
+      setSaveResult({
+        success: true,
+        message: newValue
+          ? 'AI Pre-moderation enabled. New posts will be filtered by AI.'
+          : 'AI Pre-moderation disabled. All posts will be auto-approved.'
+      })
+    } catch (error) {
+      console.error('Failed to toggle pre-moderation:', error)
+      setSaveResult({
+        success: false,
+        message: 'Failed to update pre-moderation setting. Please try again.'
+      })
+    } finally {
+      setPreModerationLoading(false)
     }
   }
 
@@ -145,6 +207,55 @@ $$);`
           </div>
         </motion.div>
       )}
+
+      {/* Pre-moderation Toggle */}
+      <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-lg ${preModerationEnabled ? 'bg-green-500/20' : 'bg-gray-500/20'}`}>
+              {preModerationEnabled ? (
+                <Shield className="h-6 w-6 text-green-400" />
+              ) : (
+                <ShieldOff className="h-6 w-6 text-gray-400" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">AI Pre-moderation</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {preModerationEnabled
+                  ? 'AI filters spam and ads before sending posts to Telegram bot'
+                  : 'All posts are auto-approved and sent directly to Telegram bot'}
+              </p>
+            </div>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={togglePreModeration}
+            disabled={preModerationLoading}
+            className={`relative w-16 h-8 rounded-full transition-colors duration-300 ${
+              preModerationEnabled ? 'bg-green-500' : 'bg-gray-600'
+            } ${preModerationLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            <motion.div
+              className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
+              animate={{ left: preModerationEnabled ? '2rem' : '0.25rem' }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+            {preModerationLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <RefreshCw className="h-4 w-4 text-white animate-spin" />
+              </div>
+            )}
+          </motion.button>
+        </div>
+        <div className={`mt-4 p-3 rounded-lg ${preModerationEnabled ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+          <p className={`text-sm ${preModerationEnabled ? 'text-green-300' : 'text-yellow-300'}`}>
+            {preModerationEnabled
+              ? 'Posts are analyzed by AI for spam, ads, and low-quality content. Only approved posts appear in Telegram bot for final moderation.'
+              : 'Warning: All scraped posts will be sent to Telegram bot without AI filtering. This may include spam and advertisements.'}
+          </p>
+        </div>
+      </div>
 
       {/* Telegram Scraper Schedule */}
       <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">

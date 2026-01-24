@@ -249,6 +249,16 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+    // Check if pre-moderation is enabled (global toggle)
+    const { data: preModerationSetting } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', 'ENABLE_PRE_MODERATION')
+      .single()
+
+    const isPreModerationEnabled = preModerationSetting?.key_value !== 'false'
+    log(`🤖 Pre-moderation enabled: ${isPreModerationEnabled}`)
+
     // Get active Telegram sources from database
     let sourcesQuery = supabase
       .from('news_sources')
@@ -663,16 +673,26 @@ serve(async (req) => {
 
             console.log(`💾 News entry created with ID: ${newsEntry.id}`)
 
-            // 🤖 AI PRE-MODERATION
-            console.log(`🤖 Running AI pre-moderation for post ${post.messageId}...`)
+            // 🤖 AI PRE-MODERATION (check global toggle)
+            let moderationResult = {
+              approved: true,
+              reason: 'Pre-moderation disabled',
+              is_advertisement: false,
+              is_duplicate: false,
+              quality_score: 5
+            }
 
-            const moderationResult = await preModerate(
-              post.text.substring(0, 200),
-              post.text,
-              post.originalUrl
-            )
-
-            console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
+            if (isPreModerationEnabled) {
+              console.log(`🤖 Running AI pre-moderation for post ${post.messageId}...`)
+              moderationResult = await preModerate(
+                post.text.substring(0, 200),
+                post.text,
+                post.originalUrl
+              )
+              console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
+            } else {
+              console.log(`⏭️ Pre-moderation disabled, auto-approving post ${post.messageId}`)
+            }
 
             // Update pre-moderation status in DB
             await supabase
