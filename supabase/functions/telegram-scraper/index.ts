@@ -565,13 +565,14 @@ serve(async (req) => {
                     totalSentToBot++
                     console.log(`✅ Retry successful - post ${existingPost.id} sent to Telegram bot`)
 
-                    // Save chat_id and message_id for later notifications (e.g., after GitHub Actions)
+                    // Save chat_id, message_id and message_text for later notifications (e.g., after GitHub Actions)
                     if (result.chatId && result.messageId) {
                       await supabase
                         .from('news')
                         .update({
                           telegram_chat_id: result.chatId,
-                          telegram_message_id: result.messageId
+                          telegram_message_id: result.messageId,
+                          telegram_message_text: result.messageText || null
                         })
                         .eq('id', existingPost.id)
                       console.log(`📝 Saved Telegram message info for post ${existingPost.id}`)
@@ -795,13 +796,14 @@ serve(async (req) => {
                   totalSentToBot++
                   console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
 
-                  // Save chat_id and message_id for later notifications (e.g., after GitHub Actions)
+                  // Save chat_id, message_id and message_text for later notifications (e.g., after GitHub Actions)
                   if (result.chatId && result.messageId) {
                     await supabase
                       .from('news')
                       .update({
                         telegram_chat_id: result.chatId,
-                        telegram_message_id: result.messageId
+                        telegram_message_id: result.messageId,
+                        telegram_message_text: result.messageText || null
                       })
                       .eq('id', newsEntry.id)
                     console.log(`📝 Saved Telegram message info for post ${newsEntry.id}`)
@@ -1220,6 +1222,7 @@ interface TelegramMessageInfo {
   success: boolean
   chatId?: number
   messageId?: number
+  messageText?: string
 }
 
 async function sendToTelegramBot(
@@ -1361,7 +1364,7 @@ ${uploadedPhotoUrl}`
 
     console.log(`📨 Telegram message sent: chat_id=${chatId}, message_id=${messageId}`)
 
-    return { success: true, chatId, messageId }
+    return { success: true, chatId, messageId, messageText: message }
   } catch (error) {
     console.error('❌ Error sending to Telegram bot:', error)
     return { success: false }

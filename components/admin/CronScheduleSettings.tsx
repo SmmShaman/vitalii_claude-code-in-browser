@@ -26,7 +26,11 @@ export const CronScheduleSettings = () => {
 
   // Pre-moderation toggle state
   const [preModerationEnabled, setPreModerationEnabled] = useState(true)
+  const [savedPreModerationValue, setSavedPreModerationValue] = useState(true)
   const [preModerationLoading, setPreModerationLoading] = useState(false)
+
+  // Check if there are unsaved pre-moderation changes
+  const hasUnsavedPreModerationChanges = preModerationEnabled !== savedPreModerationValue
 
   useEffect(() => {
     loadCronJobs()
@@ -46,7 +50,9 @@ export const CronScheduleSettings = () => {
         .single()
 
       if (!error && preModerationSetting) {
-        setPreModerationEnabled(preModerationSetting.key_value !== 'false')
+        const isEnabled = preModerationSetting.key_value !== 'false'
+        setPreModerationEnabled(isEnabled)
+        setSavedPreModerationValue(isEnabled)
       }
     } catch (error) {
       console.error('Failed to load cron jobs:', error)
@@ -55,16 +61,21 @@ export const CronScheduleSettings = () => {
     }
   }
 
-  const togglePreModeration = async () => {
+  // Toggle only changes local state, doesn't save
+  const togglePreModeration = () => {
+    setPreModerationEnabled(!preModerationEnabled)
+    setSaveResult(null)
+  }
+
+  // Save pre-moderation setting to database
+  const savePreModeration = async () => {
     try {
       setPreModerationLoading(true)
       setSaveResult(null)
 
-      const newValue = !preModerationEnabled
-
       const { error } = await supabase
         .from('api_settings')
-        .update({ key_value: newValue.toString() })
+        .update({ key_value: preModerationEnabled.toString() })
         .eq('key_name', 'ENABLE_PRE_MODERATION')
 
       if (error) {
@@ -73,7 +84,7 @@ export const CronScheduleSettings = () => {
           .from('api_settings')
           .insert({
             key_name: 'ENABLE_PRE_MODERATION',
-            key_value: newValue.toString(),
+            key_value: preModerationEnabled.toString(),
             description: 'Global toggle for enabling/disabling AI pre-moderation of news',
             is_active: true
           })
@@ -83,15 +94,15 @@ export const CronScheduleSettings = () => {
         }
       }
 
-      setPreModerationEnabled(newValue)
+      setSavedPreModerationValue(preModerationEnabled)
       setSaveResult({
         success: true,
-        message: newValue
+        message: preModerationEnabled
           ? 'AI Pre-moderation enabled. New posts will be filtered by AI.'
           : 'AI Pre-moderation disabled. All posts will be auto-approved.'
       })
     } catch (error) {
-      console.error('Failed to toggle pre-moderation:', error)
+      console.error('Failed to save pre-moderation:', error)
       setSaveResult({
         success: false,
         message: 'Failed to update pre-moderation setting. Please try again.'
@@ -231,21 +242,15 @@ $$);`
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={togglePreModeration}
-            disabled={preModerationLoading}
-            className={`relative w-16 h-8 rounded-full transition-colors duration-300 ${
+            className={`relative w-16 h-8 rounded-full transition-colors duration-300 cursor-pointer ${
               preModerationEnabled ? 'bg-green-500' : 'bg-gray-600'
-            } ${preModerationLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            } ${hasUnsavedPreModerationChanges ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-900' : ''}`}
           >
             <motion.div
               className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
               animate={{ left: preModerationEnabled ? '2rem' : '0.25rem' }}
               transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             />
-            {preModerationLoading && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <RefreshCw className="h-4 w-4 text-white animate-spin" />
-              </div>
-            )}
           </motion.button>
         </div>
         <div className={`mt-4 p-3 rounded-lg ${preModerationEnabled ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
@@ -255,6 +260,38 @@ $$);`
               : 'Warning: All scraped posts will be sent to Telegram bot without AI filtering. This may include spam and advertisements.'}
           </p>
         </div>
+
+        {/* Save button - appears when there are unsaved changes */}
+        {hasUnsavedPreModerationChanges && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={savePreModeration}
+              disabled={preModerationLoading}
+              className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {preModerationLoading ? (
+                <>
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  Save Pre-moderation Setting
+                </>
+              )}
+            </motion.button>
+            <p className="text-xs text-yellow-400 mt-2 text-center">
+              Click to save your changes. Current setting is not saved yet.
+            </p>
+          </motion.div>
+        )}
       </div>
 
       {/* Telegram Scraper Schedule */}
