@@ -464,7 +464,7 @@ serve(async (req) => {
 
             const { data: existingPost } = await supabase
               .from('news')
-              .select('id, original_url, pre_moderation_status, video_type, video_url, is_published, is_rewritten')
+              .select('id, original_url, pre_moderation_status, video_type, video_url, is_published, is_rewritten, telegram_message_id')
               .in('original_url', [urlVariant1, urlVariant2])
               .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
               .maybeSingle()
@@ -491,8 +491,8 @@ serve(async (req) => {
                 }
               }
 
-              // 🔄 RETRY LOGIC: If post was approved but not published/rewritten, try sending to bot again
-              if (existingPost.pre_moderation_status === 'approved' && !existingPost.is_published && !existingPost.is_rewritten) {
+              // 🔄 RETRY LOGIC: If post was approved but not published/rewritten AND not already sent to bot
+              if (existingPost.pre_moderation_status === 'approved' && !existingPost.is_published && !existingPost.is_rewritten && !existingPost.telegram_message_id) {
                 console.log(`🔄 Retry sending approved but unpublished post to bot: ${existingPost.id}`)
 
                 // Generate image prompt for retry
@@ -582,7 +582,14 @@ serve(async (req) => {
                   }
                 }
               } else {
-                console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (found in DB as ${existingPost.original_url}, status: ${existingPost.pre_moderation_status})`)
+                const skipReason = existingPost.telegram_message_id
+                  ? `already sent to bot (msg_id: ${existingPost.telegram_message_id})`
+                  : existingPost.is_published
+                    ? 'already published'
+                    : existingPost.is_rewritten
+                      ? 'already rewritten'
+                      : `status: ${existingPost.pre_moderation_status}`
+                console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (${skipReason})`)
               }
 
               continue
