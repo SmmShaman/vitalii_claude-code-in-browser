@@ -173,15 +173,30 @@ serve(async (req) => {
       )
     }
 
-    // Create pending social media post record
-    const socialPost = await createSocialPost(
-      contentId,
-      requestData.contentType as ContentType,
-      'linkedin',
-      requestData.language as Language,
-      '', // post content will be set later
-      []  // media urls
-    )
+    // Create pending social media post record (with race condition protection)
+    const { post: socialPost, raceCondition } = await createSocialPost({
+      contentType: requestData.contentType as ContentType,
+      contentId: contentId,
+      platform: 'linkedin',
+      language: requestData.language as Language,
+      postContent: '', // post content will be set later
+      mediaUrls: []
+    })
+
+    // 🛡️ RACE CONDITION PROTECTION: If another request already created/posted, abort
+    if (raceCondition) {
+      console.log('🛡️ Race condition detected - aborting to prevent duplicate post')
+      const existingUrl = socialPost?.platform_post_url
+      return new Response(
+        JSON.stringify({
+          success: false,
+          alreadyPosted: true,
+          postUrl: existingUrl,
+          message: `Race condition: LinkedIn post already ${socialPost?.status || 'in progress'} (${requestData.language.toUpperCase()})`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!socialPost) {
       console.error('❌ Failed to create social post record')

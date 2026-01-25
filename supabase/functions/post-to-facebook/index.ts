@@ -121,8 +121,8 @@ serve(async (req) => {
     if (hasVideo && isGitHubActionsEnabled()) {
       console.log('🎬 Content has Telegram video - triggering GitHub Action for native upload')
 
-      // Create tracking record for video upload
-      const socialPost = await createSocialPost({
+      // Create tracking record for video upload (with race condition protection)
+      const { post: socialPost, raceCondition } = await createSocialPost({
         contentType: requestData.contentType,
         contentId: contentId,
         platform: 'facebook',
@@ -130,6 +130,20 @@ serve(async (req) => {
         postContent: `[Video upload in progress] ${content.title}`,
         mediaUrls: content.videoUrl ? [content.videoUrl] : undefined
       })
+
+      // 🛡️ RACE CONDITION PROTECTION
+      if (raceCondition) {
+        console.log('🛡️ Race condition detected - aborting video upload to prevent duplicate')
+        return new Response(
+          JSON.stringify({
+            success: false,
+            alreadyPosted: true,
+            postUrl: socialPost?.platform_post_url,
+            message: `Race condition: Facebook post already ${socialPost?.status || 'in progress'}`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
 
       const triggerResult = await triggerFacebookVideo({
         newsId: contentId,
@@ -161,8 +175,8 @@ serve(async (req) => {
       content.tags || []
     )
 
-    // Create tracking record
-    const socialPost = await createSocialPost({
+    // Create tracking record (with race condition protection)
+    const { post: socialPost, raceCondition } = await createSocialPost({
       contentType: requestData.contentType,
       contentId: contentId,
       platform: 'facebook',
@@ -170,6 +184,20 @@ serve(async (req) => {
       postContent: message,
       mediaUrls: content.imageUrl ? [content.imageUrl] : undefined
     })
+
+    // 🛡️ RACE CONDITION PROTECTION
+    if (raceCondition) {
+      console.log('🛡️ Race condition detected - aborting to prevent duplicate post')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          alreadyPosted: true,
+          postUrl: socialPost?.platform_post_url,
+          message: `Race condition: Facebook post already ${socialPost?.status || 'in progress'} (${requestData.language.toUpperCase()})`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Post to Facebook
     const result = await postToFacebookPage({

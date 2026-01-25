@@ -6,7 +6,7 @@
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
-export const SOCIAL_MEDIA_HELPERS_VERSION = "2025-01-17-v1";
+export const SOCIAL_MEDIA_HELPERS_VERSION = "2026-01-25-v2-race-condition-fix";
 
 // ============================================================
 // Types
@@ -134,8 +134,16 @@ export function buildArticleUrl(contentType: ContentType, slug: string): string 
 // Social Media Posts Management
 // ============================================================
 
+export interface CreateSocialPostResult {
+  post: SocialMediaPost | null;
+  isNew: boolean;         // true if newly created, false if race condition returned existing
+  raceCondition: boolean; // true if race condition was detected
+}
+
 /**
  * Create a new social media post record
+ * Handles race condition: if a duplicate pending/posted record exists, returns it with raceCondition=true
+ * IMPORTANT: Caller should check raceCondition flag and NOT proceed with posting if true!
  */
 export async function createSocialPost(data: {
   contentType: ContentType;
@@ -144,7 +152,7 @@ export async function createSocialPost(data: {
   language: Language;
   postContent?: string;
   mediaUrls?: string[];
-}): Promise<SocialMediaPost | null> {
+}): Promise<CreateSocialPostResult> {
   const supabase = getSupabaseClient();
 
   const { data: post, error } = await supabase
@@ -162,11 +170,33 @@ export async function createSocialPost(data: {
     .single();
 
   if (error) {
-    console.error(`❌ Failed to create social post:`, error.message);
-    return null;
+    // Handle unique constraint violation (race condition - another request already created the record)
+    // PostgreSQL error code 23505 = unique_violation
+    if (error.code === '23505') {
+      console.log(`⚠️ Race condition detected: ${data.platform}/${data.language} post already exists`);
+
+      // Fetch the existing record
+      const { data: existingPost } = await supabase
+        .from('social_media_posts')
+        .select('*')
+        .eq('content_id', data.contentId)
+        .eq('content_type', data.contentType)
+        .eq('platform', data.platform)
+        .eq('language', data.language)
+        .in('status', ['pending', 'posted'])
+        .single();
+
+      if (existingPost) {
+        console.log(`🛡️ Race condition: returning existing ${existingPost.status} record (id: ${existingPost.id})`);
+        return { post: existingPost, isNew: false, raceCondition: true };
+      }
+    }
+
+    console.error(`❌ Failed to create social post:`, error.message, error.code);
+    return { post: null, isNew: false, raceCondition: false };
   }
 
-  return post;
+  return { post, isNew: true, raceCondition: false };
 }
 
 /**

@@ -197,8 +197,8 @@ serve(async (req) => {
     // Determine which media URL to use (prefer video for Reels)
     const mediaUrl = hasVideo ? videoUrlForInstagram! : content.imageUrl!
 
-    // Create tracking record
-    const socialPost = await createSocialPost({
+    // Create tracking record (with race condition protection)
+    const { post: socialPost, raceCondition } = await createSocialPost({
       contentType: requestData.contentType,
       contentId: contentId,
       platform: 'instagram',
@@ -206,6 +206,20 @@ serve(async (req) => {
       postContent: caption,
       mediaUrls: [mediaUrl]
     })
+
+    // 🛡️ RACE CONDITION PROTECTION
+    if (raceCondition) {
+      console.log('🛡️ Race condition detected - aborting to prevent duplicate post')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          alreadyPosted: true,
+          postUrl: socialPost?.platform_post_url,
+          message: `Race condition: Instagram post already ${socialPost?.status || 'in progress'} (${requestData.language.toUpperCase()})`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Post to Instagram (video as Reels, or image)
     const result = await postToInstagram({
