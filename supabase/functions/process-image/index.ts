@@ -236,7 +236,7 @@ async function handleTextToImageGeneration(supabase: any, newsId: string): Promi
     // Create a simple prompt from title if no stored prompt
     imagePrompt = `Create a professional, modern illustration for a LinkedIn article about: ${news.title_en || 'technology news'}.
 Style: Clean, professional, tech-focused.
-Aspect ratio: 16:9 landscape.
+Aspect ratio: 1:1 square.
 No text on the image.
 Colors: Vibrant but professional.`
   }
@@ -321,7 +321,7 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
     const requestBody = {
       contents: [{
         parts: [{
-          text: `Generate an image based on this description. Make it professional, suitable for LinkedIn/Instagram. Aspect ratio: 16:9 landscape. No text on the image.\n\nDescription: ${prompt}`
+          text: `Generate an image based on this description. Make it professional, suitable for LinkedIn/Instagram. Aspect ratio: 1:1 square. No text on the image.\n\nDescription: ${prompt}`
         }]
       }],
       generationConfig: {
@@ -443,7 +443,7 @@ INSTRUCTIONS:
 4. Include visual metaphors or symbols related to the topic
 5. Use vibrant but professional colors
 6. Make it visually engaging to encourage clicks
-7. Aspect ratio: Landscape (16:9 or similar)
+7. Aspect ratio: Square (1:1)
 8. No text on the image - the visual should speak for itself
 
 Generate a high-quality, professional illustration that will stand out in LinkedIn feed.`,
@@ -461,7 +461,7 @@ REQUIREMENTS:
 - Professional color palette
 - Eye-catching but not clickbait
 - No text overlays
-- Landscape orientation (16:9)
+- Square orientation (1:1)
 
 Generate the illustration now.`,
     custom: 'Process this image to improve its quality.'
@@ -531,7 +531,7 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
 
-    // Request body with image config for LinkedIn (16:9 landscape)
+    // Request body with image config (1:1 square)
     const requestBody = {
       contents: [{
         parts: [
@@ -631,7 +631,7 @@ async function tryImagenGeneration(prompt: string, apiKey: string): Promise<stri
       }],
       parameters: {
         sampleCount: 1,
-        aspectRatio: '16:9',
+        aspectRatio: '1:1',
         personGeneration: 'allow_adult',
         safetySetting: 'block_few'
       }
