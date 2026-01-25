@@ -73,14 +73,22 @@ export const CronScheduleSettings = () => {
       setPreModerationLoading(true)
       setSaveResult(null)
 
-      const { error } = await supabase
+      // Use .select() to verify the update actually happened
+      const { data, error } = await supabase
         .from('api_settings')
         .update({ key_value: preModerationEnabled.toString() })
         .eq('key_name', 'ENABLE_PRE_MODERATION')
+        .select()
 
       if (error) {
-        // If update fails (setting doesn't exist), try insert
-        const { error: insertError } = await supabase
+        console.error('Update error:', error)
+        throw error
+      }
+
+      // If no rows were updated (RLS blocked or setting doesn't exist), try insert
+      if (!data || data.length === 0) {
+        console.log('No rows updated, trying insert...')
+        const { data: insertData, error: insertError } = await supabase
           .from('api_settings')
           .insert({
             key_name: 'ENABLE_PRE_MODERATION',
@@ -88,12 +96,19 @@ export const CronScheduleSettings = () => {
             description: 'Global toggle for enabling/disabling AI pre-moderation of news',
             is_active: true
           })
+          .select()
 
         if (insertError) {
+          console.error('Insert error:', insertError)
           throw insertError
+        }
+
+        if (!insertData || insertData.length === 0) {
+          throw new Error('Failed to insert setting - check RLS policies')
         }
       }
 
+      console.log('Pre-moderation setting saved:', preModerationEnabled)
       setSavedPreModerationValue(preModerationEnabled)
       setSaveResult({
         success: true,
@@ -101,11 +116,11 @@ export const CronScheduleSettings = () => {
           ? 'AI Pre-moderation enabled. New posts will be filtered by AI.'
           : 'AI Pre-moderation disabled. All posts will be auto-approved.'
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save pre-moderation:', error)
       setSaveResult({
         success: false,
-        message: 'Failed to update pre-moderation setting. Please try again.'
+        message: `Failed to update pre-moderation setting: ${error.message || 'Unknown error'}. Please try again.`
       })
     } finally {
       setPreModerationLoading(false)
