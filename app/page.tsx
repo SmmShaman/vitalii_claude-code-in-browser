@@ -71,7 +71,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content - Different layouts for mobile/desktop */}
-      <main className={`relative z-10 ${isMobile ? 'flex-1 min-h-0 px-2' : 'flex-1 min-h-0 overflow-hidden'}`}>
+      <main id="main-content" className={`relative z-10 ${isMobile ? 'flex-1 min-h-0 px-2' : 'flex-1 min-h-0 overflow-hidden'}`}>
         {isMobile ? (
           <BentoGridMobile onHoveredSectionChange={handleSectionChange} />
         ) : (

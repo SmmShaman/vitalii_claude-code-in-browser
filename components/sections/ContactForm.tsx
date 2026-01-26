@@ -119,7 +119,7 @@ export const ContactForm = () => {
         <Mail className="w-12 h-12 text-blue-500" />
         <div>
           <h2 className="text-3xl font-bold text-white">{t('contact_title')}</h2>
-          <p className="text-white/80">{t('contact_description')}</p>
+          <p className="text-white/90">{t('contact_description')}</p>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ export const ContactForm = () => {
             id="name"
             type="text"
             {...register('name')}
-            className="w-full px-3 py-3 bg-black/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="w-full px-3 py-3 bg-black/50 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
             placeholder={t('name')}
             disabled={isSubmitting}
           />
@@ -184,7 +184,7 @@ export const ContactForm = () => {
             id="email"
             type="email"
             {...register('email')}
-            className="w-full px-3 py-3 bg-black/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="w-full px-3 py-3 bg-black/50 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
             placeholder={t('email')}
             disabled={isSubmitting}
           />
@@ -201,7 +201,7 @@ export const ContactForm = () => {
             id="message"
             rows={4}
             {...register('message')}
-            className="w-full px-3 py-3 bg-black/50 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none transition-colors"
+            className="w-full px-3 py-3 bg-black/50 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none transition-colors"
             placeholder={t('message')}
             disabled={isSubmitting}
           />

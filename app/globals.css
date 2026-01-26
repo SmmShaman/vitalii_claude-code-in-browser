@@ -126,7 +126,7 @@
 }
 
 .animate-float {
-  animation: float 10s ease-in-out infinite;
+  animation: float 4s ease-in-out infinite;
 }
 
 /* Snake Animation for Card Expansion */

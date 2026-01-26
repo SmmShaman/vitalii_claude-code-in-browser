@@ -394,6 +394,7 @@ const NewsSectionComponent = ({
                     <img
                       src={((selectedNews as any).processed_image_url || selectedNews.image_url) as string}
                       alt={String(content.title)}
+                      loading="eager"
                       className="w-full h-auto object-cover"
                       style={{ aspectRatio: '16/9' }}
                     />
@@ -535,6 +536,7 @@ const NewsSectionComponent = ({
                                 <img
                                   src={imageUrl}
                                   alt={String(content.title)}
+                                  loading="lazy"
                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                 />
                               );
@@ -550,6 +552,7 @@ const NewsSectionComponent = ({
                                     <img
                                       src={thumbnailUrl}
                                       alt={String(content.title)}
+                                      loading="lazy"
                                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                     />
                                   );

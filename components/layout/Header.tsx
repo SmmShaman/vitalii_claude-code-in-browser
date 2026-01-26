@@ -80,7 +80,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               style={{
                 fontSize: '1.25rem',
                 textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
-                lineHeight: '1.1'
+                lineHeight: '1.3'
               }}
             >
               {t('title')}
@@ -90,7 +90,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               style={{
                 fontSize: '0.75rem',
                 fontWeight: '600',
-                lineHeight: '1.2'
+                lineHeight: '1.4'
               }}
             >
               {t('subtitle')}
@@ -157,7 +157,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   style={{
                     fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
                     textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
-                    lineHeight: '1.1'
+                    lineHeight: '1.2'
                   }}
                 >
                   {t('title')}

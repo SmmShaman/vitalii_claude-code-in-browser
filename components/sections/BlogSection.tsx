@@ -260,10 +260,11 @@ const BlogSectionComponent = ({
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
                     {/* Featured Image */}
                     {((post as any).processed_image_url || post.image_url) && (
-                      <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden">
+                      <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden" style={{ aspectRatio: '16/9' }}>
                         <img
                           src={(post as any).processed_image_url || post.image_url}
                           alt={String(content.title)}
+                          loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

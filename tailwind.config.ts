@@ -65,7 +65,7 @@ const config: Config = {
         fadeOut: "fadeOut 0.3s ease-out forwards",
         expandCard: "expandCard 0.6s ease-in-out",
         "slide-right": "slide-right 0.5s ease-out forwards",
-        float: "float 10s ease-in-out infinite",
+        float: "float 4s ease-in-out infinite",
       },
     },
   },
