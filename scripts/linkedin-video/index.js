@@ -392,6 +392,14 @@ async function main() {
     throw new Error(`News not found: ${config.newsId}`);
   }
 
+  // Check if already posted to LinkedIn
+  if (news.linkedin_post_id) {
+    console.log(`⚠️ News already posted to LinkedIn: ${news.linkedin_post_id}`);
+    console.log(`🔗 Existing post: https://www.linkedin.com/feed/update/${news.linkedin_post_id}`);
+    console.log('⏭️ Skipping to avoid duplicate');
+    process.exit(0);
+  }
+
   // Get original video URL
   const videoUrl = news.original_video_url || news.video_url;
   if (!videoUrl || !videoUrl.includes('t.me')) {
