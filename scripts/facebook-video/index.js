@@ -401,7 +401,7 @@ async function editTelegramMessage({
     }
 
     console.log('✅ Telegram message edited successfully');
-    return true;
+    return newText;
   } catch (error) {
     console.error('❌ Error editing Telegram message:', error.message);
     return false;
@@ -540,7 +540,7 @@ async function main() {
     // Edit original Telegram message to show success status
     // Skip if URL contains 'undefined' (API response issue)
     if (news.telegram_chat_id && news.telegram_message_id && result.postUrl && !result.postUrl.includes('undefined')) {
-      await editTelegramMessage({
+      const newMessageText = await editTelegramMessage({
         botToken: config.telegram.botToken,
         chatId: news.telegram_chat_id,
         messageId: news.telegram_message_id,
@@ -551,6 +551,15 @@ async function main() {
         articleUrl: articleUrl,
         title: title,
       });
+
+      // Save updated message text to DB for next platform
+      if (newMessageText) {
+        await supabase
+          .from('news')
+          .update({ telegram_message_text: newMessageText })
+          .eq('id', config.newsId);
+        console.log('📝 Updated telegram_message_text in DB');
+      }
     } else if (!news.telegram_chat_id || !news.telegram_message_id) {
       console.log('⚠️ No telegram_chat_id or telegram_message_id stored - skipping notification');
     } else if (!result.postUrl || result.postUrl.includes('undefined')) {
