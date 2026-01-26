@@ -205,7 +205,8 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
       if (servicesEl && skillsEl && newsEl && blogEl) {
         // News expands to: its own height + Services height (takes Services space)
         // News becomes 2x bigger (doubles in height)
-        const newsExpandedHeight = servicesEl.offsetHeight + newsEl.offsetHeight;
+        const gapSize = isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP;
+        const newsExpandedHeight = servicesEl.offsetHeight + newsEl.offsetHeight + gapSize;
 
         setNewsHeight(newsExpandedHeight);
 
