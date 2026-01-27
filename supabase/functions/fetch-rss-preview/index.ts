@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -121,55 +120,102 @@ serve(async (req) => {
   }
 })
 
+// Helper function to extract text between XML tags
+function extractTagContent(xml: string, tagName: string): string | null {
+  // Handle namespaced tags (e.g., media:thumbnail)
+  const patterns = [
+    new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, 'i'),
+    new RegExp(`<${tagName}[^>]*/?>`, 'i'), // self-closing tag
+  ]
+
+  for (const pattern of patterns) {
+    const match = xml.match(pattern)
+    if (match) {
+      return match[1]?.trim() || ''
+    }
+  }
+  return null
+}
+
+// Helper function to extract attribute from tag
+function extractAttribute(xml: string, tagName: string, attrName: string): string | null {
+  const tagPattern = new RegExp(`<${tagName}[^>]*${attrName}=["']([^"']+)["'][^>]*>`, 'i')
+  const match = xml.match(tagPattern)
+  return match ? match[1] : null
+}
+
+// Helper to decode HTML entities
+function decodeHTMLEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+}
+
+// Helper to generate a simple ID
+function generateId(url: string, sourceUrl: string): string {
+  // Simple hash-like ID from URL
+  let hash = 0
+  for (let i = 0; i < url.length; i++) {
+    const char = url.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return `${sourceUrl.replace(/[^a-z0-9]/gi, '').slice(0, 10)}-${Math.abs(hash).toString(36)}`
+}
+
 function parseRSS(xml: string, sourceUrl: string): RSSArticle[] {
   const articles: RSSArticle[] = []
 
   try {
-    const doc = new DOMParser().parseFromString(xml, 'text/xml')
-    if (!doc) {
-      console.error('Failed to parse RSS XML')
-      return articles
-    }
-
     // Determine if it's RSS or Atom format
-    const isAtom = !!doc.querySelector('feed')
+    const isAtom = xml.includes('<feed') && xml.includes('xmlns="http://www.w3.org/2005/Atom"')
 
     if (isAtom) {
-      // Parse Atom format
-      const entries = doc.querySelectorAll('entry')
-      console.log(`🔍 Found ${entries.length} Atom entries`)
+      // Parse Atom format using regex
+      const entryRegex = /<entry[^>]*>([\s\S]*?)<\/entry>/gi
+      let entryMatch: RegExpExecArray | null
+      let count = 0
 
-      for (const entry of entries) {
+      while ((entryMatch = entryRegex.exec(xml)) !== null) {
+        count++
         try {
-          const title = entry.querySelector('title')?.textContent?.trim() || ''
+          const entryXml = entryMatch[1]
 
-          // Get link - Atom uses href attribute
-          let url = ''
-          const linkEl = entry.querySelector('link')
-          if (linkEl) {
-            url = linkEl.getAttribute('href') || linkEl.textContent?.trim() || ''
+          // Extract title
+          let title = extractTagContent(entryXml, 'title') || ''
+          title = decodeHTMLEntities(title).replace(/<[^>]*>/g, '').trim()
+
+          // Extract link (Atom uses href attribute)
+          let url = extractAttribute(entryXml, 'link', 'href') || ''
+          if (!url) {
+            url = extractTagContent(entryXml, 'link') || ''
           }
 
-          // Get content/summary
-          let description = entry.querySelector('content')?.textContent?.trim() ||
-                           entry.querySelector('summary')?.textContent?.trim() || ''
-          description = description.replace(/<[^>]*>/g, '').trim()
+          // Extract content/summary
+          let description = extractTagContent(entryXml, 'content') ||
+                           extractTagContent(entryXml, 'summary') || ''
+          description = decodeHTMLEntities(description).replace(/<[^>]*>/g, '').trim()
 
-          // Get published date
-          const pubDate = entry.querySelector('published')?.textContent?.trim() ||
-                         entry.querySelector('updated')?.textContent?.trim() || ''
+          // Extract published date
+          const pubDate = extractTagContent(entryXml, 'published') ||
+                         extractTagContent(entryXml, 'updated') || ''
 
           // Try to extract image
           let imageUrl: string | null = null
-          const mediaContent = entry.querySelector('content[type="image"]')
-          if (mediaContent) {
-            imageUrl = mediaContent.getAttribute('src') || null
-          }
+          // Check for media:thumbnail or media:content
+          imageUrl = extractAttribute(entryXml, 'media:thumbnail', 'url') ||
+                    extractAttribute(entryXml, 'media:content', 'url') ||
+                    null
 
           if (!title || !url) continue
 
           articles.push({
-            id: `${sourceUrl}-${Buffer.from(url).toString('base64').slice(0, 16)}`,
+            id: generateId(url, sourceUrl),
             title,
             url,
             description: description.substring(0, 500),
@@ -180,54 +226,67 @@ function parseRSS(xml: string, sourceUrl: string): RSSArticle[] {
           console.error('Error parsing Atom entry:', e)
         }
       }
+      console.log(`🔍 Found ${count} Atom entries`)
+
     } else {
-      // Parse RSS 2.0 format
-      const items = doc.querySelectorAll('item')
-      console.log(`🔍 Found ${items.length} RSS items`)
+      // Parse RSS 2.0 format using regex
+      const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi
+      let itemMatch: RegExpExecArray | null
+      let count = 0
 
-      for (const item of items) {
+      while ((itemMatch = itemRegex.exec(xml)) !== null) {
+        count++
         try {
-          const title = item.querySelector('title')?.textContent?.trim() || ''
+          const itemXml = itemMatch[1]
 
-          let url = item.querySelector('link')?.textContent?.trim() || ''
+          // Extract title
+          let title = extractTagContent(itemXml, 'title') || ''
+          title = decodeHTMLEntities(title).replace(/<[^>]*>/g, '').trim()
+
+          // Extract link
+          let url = extractTagContent(itemXml, 'link') || ''
           if (!url) {
-            const linkEl = item.querySelector('link')
-            url = linkEl?.getAttribute('href') || ''
+            url = extractAttribute(itemXml, 'link', 'href') || ''
           }
+          url = url.trim()
 
-          let description = item.querySelector('description')?.textContent?.trim() || ''
-          description = description.replace(/<[^>]*>/g, '').trim()
+          // Extract description
+          let description = extractTagContent(itemXml, 'description') || ''
+          const rawDescription = description // Keep for image extraction
+          description = decodeHTMLEntities(description).replace(/<[^>]*>/g, '').trim()
 
-          const pubDate = item.querySelector('pubDate')?.textContent?.trim() || ''
+          // Extract pubDate
+          const pubDate = extractTagContent(itemXml, 'pubDate') || ''
 
-          // Extract image URL
+          // Extract image URL - try various sources
           let imageUrl: string | null = null
 
           // Try media:thumbnail
-          const mediaThumbnail = item.querySelector('thumbnail')
-          if (mediaThumbnail) {
-            imageUrl = mediaThumbnail.getAttribute('url')
-          }
+          imageUrl = extractAttribute(itemXml, 'media:thumbnail', 'url')
 
-          // Try enclosure
+          // Try enclosure with image type
           if (!imageUrl) {
-            const enclosure = item.querySelector('enclosure')
-            if (enclosure && enclosure.getAttribute('type')?.startsWith('image/')) {
-              imageUrl = enclosure.getAttribute('url')
+            const enclosureType = extractAttribute(itemXml, 'enclosure', 'type')
+            if (enclosureType?.startsWith('image/')) {
+              imageUrl = extractAttribute(itemXml, 'enclosure', 'url')
             }
           }
 
           // Try media:content
           if (!imageUrl) {
-            const mediaContent = item.querySelector('content')
-            if (mediaContent && mediaContent.getAttribute('medium') === 'image') {
-              imageUrl = mediaContent.getAttribute('url')
+            const medium = extractAttribute(itemXml, 'media:content', 'medium')
+            if (medium === 'image') {
+              imageUrl = extractAttribute(itemXml, 'media:content', 'url')
+            }
+            // Also try without medium check
+            if (!imageUrl) {
+              imageUrl = extractAttribute(itemXml, 'media:content', 'url')
             }
           }
 
           // Try to extract from description if it contains img tag
-          if (!imageUrl && description) {
-            const imgMatch = item.querySelector('description')?.textContent?.match(/<img[^>]+src=["']([^"']+)["']/)
+          if (!imageUrl && rawDescription) {
+            const imgMatch = decodeHTMLEntities(rawDescription).match(/<img[^>]+src=["']([^"']+)["']/)
             if (imgMatch) {
               imageUrl = imgMatch[1]
             }
@@ -236,7 +295,7 @@ function parseRSS(xml: string, sourceUrl: string): RSSArticle[] {
           if (!title || !url) continue
 
           articles.push({
-            id: `${sourceUrl}-${Buffer.from(url).toString('base64').slice(0, 16)}`,
+            id: generateId(url, sourceUrl),
             title,
             url,
             description: description.substring(0, 500),
@@ -247,6 +306,7 @@ function parseRSS(xml: string, sourceUrl: string): RSSArticle[] {
           console.error('Error parsing RSS item:', e)
         }
       }
+      console.log(`🔍 Found ${count} RSS items`)
     }
   } catch (parseError) {
     console.error('Error in parseRSS:', parseError)
