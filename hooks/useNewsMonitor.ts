@@ -1,0 +1,412 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { supabase } from '@/integrations/supabase/client'
+import {
+  RSSSource,
+  RSSArticle,
+  ViewerSettings,
+  SourceState,
+  FetchRSSResponse,
+  DBNewsMonitorSource,
+  DBNewsMonitorSettings,
+} from '@/components/admin/news-monitor/types'
+import { DEFAULT_SETTINGS, DEFAULT_SOURCES } from '@/components/admin/news-monitor/constants'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+interface UseNewsMonitorReturn {
+  sources: RSSSource[]
+  sourceStates: Map<string, SourceState>
+  settings: ViewerSettings
+  loading: boolean
+  lastRefresh: Date | null
+  fetchSource: (sourceId: string) => Promise<void>
+  fetchAllSources: () => Promise<void>
+  updateSettings: (newSettings: Partial<ViewerSettings>) => Promise<void>
+  addSource: (source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean>
+  deleteSource: (sourceId: string) => Promise<boolean>
+  toggleSourceActive: (sourceId: string) => Promise<boolean>
+  validateRssUrl: (rssUrl: string) => Promise<{ valid: boolean; articles?: RSSArticle[]; error?: string }>
+  reloadSources: () => Promise<void>
+}
+
+function mapDBSourceToSource(dbSource: DBNewsMonitorSource): RSSSource {
+  return {
+    id: dbSource.id,
+    name: dbSource.name,
+    url: dbSource.url,
+    rssUrl: dbSource.rss_url,
+    tier: dbSource.tier as 1 | 2 | 3 | 4,
+    isActive: dbSource.is_active,
+    isDefault: dbSource.is_default,
+    createdAt: dbSource.created_at,
+    updatedAt: dbSource.updated_at,
+  }
+}
+
+export function useNewsMonitor(): UseNewsMonitorReturn {
+  const [sources, setSources] = useState<RSSSource[]>([])
+  const [sourceStates, setSourceStates] = useState<Map<string, SourceState>>(new Map())
+  const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_SETTINGS)
+  const [loading, setLoading] = useState(true)
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Load sources from database
+  const loadSources = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('news_monitor_sources')
+        .select('*')
+        .order('tier', { ascending: true })
+        .order('name', { ascending: true })
+
+      if (error) {
+        console.error('Failed to load sources:', error)
+        // Fallback to default sources
+        const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
+          ...s,
+          id: `default-${i}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }))
+        setSources(fallbackSources)
+        return
+      }
+
+      if (data && data.length > 0) {
+        setSources(data.map(mapDBSourceToSource))
+      } else {
+        // No sources in DB, use defaults
+        const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
+          ...s,
+          id: `default-${i}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }))
+        setSources(fallbackSources)
+      }
+    } catch (err) {
+      console.error('Error loading sources:', err)
+    }
+  }, [])
+
+  // Load settings from database
+  const loadSettings = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('news_monitor_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Failed to load settings:', error)
+        return
+      }
+
+      if (data) {
+        setSettings({
+          refreshInterval: data.refresh_interval,
+          articlesPerSource: data.articles_per_source,
+          autoRefresh: data.auto_refresh,
+          expandedSources: data.expanded_sources || [],
+        })
+      }
+    } catch (err) {
+      console.error('Error loading settings:', err)
+    }
+  }, [])
+
+  // Fetch single RSS source
+  const fetchSource = useCallback(async (sourceId: string) => {
+    const source = sources.find(s => s.id === sourceId)
+    if (!source || !source.isActive) return
+
+    // Set loading state
+    setSourceStates(prev => {
+      const newMap = new Map(prev)
+      newMap.set(sourceId, {
+        loading: true,
+        error: null,
+        articles: prev.get(sourceId)?.articles || [],
+        lastFetched: prev.get(sourceId)?.lastFetched || null,
+      })
+      return newMap
+    })
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/fetch-rss-preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rssUrl: source.rssUrl,
+          limit: settings.articlesPerSource,
+        }),
+      })
+
+      const data: FetchRSSResponse = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      // Add source name to articles
+      const articlesWithSource = data.articles.map(a => ({
+        ...a,
+        sourceName: source.name,
+      }))
+
+      setSourceStates(prev => {
+        const newMap = new Map(prev)
+        newMap.set(sourceId, {
+          loading: false,
+          error: null,
+          articles: articlesWithSource,
+          lastFetched: new Date(),
+        })
+        return newMap
+      })
+    } catch (err: any) {
+      console.error(`Error fetching source ${source.name}:`, err)
+      setSourceStates(prev => {
+        const newMap = new Map(prev)
+        newMap.set(sourceId, {
+          loading: false,
+          error: err.message || 'Failed to fetch',
+          articles: [],
+          lastFetched: null,
+        })
+        return newMap
+      })
+    }
+  }, [sources, settings.articlesPerSource])
+
+  // Fetch all active sources
+  const fetchAllSources = useCallback(async () => {
+    const activeSources = sources.filter(s => s.isActive)
+    setLastRefresh(new Date())
+
+    // Fetch in parallel with a small delay between batches to avoid rate limiting
+    const batchSize = 4
+    for (let i = 0; i < activeSources.length; i += batchSize) {
+      const batch = activeSources.slice(i, i + batchSize)
+      await Promise.all(batch.map(s => fetchSource(s.id)))
+
+      // Small delay between batches
+      if (i + batchSize < activeSources.length) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    }
+  }, [sources, fetchSource])
+
+  // Update settings
+  const updateSettings = useCallback(async (newSettings: Partial<ViewerSettings>) => {
+    const updated = { ...settings, ...newSettings }
+    setSettings(updated)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { error } = await supabase
+        .from('news_monitor_settings')
+        .upsert({
+          user_id: user.id,
+          refresh_interval: updated.refreshInterval,
+          articles_per_source: updated.articlesPerSource,
+          auto_refresh: updated.autoRefresh,
+          expanded_sources: updated.expandedSources,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        })
+
+      if (error) {
+        console.error('Failed to save settings:', error)
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err)
+    }
+  }, [settings])
+
+  // Validate RSS URL
+  const validateRssUrl = useCallback(async (rssUrl: string): Promise<{
+    valid: boolean
+    articles?: RSSArticle[]
+    error?: string
+  }> => {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/fetch-rss-preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rssUrl,
+          limit: 3,
+        }),
+      })
+
+      const data: FetchRSSResponse = await response.json()
+
+      if (data.error) {
+        return { valid: false, error: data.error }
+      }
+
+      if (!data.articles || data.articles.length === 0) {
+        return { valid: false, error: 'No articles found in feed' }
+      }
+
+      return { valid: true, articles: data.articles }
+    } catch (err: any) {
+      return { valid: false, error: err.message || 'Validation failed' }
+    }
+  }, [])
+
+  // Add new source
+  const addSource = useCallback(async (
+    source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('news_monitor_sources')
+        .insert({
+          name: source.name,
+          url: source.url,
+          rss_url: source.rssUrl,
+          tier: source.tier,
+          is_active: source.isActive,
+          is_default: false,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Failed to add source:', error)
+        return false
+      }
+
+      setSources(prev => [...prev, mapDBSourceToSource(data)])
+      return true
+    } catch (err) {
+      console.error('Error adding source:', err)
+      return false
+    }
+  }, [])
+
+  // Delete source (only non-default)
+  const deleteSource = useCallback(async (sourceId: string): Promise<boolean> => {
+    const source = sources.find(s => s.id === sourceId)
+    if (!source || source.isDefault) return false
+
+    try {
+      const { error } = await supabase
+        .from('news_monitor_sources')
+        .delete()
+        .eq('id', sourceId)
+
+      if (error) {
+        console.error('Failed to delete source:', error)
+        return false
+      }
+
+      setSources(prev => prev.filter(s => s.id !== sourceId))
+      setSourceStates(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(sourceId)
+        return newMap
+      })
+      return true
+    } catch (err) {
+      console.error('Error deleting source:', err)
+      return false
+    }
+  }, [sources])
+
+  // Toggle source active state
+  const toggleSourceActive = useCallback(async (sourceId: string): Promise<boolean> => {
+    const source = sources.find(s => s.id === sourceId)
+    if (!source) return false
+
+    try {
+      const { error } = await supabase
+        .from('news_monitor_sources')
+        .update({ is_active: !source.isActive })
+        .eq('id', sourceId)
+
+      if (error) {
+        console.error('Failed to toggle source:', error)
+        return false
+      }
+
+      setSources(prev =>
+        prev.map(s => s.id === sourceId ? { ...s, isActive: !s.isActive } : s)
+      )
+      return true
+    } catch (err) {
+      console.error('Error toggling source:', err)
+      return false
+    }
+  }, [sources])
+
+  // Reload sources
+  const reloadSources = useCallback(async () => {
+    await loadSources()
+  }, [loadSources])
+
+  // Initial load
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true)
+      await Promise.all([loadSources(), loadSettings()])
+      setLoading(false)
+    }
+    init()
+  }, [loadSources, loadSettings])
+
+  // Auto-refresh interval
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+    }
+
+    if (settings.autoRefresh && sources.length > 0) {
+      // Initial fetch
+      fetchAllSources()
+
+      // Set up interval
+      intervalRef.current = setInterval(() => {
+        fetchAllSources()
+      }, settings.refreshInterval * 1000)
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [settings.autoRefresh, settings.refreshInterval, sources.length, fetchAllSources])
+
+  return {
+    sources,
+    sourceStates,
+    settings,
+    loading,
+    lastRefresh,
+    fetchSource,
+    fetchAllSources,
+    updateSettings,
+    addSource,
+    deleteSource,
+    toggleSourceActive,
+    validateRssUrl,
+    reloadSources,
+  }
+}

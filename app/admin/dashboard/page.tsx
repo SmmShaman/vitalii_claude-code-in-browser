@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image } from 'lucide-react'
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { NewsManager } from '@/components/admin/NewsManager'
 import { BlogManager } from '@/components/admin/BlogManager'
@@ -21,8 +21,9 @@ import { APIKeysSettings } from '@/components/admin/APIKeysSettings'
 import { SocialMediaPostsManager } from '@/components/admin/SocialMediaPostsManager'
 import { SocialMediaCommentsManager } from '@/components/admin/SocialMediaCommentsManager'
 import { SocialMediaAccountsManager } from '@/components/admin/SocialMediaAccountsManager'
+import { NewsMonitorManager } from '@/components/admin/news-monitor'
 
-type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'social' | 'comments' | 'skills' | 'settings'
+type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'comments' | 'skills' | 'settings'
 type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'debug'
 
 export default function AdminDashboardPage() {
@@ -48,6 +49,7 @@ export default function AdminDashboardPage() {
     { id: 'queue' as TabType, label: 'Queue', icon: List },
     { id: 'news' as TabType, label: 'News', icon: Newspaper },
     { id: 'blog' as TabType, label: 'Blog', icon: BookOpen },
+    { id: 'monitor' as TabType, label: 'Monitor', icon: Activity },
     { id: 'social' as TabType, label: 'Social', icon: Share2 },
     { id: 'comments' as TabType, label: 'Comments', icon: MessageSquare },
     { id: 'skills' as TabType, label: 'Skills', icon: Sparkles },
@@ -217,6 +219,7 @@ export default function AdminDashboardPage() {
           {activeTab === 'queue' && <NewsQueueManager />}
           {activeTab === 'news' && <NewsManager />}
           {activeTab === 'blog' && <BlogManager />}
+          {activeTab === 'monitor' && <NewsMonitorManager />}
           {activeTab === 'social' && <SocialMediaPostsManager />}
           {activeTab === 'comments' && <SocialMediaCommentsManager />}
           {activeTab === 'skills' && <SkillsManager />}
