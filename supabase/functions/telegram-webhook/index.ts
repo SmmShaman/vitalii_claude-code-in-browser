@@ -656,6 +656,15 @@ serve(async (req) => {
         action = 'publish'
         publicationType = 'blog'
         newsId = callbackData.replace('publish_blog_', '')
+      // RSS Article callbacks - use process-rss-news for summary-style rewrite
+      } else if (callbackData.startsWith('publish_rss_news_')) {
+        action = 'publish_rss'
+        publicationType = 'news'
+        newsId = callbackData.replace('publish_rss_news_', '')
+      } else if (callbackData.startsWith('publish_rss_blog_')) {
+        action = 'publish_rss'
+        publicationType = 'blog'
+        newsId = callbackData.replace('publish_rss_blog_', '')
       } else if (callbackData.startsWith('linkedin_en_')) {
         action = 'linkedin'
         linkedinLanguage = 'en'
@@ -989,6 +998,181 @@ serve(async (req) => {
               text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`,
               parse_mode: 'HTML',
               reply_markup: socialKeyboard
+            })
+          }
+        )
+
+      } else if (action === 'publish_rss') {
+        // =================================================================
+        // 📰 RSS Article Publishing Handler (Summary-style)
+        // =================================================================
+        console.log(`Publishing RSS article as ${publicationType} with ID:`, newsId)
+
+        const { data: news, error: fetchError } = await supabase
+          .from('news')
+          .select('*')
+          .eq('id', newsId)
+          .single()
+
+        if (fetchError || !news) {
+          console.error('Failed to fetch news:', fetchError)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Error: News not found',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Prevent duplicate publishing
+        if (news.is_published || news.is_rewritten) {
+          console.log(`⚠️ RSS News ${newsId} is already published, preventing duplicate`)
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '⚠️ Ця новина вже опублікована!',
+                show_alert: true
+              })
+            }
+          )
+
+          return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Choose appropriate processing function
+        // For RSS articles, we use process-rss-news (summary style) or process-blog-post
+        const processingEndpoint = publicationType === 'blog'
+          ? 'process-blog-post'
+          : 'process-rss-news'
+
+        console.log(`Calling ${processingEndpoint} for RSS AI rewriting...`)
+
+        const processResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/${processingEndpoint}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId: newsId,
+              title: news.original_title || '',
+              content: news.original_content || '',
+              url: news.rss_source_url || news.original_url || '',
+              imageUrl: news.processed_image_url || news.image_url || null
+            })
+          }
+        )
+
+        if (!processResponse.ok) {
+          const errorText = await processResponse.text()
+          console.error('Failed to process RSS:', errorText)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: `❌ AI processing error`,
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        const successMessage = publicationType === 'blog'
+          ? '✅ Published RSS to blog!'
+          : '✅ Published RSS to news!'
+
+        console.log(`✅ RSS ${publicationType} processed successfully with AI`)
+
+        // Success callback
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: successMessage,
+              show_alert: false
+            })
+          }
+        )
+
+        // Edit message with social media buttons
+        const statusLabel = publicationType === 'blog' ? 'BLOG (RSS)' : 'NEWS (RSS)'
+        const socialKeyboardRss = {
+          inline_keyboard: [
+            // Batch posting
+            [
+              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
+              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
+              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
+            ],
+            // Quick combos
+            [
+              { text: '🔗+📘 LI+FB EN', callback_data: `combo_li_fb_en_${newsId}` },
+              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
+              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` }
+            ],
+            // LinkedIn individual
+            [
+              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+            ],
+            // Facebook individual
+            [
+              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
+              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
+              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
+            ],
+            // Instagram individual
+            [
+              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
+              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
+              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
+            ],
+            // Skip
+            [
+              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`,
+              parse_mode: 'HTML',
+              reply_markup: socialKeyboardRss
             })
           }
         )
