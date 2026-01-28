@@ -24,9 +24,9 @@ interface RSSNewsRewriteRequest {
  * Creates a short informational overview with link to original source
  */
 serve(async (req) => {
-  // Version: 2025-01-27-01 - Initial RSS news processing
-  console.log('🚀 Process RSS News v2025-01-27-01 started')
-  console.log('📦 Features: Summary-style rewrite, auto source link append')
+  // Version: 2025-01-28-01 - Fix: save image_url to database
+  console.log('🚀 Process RSS News v2025-01-28-01 started')
+  console.log('📦 Features: Summary-style rewrite, auto source link append, image_url preservation')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -221,6 +221,7 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
   }
 
   // Update news item with rewritten content
+  console.log(`📷 Saving image_url: ${imageUrl || 'none'}`)
   const { error: updateError } = await supabase
     .from('news')
     .update({
@@ -237,6 +238,7 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
       description_no: rewrittenContent.no.description,
       slug_no: generateSlug(rewrittenContent.no.title),
       tags: tags.length > 0 ? tags : null,
+      image_url: imageUrl,
       is_rewritten: true,
       is_published: true,
       published_at: new Date().toISOString(),
