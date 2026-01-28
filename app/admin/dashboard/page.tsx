@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -26,12 +26,48 @@ import { NewsMonitorManager } from '@/components/admin/news-monitor'
 type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'comments' | 'skills' | 'settings'
 type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'debug'
 
+interface HeaderStats {
+  totalNews: number
+  publishedNews: number
+  totalBlog: number
+  publishedBlog: number
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('sources')
   const [loading, setLoading] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [headerStats, setHeaderStats] = useState<HeaderStats>({
+    totalNews: 0,
+    publishedNews: 0,
+    totalBlog: 0,
+    publishedBlog: 0,
+  })
+
+  useEffect(() => {
+    loadHeaderStats()
+  }, [])
+
+  const loadHeaderStats = async () => {
+    try {
+      const [newsTotal, newsPub, blogTotal, blogPub] = await Promise.all([
+        supabase.from('news').select('*', { count: 'exact', head: true }),
+        supabase.from('news').select('*', { count: 'exact', head: true }).eq('is_published', true),
+        supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
+        supabase.from('blog_posts').select('*', { count: 'exact', head: true }).eq('is_published', true),
+      ])
+      setHeaderStats({
+        totalNews: newsTotal.count || 0,
+        publishedNews: newsPub.count || 0,
+        totalBlog: blogTotal.count || 0,
+        publishedBlog: blogPub.count || 0,
+      })
+    } catch (error) {
+      console.error('Failed to load header stats:', error)
+    }
+  }
 
   const handleLogout = async () => {
     setLoading(true)
@@ -115,7 +151,26 @@ export default function AdminDashboardPage() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="bg-black/20 backdrop-blur-lg border-b border-white/10 px-6 h-16 flex items-center justify-between flex-shrink-0">
-          <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+          <div className="flex items-center gap-6">
+            <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+
+            {/* Stats inline */}
+            <div className="hidden md:flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                <Newspaper className="h-4 w-4 text-blue-400" />
+                <span className="text-white font-medium">{headerStats.totalNews}</span>
+                <span className="text-gray-400">/</span>
+                <span className="text-green-400 font-medium">{headerStats.publishedNews}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 rounded-lg border border-purple-500/30">
+                <BookOpen className="h-4 w-4 text-purple-400" />
+                <span className="text-white font-medium">{headerStats.totalBlog}</span>
+                <span className="text-gray-400">/</span>
+                <span className="text-green-400 font-medium">{headerStats.publishedBlog}</span>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center gap-4">
             <motion.button
               whileHover={{ scale: 1.05 }}
