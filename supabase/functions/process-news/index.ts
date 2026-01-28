@@ -43,7 +43,7 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Get news rewrite prompt from database (most recently updated)
+    // Get news rewrite prompt from database (single prompt for all news sources)
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
@@ -53,23 +53,7 @@ serve(async (req) => {
       .limit(1)
 
     if (promptError || !prompts || prompts.length === 0) {
-      console.warn('⚠️ No active news_rewrite prompt found, trying fallback to "rewrite" type')
-
-      // Fallback to existing "rewrite" prompt (most recently updated)
-      const { data: fallbackPrompts } = await supabase
-        .from('ai_prompts')
-        .select('*')
-        .eq('is_active', true)
-        .eq('prompt_type', 'rewrite')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-
-      if (!fallbackPrompts || fallbackPrompts.length === 0) {
-        throw new Error('No rewrite prompt configured')
-      }
-
-      console.log('Using fallback rewrite prompt:', fallbackPrompts[0].name)
-      return await processWithPrompt(fallbackPrompts[0], requestData, supabase, 'news')
+      throw new Error('No news_rewrite prompt configured. Please add a prompt with type "news_rewrite" in the admin panel.')
     }
 
     const newsPrompt = prompts[0]

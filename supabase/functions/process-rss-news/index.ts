@@ -57,37 +57,21 @@ serve(async (req) => {
 
     console.log(`📎 RSS Source URL: ${sourceUrl}`)
 
-    // Get RSS news rewrite prompt from database
+    // Get news rewrite prompt from database (single prompt for all news sources)
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
       .eq('is_active', true)
-      .eq('prompt_type', 'rss_news_rewrite')
+      .eq('prompt_type', 'news_rewrite')
       .order('updated_at', { ascending: false })
       .limit(1)
 
     if (promptError || !prompts || prompts.length === 0) {
-      console.warn('⚠️ No rss_news_rewrite prompt found, falling back to news_rewrite')
-
-      // Try fallback to regular news_rewrite prompt
-      const { data: fallbackPrompts } = await supabase
-        .from('ai_prompts')
-        .select('*')
-        .eq('is_active', true)
-        .eq('prompt_type', 'news_rewrite')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-
-      if (!fallbackPrompts || fallbackPrompts.length === 0) {
-        throw new Error('No rewrite prompt configured')
-      }
-
-      console.log('Using fallback news_rewrite prompt:', fallbackPrompts[0].name)
-      return await processWithPrompt(fallbackPrompts[0], requestData.newsId, title, content, sourceUrl, supabase, news.image_url)
+      throw new Error('No news_rewrite prompt configured. Please add a prompt with type "news_rewrite" in the admin panel.')
     }
 
     const rssPrompt = prompts[0]
-    console.log('Using RSS news rewrite prompt:', rssPrompt.name)
+    console.log('Using news rewrite prompt:', rssPrompt.name)
 
     return await processWithPrompt(rssPrompt, requestData.newsId, title, content, sourceUrl, supabase, requestData.imageUrl || news.image_url)
 
