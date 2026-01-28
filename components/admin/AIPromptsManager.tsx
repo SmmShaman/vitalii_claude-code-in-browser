@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit, Trash2, Sparkles, X, ToggleLeft, ToggleRight, Copy } from 'lucide-react'
+import { Plus, Edit, Trash2, Sparkles, X, ToggleLeft, ToggleRight, Copy, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
 interface AIPrompt {
@@ -16,11 +16,42 @@ interface AIPrompt {
   created_at: string
 }
 
+// Prompt categories configuration
+const PROMPT_CATEGORIES: Record<string, { label: string; icon: string; types: string[] }> = {
+  news: {
+    label: 'Новини та контент',
+    icon: '📰',
+    types: ['news_rewrite', 'blog_rewrite', 'pre_moderation', 'rss_article_analysis', 'rss_news_rewrite', 'rewrite', 'translate', 'summarize']
+  },
+  image_generation: {
+    label: 'Генерація зображень',
+    icon: '🖼️',
+    types: ['image_classifier', 'image_template_tech_product', 'image_template_marketing_campaign', 'image_template_ai_research', 'image_template_business_news', 'image_template_science', 'image_template_lifestyle', 'image_template_general']
+  },
+  image_processing: {
+    label: 'Обробка зображень',
+    icon: '🎨',
+    types: ['image_linkedin_optimize', 'image_enhance', 'image_custom']
+  },
+  social: {
+    label: 'Соціальні мережі',
+    icon: '📱',
+    types: ['social_teaser_linkedin', 'social_teaser_facebook', 'social_teaser_instagram', 'social_teaser_twitter']
+  }
+}
+
 export const AIPromptsManager = () => {
   const [prompts, setPrompts] = useState<AIPrompt[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<AIPrompt | null>(null)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    news: true,
+    image_generation: false,
+    image_processing: false,
+    social: false
+  })
+  const [expandedPrompts, setExpandedPrompts] = useState<Record<string, boolean>>({})
 
   const [formData, setFormData] = useState({
     name: '',
@@ -141,6 +172,35 @@ export const AIPromptsManager = () => {
     alert('Prompt copied to clipboard!')
   }
 
+  const toggleSection = (category: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }))
+  }
+
+  const togglePrompt = (promptId: string) => {
+    setExpandedPrompts(prev => ({
+      ...prev,
+      [promptId]: !prev[promptId]
+    }))
+  }
+
+  // Group prompts by category
+  const getPromptsByCategory = (category: string): AIPrompt[] => {
+    const categoryTypes = PROMPT_CATEGORIES[category]?.types || []
+    return prompts.filter(p => categoryTypes.includes(p.prompt_type))
+  }
+
+  // Get category stats
+  const getCategoryStats = (category: string): { active: number; total: number } => {
+    const categoryPrompts = getPromptsByCategory(category)
+    return {
+      active: categoryPrompts.filter(p => p.is_active).length,
+      total: categoryPrompts.length
+    }
+  }
+
   const defaultRewritePrompt = `You are a professional content rewriter and translator. Rewrite the following news article to avoid plagiarism while preserving the meaning and key facts.
 
 Original Title: {title}
@@ -246,112 +306,193 @@ Return ONLY valid JSON in this exact format:
         </pre>
       </div>
 
-      {/* Prompts List */}
-      <div className="grid grid-cols-1 gap-4">
-        <AnimatePresence>
-          {prompts.map((prompt) => (
-            <motion.div
-              key={prompt.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={`bg-white/10 backdrop-blur-lg rounded-lg p-6 border ${
-                prompt.is_active ? 'border-white/20' : 'border-gray-500/20'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`p-2 rounded-lg ${
-                      prompt.is_active ? 'bg-purple-500/20' : 'bg-gray-500/20'
-                    }`}>
-                      <Sparkles className={`h-5 w-5 ${
-                        prompt.is_active ? 'text-purple-300' : 'text-gray-400'
-                      }`} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white">{prompt.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          prompt.is_active
-                            ? 'bg-green-500/20 text-green-300'
-                            : 'bg-gray-500/20 text-gray-300'
-                        }`}>
-                          {prompt.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                        <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
-                          {prompt.prompt_type}
-                        </span>
-                        <span className="text-gray-400 text-xs">
-                          Used {prompt.usage_count} times
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="ml-14">
-                    {prompt.description && (
-                      <p className="text-gray-300 text-sm mb-2">{prompt.description}</p>
-                    )}
-                    <details className="text-gray-400 text-sm">
-                      <summary className="cursor-pointer hover:text-gray-300">
-                        View Prompt
-                      </summary>
-                      <pre className="mt-2 p-3 bg-black/20 rounded text-xs overflow-x-auto">
-                        {prompt.prompt_text}
-                      </pre>
-                    </details>
-                  </div>
-                </div>
+      {/* Prompts List - Organized by Sections */}
+      <div className="space-y-4">
+        {Object.entries(PROMPT_CATEGORIES).map(([categoryKey, categoryConfig]) => {
+          const categoryPrompts = getPromptsByCategory(categoryKey)
+          const stats = getCategoryStats(categoryKey)
+          const isExpanded = expandedSections[categoryKey]
 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => copyPrompt(prompt.prompt_text)}
-                    className="p-2 text-gray-300 hover:text-white transition-colors"
-                    title="Copy prompt"
-                  >
-                    <Copy className="h-5 w-5" />
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => toggleActive(prompt)}
-                    className={`p-2 transition-colors ${
-                      prompt.is_active
-                        ? 'text-green-400 hover:text-green-300'
-                        : 'text-gray-400 hover:text-gray-300'
-                    }`}
-                    title={prompt.is_active ? 'Deactivate' : 'Activate'}
-                  >
-                    {prompt.is_active ? (
-                      <ToggleRight className="h-5 w-5" />
-                    ) : (
-                      <ToggleLeft className="h-5 w-5" />
-                    )}
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => handleEdit(prompt)}
-                    className="p-2 text-blue-400 hover:text-blue-300 transition-colors"
-                  >
-                    <Edit className="h-5 w-5" />
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => handleDelete(prompt.id)}
-                    className="p-2 text-red-400 hover:text-red-300 transition-colors"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </motion.button>
+          return (
+            <div
+              key={categoryKey}
+              className="bg-white/5 backdrop-blur-lg rounded-lg border border-white/10 overflow-hidden"
+            >
+              {/* Section Header */}
+              <button
+                onClick={() => toggleSection(categoryKey)}
+                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  {isExpanded ? (
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                  )}
+                  <span className="text-xl">{categoryConfig.icon}</span>
+                  <span className="text-lg font-semibold text-white">{categoryConfig.label}</span>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+                    {stats.active} active
+                  </span>
+                  <span className="text-gray-400 text-sm">/ {stats.total} total</span>
+                </div>
+              </button>
+
+              {/* Section Content */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    {categoryPrompts.length === 0 ? (
+                      <div className="px-4 pb-4 text-gray-500 text-sm">
+                        No prompts in this category
+                      </div>
+                    ) : (
+                      <div className="px-4 pb-4 space-y-2">
+                        {categoryPrompts.map((prompt) => {
+                          const isPromptExpanded = expandedPrompts[prompt.id]
+
+                          return (
+                            <div
+                              key={prompt.id}
+                              className={`rounded-lg border transition-colors ${
+                                prompt.is_active
+                                  ? 'bg-white/5 border-white/10'
+                                  : 'bg-gray-500/5 border-gray-500/10'
+                              }`}
+                            >
+                              {/* Compact Prompt Row */}
+                              <div className="flex items-center justify-between p-3 gap-4">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  {/* Expand/Collapse Button */}
+                                  <button
+                                    onClick={() => togglePrompt(prompt.id)}
+                                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                                  >
+                                    {isPromptExpanded ? (
+                                      <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" />
+                                    )}
+                                  </button>
+
+                                  {/* Prompt Type Badge */}
+                                  <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full whitespace-nowrap">
+                                    {prompt.prompt_type}
+                                  </span>
+
+                                  {/* Prompt Name */}
+                                  <span className="text-white font-medium truncate">
+                                    {prompt.name}
+                                  </span>
+
+                                  {/* Status Badge */}
+                                  <span className={`px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${
+                                    prompt.is_active
+                                      ? 'bg-green-500/20 text-green-300'
+                                      : 'bg-gray-500/20 text-gray-400'
+                                  }`}>
+                                    {prompt.is_active ? 'Active' : 'Inactive'}
+                                  </span>
+
+                                  {/* Usage Count */}
+                                  <span className={`text-xs whitespace-nowrap ${
+                                    prompt.usage_count > 0 ? 'text-gray-400' : 'text-gray-600'
+                                  }`}>
+                                    Used {prompt.usage_count}x
+                                  </span>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-1">
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => copyPrompt(prompt.prompt_text)}
+                                    className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                                    title="Copy prompt"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </motion.button>
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => toggleActive(prompt)}
+                                    className={`p-1.5 transition-colors ${
+                                      prompt.is_active
+                                        ? 'text-green-400 hover:text-green-300'
+                                        : 'text-gray-400 hover:text-gray-300'
+                                    }`}
+                                    title={prompt.is_active ? 'Deactivate' : 'Activate'}
+                                  >
+                                    {prompt.is_active ? (
+                                      <ToggleRight className="h-4 w-4" />
+                                    ) : (
+                                      <ToggleLeft className="h-4 w-4" />
+                                    )}
+                                  </motion.button>
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => handleEdit(prompt)}
+                                    className="p-1.5 text-blue-400 hover:text-blue-300 transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </motion.button>
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => handleDelete(prompt.id)}
+                                    className="p-1.5 text-red-400 hover:text-red-300 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </motion.button>
+                                </div>
+                              </div>
+
+                              {/* Expanded Prompt Details */}
+                              <AnimatePresence>
+                                {isPromptExpanded && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="px-4 pb-4 pt-2 border-t border-white/5">
+                                      {prompt.description && (
+                                        <p className="text-gray-300 text-sm mb-3">
+                                          {prompt.description}
+                                        </p>
+                                      )}
+                                      <pre className="p-3 bg-black/30 rounded text-xs text-gray-300 overflow-x-auto max-h-64 overflow-y-auto">
+                                        {prompt.prompt_text}
+                                      </pre>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )
+        })}
       </div>
 
       {prompts.length === 0 && (
@@ -406,18 +547,36 @@ Return ONLY valid JSON in this exact format:
                   onChange={(e) => setFormData({ ...formData, prompt_type: e.target.value })}
                   className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <optgroup label="📝 Текстовий контент">
-                    <option value="rewrite">Rewrite & Translate</option>
+                  <optgroup label="📰 Новини та контент">
                     <option value="news_rewrite">News Rewrite (Journalistic Style)</option>
                     <option value="blog_rewrite">Blog Rewrite (Personal Perspective)</option>
+                    <option value="pre_moderation">Pre-Moderation (AI Filter)</option>
+                    <option value="rss_article_analysis">RSS Article Analysis</option>
+                    <option value="rss_news_rewrite">RSS News Rewrite (Fallback)</option>
+                    <option value="rewrite">Rewrite & Translate (Legacy)</option>
                     <option value="translate">Translate Only</option>
                     <option value="summarize">Summarize</option>
-                    <option value="pre_moderation">Pre-Moderation (AI Filter)</option>
                   </optgroup>
-                  <optgroup label="🖼️ Обробка зображень">
+                  <optgroup label="🖼️ Генерація зображень">
+                    <option value="image_classifier">Image Classifier (Step 1)</option>
+                    <option value="image_template_tech_product">Template: Tech Product</option>
+                    <option value="image_template_marketing_campaign">Template: Marketing Campaign</option>
+                    <option value="image_template_ai_research">Template: AI Research</option>
+                    <option value="image_template_business_news">Template: Business News</option>
+                    <option value="image_template_science">Template: Science</option>
+                    <option value="image_template_lifestyle">Template: Lifestyle</option>
+                    <option value="image_template_general">Template: General (Fallback)</option>
+                  </optgroup>
+                  <optgroup label="🎨 Обробка зображень">
                     <option value="image_linkedin_optimize">Image: LinkedIn Optimization</option>
                     <option value="image_enhance">Image: General Enhancement</option>
                     <option value="image_custom">Image: Custom Processing</option>
+                  </optgroup>
+                  <optgroup label="📱 Соціальні мережі">
+                    <option value="social_teaser_linkedin">Social Teaser: LinkedIn</option>
+                    <option value="social_teaser_facebook">Social Teaser: Facebook</option>
+                    <option value="social_teaser_instagram">Social Teaser: Instagram</option>
+                    <option value="social_teaser_twitter">Social Teaser: Twitter</option>
                   </optgroup>
                 </select>
               </div>
