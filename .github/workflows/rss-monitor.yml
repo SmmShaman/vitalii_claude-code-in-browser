@@ -1,0 +1,68 @@
+name: Scheduled RSS Monitor
+
+on:
+  schedule:
+    # Run every 30 minutes (RSS updates slower than Telegram)
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch and Analyze RSS
+        id: fetch
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📰 Starting scheduled RSS monitor..."
+          echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          # Call fetch-news Edge Function
+          # It handles:
+          # 1. Fetching all active RSS sources
+          # 2. Filtering by fetch_interval
+          # 3. AI pre-moderation
+          # 4. Sending approved articles to Telegram bot
+
+          RESULT=$(curl -s -X POST "$SUPABASE_URL/functions/v1/fetch-news" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"source": "scheduled"}' \
+            --max-time 180)
+
+          echo "Result: $RESULT"
+
+          # Parse response
+          OK=$(echo "$RESULT" | jq -r '.ok // false')
+          PROCESSED=$(echo "$RESULT" | jq -r '.totalProcessed // 0')
+          APPROVED=$(echo "$RESULT" | jq -r '.totalApproved // 0')
+          REJECTED=$(echo "$RESULT" | jq -r '.totalRejected // 0')
+          SENT_TO_BOT=$(echo "$RESULT" | jq -r '.totalSentToBot // 0')
+
+          echo "processed=$PROCESSED" >> $GITHUB_OUTPUT
+          echo "approved=$APPROVED" >> $GITHUB_OUTPUT
+          echo "rejected=$REJECTED" >> $GITHUB_OUTPUT
+          echo "sent_to_bot=$SENT_TO_BOT" >> $GITHUB_OUTPUT
+
+          if [ "$OK" = "true" ]; then
+            echo "✅ RSS monitor completed successfully"
+            echo "📊 Processed: $PROCESSED, Approved: $APPROVED, Rejected: $REJECTED, Sent to bot: $SENT_TO_BOT"
+          else
+            echo "❌ RSS monitor failed"
+            echo "$RESULT" | jq '.'
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## RSS Monitor Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Articles Processed:** ${{ steps.fetch.outputs.processed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AI Approved:** ${{ steps.fetch.outputs.approved }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AI Rejected:** ${{ steps.fetch.outputs.rejected }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sent to Telegram:** ${{ steps.fetch.outputs.sent_to_bot }}" >> $GITHUB_STEP_SUMMARY
