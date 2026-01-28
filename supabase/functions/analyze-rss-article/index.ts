@@ -35,8 +35,8 @@ interface AIAnalysisResult {
  * Analyze RSS article using AI and send to Telegram Bot for moderation
  */
 serve(async (req) => {
-  // Version: 2026-01-28-01 - Use database function for duplicate check
-  console.log('🔍 Analyze RSS Article v2025-01-27-01 started')
+  // Version: 2026-01-28-03 - Filter by relevance_score >= 7 (only 'publish' goes to bot)
+  console.log('🔍 Analyze RSS Article v2026-01-28-03 started')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -215,17 +215,53 @@ serve(async (req) => {
 
     console.log('📝 News record created:', newsRecord.id)
 
-    // Send to Telegram Bot for moderation (if not auto-skipped)
-    if (analysis.recommended_action !== 'skip' && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+    // Generate image prompt for RSS article (same as Telegram donor workflow)
+    let imagePrompt: string | null = null
+    try {
+      console.log('🎨 Generating image prompt for RSS article...')
+      const promptResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            newsId: newsRecord.id,
+            title: title,
+            content: articleContent.text.substring(0, 2000)
+          })
+        }
+      )
+
+      if (promptResponse.ok) {
+        const promptResult = await promptResponse.json()
+        imagePrompt = promptResult.prompt
+        console.log(`✅ Image prompt generated: ${imagePrompt?.substring(0, 100)}...`)
+      } else {
+        console.warn('⚠️ Image prompt generation failed:', await promptResponse.text())
+      }
+    } catch (promptError) {
+      console.warn('⚠️ Image prompt generation error:', promptError)
+    }
+
+    // Send to Telegram Bot for moderation (only if publish - score >= 7)
+    if (analysis.recommended_action === 'publish' && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
       await sendTelegramNotification(
         newsRecord.id,
         title,
         requestData.url,
         analysis,
-        requestData.sourceName || 'RSS Feed'
+        requestData.sourceName || 'RSS Feed',
+        requestData.imageUrl || articleContent.imageUrl,
+        imagePrompt
       )
-    } else if (analysis.recommended_action === 'skip') {
-      console.log(`⏭️ Auto-skipped article: ${analysis.skip_reason || 'Low relevance'}`)
+    } else {
+      // Skip both 'skip' (score <= 3) and 'needs_review' (score 4-6)
+      const skipReason = analysis.recommended_action === 'skip'
+        ? analysis.skip_reason || 'Low relevance (score <= 3)'
+        : `Medium relevance (score ${analysis.relevance_score}/10) - not sent to bot`
+      console.log(`⏭️ Auto-skipped article: ${skipReason}`)
     }
 
     return new Response(
@@ -400,14 +436,16 @@ function decodeHTMLEntities(text: string): string {
 }
 
 /**
- * Send notification to Telegram Bot with moderation buttons
+ * Send notification to Telegram Bot with image workflow buttons
  */
 async function sendTelegramNotification(
   newsId: string,
   title: string,
   url: string,
   analysis: AIAnalysisResult,
-  sourceName: string
+  sourceName: string,
+  imageUrl: string | null = null,
+  imagePrompt: string | null = null
 ): Promise<void> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.warn('⚠️ Telegram credentials not configured')
@@ -433,6 +471,24 @@ async function sendTelegramNotification(
     'other': '📰 Other'
   }
 
+  // Build image status section
+  let imageStatusText = ''
+  if (imageUrl) {
+    imageStatusText = `
+
+🖼️ <b>Зображення:</b> ✅ Готове
+${imageUrl}`
+  } else if (imagePrompt) {
+    imageStatusText = `
+
+⚠️ <b>Зображення:</b> Немає (є промпт)
+🎨 <i>Натисни "Згенерувати" для створення AI зображення</i>`
+  } else {
+    imageStatusText = `
+
+⚠️ <b>Зображення:</b> Не знайдено`
+  }
+
   const messageText = `📰 <b>RSS Article Analysis</b>
 
 📌 <b>Source:</b> ${sourceName}
@@ -448,21 +504,44 @@ ${relevanceEmoji} <b>Relevance:</b> ${analysis.relevance_score}/10
 ${escapeHtml(keyPointsList)}
 
 🎯 <b>Recommendation:</b> ${analysis.recommended_action.toUpperCase()}
-${analysis.skip_reason ? `ℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}
+${analysis.skip_reason ? `ℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}${imageStatusText}
 
 newsId:${newsId}`
 
-  // Build keyboard with action buttons
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: '📰 В новини', callback_data: `publish_rss_news_${newsId}` },
-        { text: '📝 В блог', callback_data: `publish_rss_blog_${newsId}` }
-      ],
-      [
-        { text: '❌ Skip', callback_data: `reject_${newsId}` }
+  // Build keyboard with image workflow buttons (same pattern as Telegram donors)
+  let keyboard: { inline_keyboard: any[] }
+
+  if (imageUrl) {
+    // Has image from RSS → Confirm, regenerate, or upload custom
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '✅ Використати фото', callback_data: `confirm_rss_image_${newsId}` },
+          { text: '🔄 Згенерувати AI', callback_data: `regenerate_rss_image_${newsId}` }
+        ],
+        [
+          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+        ],
+        [
+          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+        ]
       ]
-    ]
+    }
+  } else {
+    // No image → Generate or upload custom
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🎨 Згенерувати зображення', callback_data: `regenerate_rss_image_${newsId}` }
+        ],
+        [
+          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+        ],
+        [
+          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+        ]
+      ]
+    }
   }
 
   try {
