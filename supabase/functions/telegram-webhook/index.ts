@@ -2918,7 +2918,12 @@ serve(async (req) => {
 
         // Build results message with article link
         const title = news.title_en as string
-        const shortTitle = title.length > 50 ? title.substring(0, 47) + '...' : title
+        const shortTitleRaw = title.length > 50 ? title.substring(0, 47) + '...' : title
+        // Escape HTML special characters in title
+        const shortTitle = shortTitleRaw
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
         const slug = news.slug_en || newsId.substring(0, 8)
         const articleUrl = `https://vitalii.no/news/${slug}`
 
@@ -2968,6 +2973,11 @@ serve(async (req) => {
           finalText = truncatedOriginal + resultsText
         }
 
+        // Detailed logging before editMessageText
+        console.log(`📊 [combo_li_fb_en] Results array:`, JSON.stringify(results, null, 2))
+        console.log(`📝 [combo_li_fb_en] Final text length: ${finalText.length}`)
+        console.log(`📍 [combo_li_fb_en] Chat ID: ${chatId}, Message ID: ${messageId}`)
+
         try {
           const editResultsResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
@@ -2993,11 +3003,53 @@ serve(async (req) => {
             console.error('   Message length:', finalText.length)
             console.error('   Chat ID:', chatId)
             console.error('   Message ID:', messageId)
+
+            // FALLBACK: Try sending a new message if edit fails
+            try {
+              console.log('📤 [combo_li_fb_en] Attempting fallback: sending new message with results')
+              await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    text: resultsText,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true
+                  })
+                }
+              )
+              console.log('✅ [combo_li_fb_en] Sent fallback message with results')
+            } catch (fallbackErr) {
+              console.error('❌ [combo_li_fb_en] Fallback message also failed:', fallbackErr)
+            }
           } else {
             console.log('✅ Successfully updated message with results (combo_li_fb_en)')
           }
         } catch (editError) {
           console.error('⚠️ Error editing message (results):', editError)
+
+          // FALLBACK: Try sending a new message if edit throws exception
+          try {
+            console.log('📤 [combo_li_fb_en] Attempting fallback after exception: sending new message with results')
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: resultsText,
+                  parse_mode: 'HTML',
+                  disable_web_page_preview: true
+                })
+              }
+            )
+            console.log('✅ [combo_li_fb_en] Sent fallback message with results')
+          } catch (fallbackErr) {
+            console.error('❌ [combo_li_fb_en] Fallback message also failed:', fallbackErr)
+          }
         }
 
       } else if (action === 'combo_li_fb_ig' && socialLanguage) {
@@ -3309,7 +3361,12 @@ serve(async (req) => {
 
         // Build results message
         const titleCombo = newsCombo[titleField] as string
-        const shortTitleCombo = titleCombo.length > 50 ? titleCombo.substring(0, 47) + '...' : titleCombo
+        const shortTitleComboRaw = titleCombo.length > 50 ? titleCombo.substring(0, 47) + '...' : titleCombo
+        // Escape HTML special characters in title
+        const shortTitleCombo = shortTitleComboRaw
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
         const slugField = `slug_${socialLanguage}` as keyof typeof newsCombo
         const slugCombo = newsCombo[slugField] || newsId.substring(0, 8)
         const articleUrlCombo = `https://vitalii.no/news/${slugCombo}`
@@ -3358,6 +3415,11 @@ serve(async (req) => {
           finalTextCombo = truncatedOriginal + resultsTextCombo
         }
 
+        // Detailed logging before editMessageText
+        console.log(`📊 [combo_li_fb_ig_${socialLanguage}] Results array:`, JSON.stringify(resultsCombo, null, 2))
+        console.log(`📝 [combo_li_fb_ig_${socialLanguage}] Final text length: ${finalTextCombo.length}`)
+        console.log(`📍 [combo_li_fb_ig_${socialLanguage}] Chat ID: ${chatId}, Message ID: ${messageId}`)
+
         try {
           const editResultsResponseCombo = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
@@ -3380,11 +3442,56 @@ serve(async (req) => {
           if (!editResultsResponseCombo.ok) {
             const errText = await editResultsResponseCombo.text()
             console.error('⚠️ Failed to edit message (results):', errText)
+            console.error(`   [combo_li_fb_ig_${socialLanguage}] Text length:`, finalTextCombo.length)
+            console.error(`   [combo_li_fb_ig_${socialLanguage}] Chat ID:`, chatId)
+            console.error(`   [combo_li_fb_ig_${socialLanguage}] Message ID:`, messageId)
+
+            // FALLBACK: Try sending a new message if edit fails
+            try {
+              console.log(`📤 [combo_li_fb_ig_${socialLanguage}] Attempting fallback: sending new message with results`)
+              await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    text: resultsTextCombo,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true
+                  })
+                }
+              )
+              console.log(`✅ [combo_li_fb_ig_${socialLanguage}] Sent fallback message with results`)
+            } catch (fallbackErr) {
+              console.error(`❌ [combo_li_fb_ig_${socialLanguage}] Fallback message also failed:`, fallbackErr)
+            }
           } else {
             console.log(`✅ Successfully updated message with results (combo_li_fb_ig_${socialLanguage})`)
           }
         } catch (editError) {
           console.error('⚠️ Error editing message (results):', editError)
+
+          // FALLBACK: Try sending a new message if edit throws exception
+          try {
+            console.log(`📤 [combo_li_fb_ig_${socialLanguage}] Attempting fallback after exception: sending new message with results`)
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: resultsTextCombo,
+                  parse_mode: 'HTML',
+                  disable_web_page_preview: true
+                })
+              }
+            )
+            console.log(`✅ [combo_li_fb_ig_${socialLanguage}] Sent fallback message with results`)
+          } catch (fallbackErr) {
+            console.error(`❌ [combo_li_fb_ig_${socialLanguage}] Fallback message also failed:`, fallbackErr)
+          }
         }
 
       } else if (action === 'skip_social') {
