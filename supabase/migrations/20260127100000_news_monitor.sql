@@ -27,21 +27,26 @@ CREATE TABLE IF NOT EXISTS news_monitor_sources (
 -- RLS policies for news_monitor_settings
 ALTER TABLE news_monitor_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own settings" ON news_monitor_settings;
 CREATE POLICY "Users can view own settings" ON news_monitor_settings
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own settings" ON news_monitor_settings;
 CREATE POLICY "Users can insert own settings" ON news_monitor_settings
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own settings" ON news_monitor_settings;
 CREATE POLICY "Users can update own settings" ON news_monitor_settings
   FOR UPDATE USING (auth.uid() = user_id);
 
 -- RLS policies for news_monitor_sources
 ALTER TABLE news_monitor_sources ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view sources" ON news_monitor_sources;
 CREATE POLICY "Anyone can view sources" ON news_monitor_sources
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can manage sources" ON news_monitor_sources;
 CREATE POLICY "Authenticated users can manage sources" ON news_monitor_sources
   FOR ALL USING (auth.role() = 'authenticated');
 

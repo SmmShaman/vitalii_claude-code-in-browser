@@ -28,9 +28,9 @@ interface NewsRewriteRequest {
  * Rewrites content in objective journalistic style
  */
 serve(async (req) => {
-  // Version: 2025-01-20-01 - Add validation for title fields in AI response
-  console.log('🚀 Process News v2025-01-20-01 started')
-  console.log('📦 Features: Validate title fields exist, explicit JSON structure, max_tokens 8000')
+  // Version: 2025-01-28-01 - Use separate telegram_news_rewrite prompt for Telegram donors
+  console.log('🚀 Process News v2025-01-28-01 started')
+  console.log('📦 Features: Separate prompt for Telegram (telegram_news_rewrite), explicit JSON structure')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -43,21 +43,21 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Get news rewrite prompt from database (single prompt for all news sources)
+    // Get Telegram news rewrite prompt from database (separate from RSS)
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
       .eq('is_active', true)
-      .eq('prompt_type', 'news_rewrite')
+      .eq('prompt_type', 'telegram_news_rewrite')
       .order('updated_at', { ascending: false })
       .limit(1)
 
     if (promptError || !prompts || prompts.length === 0) {
-      throw new Error('No news_rewrite prompt configured. Please add a prompt with type "news_rewrite" in the admin panel.')
+      throw new Error('No telegram_news_rewrite prompt configured. Please add a prompt with type "telegram_news_rewrite" in the admin panel.')
     }
 
     const newsPrompt = prompts[0]
-    console.log('Using news rewrite prompt:', newsPrompt.name)
+    console.log('Using Telegram news rewrite prompt:', newsPrompt.name)
 
     return await processWithPrompt(newsPrompt, requestData, supabase, 'news')
 
