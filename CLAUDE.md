@@ -50,7 +50,7 @@ npm run lint            # ESLint
 ```
 ├── app/                          # Next.js App Router
 │   ├── @modal/                   # Parallel routes (intercepted modals)
-│   ├── admin/                    # Admin dashboard
+│   ├── admin/                    # Admin dashboard (9 tabs)
 │   ├── blog/[slug]/              # Dynamic blog pages
 │   ├── news/[slug]/              # Dynamic news pages
 │   ├── page.tsx                  # Home (BentoGrid)
@@ -61,24 +61,33 @@ npm run lint            # ESLint
 │   ├── layout/                   # Header, Footer, Sidebar
 │   ├── sections/                 # BentoGrid, NewsSection, BlogSection
 │   ├── ui/                       # Reusable UI components
-│   ├── admin/                    # Admin panel components
+│   ├── admin/                    # 17 admin panel components
+│   │   └── news-monitor/         # RSS monitoring system (8 files)
 │   └── background/               # ParticleBackground
 │
 ├── supabase/
-│   ├── functions/                # 17 Edge Functions (Deno)
+│   ├── functions/                # 29 Edge Functions (Deno)
 │   │   ├── _shared/              # Shared helpers
-│   │   ├── telegram-scraper/     # RSS/Telegram scraping
-│   │   ├── pre-moderate-news/    # AI spam filtering
-│   │   ├── post-to-linkedin/     # LinkedIn publishing
-│   │   ├── post-to-instagram/    # Instagram publishing
-│   │   └── ...                   # 12 more functions
+│   │   ├── telegram-scraper/     # Telegram channel scraping (MTKruto)
+│   │   ├── fetch-news/           # RSS feed fetching
+│   │   ├── analyze-rss-article/  # AI relevance scoring
+│   │   ├── process-rss-news/     # RSS → News processing
+│   │   └── ...                   # 24 more functions
 │   └── migrations/               # SQL migrations
 │
-├── .github/workflows/            # CI/CD
+├── .github/workflows/            # CI/CD (11 workflows)
 │   ├── deploy.yml                # Netlify deployment
-│   ├── deploy-supabase.yml       # Edge Functions
-│   ├── realtime-scraper.yml      # News scraping (every 10 min)
-│   └── process-video.yml         # Video processing
+│   ├── deploy-supabase.yml       # Edge Functions + migrations
+│   ├── realtime-scraper.yml      # Telegram scraping (every 10 min)
+│   ├── rss-monitor.yml           # RSS monitoring (scheduled)
+│   └── ...                       # 7 more workflows
+│
+├── .agent/                       # Claude Code skills
+│   └── skills/ui-ux-pro-max/     # UI/UX design intelligence toolkit
+│
+├── .brv/                         # ByteRover context tree
+│   ├── context-tree/             # Curated project knowledge (80+ files)
+│   └── sessions/                 # Query history
 │
 └── scripts/                      # GitHub Actions scripts
     ├── video-processor/          # Telegram → YouTube
@@ -124,27 +133,60 @@ npm run lint            # ESLint
 
 ### Supabase Edge Functions
 
-17 Deno-based serverless functions:
+29 Deno-based serverless functions:
 
+**Content Scraping & Processing:**
 | Function | Purpose | Trigger |
 |----------|---------|---------|
-| `telegram-scraper` | RSS/Telegram channel scraping (MTKruto) | Scheduled (every 10 min) |
+| `telegram-scraper` | Telegram channel scraping (MTKruto) | Scheduled (every 10 min) |
+| `fetch-news` | RSS feed fetching | Admin/Scheduled |
+| `fetch-rss-preview` | RSS preview for monitoring | Admin panel |
+| `analyze-rss-article` | AI relevance scoring (1-10) | After RSS fetch |
+| `process-rss-news` | RSS → News with AI rewrite | Admin/Telegram bot |
 | `pre-moderate-news` | AI spam/ad filtering | After scraper |
-| `generate-image-prompt` | AI image description generation | After moderation |
 | `process-news` | AI translation to EN/NO/UA | Telegram bot |
 | `process-blog-post` | News → Blog conversion | Telegram bot |
+
+**Social Media:**
+| Function | Purpose | Trigger |
+|----------|---------|---------|
 | `post-to-linkedin` | LinkedIn publishing (native upload) | Telegram bot |
 | `post-to-instagram` | Instagram publishing | Telegram bot |
 | `post-to-facebook` | Facebook publishing | Telegram bot |
 | `generate-social-teasers` | Platform-specific AI content | Social publishing |
-| `telegram-webhook` | Bot callback handling | Telegram |
+
+**AI & Content:**
+| Function | Purpose | Trigger |
+|----------|---------|---------|
+| `generate-image-prompt` | AI image description generation | After moderation |
 | `process-image` | Gemini AI image processing | Manual/Telegram |
+| `generate-tiktok-content` | TikTok content generation | Manual |
+
+**Telegram Bot:**
+| Function | Purpose | Trigger |
+|----------|---------|---------|
+| `telegram-webhook` | Bot callback handling | Telegram |
+| `telegram-monitor` | Bot health checks | Scheduled |
+| `resend-to-bot` | Retry failed posts | Scheduled |
+| `resend-stuck-posts` | Resend stuck posts | Manual |
+
+**Comments & Communities:**
+| Function | Purpose | Trigger |
+|----------|---------|---------|
+| `comments-bot-webhook` | Comments bot webhook | Telegram |
+| `sync-comments` | Sync social media comments | Scheduled |
+| `generate-comment-reply` | AI comment reply generation | Manual |
+| `post-comment-reply` | Post comment reply | Manual |
+| `monitor-communities` | Monitor community posts | Scheduled |
+
+**Utilities:**
+| Function | Purpose | Trigger |
+|----------|---------|---------|
 | `send-contact-email` | Contact form emails (Resend API) | Contact form |
 | `manage-sources` | Source management | Manual |
-| `resend-to-bot` | Retry failed posts | Scheduled |
+| `find-source-link` | Find source links | Manual |
 | `reprocess-videos` | Batch video reprocessing | Manual |
 | `test-youtube-auth` | YouTube OAuth testing | Manual |
-| `telegram-monitor` | Bot health checks | Scheduled |
 
 **Shared Helpers** (`_shared/`):
 - `youtube-helpers.ts` - YouTube OAuth & upload
@@ -175,12 +217,21 @@ supabase functions deploy <function-name> --no-verify-jwt
 - Intercepts `/blog/[slug]` and `/news/[slug]` routes
 - Shows modal overlay on homepage, full page on direct navigation
 
-**Admin Panel:**
-- Skills Manager - CRUD for tech skills (drag & drop)
-- AI Prompts Manager - Edit AI templates
-- LinkedIn Posts Manager - Social media tracking
-- Image Processing Settings - Seasonal themes
-- API Keys Settings - External API management
+**Admin Panel** (9 tabs with collapsible sidebar):
+
+| Tab | Component | Description |
+|-----|-----------|-------------|
+| Overview | `DashboardOverview` | Telegram channels + RSS sources monitoring |
+| Queue | `NewsQueueManager` | Pending news moderation queue |
+| News | `NewsManager` | News CRUD operations |
+| Blog | `BlogManager` | Blog posts management |
+| Monitor | `NewsMonitorManager` | Real-time RSS feed monitoring (4 tiers) |
+| Social | `SocialMediaPostsManager` | Social media posts tracking |
+| Comments | `SocialMediaCommentsManager` | Social media comments management |
+| Skills | `SkillsManager` | Tech skills CRUD (drag & drop) |
+| Settings | 8 sub-tabs | Sources, AI Prompts, Images, API Keys, Accounts, Schedule, Automation, Debug |
+
+**Header:** Inline stats showing `📰 Total/Published | 📖 Total/Published`
 
 ---
 
@@ -277,18 +328,21 @@ supabase functions deploy <function-name> --no-verify-jwt
 
 ## CI/CD Pipelines
 
-**GitHub Actions Workflows:**
+**GitHub Actions Workflows (11 total):**
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `deploy.yml` | Push to main | Netlify deployment |
 | `deploy-supabase.yml` | Changes in `supabase/**` | Edge Functions + migrations |
-| `realtime-scraper.yml` | Every 10 min | Round-robin channel scraping |
+| `realtime-scraper.yml` | Every 10 min | Telegram channel scraping |
+| `rss-monitor.yml` | Scheduled | RSS feed monitoring |
 | `process-video.yml` | Every 30 min | Batch video upload to YouTube |
 | `linkedin-video.yml` | Repository dispatch | LinkedIn native video upload |
 | `instagram-video.yml` | Repository dispatch | Instagram Reels upload |
 | `facebook-video.yml` | Repository dispatch | Facebook video upload |
 | `reprocess-videos.yml` | Manual | Batch video cleanup |
+| `monitor-communities.yml` | Scheduled | Community posts monitoring |
+| `sync-social-comments.yml` | Scheduled | Sync social media comments |
 
 **Netlify Configuration:**
 - Auto-builds DISABLED (`stop_builds: true`)
@@ -354,8 +408,8 @@ npm run build                  # Production build
 npm start                      # Start production server
 
 # Quality checks
-npx tsc --noEmit              # TypeScript check
-npm run lint                   # ESLint
+node node_modules/typescript/bin/tsc --noEmit   # TypeScript check
+npm run lint                                      # ESLint
 
 # Supabase
 cd supabase
@@ -364,7 +418,7 @@ supabase secrets set KEY="value"
 
 # ByteRover (context management)
 brv query "How is authentication implemented?"
-brv curate "Context to store" --files path/to/file.ts
+brv curate "Context to store" -f path/to/file.ts   # CONTEXT before -f flag!
 brv status
 ```
 
@@ -488,59 +542,72 @@ supabase functions serve <function-name>
 
 ---
 
+## Claude Code Integration
+
+### 🤖 Agent Skills (`.agent/`)
+
+The project includes Claude Code skills for enhanced AI assistance:
+
+**ui-ux-pro-max** - UI/UX Design Intelligence Toolkit
+- Location: `.agent/skills/ui-ux-pro-max/`
+- Searchable databases: UI styles, color palettes, font pairings, charts, UX guidelines
+- Stack support: React, Next.js, Vue, Svelte, Tailwind, shadcn/ui, etc.
+- Trigger: `/ui-ux-pro-max` or automatic for UI tasks
+
+```bash
+# Search UI patterns
+python3 .agent/skills/ui-ux-pro-max/src/ui-ux-pro-max/scripts/search.py "glassmorphism" --domain style
+
+# Stack-specific search
+python3 .agent/skills/ui-ux-pro-max/src/ui-ux-pro-max/scripts/search.py "button" --stack nextjs
+```
+
+### 📚 ByteRover Context Tree (`.brv/`)
+
+Active memory system for project knowledge:
+
+**Structure:**
+```
+.brv/
+├── context-tree/           # Curated knowledge (80+ files)
+│   ├── architecture/       # UI components, database, edge functions, CI/CD
+│   ├── features/          # AI systems, social media, telegram workflow
+│   ├── bug_fixes/         # Bug fix history with solutions
+│   ├── design/            # UI standards, z-index system
+│   └── agent_skills/      # Agent skills documentation
+├── sessions/              # Query history
+└── config.json            # Project configuration
+```
+
+**Commands:**
+```bash
+# Query project knowledge
+brv query "How does RSS monitoring work?"
+brv query "What is the admin dashboard structure?"
+
+# Curate new knowledge (CONTEXT before --files)
+brv curate "Description of what you learned" -f path/to/file.ts
+brv curate "Multi-file insight" -f file1.ts -f file2.ts
+```
+
+---
+
 ## Additional Documentation
 
-### 📚 Complete Project History (ByteRover Context)
+### 📁 Static Documentation (`docs/byterover-context/`)
 
-This condensed CLAUDE.md contains essential quick reference info (15k chars).
+Full project history exported for reference (44 files, ~130k chars):
 
-**For complete implementation details, bug fix history, and architectural decisions:**
-
-📁 **`docs/byterover-context/`** - Full project history (42 files, ~130k chars)
-
-Organized by:
-- **`integrations/`** (6 files) - LinkedIn, Instagram, Video processing, AI teasers
-- **`features/`** (11 files) - AI systems, SEO, Mobile layout, Analytics
-- **`bugfixes/`** (6 files) - Complete bug fix history with dates
-- **`architecture/`** (8 files) - Database, Edge Functions, Components, CI/CD, **Supabase Workflow**
-- **`implementation/`** (12 files) - Detailed implementation guides
-
-#### Curate to ByteRover
+- **`integrations/`** - LinkedIn, Instagram, Video processing, AI teasers
+- **`features/`** - AI systems, SEO, Mobile layout, Analytics
+- **`bugfixes/`** - Complete bug fix history with dates
+- **`architecture/`** - Database, Edge Functions, Components, CI/CD
+- **`implementation/`** - Detailed implementation guides
 
 ```bash
-cd docs/byterover-context
-./curate-all.sh
+# Curate all static docs to ByteRover
+cd docs/byterover-context && ./curate-all.sh
 ```
-
-This will curate all 42 files to ByteRover context service (~5-10 min).
-
-#### Query Examples
-
-After curation, use ByteRover to query project history:
-
-```bash
-# Troubleshooting
-brv query "How to fix Instagram Error #10?"
-brv query "Why is LinkedIn token expiring?"
-
-# Architecture decisions
-brv query "Why was YouTube chosen over Bunny.net?"
-brv query "How does video processing workflow work?"
-
-# Bug history
-brv query "What bugs were fixed in December 2024?"
-brv query "How was duplicate social media posts issue resolved?"
-
-# Implementation details
-brv query "How does two-stage AI image prompt system work?"
-brv query "What is Telegram bot sequential workflow?"
-
-# Supabase workflow
-brv query "How to push Supabase migrations?"
-brv query "How to fix migration sync issues?"
-```
-
-**See** `docs/byterover-context/README.md` for complete index with curate commands for each file.
 
 ---
 
@@ -555,5 +622,5 @@ brv query "How to fix migration sync issues?"
 
 ---
 
-**Last Updated:** January 24, 2025
+**Last Updated:** January 28, 2025
 **Maintained By:** Vitalii Berbeha (@SmmShaman)
