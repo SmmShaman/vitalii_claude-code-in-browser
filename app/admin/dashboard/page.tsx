@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity } from 'lucide-react'
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { NewsManager } from '@/components/admin/NewsManager'
 import { BlogManager } from '@/components/admin/BlogManager'
@@ -31,6 +31,7 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('sources')
   const [loading, setLoading] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const handleLogout = async () => {
     setLoading(true)
@@ -57,68 +58,90 @@ export default function AdminDashboardPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Header */}
-      <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/')}
-                className="flex items-center gap-2 px-4 py-2 text-gray-300 hover:text-white transition-colors"
-              >
-                <Home className="h-5 w-5" />
-                <span className="hidden sm:inline">View Site</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLogout}
-                disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
-              >
-                <LogOut className="h-5 w-5" />
-                <span className="hidden sm:inline">Logout</span>
-              </motion.button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex">
+      {/* Sidebar */}
+      <aside
+        className={`
+          ${sidebarCollapsed ? 'w-16' : 'w-64'}
+          bg-black/30 backdrop-blur-xl border-r border-white/10
+          flex flex-col transition-all duration-300 flex-shrink-0
+        `}
+      >
+        {/* Toggle button */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-center">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </motion.button>
         </div>
-      </header>
 
-      {/* Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="bg-black/20 backdrop-blur-lg rounded-lg p-1 inline-flex gap-1">
+        {/* Navigation */}
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon
+            const isActive = activeTab === tab.id
             return (
               <motion.button
                 key={tab.id}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                  activeTab === tab.id
+                className={`
+                  w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all
+                  ${isActive
                     ? 'bg-purple-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-white/5'
-                }`}
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }
+                  ${sidebarCollapsed ? 'justify-center' : ''}
+                `}
+                title={sidebarCollapsed ? tab.label : undefined}
               >
-                <Icon className="h-5 w-5" />
-                {tab.label}
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {!sidebarCollapsed && (
+                  <span className="font-medium truncate">{tab.label}</span>
+                )}
               </motion.button>
             )
           })}
-        </div>
-      </div>
+        </nav>
+      </aside>
 
-      {/* Settings Sub-tabs */}
-      {activeTab === 'settings' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <div className="flex gap-2">
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="bg-black/20 backdrop-blur-lg border-b border-white/10 px-6 h-16 flex items-center justify-between flex-shrink-0">
+          <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+          <div className="flex items-center gap-4">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2 px-4 py-2 text-gray-300 hover:text-white transition-colors"
+            >
+              <Home className="h-5 w-5" />
+              <span className="hidden sm:inline">View Site</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="hidden sm:inline">Logout</span>
+            </motion.button>
+          </div>
+        </header>
+
+        {/* Settings Sub-tabs (inside content area) */}
+        {activeTab === 'settings' && (
+          <div className="px-6 pt-4 flex gap-2 flex-wrap border-b border-white/10 pb-4">
             <button
               onClick={() => setSettingsSubTab('sources')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
@@ -202,40 +225,40 @@ export default function AdminDashboardPage() {
               Debug
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 max-h-[calc(100vh-180px)] overflow-y-auto">
-        <motion.div
-          key={activeTab + settingsSubTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-          className="pb-8"
-        >
-          {activeTab === 'overview' && <DashboardOverview />}
-          {activeTab === 'queue' && <NewsQueueManager />}
-          {activeTab === 'news' && <NewsManager />}
-          {activeTab === 'blog' && <BlogManager />}
-          {activeTab === 'monitor' && <NewsMonitorManager />}
-          {activeTab === 'social' && <SocialMediaPostsManager />}
-          {activeTab === 'comments' && <SocialMediaCommentsManager />}
-          {activeTab === 'skills' && <SkillsManager />}
-          {activeTab === 'settings' && (
-            <>
-              {settingsSubTab === 'sources' && <NewsSourcesManager />}
-              {settingsSubTab === 'prompts' && <AIPromptsManager />}
-              {settingsSubTab === 'images' && <ImageProcessingSettings />}
-              {settingsSubTab === 'apikeys' && <APIKeysSettings />}
-              {settingsSubTab === 'accounts' && <SocialMediaAccountsManager />}
-              {settingsSubTab === 'schedule' && <AutoPublishSettings />}
-              {settingsSubTab === 'automation' && <CronScheduleSettings />}
-              {settingsSubTab === 'debug' && <DebugSettings />}
-            </>
-          )}
-        </motion.div>
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto">
+          <motion.div
+            key={activeTab + settingsSubTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="p-6"
+          >
+            {activeTab === 'overview' && <DashboardOverview />}
+            {activeTab === 'queue' && <NewsQueueManager />}
+            {activeTab === 'news' && <NewsManager />}
+            {activeTab === 'blog' && <BlogManager />}
+            {activeTab === 'monitor' && <NewsMonitorManager />}
+            {activeTab === 'social' && <SocialMediaPostsManager />}
+            {activeTab === 'comments' && <SocialMediaCommentsManager />}
+            {activeTab === 'skills' && <SkillsManager />}
+            {activeTab === 'settings' && (
+              <>
+                {settingsSubTab === 'sources' && <NewsSourcesManager />}
+                {settingsSubTab === 'prompts' && <AIPromptsManager />}
+                {settingsSubTab === 'images' && <ImageProcessingSettings />}
+                {settingsSubTab === 'apikeys' && <APIKeysSettings />}
+                {settingsSubTab === 'accounts' && <SocialMediaAccountsManager />}
+                {settingsSubTab === 'schedule' && <AutoPublishSettings />}
+                {settingsSubTab === 'automation' && <CronScheduleSettings />}
+                {settingsSubTab === 'debug' && <DebugSettings />}
+              </>
+            )}
+          </motion.div>
+        </main>
       </div>
     </div>
   )
