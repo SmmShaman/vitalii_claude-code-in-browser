@@ -185,10 +185,46 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     }
   }, [])
 
+  // Check if article already exists in database
+  const checkArticleExists = useCallback(async (url: string): Promise<boolean> => {
+    try {
+      // Try using the database function first
+      const { data, error } = await supabase
+        .rpc('check_rss_article_exists', { article_url: url })
+
+      if (error) {
+        console.warn('Duplicate check via RPC failed, using fallback:', error)
+        // Fallback to direct query
+        const { data: existing } = await supabase
+          .from('news')
+          .select('id')
+          .or(`rss_source_url.eq.${url},original_url.eq.${url}`)
+          .limit(1)
+
+        return !!(existing && existing.length > 0)
+      }
+
+      return !!(data && data.length > 0 && data[0].article_exists)
+    } catch (err) {
+      console.error('Error checking article existence:', err)
+      return false
+    }
+  }, [])
+
   // Analyze single article via Edge Function
   const analyzeArticle = useCallback(async (article: RSSArticle, sourceName: string): Promise<boolean> => {
-    // Skip if already analyzed
+    // Skip if already analyzed locally
     if (analyzedUrlsRef.current.has(article.url)) {
+      return false
+    }
+
+    // Check if article already exists in database (prevents duplicate Telegram messages)
+    const exists = await checkArticleExists(article.url)
+    if (exists) {
+      console.log(`Article already in database, skipping: ${article.url}`)
+      // Mark as analyzed locally to avoid repeated DB checks
+      analyzedUrlsRef.current.add(article.url)
+      saveAnalyzedUrls()
       return false
     }
 
@@ -210,6 +246,13 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       const data = await response.json()
 
       if (data.error) {
+        // If error is "Article already exists", don't count as failure
+        if (data.error === 'Article already exists') {
+          console.log(`Article already exists in DB: ${article.url}`)
+          analyzedUrlsRef.current.add(article.url)
+          saveAnalyzedUrls()
+          return false
+        }
         console.error(`Analysis failed for ${article.url}:`, data.error)
         setAnalysisStatus(prev => ({
           ...prev,
@@ -238,7 +281,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       }))
       return false
     }
-  }, [saveAnalyzedUrls])
+  }, [saveAnalyzedUrls, checkArticleExists])
 
   // Analyze new articles from a source
   const analyzeNewArticles = useCallback(async (articles: RSSArticle[], sourceName: string) => {

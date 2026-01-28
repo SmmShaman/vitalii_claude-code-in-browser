@@ -37,7 +37,7 @@ export const TIER_CONFIGS: TierConfig[] = [
 
 // Default sources - used as fallback if DB is empty
 export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>[] = [
-  // Tier 1 - Norwegian Government/Tax
+  // Tier 1 - Norwegian Government/Tax (9 sources)
   {
     name: 'Skatteetaten',
     url: 'https://skatteetaten.no',
@@ -46,8 +46,72 @@ export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>[
     isActive: true,
     isDefault: true,
   },
+  {
+    name: 'Skatteetaten Uttalelser',
+    url: 'https://www.skatteetaten.no/rettskilder/uttalelser/',
+    rssUrl: 'https://www.skatteetaten.no/rss/rettskilder/uttalelser/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Skatteetaten A-meldingen (endringer)',
+    url: 'https://www.skatteetaten.no/bedrift/arbeidsgiver/a-meldingen/endringer-i-veiledningen/',
+    rssUrl: 'https://www.skatteetaten.no/rss/bedrift/arbeidsgiver/a-meldingen/endringer-i-veiledningen/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Skatteetaten A-meldingen (nyheter)',
+    url: 'https://www.skatteetaten.no/bedrift/arbeidsgiver/a-meldingen/',
+    rssUrl: 'https://www.skatteetaten.no/rss/bedrift/arbeidsgiver/a-meldingen/siste-fra-a-ordningen/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Skatteetaten Skattekalender (bedrift)',
+    url: 'https://www.skatteetaten.no/skattekalender-for-bedrift/',
+    rssUrl: 'https://www.skatteetaten.no/rss/skattekalender-for-bedrift/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Skatteetaten Skattekalender (person)',
+    url: 'https://www.skatteetaten.no/skattekalender-for-person/',
+    rssUrl: 'https://www.skatteetaten.no/rss/skattekalender-for-person/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Finanstilsynet',
+    url: 'https://www.finanstilsynet.no/',
+    rssUrl: 'https://www.finanstilsynet.no/rss/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Sodir (Offshore)',
+    url: 'https://www.sodir.no/en/whats-new/news/',
+    rssUrl: 'https://www.sodir.no/en/whats-new/news/rss/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Regjeringen.no',
+    url: 'https://www.regjeringen.no/',
+    rssUrl: 'https://www.regjeringen.no/no/rss/id2000900/',
+    tier: 1,
+    isActive: true,
+    isDefault: true,
+  },
 
-  // Tier 2 - Norwegian Tech Media
+  // Tier 2 - Norwegian Tech Media (5 sources)
   {
     name: 'Digi.no',
     url: 'https://digi.no',
@@ -72,8 +136,24 @@ export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>[
     isActive: true,
     isDefault: true,
   },
+  {
+    name: 'Life in Norway Business',
+    url: 'https://www.lifeinnorway.net/business/',
+    rssUrl: 'https://www.lifeinnorway.net/business/feed/',
+    tier: 2,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'Miniforetak.no',
+    url: 'https://miniforetak.no/',
+    rssUrl: 'https://miniforetak.no/feed',
+    tier: 2,
+    isActive: true,
+    isDefault: true,
+  },
 
-  // Tier 3 - Global Tech
+  // Tier 3 - Global Tech (5 sources)
   {
     name: 'OpenAI Blog',
     url: 'https://openai.com/blog',
@@ -115,7 +195,7 @@ export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>[
     isDefault: true,
   },
 
-  // Tier 4 - Aggregators
+  // Tier 4 - Aggregators (4 sources)
   {
     name: 'TechCrunch',
     url: 'https://techcrunch.com',
@@ -136,6 +216,14 @@ export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>[
     name: 'TC Startups',
     url: 'https://techcrunch.com/startups',
     rssUrl: 'https://www.techcrunch.com/category/startups/feed/',
+    tier: 4,
+    isActive: true,
+    isDefault: true,
+  },
+  {
+    name: 'EU-Startups',
+    url: 'https://www.eu-startups.com/',
+    rssUrl: 'https://www.eu-startups.com/feed/',
     tier: 4,
     isActive: true,
     isDefault: true,

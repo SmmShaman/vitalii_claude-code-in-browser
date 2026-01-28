@@ -35,7 +35,7 @@ interface AIAnalysisResult {
  * Analyze RSS article using AI and send to Telegram Bot for moderation
  */
 serve(async (req) => {
-  // Version: 2025-01-27-01 - Initial RSS article analysis
+  // Version: 2026-01-28-01 - Use database function for duplicate check
   console.log('🔍 Analyze RSS Article v2025-01-27-01 started')
 
   if (req.method === 'OPTIONS') {
@@ -48,20 +48,40 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Check if article already exists by URL
-    const { data: existingNews } = await supabase
-      .from('news')
-      .select('id')
-      .eq('rss_source_url', requestData.url)
-      .single()
+    // Check if article already exists using database function (more efficient)
+    const { data: duplicateCheck, error: duplicateError } = await supabase
+      .rpc('check_rss_article_exists', { article_url: requestData.url })
 
-    if (existingNews) {
-      console.log(`⚠️ Article already exists: ${existingNews.id}`)
+    if (duplicateError) {
+      console.warn('⚠️ Duplicate check failed, falling back to direct query:', duplicateError)
+      // Fallback to direct query if function doesn't exist
+      const { data: existingNews } = await supabase
+        .from('news')
+        .select('id')
+        .or(`rss_source_url.eq.${requestData.url},original_url.eq.${requestData.url}`)
+        .limit(1)
+        .single()
+
+      if (existingNews) {
+        console.log(`⚠️ Article already exists: ${existingNews.id}`)
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Article already exists',
+            newsId: existingNews.id
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    } else if (duplicateCheck && duplicateCheck.length > 0 && duplicateCheck[0].article_exists) {
+      const existing = duplicateCheck[0]
+      console.log(`⚠️ Article already exists: ${existing.news_id}`)
       return new Response(
         JSON.stringify({
           success: false,
           error: 'Article already exists',
-          newsId: existingNews.id
+          newsId: existing.news_id,
+          telegramMessageId: existing.telegram_message_id
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
