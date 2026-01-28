@@ -9,6 +9,8 @@ interface TierColumnProps {
   tier: TierConfig
   sources: RSSSource[]
   sourceStates: Map<string, SourceState>
+  expandedSources: Set<string>
+  onToggleSource: (id: string) => void
   onAddSource: (tier: number) => void
   onDeleteSource: (id: string) => void
   onToggleActive: (id: string) => void
@@ -19,6 +21,8 @@ export function TierColumn({
   tier,
   sources,
   sourceStates,
+  expandedSources,
+  onToggleSource,
   onAddSource,
   onDeleteSource,
   onToggleActive,
@@ -72,6 +76,8 @@ export function TierColumn({
               key={source.id}
               source={source}
               state={sourceStates.get(source.id)}
+              isExpanded={expandedSources.has(source.id)}
+              onToggleExpand={() => onToggleSource(source.id)}
               onDelete={onDeleteSource}
               onToggleActive={onToggleActive}
               onRefresh={onRefreshSource}

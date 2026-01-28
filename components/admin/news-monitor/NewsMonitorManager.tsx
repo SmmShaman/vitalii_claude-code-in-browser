@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { RefreshCw, Settings, Clock, Activity, Loader2, Bot } from 'lucide-react'
+import { RefreshCw, Settings, Clock, Activity, Loader2, Bot, ChevronsUp, ChevronsDown } from 'lucide-react'
 import { useNewsMonitor } from '@/hooks/useNewsMonitor'
 import { TIER_CONFIGS } from './constants'
 import { TierColumn } from './TierColumn'
@@ -43,6 +43,27 @@ export function NewsMonitorManager() {
   const [addModalTier, setAddModalTier] = useState<number>(3)
   const [showSettings, setShowSettings] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Global expanded state for all sources (all expanded by default)
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(() => {
+    const allSourceIds = new Set<string>()
+    sources.forEach(s => allSourceIds.add(s.id))
+    return allSourceIds
+  })
+
+  const collapseAll = () => setExpandedSources(new Set())
+  const expandAll = () => {
+    const allIds = new Set(sources.map(s => s.id))
+    setExpandedSources(allIds)
+  }
+  const toggleSource = (id: string) => {
+    setExpandedSources(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const handleRefreshAll = async () => {
     setRefreshing(true)
@@ -94,6 +115,29 @@ export function NewsMonitorManager() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Collapse/Expand All button */}
+          {expandedSources.size > 0 ? (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={collapseAll}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            >
+              <ChevronsUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Згорнути все</span>
+            </motion.button>
+          ) : (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={expandAll}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            >
+              <ChevronsDown className="h-4 w-4" />
+              <span className="hidden sm:inline">Розгорнути все</span>
+            </motion.button>
+          )}
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -167,6 +211,8 @@ export function NewsMonitorManager() {
             tier={tier}
             sources={sources}
             sourceStates={sourceStates}
+            expandedSources={expandedSources}
+            onToggleSource={toggleSource}
             onAddSource={handleAddSource}
             onDeleteSource={handleDeleteSource}
             onToggleActive={toggleSourceActive}

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, AlertCircle, Loader2, ExternalLink, Rss } from 'lucide-react'
 import { RSSSource, SourceState } from './types'
@@ -9,13 +8,14 @@ import { ArticleItem } from './ArticleItem'
 interface SourceCardProps {
   source: RSSSource
   state: SourceState | undefined
+  isExpanded: boolean
+  onToggleExpand: () => void
   onDelete?: (id: string) => void
   onToggleActive: (id: string) => void
   onRefresh: (id: string) => void
 }
 
-export function SourceCard({ source, state, onDelete, onToggleActive, onRefresh }: SourceCardProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+export function SourceCard({ source, state, isExpanded, onToggleExpand, onDelete, onToggleActive, onRefresh }: SourceCardProps) {
 
   const hasArticles = state?.articles && state.articles.length > 0
   const isLoading = state?.loading
@@ -36,7 +36,7 @@ export function SourceCard({ source, state, onDelete, onToggleActive, onRefresh 
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={onToggleExpand}
             className="p-1 text-gray-400 hover:text-white transition-colors shrink-0"
           >
             {isExpanded ? (
