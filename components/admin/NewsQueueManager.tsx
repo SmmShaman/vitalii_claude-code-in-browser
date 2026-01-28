@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { motion } from 'framer-motion'
-import { List, Search, RefreshCw, Filter } from 'lucide-react'
+import { List, Search, RefreshCw, Filter, ChevronsUp } from 'lucide-react'
 import { useNewsQueue } from '@/hooks/useNewsQueue'
 import { StatusFilter, STATUS_FILTERS } from './news-queue/types'
 import { filterNews } from './news-queue/utils'
@@ -14,7 +14,7 @@ export const NewsQueueManager = () => {
   const { news, stats, loading, loadNews, deleteNews } = useNewsQueue()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   const filteredNews = filterNews(news, statusFilter, searchTerm)
 
@@ -47,16 +47,29 @@ export const NewsQueueManager = () => {
             Всі новини зі скрапінгу та їхній статус
           </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={loadNews}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors font-medium"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Оновити
-        </motion.button>
+        <div className="flex items-center gap-2">
+          {expandedIds.size > 0 && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setExpandedIds(new Set())}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium"
+            >
+              <ChevronsUp className="h-4 w-4" />
+              Згорнути все ({expandedIds.size})
+            </motion.button>
+          )}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={loadNews}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors font-medium"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Оновити
+          </motion.button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -114,8 +127,18 @@ export const NewsQueueManager = () => {
               <NewsItemRow
                 key={item.id}
                 item={item}
-                isExpanded={expandedId === item.id}
-                onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                isExpanded={expandedIds.has(item.id)}
+                onToggleExpand={() => {
+                  setExpandedIds(prev => {
+                    const next = new Set(prev)
+                    if (next.has(item.id)) {
+                      next.delete(item.id)
+                    } else {
+                      next.add(item.id)
+                    }
+                    return next
+                  })
+                }}
                 onDelete={() => handleDelete(item.id)}
               />
             ))}
