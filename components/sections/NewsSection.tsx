@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink, Video, Image } from 'lucide-react';
+import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink, Video, Image, Loader2 } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
-import { getLatestNews, getNewsById } from '@/integrations/supabase/client';
+import { getLatestNews, getNewsById, getAllNews } from '@/integrations/supabase/client';
 import type { LatestNews, NewsItem } from '@/integrations/supabase/types';
 
 interface NewsSectionProps {
@@ -52,6 +52,9 @@ const NewsSectionComponent = ({
   const [loading, setLoading] = useState(true);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [hasMoreNews, setHasMoreNews] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadNews();
@@ -117,12 +120,72 @@ const NewsSectionComponent = ({
       const limit = isExpanded ? 8 : 3;
       const data = await getLatestNews(limit);
       setNews(data);
+      setHasMoreNews(true); // Reset when reloading
     } catch (error) {
       console.error('Failed to load news:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadMoreNews = useCallback(async () => {
+    if (loadingMore || !hasMoreNews || !isExpanded) return;
+    setLoadingMore(true);
+
+    try {
+      const offset = news.length;
+      const { data, count } = await getAllNews({ limit: 8, offset });
+
+      if (data.length === 0 || news.length + data.length >= (count || 0)) {
+        setHasMoreNews(false);
+      }
+
+      // Transform data to match LatestNews type
+      const transformedData: LatestNews[] = data.map((item: any) => ({
+        id: item.id,
+        title_en: item.title_en,
+        title_no: item.title_no,
+        title_ua: item.title_ua,
+        description_en: item.description_en,
+        description_no: item.description_no,
+        description_ua: item.description_ua,
+        image_url: item.image_url,
+        original_url: item.original_url,
+        source_link: item.source_link,
+        tags: item.tags,
+        published_at: item.published_at,
+        views_count: item.views_count ?? 0,
+        source_name: item.source_name ?? null,
+        source_category: item.source_category ?? null,
+        video_url: item.video_url,
+        video_type: item.video_type,
+      }));
+
+      setNews(prev => [...prev, ...transformedData]);
+    } catch (error) {
+      console.error('Failed to load more news:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMoreNews, isExpanded, news.length]);
+
+  // Scroll handler for infinite scroll
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !isExpanded) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+      if (isNearBottom && hasMoreNews && !loadingMore) {
+        loadMoreNews();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isExpanded, hasMoreNews, loadingMore, loadMoreNews]);
 
   const getTranslatedContent = (newsItem: LatestNews | NewsItem) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
@@ -457,7 +520,7 @@ const NewsSectionComponent = ({
   return (
     <div className="h-full flex">
       {/* News List */}
-      <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-2">
+      <div ref={scrollContainerRef} className="flex-1 flex flex-col gap-2 overflow-y-auto pr-2">
           <AnimatePresence mode="popLayout">
             {news.map((newsItem, index) => {
               const content = getTranslatedContent(newsItem);
@@ -602,6 +665,20 @@ const NewsSectionComponent = ({
               );
             })}
           </AnimatePresence>
+
+          {/* Loading indicator for infinite scroll */}
+          {isExpanded && loadingMore && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+
+          {/* End of list indicator */}
+          {isExpanded && !hasMoreNews && news.length > 8 && (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              {t('news_scroll_for_more')}
+            </div>
+          )}
         </div>
       </div>
   );

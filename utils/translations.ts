@@ -183,6 +183,9 @@ export const translations = {
     news_search_placeholder: "Search news...",
     news_filter_by_tag: "Filter by tag",
     news_filter_by_date: "Filter by date",
+    news_scroll_for_more: "Scroll for more",
+    news_all_news: "All News",
+    news_back_to_list: "Back to list",
 
     blog: "Blog",
     blog_title: "Blog",
@@ -196,6 +199,22 @@ export const translations = {
     blog_filter_by_category: "Filter by category",
     blog_reading_time: "min read",
     blog_view_full_article: "View full article",
+    blog_scroll_for_more: "Scroll for more",
+    blog_all_posts: "All Blog Posts",
+    blog_back_to_list: "Back to list",
+
+    // Portal Dive pagination
+    page_of: "Page {current} of {total}",
+    previous_page: "Previous",
+    next_page: "Next",
+    no_items_found: "No items found",
+
+    // Portal Dive filters
+    search_placeholder: "Search...",
+    filter_all_tags: "All tags",
+    sort_newest: "Newest first",
+    sort_oldest: "Oldest first",
+    clear_filters: "Clear filters",
 
     contact: "Contact",
     contact_title: "Contact",
@@ -430,6 +449,9 @@ export const translations = {
     news_search_placeholder: "Søk nyheter...",
     news_filter_by_tag: "Filtrer etter tag",
     news_filter_by_date: "Filtrer etter dato",
+    news_scroll_for_more: "Bla for mer",
+    news_all_news: "Alle nyheter",
+    news_back_to_list: "Tilbake til listen",
 
     blog: "Blogg",
     blog_title: "Blogg",
@@ -443,6 +465,22 @@ export const translations = {
     blog_filter_by_category: "Filtrer etter kategori",
     blog_reading_time: "min lesing",
     blog_view_full_article: "Se hele artikkelen",
+    blog_scroll_for_more: "Bla for mer",
+    blog_all_posts: "Alle blogginnlegg",
+    blog_back_to_list: "Tilbake til listen",
+
+    // Portal Dive pagination
+    page_of: "Side {current} av {total}",
+    previous_page: "Forrige",
+    next_page: "Neste",
+    no_items_found: "Ingen elementer funnet",
+
+    // Portal Dive filters
+    search_placeholder: "Søk...",
+    filter_all_tags: "Alle tagger",
+    sort_newest: "Nyeste først",
+    sort_oldest: "Eldste først",
+    clear_filters: "Fjern filtre",
 
     contact: "Kontakt",
     contact_title: "Kontakt",
@@ -677,6 +715,9 @@ export const translations = {
     news_search_placeholder: "Пошук новин...",
     news_filter_by_tag: "Фільтр за тегом",
     news_filter_by_date: "Фільтр за датою",
+    news_scroll_for_more: "Гортайте для більшого",
+    news_all_news: "Всі новини",
+    news_back_to_list: "Назад до списку",
 
     blog: "Блог",
     blog_title: "Блог",
@@ -690,6 +731,22 @@ export const translations = {
     blog_filter_by_category: "Фільтр за категорією",
     blog_reading_time: "хв читання",
     blog_view_full_article: "Переглянути повну статтю",
+    blog_scroll_for_more: "Гортайте для більшого",
+    blog_all_posts: "Всі пости блогу",
+    blog_back_to_list: "Назад до списку",
+
+    // Portal Dive pagination
+    page_of: "Сторінка {current} з {total}",
+    previous_page: "Попередня",
+    next_page: "Наступна",
+    no_items_found: "Елементів не знайдено",
+
+    // Portal Dive filters
+    search_placeholder: "Пошук...",
+    filter_all_tags: "Всі теги",
+    sort_newest: "Спочатку нові",
+    sort_oldest: "Спочатку старі",
+    clear_filters: "Очистити фільтри",
 
     contact: "Контакти",
     contact_title: "Контакти",

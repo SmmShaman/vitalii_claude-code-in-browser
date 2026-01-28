@@ -474,8 +474,21 @@ serve(async (req) => {
               throw new Error(`Database update failed: ${updateError.message}`)
             }
 
+            // Check if this is RSS workflow (use RSS-specific publish buttons)
+            const isRssWorkflow = replyText.includes('rss_workflow:true')
+
             // Update original message with success status and STEP 2 buttons (NO separate message!)
-            const publishKeyboard = {
+            const publishKeyboard = isRssWorkflow ? {
+              inline_keyboard: [
+                [
+                  { text: '📰 В новини', callback_data: `publish_rss_news_${newsId}` },
+                  { text: '📝 В блог', callback_data: `publish_rss_blog_${newsId}` }
+                ],
+                [
+                  { text: '❌ Skip', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            } : {
               inline_keyboard: [
                 [
                   { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
@@ -762,6 +775,16 @@ serve(async (req) => {
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
+      // RSS Image workflow callbacks
+      } else if (callbackData.startsWith('confirm_rss_image_')) {
+        action = 'confirm_rss_image'
+        newsId = callbackData.replace('confirm_rss_image_', '')
+      } else if (callbackData.startsWith('regenerate_rss_image_')) {
+        action = 'regenerate_rss_image'
+        newsId = callbackData.replace('regenerate_rss_image_', '')
+      } else if (callbackData.startsWith('upload_rss_image_')) {
+        action = 'upload_rss_image'
+        newsId = callbackData.replace('upload_rss_image_', '')
       } else {
         // Backward compatibility with old format "publish_<id>"
         const parts = callbackData.split('_')
@@ -3721,6 +3744,248 @@ serve(async (req) => {
               chat_id: chatId,
               message_id: messageId,
               text: messageText + `\n\n📸 <b>Очікую фото...</b>\n<i>Reply to this message with your photo</i>\n<code>newsId:${newsId}</code>`,
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
+      // =================================================================
+      // 🔄 RSS IMAGE WORKFLOW: confirm_rss_image, regenerate_rss_image, upload_rss_image
+      // =================================================================
+
+      } else if (action === 'confirm_rss_image') {
+        // ✅ RSS: Confirm existing image → Show publish buttons (RSS-specific)
+        console.log('User confirmed RSS image for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '✅ Зображення підтверджено',
+              show_alert: false
+            })
+          }
+        )
+
+        // Update message with RSS publish buttons
+        const rssPublishKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '📰 В новини', callback_data: `publish_rss_news_${newsId}` },
+              { text: '📝 В блог', callback_data: `publish_rss_blog_${newsId}` }
+            ],
+            [
+              { text: '❌ Skip', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n✅ <b>Зображення підтверджено</b>\n📝 <i>Оберіть де опублікувати...</i>',
+              parse_mode: 'HTML',
+              reply_markup: rssPublishKeyboard
+            })
+          }
+        )
+
+      } else if (action === 'regenerate_rss_image') {
+        // 🔄 RSS: Generate new AI image using Imagen 3
+        console.log('User wants to regenerate RSS image for news:', newsId)
+
+        // Show "generating" message
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '🎨 Генерую зображення...',
+              show_alert: false
+            })
+          }
+        )
+
+        // Update message to show progress
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n⏳ <b>Генерація зображення...</b>\n<i>Це може зайняти до 30 секунд</i>',
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
+        // Clear existing processed_image_url before regenerating
+        await supabase
+          .from('news')
+          .update({ processed_image_url: null })
+          .eq('id', newsId)
+
+        // Call process-image with generateFromPrompt=true
+        try {
+          const imageGenResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/process-image`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId: newsId,
+                generateFromPrompt: true
+              })
+            }
+          )
+
+          const imageGenResult = await imageGenResponse.json()
+
+          if (imageGenResult.success && imageGenResult.processedImageUrl) {
+            // Success! Show the new image and RSS-specific buttons
+            const newImageUrl = imageGenResult.processedImageUrl
+
+            const newKeyboard = {
+              inline_keyboard: [
+                [
+                  { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
+                  { text: '🔄 Перегенерувати', callback_data: `regenerate_rss_image_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+                ],
+                [
+                  { text: '❌ Skip', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            }
+
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: messageText + `\n\n✅ <b>Зображення згенеровано!</b>\n🖼️ ${newImageUrl}`,
+                  parse_mode: 'HTML',
+                  reply_markup: newKeyboard
+                })
+              }
+            )
+          } else {
+            // Failed - show error and keep regenerate button
+            const errorMsg = imageGenResult.error || 'Невідома помилка'
+            const debugInfo = imageGenResult.debug
+              ? `\n\n🔍 <b>Debug:</b> v${imageGenResult.debug.version}, ${imageGenResult.debug.lastApiError || 'no details'}`
+              : ''
+
+            const newKeyboard = {
+              inline_keyboard: [
+                [
+                  { text: '🔄 Спробувати ще раз', callback_data: `regenerate_rss_image_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+                ],
+                [
+                  { text: '❌ Skip', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            }
+
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: messageText + `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}${debugInfo}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
+                  parse_mode: 'HTML',
+                  reply_markup: newKeyboard
+                })
+              }
+            )
+          }
+        } catch (genError: any) {
+          console.error('Error regenerating RSS image:', genError)
+
+          const newKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🔄 Спробувати ще раз', callback_data: `regenerate_rss_image_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+              ],
+              [
+                { text: '❌ Skip', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
+                parse_mode: 'HTML',
+                reply_markup: newKeyboard
+              })
+            }
+          )
+        }
+
+      } else if (action === 'upload_rss_image') {
+        // 📸 RSS: Upload custom image - prompt user to send photo
+        console.log('User wants to upload custom RSS image for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '📸 Відправте фото у відповідь на це повідомлення',
+              show_alert: true
+            })
+          }
+        )
+
+        // Edit message to show we're waiting for photo
+        // Note: The existing photo reply handler will detect newsId from message and handle the upload
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n📸 <b>Очікую фото...</b>\n<i>Reply to this message with your photo</i>\n<code>newsId:${newsId}</code>\n<code>rss_workflow:true</code>`,
               parse_mode: 'HTML'
             })
           }

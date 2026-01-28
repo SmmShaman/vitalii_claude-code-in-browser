@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Tag, ExternalLink, Clock, ChevronLeft } from 'lucide-react';
+import { Calendar, Tag, ExternalLink, Clock, ChevronLeft, Loader2 } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
-import { getLatestBlogPosts, getBlogPostById } from '@/integrations/supabase/client';
+import { getLatestBlogPosts, getBlogPostById, getAllBlogPosts } from '@/integrations/supabase/client';
 import type { LatestBlogPost, BlogPost } from '@/integrations/supabase/types';
 
 interface BlogSectionProps {
@@ -25,10 +25,20 @@ const BlogSectionComponent = ({
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadPosts();
   }, []);
+
+  // Reload posts when expanded state changes for optimization
+  useEffect(() => {
+    if (posts.length > 0) {
+      loadPosts();
+    }
+  }, [isExpanded]);
 
   useEffect(() => {
     if (selectedBlogId) {
@@ -64,14 +74,79 @@ const BlogSectionComponent = ({
   const loadPosts = async () => {
     try {
       setLoading(true);
-      const data = await getLatestBlogPosts(3);
+      // Load fewer items when not expanded for better performance
+      const limit = isExpanded ? 8 : 3;
+      const data = await getLatestBlogPosts(limit);
       setPosts(data);
+      setHasMorePosts(true); // Reset when reloading
     } catch (error) {
       console.error('Failed to load blog posts:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadMorePosts = useCallback(async () => {
+    if (loadingMore || !hasMorePosts || !isExpanded) return;
+    setLoadingMore(true);
+
+    try {
+      const offset = posts.length;
+      const { data, count } = await getAllBlogPosts({ limit: 8, offset });
+
+      if (data.length === 0 || posts.length + data.length >= (count || 0)) {
+        setHasMorePosts(false);
+      }
+
+      // Transform data to match LatestBlogPost type
+      const transformedData: LatestBlogPost[] = data.map((item: any) => ({
+        id: item.id,
+        title_en: item.title_en,
+        title_no: item.title_no,
+        title_ua: item.title_ua,
+        description_en: item.description_en,
+        description_no: item.description_no,
+        description_ua: item.description_ua,
+        slug_en: item.slug_en,
+        slug_no: item.slug_no,
+        slug_ua: item.slug_ua,
+        image_url: item.image_url,
+        video_url: item.video_url ?? null,
+        video_type: item.video_type ?? null,
+        original_url: item.original_url ?? null,
+        category: item.category,
+        tags: item.tags,
+        published_at: item.published_at,
+        views_count: item.views_count ?? 0,
+        reading_time: item.reading_time,
+        is_featured: item.is_featured ?? false,
+      }));
+
+      setPosts(prev => [...prev, ...transformedData]);
+    } catch (error) {
+      console.error('Failed to load more blog posts:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMorePosts, isExpanded, posts.length]);
+
+  // Scroll handler for infinite scroll
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !isExpanded) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+      if (isNearBottom && hasMorePosts && !loadingMore) {
+        loadMorePosts();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isExpanded, hasMorePosts, loadingMore, loadMorePosts]);
 
   const getTranslatedContent = (post: LatestBlogPost | BlogPost) => {
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
@@ -241,7 +316,7 @@ const BlogSectionComponent = ({
   return (
       <div className="h-full flex flex-col">
         {/* Blog Posts Grid */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-4 pr-2">
           <AnimatePresence mode="popLayout">
             {posts.map((post, index) => {
               const content = getTranslatedContent(post);
@@ -320,6 +395,20 @@ const BlogSectionComponent = ({
               );
             })}
           </AnimatePresence>
+
+          {/* Loading indicator for infinite scroll */}
+          {isExpanded && loadingMore && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+
+          {/* End of list indicator */}
+          {isExpanded && !hasMorePosts && posts.length > 8 && (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              {t('blog_scroll_for_more')}
+            </div>
+          )}
         </div>
       </div>
   );
