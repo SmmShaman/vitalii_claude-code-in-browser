@@ -18,6 +18,8 @@ export interface RSSArticle {
   pubDate: string
   imageUrl: string | null
   sourceName?: string
+  relevanceScore?: number | null  // AI relevance score (1-10)
+  analyzed?: boolean              // Whether article was analyzed
 }
 
 export interface TierConfig {

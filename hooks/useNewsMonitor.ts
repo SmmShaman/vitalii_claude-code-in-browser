@@ -265,13 +265,32 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       analyzedUrlsRef.current.add(article.url)
       saveAnalyzedUrls()
 
+      // Extract relevance score from analysis result
+      const relevanceScore = data.analysis?.relevance_score || null
+
       setAnalysisStatus(prev => ({
         ...prev,
         analyzedCount: prev.analyzedCount + 1,
         lastAnalyzedUrl: article.url,
       }))
 
-      console.log(`Article analyzed and sent to Telegram: ${article.title}`)
+      // Update the article in sourceStates with the relevance score
+      setSourceStates(prev => {
+        const newMap = new Map(prev)
+        for (const [sourceId, state] of newMap) {
+          const updatedArticles = state.articles.map(a =>
+            a.url === article.url
+              ? { ...a, relevanceScore, analyzed: true }
+              : a
+          )
+          if (updatedArticles !== state.articles) {
+            newMap.set(sourceId, { ...state, articles: updatedArticles })
+          }
+        }
+        return newMap
+      })
+
+      console.log(`Article analyzed (score: ${relevanceScore}): ${article.title}`)
       return true
     } catch (err) {
       console.error(`Error analyzing article ${article.url}:`, err)
