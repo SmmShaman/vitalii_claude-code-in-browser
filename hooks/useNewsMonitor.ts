@@ -15,6 +15,17 @@ import { DEFAULT_SETTINGS, DEFAULT_SOURCES } from '@/components/admin/news-monit
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 
+// LocalStorage key for tracking analyzed articles
+const ANALYZED_URLS_KEY = 'news_monitor_analyzed_urls'
+const MAX_ANALYZED_URLS = 500 // Limit to prevent localStorage bloat
+
+interface AnalysisStatus {
+  analyzing: boolean
+  analyzedCount: number
+  failedCount: number
+  lastAnalyzedUrl: string | null
+}
+
 interface UseNewsMonitorReturn {
   sources: RSSSource[]
   sourceStates: Map<string, SourceState>
@@ -29,6 +40,9 @@ interface UseNewsMonitorReturn {
   toggleSourceActive: (sourceId: string) => Promise<boolean>
   validateRssUrl: (rssUrl: string) => Promise<{ valid: boolean; articles?: RSSArticle[]; error?: string }>
   reloadSources: () => Promise<void>
+  analysisStatus: AnalysisStatus
+  analyzeArticle: (article: RSSArticle, sourceName: string) => Promise<boolean>
+  clearAnalyzedUrls: () => void
 }
 
 function mapDBSourceToSource(dbSource: DBNewsMonitorSource): RSSSource {
@@ -51,7 +65,55 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>({
+    analyzing: false,
+    analyzedCount: 0,
+    failedCount: 0,
+    lastAnalyzedUrl: null,
+  })
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const analyzedUrlsRef = useRef<Set<string>>(new Set())
+
+  // Load analyzed URLs from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(ANALYZED_URLS_KEY)
+      if (stored) {
+        const urls = JSON.parse(stored) as string[]
+        analyzedUrlsRef.current = new Set(urls)
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [])
+
+  // Save analyzed URLs to localStorage
+  const saveAnalyzedUrls = useCallback(() => {
+    try {
+      const urls = Array.from(analyzedUrlsRef.current)
+      // Keep only the most recent URLs to prevent bloat
+      const trimmed = urls.slice(-MAX_ANALYZED_URLS)
+      localStorage.setItem(ANALYZED_URLS_KEY, JSON.stringify(trimmed))
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [])
+
+  // Clear analyzed URLs
+  const clearAnalyzedUrls = useCallback(() => {
+    analyzedUrlsRef.current = new Set()
+    try {
+      localStorage.removeItem(ANALYZED_URLS_KEY)
+    } catch {
+      // Ignore localStorage errors
+    }
+    setAnalysisStatus(prev => ({
+      ...prev,
+      analyzedCount: 0,
+      failedCount: 0,
+      lastAnalyzedUrl: null,
+    }))
+  }, [])
 
   // Load sources from database
   const loadSources = useCallback(async () => {
@@ -114,6 +176,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
           refreshInterval: data.refresh_interval,
           articlesPerSource: data.articles_per_source,
           autoRefresh: data.auto_refresh,
+          autoAnalyze: data.auto_analyze ?? false,
           expandedSources: data.expanded_sources || [],
         })
       }
@@ -121,6 +184,82 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       console.error('Error loading settings:', err)
     }
   }, [])
+
+  // Analyze single article via Edge Function
+  const analyzeArticle = useCallback(async (article: RSSArticle, sourceName: string): Promise<boolean> => {
+    // Skip if already analyzed
+    if (analyzedUrlsRef.current.has(article.url)) {
+      return false
+    }
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/analyze-rss-article`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: article.url,
+          title: article.title,
+          description: article.description,
+          imageUrl: article.imageUrl,
+          sourceName: sourceName,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        console.error(`Analysis failed for ${article.url}:`, data.error)
+        setAnalysisStatus(prev => ({
+          ...prev,
+          failedCount: prev.failedCount + 1,
+        }))
+        return false
+      }
+
+      // Mark as analyzed
+      analyzedUrlsRef.current.add(article.url)
+      saveAnalyzedUrls()
+
+      setAnalysisStatus(prev => ({
+        ...prev,
+        analyzedCount: prev.analyzedCount + 1,
+        lastAnalyzedUrl: article.url,
+      }))
+
+      console.log(`Article analyzed and sent to Telegram: ${article.title}`)
+      return true
+    } catch (err) {
+      console.error(`Error analyzing article ${article.url}:`, err)
+      setAnalysisStatus(prev => ({
+        ...prev,
+        failedCount: prev.failedCount + 1,
+      }))
+      return false
+    }
+  }, [saveAnalyzedUrls])
+
+  // Analyze new articles from a source
+  const analyzeNewArticles = useCallback(async (articles: RSSArticle[], sourceName: string) => {
+    if (!settings.autoAnalyze) return
+
+    // Filter out already analyzed articles
+    const newArticles = articles.filter(a => !analyzedUrlsRef.current.has(a.url))
+
+    if (newArticles.length === 0) return
+
+    setAnalysisStatus(prev => ({ ...prev, analyzing: true }))
+
+    // Analyze sequentially with small delay to avoid rate limiting
+    for (const article of newArticles) {
+      await analyzeArticle(article, sourceName)
+      // Small delay between analyses
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+
+    setAnalysisStatus(prev => ({ ...prev, analyzing: false }))
+  }, [settings.autoAnalyze, analyzeArticle])
 
   // Fetch single RSS source
   const fetchSource = useCallback(async (sourceId: string) => {
@@ -173,6 +312,11 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
         })
         return newMap
       })
+
+      // Trigger auto-analysis for new articles (non-blocking)
+      if (settings.autoAnalyze) {
+        analyzeNewArticles(articlesWithSource, source.name)
+      }
     } catch (err: any) {
       console.error(`Error fetching source ${source.name}:`, err)
       setSourceStates(prev => {
@@ -186,7 +330,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
         return newMap
       })
     }
-  }, [sources, settings.articlesPerSource])
+  }, [sources, settings.articlesPerSource, settings.autoAnalyze, analyzeNewArticles])
 
   // Fetch all active sources
   const fetchAllSources = useCallback(async () => {
@@ -222,6 +366,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
           refresh_interval: updated.refreshInterval,
           articles_per_source: updated.articlesPerSource,
           auto_refresh: updated.autoRefresh,
+          auto_analyze: updated.autoAnalyze,
           expanded_sources: updated.expandedSources,
           updated_at: new Date().toISOString(),
         }, {
@@ -408,5 +553,8 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     toggleSourceActive,
     validateRssUrl,
     reloadSources,
+    analysisStatus,
+    analyzeArticle,
+    clearAnalyzedUrls,
   }
 }

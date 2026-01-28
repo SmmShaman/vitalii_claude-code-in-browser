@@ -33,6 +33,7 @@ export interface ViewerSettings {
   refreshInterval: number
   articlesPerSource: number
   autoRefresh: boolean
+  autoAnalyze: boolean
   expandedSources: string[]
 }
 
@@ -69,6 +70,7 @@ export interface DBNewsMonitorSettings {
   refresh_interval: number
   articles_per_source: number
   auto_refresh: boolean
+  auto_analyze: boolean
   expanded_sources: string[]
   created_at: string
   updated_at: string

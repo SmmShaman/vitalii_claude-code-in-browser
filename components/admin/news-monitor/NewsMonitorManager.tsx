@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { RefreshCw, Settings, Clock, Activity, Loader2 } from 'lucide-react'
+import { RefreshCw, Settings, Clock, Activity, Loader2, Bot } from 'lucide-react'
 import { useNewsMonitor } from '@/hooks/useNewsMonitor'
 import { TIER_CONFIGS } from './constants'
 import { TierColumn } from './TierColumn'
@@ -36,6 +36,7 @@ export function NewsMonitorManager() {
     deleteSource,
     toggleSourceActive,
     validateRssUrl,
+    analysisStatus,
   } = useNewsMonitor()
 
   const [showAddModal, setShowAddModal] = useState(false)
@@ -140,6 +141,21 @@ export function NewsMonitorManager() {
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-400">Articles:</span>
           <span className="text-sm text-white">{totalArticles} loaded</span>
+        </div>
+
+        {/* Auto-Analyze Status */}
+        <div className="flex items-center gap-2">
+          <Bot className={`h-4 w-4 ${settings.autoAnalyze ? 'text-purple-400' : 'text-gray-500'}`} />
+          <span className="text-sm text-gray-400">Auto-analyze:</span>
+          <span className="text-sm text-white">
+            {settings.autoAnalyze ? (
+              analysisStatus.analyzing ? (
+                <span className="text-purple-400">Analyzing...</span>
+              ) : (
+                `On (${analysisStatus.analyzedCount} sent)`
+              )
+            ) : 'Off'}
+          </span>
         </div>
       </div>
 

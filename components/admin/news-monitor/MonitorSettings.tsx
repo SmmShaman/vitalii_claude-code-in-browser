@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Settings, X, Clock, FileText, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Settings, X, Clock, FileText, ToggleLeft, ToggleRight, Bot } from 'lucide-react'
 import { ViewerSettings } from './types'
 
 interface MonitorSettingsProps {
@@ -69,6 +69,35 @@ export function MonitorSettings({ isOpen, onClose, settings, onUpdate }: Monitor
               }`}
             >
               {settings.autoRefresh ? (
+                <ToggleRight className="h-6 w-6" />
+              ) : (
+                <ToggleLeft className="h-6 w-6" />
+              )}
+            </button>
+          </div>
+
+          {/* Auto Analyze Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Bot className="h-4 w-4 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-white font-medium">Auto Analyze</p>
+                <p className="text-sm text-gray-400">
+                  AI analyze new articles → Telegram
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onUpdate({ autoAnalyze: !settings.autoAnalyze })}
+              className={`p-2 rounded-lg transition-colors ${
+                settings.autoAnalyze
+                  ? 'text-purple-400 hover:text-purple-300'
+                  : 'text-gray-500 hover:text-gray-400'
+              }`}
+            >
+              {settings.autoAnalyze ? (
                 <ToggleRight className="h-6 w-6" />
               ) : (
                 <ToggleLeft className="h-6 w-6" />

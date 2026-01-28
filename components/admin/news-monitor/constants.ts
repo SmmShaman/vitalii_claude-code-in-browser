@@ -146,5 +146,6 @@ export const DEFAULT_SETTINGS = {
   refreshInterval: 300, // 5 minutes
   articlesPerSource: 5,
   autoRefresh: true,
+  autoAnalyze: false, // Disabled by default to avoid unexpected API costs
   expandedSources: [] as string[],
 }
