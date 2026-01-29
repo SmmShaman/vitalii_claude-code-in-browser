@@ -1,0 +1,65 @@
+name: RSS Monitor v2
+
+on:
+  schedule:
+    # Run every hour
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Monitor all RSS sources
+        id: monitor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📰 Starting RSS Monitor v2..."
+          echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          # Call Edge Function that processes ALL sources from news_monitor_sources
+          RESULT=$(curl -s -X POST "$SUPABASE_URL/functions/v1/monitor-rss-sources" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"source": "scheduled"}' \
+            --max-time 540)
+
+          echo "Result: $RESULT"
+
+          # Parse results
+          OK=$(echo "$RESULT" | jq -r '.ok // false')
+          SOURCES=$(echo "$RESULT" | jq -r '.sourcesProcessed // 0')
+          ARTICLES=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')
+          QUALIFIED=$(echo "$RESULT" | jq -r '.qualifiedArticles // 0')
+          SENT=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')
+
+          echo "sources_processed=$SOURCES" >> $GITHUB_OUTPUT
+          echo "articles_analyzed=$ARTICLES" >> $GITHUB_OUTPUT
+          echo "qualified_articles=$QUALIFIED" >> $GITHUB_OUTPUT
+          echo "sent_to_telegram=$SENT" >> $GITHUB_OUTPUT
+
+          if [ "$OK" = "true" ]; then
+            echo "✅ RSS monitoring completed successfully"
+            echo "   Sources processed: $SOURCES"
+            echo "   Articles analyzed: $ARTICLES"
+            echo "   Qualified (score >= 5): $QUALIFIED"
+            echo "   Sent to Telegram: $SENT"
+          else
+            ERROR=$(echo "$RESULT" | jq -r '.error // "Unknown error"')
+            echo "❌ RSS monitoring failed: $ERROR"
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## RSS Monitor v2 Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sources processed:** ${{ steps.monitor.outputs.sources_processed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Articles analyzed:** ${{ steps.monitor.outputs.articles_analyzed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Qualified articles:** ${{ steps.monitor.outputs.qualified_articles || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sent to Telegram:** ${{ steps.monitor.outputs.sent_to_telegram || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
