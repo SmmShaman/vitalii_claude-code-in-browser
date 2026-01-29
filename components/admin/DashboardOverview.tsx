@@ -8,7 +8,7 @@ import { useNewsMonitor } from '@/hooks/useNewsMonitor'
 import { TIER_CONFIGS } from './news-monitor/constants'
 import { AddSourceModal } from './news-monitor/AddSourceModal'
 import { MonitorSettings } from './news-monitor/MonitorSettings'
-import type { SourceState, RSSSource } from './news-monitor/types'
+import { TierColumn } from './news-monitor/TierColumn'
 
 interface TelegramSource {
   id: string
@@ -31,6 +31,7 @@ export const DashboardOverview = () => {
     settings,
     loading: rssLoading,
     fetchAllSources,
+    fetchSource,
     updateSettings,
     addSource,
     deleteSource,
@@ -42,7 +43,19 @@ export const DashboardOverview = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalTier, setAddModalTier] = useState<number>(3)
   const [refreshingRSS, setRefreshingRSS] = useState(false)
-  const [rssExpanded, setRssExpanded] = useState(true)
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set())
+
+  const collapseAll = () => setExpandedSources(new Set())
+  const expandAll = () => setExpandedSources(new Set(rssSources.map(s => s.id)))
+  const toggleSource = (id: string) => {
+    setExpandedSources(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const isAllExpanded = rssSources.length > 0 && expandedSources.size === rssSources.length
 
   useEffect(() => {
     loadTelegramSources()
@@ -171,11 +184,11 @@ export const DashboardOverview = () => {
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setRssExpanded(!rssExpanded)}
+              onClick={isAllExpanded ? collapseAll : expandAll}
               className="p-1.5 rounded-lg bg-gray-500/20 hover:bg-gray-500/30 transition-colors"
-              title={rssExpanded ? 'Collapse sources' : 'Expand sources'}
+              title={isAllExpanded ? 'Collapse all' : 'Expand all'}
             >
-              {rssExpanded ? (
+              {isAllExpanded ? (
                 <ChevronsUp className="h-3.5 w-3.5 text-gray-400" />
               ) : (
                 <ChevronsDown className="h-3.5 w-3.5 text-gray-400" />
@@ -203,22 +216,21 @@ export const DashboardOverview = () => {
 
         {/* RSS Tier Grid - 4 columns horizontal */}
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-4 gap-2 h-full">
-            {TIER_CONFIGS.map((tier) => {
-              const tierSources = rssSources.filter(s => s.tier === tier.id)
-              return (
-                <CompactTierColumn
-                  key={tier.id}
-                  tier={tier}
-                  sources={tierSources}
-                  sourceStates={sourceStates}
-                  expanded={rssExpanded}
-                  onAddSource={() => handleAddSource(tier.id)}
-                  onDeleteSource={handleDeleteSource}
-                  onToggleActive={toggleSourceActive}
-                />
-              )
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            {TIER_CONFIGS.map((tier) => (
+              <TierColumn
+                key={tier.id}
+                tier={tier}
+                sources={rssSources}
+                sourceStates={sourceStates}
+                expandedSources={expandedSources}
+                onToggleSource={toggleSource}
+                onAddSource={handleAddSource}
+                onDeleteSource={handleDeleteSource}
+                onToggleActive={toggleSourceActive}
+                onRefreshSource={fetchSource}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -262,98 +274,3 @@ function MiniTelegramCard({ source }: { source: TelegramSource }) {
   )
 }
 
-// Compact Tier Column with source list
-function CompactTierColumn({
-  tier,
-  sources,
-  sourceStates,
-  expanded,
-  onAddSource,
-  onDeleteSource,
-  onToggleActive,
-}: {
-  tier: typeof TIER_CONFIGS[0]
-  sources: RSSSource[]
-  sourceStates: Map<string, SourceState>
-  expanded: boolean
-  onAddSource: () => void
-  onDeleteSource: (id: string) => void
-  onToggleActive: (id: string, active: boolean) => void
-}) {
-  const activeSources = sources.filter(s => s.isActive).length
-
-  return (
-    <div className={`${tier.bgColor} ${tier.borderColor} border rounded-lg p-2 flex flex-col h-full`}>
-      {/* Tier Header */}
-      <div className="flex items-center justify-between mb-2 flex-shrink-0">
-        <div className="flex items-center gap-1.5">
-          <span className={`text-xs font-bold ${tier.color}`}>{tier.name}</span>
-          <span className="text-[10px] text-gray-500">({activeSources}/{sources.length})</span>
-        </div>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={onAddSource}
-          className="w-4 h-4 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-colors"
-        >
-          <span className="text-xs leading-none">+</span>
-        </motion.button>
-      </div>
-
-      {/* Sources List */}
-      <div className="flex-1 overflow-y-auto space-y-1">
-        {sources.length === 0 ? (
-          <p className="text-[10px] text-gray-500 text-center py-2">No sources</p>
-        ) : expanded ? (
-          sources.map(source => {
-            const state = sourceStates.get(source.id)
-            const hasError = !!state?.error
-            const isLoading = state?.loading
-            const articleCount = state?.articles?.length || 0
-
-            return (
-              <div
-                key={source.id}
-                className={`
-                  flex items-center gap-1 text-[11px] px-1.5 py-1 rounded
-                  ${source.isActive ? 'bg-white/5' : 'bg-white/5 opacity-50'}
-                  hover:bg-white/10 transition-colors group
-                `}
-              >
-                <span
-                  className={`
-                    w-1.5 h-1.5 rounded-full flex-shrink-0
-                    ${isLoading ? 'bg-yellow-400 animate-pulse' :
-                      hasError ? 'bg-red-400' :
-                      source.isActive ? 'bg-green-400' : 'bg-gray-500'}
-                  `}
-                />
-                <span
-                  className="text-white truncate flex-1 cursor-pointer"
-                  title={source.name}
-                  onClick={() => onToggleActive(source.id, !source.isActive)}
-                >
-                  {source.name}
-                </span>
-                {articleCount > 0 && (
-                  <span className="text-[9px] text-gray-400">{articleCount}</span>
-                )}
-                <button
-                  onClick={() => onDeleteSource(source.id)}
-                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity text-[10px]"
-                  title="Delete source"
-                >
-                  ×
-                </button>
-              </div>
-            )
-          })
-        ) : (
-          <p className="text-[10px] text-gray-400 text-center py-2">
-            {sources.length} sources
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
