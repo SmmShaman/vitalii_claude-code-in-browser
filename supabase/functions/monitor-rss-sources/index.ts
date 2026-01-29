@@ -38,18 +38,15 @@ interface AnalysisResult {
 }
 
 /**
- * Monitor ALL RSS sources from news_monitor_sources table
+ * Monitor RSS sources from news_monitor_sources table
  * Called by GitHub Action (rss-monitor-v2.yml) every hour
  *
- * Flow:
- * 1. Read ALL active sources from news_monitor_sources
- * 2. For each source: fetch RSS feed, filter new articles, analyze
- * 3. Collect qualified articles (score >= 5)
- * 4. Send ALL qualified articles to Telegram in batch
+ * Uses round-robin approach: processes 2 sources per run
+ * Over multiple runs, all sources get covered
  */
 serve(async (req) => {
-  // Version: 2026-01-29-01 - Initial implementation
-  console.log('📡 Monitor RSS Sources v2026-01-29-01 started')
+  // Version: 2026-01-29-03 - Round-robin: 2 sources per run
+  console.log('📡 Monitor RSS Sources v2026-01-29-03 started')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -59,8 +56,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}))
-    const source = body.source || 'manual'
-    console.log(`📋 Source: ${source}`)
+    const sourceIndex = body.sourceIndex // Optional: specific source index to process
+    console.log(`📋 Source index: ${sourceIndex ?? 'auto'}`)
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
@@ -70,6 +67,7 @@ serve(async (req) => {
       .select('id, name, rss_url, tier')
       .eq('is_active', true)
       .order('tier')
+      .order('name')
 
     if (sourcesError) {
       throw new Error(`Failed to fetch sources: ${sourcesError.message}`)
@@ -90,7 +88,21 @@ serve(async (req) => {
       )
     }
 
-    console.log(`📰 Found ${sources.length} active sources`)
+    console.log(`📰 Total active sources: ${sources.length}`)
+
+    // 2. Round-robin: pick 2 sources based on current hour
+    const currentHour = new Date().getUTCHours()
+    const sourcesPerRun = 2
+    const startIdx = (currentHour * sourcesPerRun) % sources.length
+
+    // Get 2 sources starting from startIdx (wrap around if needed)
+    const selectedSources: NewsMonitorSource[] = []
+    for (let i = 0; i < sourcesPerRun; i++) {
+      const idx = (startIdx + i) % sources.length
+      selectedSources.push(sources[idx] as NewsMonitorSource)
+    }
+
+    console.log(`🎯 Selected sources (hour ${currentHour}): ${selectedSources.map(s => s.name).join(', ')}`)
 
     // Statistics
     let sourcesProcessed = 0
@@ -100,8 +112,8 @@ serve(async (req) => {
     const errors: string[] = []
     const qualifiedNewsIds: string[] = []
 
-    // 2. Process each source
-    for (const src of sources as NewsMonitorSource[]) {
+    // 3. Process selected sources
+    for (const src of selectedSources) {
       try {
         console.log(`\n🔍 Processing source: ${src.name} (Tier ${src.tier})`)
 
@@ -116,7 +128,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               rssUrl: src.rss_url,
-              limit: 10 // Get last 10 articles per source
+              limit: 5 // Get last 5 articles per source
             })
           }
         )
@@ -139,7 +151,7 @@ serve(async (req) => {
 
         console.log(`📄 Got ${articles.length} articles from ${src.name}`)
 
-        // 3. Analyze each article (with skipTelegram=true for batch mode)
+        // 4. Analyze each article (with skipTelegram=true for batch mode)
         for (const article of articles) {
           try {
             const analysisResponse = await fetch(
@@ -181,8 +193,8 @@ serve(async (req) => {
               console.warn(`⚠️ Analysis failed: ${analysisResult.error}`)
             }
 
-            // Small delay between articles to avoid rate limiting
-            await sleep(500)
+            // Small delay between articles
+            await sleep(100)
 
           } catch (articleError: any) {
             console.error(`❌ Error analyzing article: ${articleError.message}`)
@@ -191,16 +203,13 @@ serve(async (req) => {
 
         sourcesProcessed++
 
-        // Small delay between sources
-        await sleep(1000)
-
       } catch (sourceError: any) {
         console.error(`❌ Error processing source ${src.name}: ${sourceError.message}`)
         errors.push(`${src.name}: ${sourceError.message}`)
       }
     }
 
-    // 4. Send ALL qualified articles to Telegram in batch
+    // 5. Send qualified articles to Telegram
     console.log(`\n📤 Sending ${qualifiedNewsIds.length} qualified articles to Telegram...`)
 
     for (const newsId of qualifiedNewsIds) {
@@ -228,8 +237,8 @@ serve(async (req) => {
           console.warn(`⚠️ Failed to send ${newsId}: ${sendResult.error}`)
         }
 
-        // Delay between Telegram messages to avoid rate limiting
-        await sleep(1000)
+        // Delay between Telegram messages
+        await sleep(300)
 
       } catch (sendError: any) {
         console.error(`❌ Error sending to Telegram: ${sendError.message}`)
@@ -238,7 +247,7 @@ serve(async (req) => {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1)
     console.log(`\n✅ RSS Monitor completed in ${duration}s`)
-    console.log(`   Sources: ${sourcesProcessed}/${sources.length}`)
+    console.log(`   Sources: ${sourcesProcessed}/${selectedSources.length}`)
     console.log(`   Analyzed: ${articlesAnalyzed}`)
     console.log(`   Qualified: ${qualifiedArticles}`)
     console.log(`   Sent to Telegram: ${sentToTelegram}`)
@@ -247,9 +256,11 @@ serve(async (req) => {
       JSON.stringify({
         ok: true,
         sourcesProcessed,
+        totalSources: sources.length,
         articlesAnalyzed,
         qualifiedArticles,
         sentToTelegram,
+        selectedSources: selectedSources.map(s => s.name),
         errors: errors.length > 0 ? errors : undefined,
         durationSeconds: parseFloat(duration)
       }),
