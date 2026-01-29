@@ -35,7 +35,7 @@ interface AIAnalysisResult {
  * Analyze RSS article using AI and send to Telegram Bot for moderation
  */
 serve(async (req) => {
-  // Version: 2026-01-28-03 - Filter by relevance_score >= 7 (only 'publish' goes to bot)
+  // Version: 2026-01-29-01 - Filter by relevance_score >= 5
   console.log('🔍 Analyze RSS Article v2026-01-28-03 started')
 
   if (req.method === 'OPTIONS') {
@@ -245,8 +245,8 @@ serve(async (req) => {
       console.warn('⚠️ Image prompt generation error:', promptError)
     }
 
-    // Send to Telegram Bot for moderation (only if publish - score >= 7)
-    if (analysis.recommended_action === 'publish' && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+    // Send to Telegram Bot for moderation (score >= 5)
+    if (analysis.relevance_score >= 5 && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
       await sendTelegramNotification(
         newsRecord.id,
         title,
@@ -257,10 +257,8 @@ serve(async (req) => {
         imagePrompt
       )
     } else {
-      // Skip both 'skip' (score <= 3) and 'needs_review' (score 4-6)
-      const skipReason = analysis.recommended_action === 'skip'
-        ? analysis.skip_reason || 'Low relevance (score <= 3)'
-        : `Medium relevance (score ${analysis.relevance_score}/10) - not sent to bot`
+      // Skip articles with score < 5
+      const skipReason = `Low relevance (score ${analysis.relevance_score}/10 < 5) - not sent to bot`
       console.log(`⏭️ Auto-skipped article: ${skipReason}`)
     }
 
