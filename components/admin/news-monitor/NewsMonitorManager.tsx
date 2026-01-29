@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { RefreshCw, Settings, Clock, Activity, Loader2, Bot, ChevronsUp, ChevronsDown } from 'lucide-react'
+import { RefreshCw, Settings, Clock, Activity, Loader2, Bot, ChevronsUp, ChevronsDown, Database } from 'lucide-react'
 import { useNewsMonitor } from '@/hooks/useNewsMonitor'
 import { TIER_CONFIGS } from './constants'
 import { TierColumn } from './TierColumn'
@@ -44,6 +44,8 @@ export function NewsMonitorManager() {
   const [addModalTier, setAddModalTier] = useState<number>(3)
   const [showSettings, setShowSettings] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   // Global expanded state for all sources (all expanded by default)
   const [expandedSources, setExpandedSources] = useState<Set<string>>(() => {
@@ -70,6 +72,38 @@ export function NewsMonitorManager() {
     setRefreshing(true)
     await fetchAllSources()
     setRefreshing(false)
+  }
+
+  const handleSyncToDb = async () => {
+    setSyncing(true)
+    setSyncResult(null)
+    try {
+      const response = await fetch('/api/trigger-rss-sync', {
+        method: 'POST',
+      })
+      const result = await response.json()
+
+      if (result.ok) {
+        setSyncResult({
+          ok: true,
+          message: `Synced: ${result.articlesAnalyzed || 0} articles, ${result.qualifiedArticles || 0} qualified`
+        })
+      } else {
+        setSyncResult({
+          ok: false,
+          message: result.error || 'Sync failed'
+        })
+      }
+    } catch (error: any) {
+      setSyncResult({
+        ok: false,
+        message: error.message || 'Network error'
+      })
+    } finally {
+      setSyncing(false)
+      // Clear result after 5 seconds
+      setTimeout(() => setSyncResult(null), 5000)
+    }
   }
 
   const handleAddSource = (tier: number) => {
@@ -157,9 +191,34 @@ export function NewsMonitorManager() {
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh Now</span>
+            <span>Refresh</span>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSyncToDb}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Database className={`h-4 w-4 ${syncing ? 'animate-pulse' : ''}`} />
+            <span>{syncing ? 'Syncing...' : 'Sync to DB'}</span>
           </motion.button>
         </div>
+
+        {/* Sync Result Toast */}
+        {syncResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className={`absolute top-20 right-4 px-4 py-2 rounded-lg ${
+              syncResult.ok ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+            }`}
+          >
+            {syncResult.message}
+          </motion.div>
+        )}
       </div>
 
       {/* Status Bar */}
