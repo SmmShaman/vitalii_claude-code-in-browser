@@ -37,6 +37,7 @@ export function NewsMonitorManager() {
     toggleSourceActive,
     validateRssUrl,
     analysisStatus,
+    reorderSources,
   } = useNewsMonitor()
 
   const [showAddModal, setShowAddModal] = useState(false)
@@ -217,6 +218,7 @@ export function NewsMonitorManager() {
             onDeleteSource={handleDeleteSource}
             onToggleActive={toggleSourceActive}
             onRefreshSource={fetchSource}
+            onReorderSources={reorderSources}
           />
         ))}
       </div>

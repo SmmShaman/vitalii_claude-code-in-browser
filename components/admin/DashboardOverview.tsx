@@ -37,6 +37,7 @@ export const DashboardOverview = () => {
     deleteSource,
     toggleSourceActive,
     validateRssUrl,
+    reorderSources,
   } = useNewsMonitor()
 
   const [showSettings, setShowSettings] = useState(false)
@@ -221,7 +222,7 @@ export const DashboardOverview = () => {
               <TierColumn
                 key={tier.id}
                 tier={tier}
-                sources={rssSources}
+                sources={rssSources.filter(s => s.isActive)}
                 sourceStates={sourceStates}
                 expandedSources={expandedSources}
                 onToggleSource={toggleSource}
@@ -229,6 +230,7 @@ export const DashboardOverview = () => {
                 onDeleteSource={handleDeleteSource}
                 onToggleActive={toggleSourceActive}
                 onRefreshSource={fetchSource}
+                onReorderSources={reorderSources}
               />
             ))}
           </div>

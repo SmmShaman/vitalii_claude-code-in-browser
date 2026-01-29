@@ -35,7 +35,7 @@ interface UseNewsMonitorReturn {
   fetchSource: (sourceId: string) => Promise<void>
   fetchAllSources: () => Promise<void>
   updateSettings: (newSettings: Partial<ViewerSettings>) => Promise<void>
-  addSource: (source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean>
+  addSource: (source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>) => Promise<boolean>
   deleteSource: (sourceId: string) => Promise<boolean>
   toggleSourceActive: (sourceId: string) => Promise<boolean>
   validateRssUrl: (rssUrl: string) => Promise<{ valid: boolean; articles?: RSSArticle[]; error?: string }>
@@ -43,6 +43,8 @@ interface UseNewsMonitorReturn {
   analysisStatus: AnalysisStatus
   analyzeArticle: (article: RSSArticle, sourceName: string) => Promise<boolean>
   clearAnalyzedUrls: () => void
+  updateSourceOrder: (sourceId: string, newOrder: number) => Promise<boolean>
+  reorderSources: (tier: number, orderedIds: string[]) => Promise<boolean>
 }
 
 function mapDBSourceToSource(dbSource: DBNewsMonitorSource): RSSSource {
@@ -54,6 +56,7 @@ function mapDBSourceToSource(dbSource: DBNewsMonitorSource): RSSSource {
     tier: dbSource.tier as 1 | 2 | 3 | 4,
     isActive: dbSource.is_active,
     isDefault: dbSource.is_default,
+    sortOrder: dbSource.sort_order ?? 0,
     createdAt: dbSource.created_at,
     updatedAt: dbSource.updated_at,
   }
@@ -122,6 +125,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
         .from('news_monitor_sources')
         .select('*')
         .order('tier', { ascending: true })
+        .order('sort_order', { ascending: true })
         .order('name', { ascending: true })
 
       if (error) {
@@ -130,6 +134,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
         const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
           ...s,
           id: `default-${i}`,
+          sortOrder: i + 1,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }))
@@ -144,6 +149,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
         const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
           ...s,
           id: `default-${i}`,
+          sortOrder: i + 1,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }))
@@ -479,9 +485,15 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
 
   // Add new source
   const addSource = useCallback(async (
-    source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt'>
+    source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>
   ): Promise<boolean> => {
     try {
+      // Get max sort_order for this tier to add at the end
+      const tierSources = sources.filter(s => s.tier === source.tier)
+      const maxSortOrder = tierSources.length > 0
+        ? Math.max(...tierSources.map(s => s.sortOrder))
+        : 0
+
       const { data, error } = await supabase
         .from('news_monitor_sources')
         .insert({
@@ -491,6 +503,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
           tier: source.tier,
           is_active: source.isActive,
           is_default: false,
+          sort_order: maxSortOrder + 1,
         })
         .select()
         .single()
@@ -506,7 +519,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       console.error('Error adding source:', err)
       return false
     }
-  }, [])
+  }, [sources])
 
   // Delete source (only non-default)
   const deleteSource = useCallback(async (sourceId: string): Promise<boolean> => {
@@ -568,6 +581,71 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     await loadSources()
   }, [loadSources])
 
+  // Update sort order for a single source
+  const updateSourceOrder = useCallback(async (sourceId: string, newOrder: number): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('news_monitor_sources')
+        .update({ sort_order: newOrder })
+        .eq('id', sourceId)
+
+      if (error) {
+        console.error('Failed to update source order:', error)
+        return false
+      }
+
+      setSources(prev =>
+        prev.map(s => s.id === sourceId ? { ...s, sortOrder: newOrder } : s)
+      )
+      return true
+    } catch (err) {
+      console.error('Error updating source order:', err)
+      return false
+    }
+  }, [])
+
+  // Reorder all sources in a tier (after drag & drop)
+  const reorderSources = useCallback(async (tier: number, orderedIds: string[]): Promise<boolean> => {
+    try {
+      // Optimistically update local state
+      setSources(prev => {
+        const otherSources = prev.filter(s => s.tier !== tier)
+        const tierSources = orderedIds.map((id, index) => {
+          const source = prev.find(s => s.id === id)
+          return source ? { ...source, sortOrder: index + 1 } : null
+        }).filter(Boolean) as RSSSource[]
+        return [...otherSources, ...tierSources].sort((a, b) => {
+          if (a.tier !== b.tier) return a.tier - b.tier
+          return a.sortOrder - b.sortOrder
+        })
+      })
+
+      // Update all sources in parallel
+      const updates = orderedIds.map((id, index) =>
+        supabase
+          .from('news_monitor_sources')
+          .update({ sort_order: index + 1 })
+          .eq('id', id)
+      )
+
+      const results = await Promise.all(updates)
+      const hasError = results.some(r => r.error)
+
+      if (hasError) {
+        console.error('Some sources failed to update order')
+        // Reload to get consistent state
+        await loadSources()
+        return false
+      }
+
+      return true
+    } catch (err) {
+      console.error('Error reordering sources:', err)
+      await loadSources()
+      return false
+    }
+  }, [loadSources])
+
   // Initial load
   useEffect(() => {
     const init = async () => {
@@ -618,5 +696,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     analysisStatus,
     analyzeArticle,
     clearAnalyzedUrls,
+    updateSourceOrder,
+    reorderSources,
   }
 }

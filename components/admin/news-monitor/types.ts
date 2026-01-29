@@ -6,6 +6,7 @@ export interface RSSSource {
   tier: 1 | 2 | 3 | 4
   isActive: boolean
   isDefault: boolean
+  sortOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -62,6 +63,7 @@ export interface DBNewsMonitorSource {
   tier: number
   is_active: boolean
   is_default: boolean
+  sort_order: number
   created_at: string
   updated_at: string
 }

@@ -1,9 +1,24 @@
 'use client'
 
+import { useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { RSSSource, SourceState, TierConfig } from './types'
-import { SourceCard } from './SourceCard'
+import { SortableSourceCard } from './SortableSourceCard'
 
 interface TierColumnProps {
   tier: TierConfig
@@ -15,6 +30,7 @@ interface TierColumnProps {
   onDeleteSource: (id: string) => void
   onToggleActive: (id: string) => void
   onRefreshSource: (id: string) => void
+  onReorderSources?: (tier: number, orderedIds: string[]) => Promise<boolean>
 }
 
 export function TierColumn({
@@ -27,8 +43,41 @@ export function TierColumn({
   onDeleteSource,
   onToggleActive,
   onRefreshSource,
+  onReorderSources,
 }: TierColumnProps) {
-  const tierSources = sources.filter(s => s.tier === tier.id)
+  const tierSources = sources
+    .filter(s => s.tier === tier.id)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id && onReorderSources) {
+      const oldIndex = tierSources.findIndex(s => s.id === active.id)
+      const newIndex = tierSources.findIndex(s => s.id === over.id)
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // Create new order
+        const newOrder = [...tierSources]
+        const [removed] = newOrder.splice(oldIndex, 1)
+        newOrder.splice(newIndex, 0, removed)
+
+        // Save new order to DB
+        await onReorderSources(tier.id, newOrder.map(s => s.id))
+      }
+    }
+  }, [tierSources, onReorderSources, tier.id])
 
   return (
     <motion.div
@@ -71,18 +120,30 @@ export function TierColumn({
             </button>
           </div>
         ) : (
-          tierSources.map(source => (
-            <SourceCard
-              key={source.id}
-              source={source}
-              state={sourceStates.get(source.id)}
-              isExpanded={expandedSources.has(source.id)}
-              onToggleExpand={() => onToggleSource(source.id)}
-              onDelete={onDeleteSource}
-              onToggleActive={onToggleActive}
-              onRefresh={onRefreshSource}
-            />
-          ))
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={tierSources.map(s => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {tierSources.map(source => (
+                <SortableSourceCard
+                  key={source.id}
+                  source={source}
+                  state={sourceStates.get(source.id)}
+                  isExpanded={expandedSources.has(source.id)}
+                  onToggleExpand={() => onToggleSource(source.id)}
+                  onDelete={onDeleteSource}
+                  onToggleActive={onToggleActive}
+                  onRefresh={onRefreshSource}
+                  isDraggable={!!onReorderSources}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
