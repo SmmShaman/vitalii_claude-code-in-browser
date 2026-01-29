@@ -41,7 +41,7 @@ interface UseNewsMonitorReturn {
   validateRssUrl: (rssUrl: string) => Promise<{ valid: boolean; articles?: RSSArticle[]; error?: string }>
   reloadSources: () => Promise<void>
   analysisStatus: AnalysisStatus
-  analyzeArticle: (article: RSSArticle, sourceName: string) => Promise<boolean>
+  analyzeArticle: (article: RSSArticle, sourceName: string, skipTelegram?: boolean) => Promise<{ success: boolean; newsId?: string; score?: number }>
   clearAnalyzedUrls: () => void
   updateSourceOrder: (sourceId: string, newOrder: number) => Promise<boolean>
   reorderSources: (tier: number, orderedIds: string[]) => Promise<boolean>
@@ -218,10 +218,15 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
   }, [])
 
   // Analyze single article via Edge Function
-  const analyzeArticle = useCallback(async (article: RSSArticle, sourceName: string): Promise<boolean> => {
+  // Returns { success, newsId, score } for batch processing
+  const analyzeArticle = useCallback(async (
+    article: RSSArticle,
+    sourceName: string,
+    skipTelegram: boolean = false
+  ): Promise<{ success: boolean; newsId?: string; score?: number }> => {
     // Skip if already analyzed locally
     if (analyzedUrlsRef.current.has(article.url)) {
-      return false
+      return { success: false }
     }
 
     // Check if article already exists in database (prevents duplicate Telegram messages)
@@ -231,7 +236,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       // Mark as analyzed locally to avoid repeated DB checks
       analyzedUrlsRef.current.add(article.url)
       saveAnalyzedUrls()
-      return false
+      return { success: false }
     }
 
     try {
@@ -246,6 +251,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
           description: article.description,
           imageUrl: article.imageUrl,
           sourceName: sourceName,
+          skipTelegram: skipTelegram,
         }),
       })
 
@@ -257,14 +263,14 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
           console.log(`Article already exists in DB: ${article.url}`)
           analyzedUrlsRef.current.add(article.url)
           saveAnalyzedUrls()
-          return false
+          return { success: false }
         }
         console.error(`Analysis failed for ${article.url}:`, data.error)
         setAnalysisStatus(prev => ({
           ...prev,
           failedCount: prev.failedCount + 1,
         }))
-        return false
+        return { success: false }
       }
 
       // Mark as analyzed
@@ -297,18 +303,47 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       })
 
       console.log(`Article analyzed (score: ${relevanceScore}): ${article.title}`)
-      return true
+      return {
+        success: true,
+        newsId: data.newsId,
+        score: relevanceScore
+      }
     } catch (err) {
       console.error(`Error analyzing article ${article.url}:`, err)
       setAnalysisStatus(prev => ({
         ...prev,
         failedCount: prev.failedCount + 1,
       }))
-      return false
+      return { success: false }
     }
   }, [saveAnalyzedUrls, checkArticleExists])
 
-  // Analyze new articles from a source
+  // Send batch of analyzed articles to Telegram
+  const sendBatchToTelegram = useCallback(async (newsIds: string[]) => {
+    if (newsIds.length === 0) return
+
+    console.log(`📤 Sending ${newsIds.length} articles to Telegram...`)
+
+    for (const newsId of newsIds) {
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/send-rss-to-telegram`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ newsId }),
+        })
+        // Small delay between Telegram messages to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500))
+      } catch (err) {
+        console.error(`Failed to send newsId ${newsId} to Telegram:`, err)
+      }
+    }
+
+    console.log(`✅ Batch sent to Telegram`)
+  }, [])
+
+  // Analyze new articles from a source (batch mode)
   const analyzeNewArticles = useCallback(async (articles: RSSArticle[], sourceName: string) => {
     if (!settings.autoAnalyze) return
 
@@ -319,15 +354,46 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
 
     setAnalysisStatus(prev => ({ ...prev, analyzing: true }))
 
-    // Analyze sequentially with small delay to avoid rate limiting
-    for (const article of newArticles) {
-      await analyzeArticle(article, sourceName)
-      // Small delay between analyses
-      await new Promise(resolve => setTimeout(resolve, 1000))
+    const BATCH_SIZE = 3
+    const qualifiedNewsIds: string[] = [] // Articles with score >= 5
+
+    // Analyze in batches of 3 with skipTelegram=true
+    const totalBatches = Math.ceil(newArticles.length / BATCH_SIZE)
+
+    for (let i = 0; i < newArticles.length; i += BATCH_SIZE) {
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1
+      const batch = newArticles.slice(i, i + BATCH_SIZE)
+
+      console.log(`📊 Analyzing batch ${batchNum} of ${totalBatches} (${batch.length} articles)...`)
+
+      // Analyze batch in parallel (skipTelegram=true)
+      const batchResults = await Promise.all(
+        batch.map(article => analyzeArticle(article, sourceName, true))
+      )
+
+      // Collect newsIds for articles that passed the threshold (score >= 5)
+      batchResults.forEach(result => {
+        if (result.success && result.newsId && result.score !== undefined && result.score >= 5) {
+          qualifiedNewsIds.push(result.newsId)
+        }
+      })
+
+      // Small delay between batches to avoid rate limiting
+      if (i + BATCH_SIZE < newArticles.length) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+    }
+
+    // After ALL articles analyzed, send qualified ones to Telegram
+    if (qualifiedNewsIds.length > 0) {
+      console.log(`📬 ${qualifiedNewsIds.length} articles passed threshold (score >= 5), sending to Telegram...`)
+      await sendBatchToTelegram(qualifiedNewsIds)
+    } else {
+      console.log(`⏭️ No articles passed threshold (score >= 5)`)
     }
 
     setAnalysisStatus(prev => ({ ...prev, analyzing: false }))
-  }, [settings.autoAnalyze, analyzeArticle])
+  }, [settings.autoAnalyze, analyzeArticle, sendBatchToTelegram])
 
   // Fetch single RSS source
   const fetchSource = useCallback(async (sourceId: string) => {

@@ -20,6 +20,7 @@ interface RSSAnalysisRequest {
   title?: string
   description?: string
   imageUrl?: string | null
+  skipTelegram?: boolean  // Skip Telegram notification (for batch mode)
 }
 
 interface AIAnalysisResult {
@@ -245,8 +246,8 @@ serve(async (req) => {
       console.warn('⚠️ Image prompt generation error:', promptError)
     }
 
-    // Send to Telegram Bot for moderation (score >= 5)
-    if (analysis.relevance_score >= 5 && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+    // Send to Telegram Bot for moderation (score >= 5, unless skipTelegram is set)
+    if (analysis.relevance_score >= 5 && !requestData.skipTelegram && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
       await sendTelegramNotification(
         newsRecord.id,
         title,

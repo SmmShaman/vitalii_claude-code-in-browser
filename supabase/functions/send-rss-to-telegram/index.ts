@@ -1,0 +1,277 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
+const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
+
+interface SendRSSRequest {
+  newsId: string
+}
+
+interface AIAnalysisResult {
+  summary: string
+  relevance_score: number
+  category: string
+  key_points: string[]
+  recommended_action: 'publish' | 'skip' | 'needs_review'
+  skip_reason?: string
+}
+
+/**
+ * Send RSS article to Telegram Bot for moderation
+ * Used in batch mode after all articles are analyzed
+ */
+serve(async (req) => {
+  console.log('📤 Send RSS to Telegram v2026-01-29-01')
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+      throw new Error('Telegram credentials not configured')
+    }
+
+    const requestData: SendRSSRequest = await req.json()
+
+    if (!requestData.newsId) {
+      throw new Error('newsId is required')
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+    // Fetch the news record with analysis data
+    const { data: news, error: fetchError } = await supabase
+      .from('news')
+      .select('*')
+      .eq('id', requestData.newsId)
+      .single()
+
+    if (fetchError || !news) {
+      throw new Error(`News record not found: ${fetchError?.message || 'not found'}`)
+    }
+
+    // Check if already sent to Telegram (has telegram_message_id)
+    if (news.telegram_message_id) {
+      console.log(`⚠️ Article already sent to Telegram: ${news.telegram_message_id}`)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Already sent to Telegram',
+          telegramMessageId: news.telegram_message_id
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const analysis = news.rss_analysis as AIAnalysisResult | null
+    if (!analysis) {
+      throw new Error('No RSS analysis found for this news record')
+    }
+
+    const title = news.original_title || 'No title'
+    const url = news.original_url || news.rss_source_url
+    const imageUrl = news.image_url
+    const imagePrompt = news.image_generation_prompt
+
+    // Send to Telegram
+    const messageId = await sendTelegramNotification(
+      news.id,
+      title,
+      url,
+      analysis,
+      'RSS Feed', // sourceName
+      imageUrl,
+      imagePrompt
+    )
+
+    // Update news record with telegram_message_id
+    if (messageId) {
+      await supabase
+        .from('news')
+        .update({ telegram_message_id: messageId })
+        .eq('id', news.id)
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        newsId: news.id,
+        telegramMessageId: messageId
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error: any) {
+    console.error('❌ Error sending RSS to Telegram:', error)
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Unknown error'
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
+  }
+})
+
+/**
+ * Send notification to Telegram Bot with image workflow buttons
+ */
+async function sendTelegramNotification(
+  newsId: string,
+  title: string,
+  url: string,
+  analysis: AIAnalysisResult,
+  sourceName: string,
+  imageUrl: string | null = null,
+  imagePrompt: string | null = null
+): Promise<number | null> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.warn('⚠️ Telegram credentials not configured')
+    return null
+  }
+
+  // Format key points as bullet list
+  const keyPointsList = analysis.key_points
+    .map(point => `• ${point}`)
+    .join('\n')
+
+  // Build message text
+  const relevanceEmoji = analysis.relevance_score >= 7 ? '🟢' :
+                         analysis.relevance_score >= 5 ? '🟡' : '🔴'
+
+  const categoryLabels: Record<string, string> = {
+    'tech_product': '💻 Tech Product',
+    'marketing_campaign': '📢 Marketing',
+    'ai_research': '🤖 AI Research',
+    'business_news': '💼 Business',
+    'science': '🔬 Science',
+    'lifestyle': '🌟 Lifestyle',
+    'other': '📰 Other'
+  }
+
+  // Build image status section
+  let imageStatusText = ''
+  if (imageUrl) {
+    imageStatusText = `
+
+🖼️ <b>Зображення:</b> ✅ Готове
+${imageUrl}`
+  } else if (imagePrompt) {
+    imageStatusText = `
+
+⚠️ <b>Зображення:</b> Немає (є промпт)
+🎨 <i>Натисни "Згенерувати" для створення AI зображення</i>`
+  } else {
+    imageStatusText = `
+
+⚠️ <b>Зображення:</b> Не знайдено`
+  }
+
+  const messageText = `📰 <b>RSS Article Analysis</b>
+
+📌 <b>Source:</b> ${sourceName}
+🔗 <a href="${url}">${escapeHtml(title.substring(0, 100))}</a>
+
+📋 <b>Summary:</b>
+${escapeHtml(analysis.summary)}
+
+${relevanceEmoji} <b>Relevance:</b> ${analysis.relevance_score}/10
+📁 <b>Category:</b> ${categoryLabels[analysis.category] || analysis.category}
+
+<b>Key Points:</b>
+${escapeHtml(keyPointsList)}
+
+🎯 <b>Recommendation:</b> ${analysis.recommended_action.toUpperCase()}
+${analysis.skip_reason ? `ℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}${imageStatusText}
+
+newsId:${newsId}`
+
+  // Build keyboard with image workflow buttons (same pattern as Telegram donors)
+  let keyboard: { inline_keyboard: any[] }
+
+  if (imageUrl) {
+    // Has image from RSS → Confirm, regenerate, or upload custom
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '✅ Використати фото', callback_data: `confirm_rss_image_${newsId}` },
+          { text: '🔄 Згенерувати AI', callback_data: `regenerate_rss_image_${newsId}` }
+        ],
+        [
+          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+        ],
+        [
+          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+        ]
+      ]
+    }
+  } else {
+    // No image → Generate or upload custom
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🎨 Згенерувати зображення', callback_data: `regenerate_rss_image_${newsId}` }
+        ],
+        [
+          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+        ],
+        [
+          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+        ]
+      ]
+    }
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: messageText,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_markup: keyboard
+        })
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Telegram API error:', errorText)
+      return null
+    }
+
+    const result = await response.json()
+    const messageId = result.result?.message_id || null
+    console.log(`✅ Telegram notification sent (message_id: ${messageId})`)
+    return messageId
+  } catch (error) {
+    console.error('Failed to send Telegram notification:', error)
+    return null
+  }
+}
+
+/**
+ * Escape HTML special characters for Telegram
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
