@@ -42,17 +42,35 @@ export function useNewsQueue() {
       const enrichedNews: NewsItem[] = newsData.map(n => {
         // Extract channel username from source
         let channelUsername = n.news_sources?.name || ''
+        const sourceType = n.source_type || (n.news_sources?.source_type === 'rss' ? 'rss' : 'telegram')
+
+        // Telegram source - extract @username from t.me URL
         if (n.news_sources?.source_type === 'telegram' && n.news_sources?.url) {
           const match = n.news_sources.url.match(/t\.me\/([^\/]+)/)
           if (match) channelUsername = match[1]
         }
 
+        // RSS source - extract domain from rss_source_url
+        if (sourceType === 'rss' && n.rss_source_url) {
+          try {
+            const url = new URL(n.rss_source_url)
+            channelUsername = url.hostname.replace('www.', '')
+          } catch {
+            // Keep the existing channelUsername if URL parsing fails
+          }
+        }
+
         return {
           ...n,
+          source_type: sourceType,
+          rss_source_url: n.rss_source_url || null,
           news_sources: n.news_sources ? {
             name: n.news_sources.name,
             channel_username: channelUsername
-          } : null,
+          } : (sourceType === 'rss' && channelUsername ? {
+            name: channelUsername,
+            channel_username: channelUsername
+          } : null),
           blog_posts: n.blog_posts || []
         }
       })

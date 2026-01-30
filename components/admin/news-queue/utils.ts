@@ -1,4 +1,4 @@
-import { Send, Bot, Clock, CheckCircle, Linkedin, BookOpen } from 'lucide-react'
+import { Send, Bot, Clock, CheckCircle, Linkedin, BookOpen, Rss } from 'lucide-react'
 import { NewsItem, NewsStats, StatusBadge, TimelineEvent, StatusFilter, INITIAL_STATS } from './types'
 
 export function calculateStats(items: NewsItem[]): NewsStats {
@@ -16,6 +16,13 @@ export function calculateStats(items: NewsItem[]): NewsStats {
 
 export function getStatusBadges(item: NewsItem): StatusBadge[] {
   const badges: StatusBadge[] = []
+
+  // Source type badge (first)
+  if (item.source_type === 'rss') {
+    badges.push({ label: '📡 RSS', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' })
+  } else {
+    badges.push({ label: '📱 Telegram', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' })
+  }
 
   if (item.pre_moderation_status === 'pending') {
     badges.push({ label: '⏳ AI Pending', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
@@ -43,14 +50,24 @@ export function getStatusBadges(item: NewsItem): StatusBadge[] {
 export function getTimelineEvents(item: NewsItem): TimelineEvent[] {
   const events: TimelineEvent[] = []
 
-  // Scraped
-  events.push({
-    label: 'Скраплено з Telegram',
-    time: item.created_at,
-    icon: Send,
-    color: 'text-gray-400',
-    details: item.news_sources?.channel_username ? `@${item.news_sources.channel_username}` : 'Unknown source'
-  })
+  // Scraped - different label for RSS vs Telegram
+  if (item.source_type === 'rss') {
+    events.push({
+      label: 'Отримано з RSS',
+      time: item.created_at,
+      icon: Rss,
+      color: 'text-orange-400',
+      details: item.news_sources?.channel_username || item.rss_source_url || 'RSS джерело'
+    })
+  } else {
+    events.push({
+      label: 'Скраплено з Telegram',
+      time: item.created_at,
+      icon: Send,
+      color: 'text-gray-400',
+      details: item.news_sources?.channel_username ? `@${item.news_sources.channel_username}` : 'Unknown source'
+    })
+  }
 
   // AI Pre-moderation
   if (item.moderation_checked_at) {

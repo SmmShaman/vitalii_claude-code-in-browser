@@ -24,6 +24,8 @@ export interface NewsItem {
   linkedin_posted_at: string | null
   linkedin_language: string | null
   source_id: string | null
+  source_type: 'telegram' | 'rss' | null
+  rss_source_url: string | null
   news_sources?: {
     name: string
     channel_username: string
