@@ -3,20 +3,19 @@
 import { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { motion } from 'framer-motion'
-import { List, Search, RefreshCw, Filter, ChevronsUp, Loader2 } from 'lucide-react'
+import { List, RefreshCw, ChevronsUp, Loader2 } from 'lucide-react'
 import { useNewsQueue } from '@/hooks/useNewsQueue'
-import { StatusFilter, STATUS_FILTERS } from './news-queue/types'
+import { StatusFilter } from './news-queue/types'
 import { filterNews } from './news-queue/utils'
 import { StatsCards } from './news-queue/StatsCards'
 import { NewsItemRow } from './news-queue/NewsItemRow'
 
 export const NewsQueueManager = () => {
   const { news, stats, loading, loadNews, deleteNews, timeFilter, setTimeFilter } = useNewsQueue()
-  const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
-  const filteredNews = filterNews(news, statusFilter, searchTerm)
+  const filteredNews = filterNews(news, statusFilter)
 
   const handleDelete = async (id: string) => {
     if (!confirm('Видалити цю новину?')) return
@@ -70,37 +69,15 @@ export const NewsQueueManager = () => {
         </div>
       </div>
 
-      {/* Compact Stats */}
+      {/* Compact Stats with clickable filters */}
       <div className="mb-3 flex-shrink-0">
-        <StatsCards stats={stats} timeFilter={timeFilter} onTimeFilterChange={setTimeFilter} />
-      </div>
-
-      {/* Compact Filters */}
-      <div className="flex items-center gap-2 mb-3 flex-shrink-0">
-        <div className="flex-1 relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Пошук..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-7 pr-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-xs text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Filter className="h-3.5 w-3.5 text-gray-400" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="px-2 py-1.5 bg-white/10 border border-white/20 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-          >
-            {STATUS_FILTERS.map(filter => (
-              <option key={filter.value} value={filter.value} className="bg-gray-800">
-                {filter.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <StatsCards
+          stats={stats}
+          timeFilter={timeFilter}
+          onTimeFilterChange={setTimeFilter}
+          activeFilter={statusFilter}
+          onFilterChange={setStatusFilter}
+        />
       </div>
 
       {/* News List - Scrollable */}

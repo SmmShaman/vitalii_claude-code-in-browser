@@ -140,7 +140,8 @@ export function useNewsQueue() {
         .select(`
           *,
           news_sources(id, name, url, source_type),
-          blog_posts!blog_posts_source_news_id_fkey(id, slug_en)
+          blog_posts!blog_posts_source_news_id_fkey(id, slug_en),
+          social_media_posts(platform, status)
         `)
         .order('created_at', { ascending: false })
         .limit(200)
@@ -190,7 +191,8 @@ export function useNewsQueue() {
             name: channelUsername,
             channel_username: channelUsername
           } : null),
-          blog_posts: n.blog_posts || []
+          blog_posts: n.blog_posts || [],
+          social_media_posts: n.social_media_posts || []
         }
       })
 

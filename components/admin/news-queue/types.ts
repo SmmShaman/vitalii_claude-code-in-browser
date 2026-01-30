@@ -34,6 +34,10 @@ export interface NewsItem {
     id: string
     slug_en: string
   }[]
+  social_media_posts?: {
+    platform: string
+    status: string
+  }[]
 }
 
 export interface NewsStats {
@@ -80,17 +84,19 @@ export interface TimelineEvent {
   details?: string
 }
 
-export type StatusFilter = 'all' | 'pending_ai' | 'rejected_ai' | 'waiting_approval' | 'published_news' | 'published_linkedin' | 'published_blog'
-
-export const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: '🔄 Всі' },
-  { value: 'pending_ai', label: '⏳ Очікує AI' },
-  { value: 'rejected_ai', label: '❌ AI відхилено' },
-  { value: 'waiting_approval', label: '🤖 В Telegram боті' },
-  { value: 'published_news', label: '📰 Опубліковано' },
-  { value: 'published_linkedin', label: '🔗 LinkedIn' },
-  { value: 'published_blog', label: '📝 Блог' },
-]
+export type StatusFilter =
+  | 'all'                // Всього
+  | 'telegram'           // 📱 Telegram
+  | 'rss'                // 📡 RSS
+  | 'pending_ai'         // ⏳ AI Pending
+  | 'waiting_48h'        // 🕐 Очікує 48г
+  | 'waiting_approval'   // 🤖 В боті
+  | 'rejected_ai'        // ❌ Відхилено
+  | 'published_news'     // 📰 Новини
+  | 'published_blog'     // 📝 Блог
+  | 'published_linkedin' // 🔗 LinkedIn
+  | 'published_facebook' // 📘 Facebook
+  | 'published_instagram' // 📸 Instagram
 
 export const INITIAL_STATS: NewsStats = {
   // Sources

@@ -122,31 +122,38 @@ export function getTimelineEvents(item: NewsItem): TimelineEvent[] {
   return events
 }
 
-export function filterNews(items: NewsItem[], statusFilter: StatusFilter, searchTerm: string): NewsItem[] {
-  return items.filter(item => {
-    // Search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase()
-      if (!item.original_title?.toLowerCase().includes(searchLower) &&
-          !item.title_en?.toLowerCase().includes(searchLower)) {
-        return false
-      }
-    }
+export function filterNews(items: NewsItem[], statusFilter: StatusFilter): NewsItem[] {
+  const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000
 
-    // Status filter
+  return items.filter(item => {
     switch (statusFilter) {
+      case 'all':
+        return true
+      case 'telegram':
+        return item.source_type === 'telegram'
+      case 'rss':
+        return item.source_type === 'rss'
       case 'pending_ai':
         return item.pre_moderation_status === 'pending'
-      case 'rejected_ai':
-        return item.pre_moderation_status === 'rejected'
+      case 'waiting_48h':
+        return item.pre_moderation_status === 'approved' &&
+               !item.is_published &&
+               new Date(item.created_at).getTime() > fortyEightHoursAgo
       case 'waiting_approval':
         return item.pre_moderation_status === 'approved' && !item.is_published
+      case 'rejected_ai':
+        return item.pre_moderation_status === 'rejected'
       case 'published_news':
         return item.is_published
-      case 'published_linkedin':
-        return !!item.linkedin_post_id
       case 'published_blog':
         return item.blog_posts && item.blog_posts.length > 0
+      case 'published_linkedin':
+        return !!item.linkedin_post_id ||
+               item.social_media_posts?.some(p => p.platform === 'linkedin' && p.status === 'posted')
+      case 'published_facebook':
+        return item.social_media_posts?.some(p => p.platform === 'facebook' && p.status === 'posted')
+      case 'published_instagram':
+        return item.social_media_posts?.some(p => p.platform === 'instagram' && p.status === 'posted')
       default:
         return true
     }
