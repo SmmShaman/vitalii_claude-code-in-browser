@@ -140,8 +140,7 @@ export function useNewsQueue() {
         .select(`
           *,
           news_sources(id, name, url, source_type),
-          blog_posts!blog_posts_source_news_id_fkey(id, slug_en),
-          social_media_posts(platform, status)
+          blog_posts!blog_posts_source_news_id_fkey(id, slug_en)
         `)
         .order('created_at', { ascending: false })
         .limit(200)
@@ -157,6 +156,22 @@ export function useNewsQueue() {
         setNews([])
         return
       }
+
+      // Load social media posts separately (no FK relationship, uses content_id)
+      const newsIds = newsData.map(n => n.id)
+      const { data: socialPosts } = await supabase
+        .from('social_media_posts')
+        .select('content_id, platform, status')
+        .eq('content_type', 'news')
+        .in('content_id', newsIds)
+
+      // Create a map for quick lookup
+      const socialPostsMap = new Map<string, { platform: string; status: string }[]>()
+      socialPosts?.forEach(post => {
+        const existing = socialPostsMap.get(post.content_id) || []
+        existing.push({ platform: post.platform, status: post.status })
+        socialPostsMap.set(post.content_id, existing)
+      })
 
       // Transform data to match NewsItem interface
       const enrichedNews: NewsItem[] = newsData.map(n => {
@@ -192,7 +207,7 @@ export function useNewsQueue() {
             channel_username: channelUsername
           } : null),
           blog_posts: n.blog_posts || [],
-          social_media_posts: n.social_media_posts || []
+          social_media_posts: socialPostsMap.get(n.id) || []
         }
       })
 
