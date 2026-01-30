@@ -37,14 +37,35 @@ export interface NewsItem {
 }
 
 export interface NewsStats {
+  // Sources
   total: number
+  telegram: number
+  rss: number
+
+  // Pipeline
   pendingAI: number
-  rejectedAI: number
-  waitingApproval: number
-  published: number
+  waiting48h: number     // Approved, not published, < 48 hours
+  inTelegramBot: number  // Approved, not published (all)
+  rejected: number
+
+  // Published
+  publishedNews: number
+  publishedBlog: number
+
+  // Social Media
   linkedin: number
-  blog: number
+  facebook: number
+  instagram: number
 }
+
+export type TimeFilter = 'today' | 'week' | 'month' | 'all'
+
+export const TIME_FILTERS: { value: TimeFilter; label: string }[] = [
+  { value: 'today', label: 'Сьогодні' },
+  { value: 'week', label: 'Тиждень' },
+  { value: 'month', label: 'Місяць' },
+  { value: 'all', label: 'Весь час' },
+]
 
 export interface StatusBadge {
   label: string
@@ -72,11 +93,23 @@ export const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 ]
 
 export const INITIAL_STATS: NewsStats = {
+  // Sources
   total: 0,
+  telegram: 0,
+  rss: 0,
+
+  // Pipeline
   pendingAI: 0,
-  rejectedAI: 0,
-  waitingApproval: 0,
-  published: 0,
+  waiting48h: 0,
+  inTelegramBot: 0,
+  rejected: 0,
+
+  // Published
+  publishedNews: 0,
+  publishedBlog: 0,
+
+  // Social Media
   linkedin: 0,
-  blog: 0
+  facebook: 0,
+  instagram: 0,
 }

@@ -1,0 +1,52 @@
+name: Auto-reject stale news
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  auto-reject:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Auto-reject stale news
+        id: reject
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "🤖 Starting auto-reject of stale news..."
+          echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          RESULT=$(curl -s -X POST "$SUPABASE_URL/functions/v1/auto-reject-stale-news" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            --max-time 60)
+
+          echo "Result: $RESULT"
+
+          SUCCESS=$(echo "$RESULT" | jq -r '.success // false')
+          REJECTED=$(echo "$RESULT" | jq -r '.rejected_count // 0')
+
+          echo "rejected=$REJECTED" >> $GITHUB_OUTPUT
+
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✅ Auto-reject completed successfully"
+            echo "📊 Rejected: $REJECTED stale news items"
+          else
+            echo "❌ Auto-reject failed"
+            echo "$RESULT" | jq '.'
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Auto-reject Stale News Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rejected count:** ${{ steps.reject.outputs.rejected }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "News items that were approved but not published within 48 hours are automatically rejected." >> $GITHUB_STEP_SUMMARY

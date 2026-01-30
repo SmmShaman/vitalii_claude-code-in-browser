@@ -11,7 +11,7 @@ import { StatsCards } from './news-queue/StatsCards'
 import { NewsItemRow } from './news-queue/NewsItemRow'
 
 export const NewsQueueManager = () => {
-  const { news, stats, loading, loadNews, deleteNews } = useNewsQueue()
+  const { news, stats, loading, loadNews, deleteNews, timeFilter, setTimeFilter } = useNewsQueue()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -72,7 +72,7 @@ export const NewsQueueManager = () => {
 
       {/* Compact Stats */}
       <div className="mb-3 flex-shrink-0">
-        <StatsCards stats={stats} />
+        <StatsCards stats={stats} timeFilter={timeFilter} onTimeFilterChange={setTimeFilter} />
       </div>
 
       {/* Compact Filters */}

@@ -1,18 +1,5 @@
 import { Send, Bot, Clock, CheckCircle, Linkedin, BookOpen, Rss } from 'lucide-react'
-import { NewsItem, NewsStats, StatusBadge, TimelineEvent, StatusFilter, INITIAL_STATS } from './types'
-
-export function calculateStats(items: NewsItem[]): NewsStats {
-  return items.reduce((acc, n) => {
-    acc.total++
-    if (n.pre_moderation_status === 'pending') acc.pendingAI++
-    if (n.pre_moderation_status === 'rejected') acc.rejectedAI++
-    if (n.pre_moderation_status === 'approved' && !n.is_published) acc.waitingApproval++
-    if (n.is_published) acc.published++
-    if (n.linkedin_post_id) acc.linkedin++
-    if (n.blog_posts?.length) acc.blog++
-    return acc
-  }, { ...INITIAL_STATS })
-}
+import { NewsItem, StatusBadge, TimelineEvent, StatusFilter } from './types'
 
 export function getStatusBadges(item: NewsItem): StatusBadge[] {
   const badges: StatusBadge[] = []
