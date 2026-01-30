@@ -157,6 +157,33 @@ export function useNewsQueue() {
         return
       }
 
+      // Bug fix: Load news items with blog posts that might not be in top 200
+      const { data: blogNewsData } = await supabase
+        .from('blog_posts')
+        .select('source_news_id')
+        .not('source_news_id', 'is', null)
+
+      const blogNewsIds = blogNewsData?.map(b => b.source_news_id).filter(Boolean) || []
+      const loadedNewsIds = new Set(newsData.map(n => n.id))
+      const missingBlogNewsIds = blogNewsIds.filter(id => id && !loadedNewsIds.has(id))
+
+      // Load missing news items that have blog posts
+      if (missingBlogNewsIds.length > 0) {
+        const { data: blogNews } = await supabase
+          .from('news')
+          .select(`
+            *,
+            news_sources(id, name, url, source_type),
+            blog_posts!blog_posts_source_news_id_fkey(id, slug_en)
+          `)
+          .in('id', missingBlogNewsIds)
+
+        if (blogNews) {
+          newsData.push(...blogNews)
+          console.log('Added', blogNews.length, 'news items with blog posts')
+        }
+      }
+
       // Load social media posts separately (no FK relationship, uses content_id)
       const newsIds = newsData.map(n => n.id)
       const { data: socialPosts } = await supabase

@@ -23,8 +23,19 @@ export function getStatusBadges(item: NewsItem): StatusBadge[] {
     badges.push({ label: '📰 Published', color: 'bg-green-500/20 text-green-400 border-green-500/50' })
   }
 
-  if (item.linkedin_post_id) {
+  // LinkedIn badge - check both direct field and social_media_posts
+  if (item.linkedin_post_id || item.social_media_posts?.some(p => p.platform === 'linkedin' && p.status === 'posted')) {
     badges.push({ label: `🔗 LinkedIn ${item.linkedin_language?.toUpperCase() || ''}`, color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' })
+  }
+
+  // Facebook badge
+  if (item.social_media_posts?.some(p => p.platform === 'facebook' && p.status === 'posted')) {
+    badges.push({ label: '📘 Facebook', color: 'bg-blue-600/20 text-blue-400 border-blue-600/50' })
+  }
+
+  // Instagram badge
+  if (item.social_media_posts?.some(p => p.platform === 'instagram' && p.status === 'posted')) {
+    badges.push({ label: '📸 Instagram', color: 'bg-pink-500/20 text-pink-400 border-pink-500/50' })
   }
 
   if (item.blog_posts && item.blog_posts.length > 0) {
