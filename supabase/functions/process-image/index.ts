@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-01-v2-no-canvas'
+const VERSION = '2026-02-01-v3-mandatory-date'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -328,18 +328,29 @@ async function generateImageFromText(prompt: string, apiKey: string, language?: 
       'en': now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     }
 
-    // Language instructions for Gemini with correct date and vitalii.no branding
+    // Language instructions for Gemini with MANDATORY date and vitalii.no branding
     const languageInstructions: Record<string, string> = {
-      'ua': `IMPORTANT: All text on the image MUST be in Ukrainian language (Cyrillic script).
-If you show a date, use ONLY this date: ${dateFormats['ua']}.
-At the bottom of the image, add small text: "vitalii.no"`,
-      'no': `IMPORTANT: All text on the image MUST be in Norwegian language (Latin script).
-If you show a date, use ONLY this date: ${dateFormats['no']}.
-At the bottom of the image, add small text: "vitalii.no"`,
-      'en': `IMPORTANT: All text on the image MUST be in English language.
-If you show a date, use ONLY this date: ${dateFormats['en']}.
-At the bottom of the image, add small text: "vitalii.no"`
+      'ua': `MANDATORY VISUAL REQUIREMENTS:
+1. All text MUST be in Ukrainian (Cyrillic script)
+2. Display this date prominently on the image: "${dateFormats['ua']}"
+3. Add small "vitalii.no" watermark at bottom corner
+
+DO NOT use any other date. The date "${dateFormats['ua']}" is TODAY's date and MUST appear on the image.`,
+      'no': `MANDATORY VISUAL REQUIREMENTS:
+1. All text MUST be in Norwegian (Latin script)
+2. Display this date prominently on the image: "${dateFormats['no']}"
+3. Add small "vitalii.no" watermark at bottom corner
+
+DO NOT use any other date. The date "${dateFormats['no']}" is TODAY's date and MUST appear on the image.`,
+      'en': `MANDATORY VISUAL REQUIREMENTS:
+1. All text MUST be in English
+2. Display this date prominently on the image: "${dateFormats['en']}"
+3. Add small "vitalii.no" watermark at bottom corner
+
+DO NOT use any other date. The date "${dateFormats['en']}" is TODAY's date and MUST appear on the image.`
     }
+
+    console.log('📅 Date being sent to AI:', dateFormats[language || 'en'])
 
     const langInstruction = language
       ? `\n\n${languageInstructions[language]}`
@@ -351,7 +362,14 @@ At the bottom of the image, add small text: "vitalii.no"`
     const requestBody = {
       contents: [{
         parts: [{
-          text: `Generate an image based on this description. Make it professional, suitable for LinkedIn/Instagram. Aspect ratio: 1:1 square.${langInstruction}\n\nDescription: ${prompt}`
+          text: `Generate a professional news illustration for LinkedIn/Instagram.
+
+TODAY'S DATE (must appear on image): ${dateFormats[language || 'en']}
+${langInstruction}
+
+Visual concept: ${prompt}
+
+Style: Modern, professional, 1:1 square aspect ratio.`
         }]
       }],
       generationConfig: {
