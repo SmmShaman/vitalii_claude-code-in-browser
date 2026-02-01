@@ -782,6 +782,18 @@ serve(async (req) => {
       } else if (callbackData.startsWith('regenerate_rss_image_')) {
         action = 'regenerate_rss_image'
         newsId = callbackData.replace('regenerate_rss_image_', '')
+      } else if (callbackData.startsWith('regen_img_')) {
+        // regen_img_ua_123, regen_img_no_123, regen_img_en_123
+        action = 'regen_img_with_lang'
+        const parts = callbackData.split('_')
+        // parts: ['regen', 'img', 'ua', '123'] or ['regen', 'img', 'ua', '123', '456'] for UUID
+        const lang = parts[2]
+        newsId = parts.slice(3).join('_')
+        // Store language in a variable we can access later
+        ;(callbackQuery as any)._imageLanguage = lang
+      } else if (callbackData.startsWith('back_to_rss_')) {
+        action = 'back_to_rss'
+        newsId = callbackData.replace('back_to_rss_', '')
       } else if (callbackData.startsWith('upload_rss_image_')) {
         action = 'upload_rss_image'
         newsId = callbackData.replace('upload_rss_image_', '')
@@ -3906,8 +3918,55 @@ serve(async (req) => {
         )
 
       } else if (action === 'regenerate_rss_image') {
-        // 🔄 RSS: Generate new AI image using Imagen 3
-        console.log('User wants to regenerate RSS image for news:', newsId)
+        // 🔄 RSS: Show language selection for image text
+        console.log('User wants to regenerate RSS image for news:', newsId, '- showing language selection')
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '🌐 Оберіть мову тексту на зображенні',
+              show_alert: false
+            })
+          }
+        )
+
+        const langKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🇺🇦 Українська', callback_data: `regen_img_ua_${newsId}` },
+              { text: '🇳🇴 Norsk', callback_data: `regen_img_no_${newsId}` },
+              { text: '🇬🇧 English', callback_data: `regen_img_en_${newsId}` }
+            ],
+            [
+              { text: '← Назад', callback_data: `back_to_rss_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n🌐 <b>Оберіть мову тексту на зображенні:</b>',
+              parse_mode: 'HTML',
+              reply_markup: langKeyboard
+            })
+          }
+        )
+
+      } else if (action === 'regen_img_with_lang') {
+        // 🔄 RSS: Generate new AI image with selected language
+        const imageLanguage = (callbackQuery as any)._imageLanguage || 'en'
+        const langNames: Record<string, string> = { ua: 'українською', no: 'норвезькою', en: 'англійською' }
+        console.log('User selected language for image:', imageLanguage, 'for news:', newsId)
 
         // Show "generating" message
         await fetch(
@@ -3917,7 +3976,7 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: '🎨 Генерую зображення...',
+              text: `🎨 Генерую зображення ${langNames[imageLanguage] || imageLanguage}...`,
               show_alert: false
             })
           }
@@ -3932,7 +3991,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + '\n\n⏳ <b>Генерація зображення...</b>\n<i>Це може зайняти до 30 секунд</i>',
+              text: messageText + `\n\n⏳ <b>Генерація зображення ${langNames[imageLanguage] || imageLanguage}...</b>\n<i>Це може зайняти до 30 секунд</i>`,
               parse_mode: 'HTML'
             })
           }
@@ -3944,7 +4003,7 @@ serve(async (req) => {
           .update({ processed_image_url: null })
           .eq('id', newsId)
 
-        // Call process-image with generateFromPrompt=true
+        // Call process-image with generateFromPrompt=true and language
         try {
           const imageGenResponse = await fetch(
             `${SUPABASE_URL}/functions/v1/process-image`,
@@ -3956,7 +4015,8 @@ serve(async (req) => {
               },
               body: JSON.stringify({
                 newsId: newsId,
-                generateFromPrompt: true
+                generateFromPrompt: true,
+                language: imageLanguage
               })
             }
           )
@@ -3990,7 +4050,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано!</b>\n🖼️ ${newImageUrl}`,
+                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${imageLanguage.toUpperCase()})!</b>\n🖼️ ${newImageUrl}`,
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
@@ -4064,6 +4124,53 @@ serve(async (req) => {
             }
           )
         }
+
+      } else if (action === 'back_to_rss') {
+        // ← Back to RSS image options
+        console.log('User wants to go back to RSS image options for news:', newsId)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '← Назад',
+              show_alert: false
+            })
+          }
+        )
+
+        const rssKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
+              { text: '🔄 Перегенерувати', callback_data: `regenerate_rss_image_${newsId}` }
+            ],
+            [
+              { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+            ],
+            [
+              { text: '❌ Skip', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText,
+              parse_mode: 'HTML',
+              reply_markup: rssKeyboard
+            })
+          }
+        )
 
       } else if (action === 'upload_rss_image') {
         // 📸 RSS: Upload custom image - prompt user to send photo

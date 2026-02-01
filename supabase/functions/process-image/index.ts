@@ -52,6 +52,8 @@ interface ProcessImageRequest {
   newsUrl?: string
   // NEW: Generate image from prompt only (text-to-image mode)
   generateFromPrompt?: boolean
+  // Language for text on the image (ua, no, en)
+  language?: 'en' | 'no' | 'ua'
 }
 
 interface ProcessImageResponse {
@@ -90,8 +92,8 @@ serve(async (req) => {
 
     // TEXT-TO-IMAGE MODE: Generate image from prompt stored in DB
     if (requestData.generateFromPrompt && requestData.newsId) {
-      console.log('🎨 Text-to-image mode: generating from stored prompt')
-      return await handleTextToImageGeneration(supabase, requestData.newsId)
+      console.log('🎨 Text-to-image mode: generating from stored prompt', requestData.language ? `(language: ${requestData.language})` : '')
+      return await handleTextToImageGeneration(supabase, requestData.newsId, requestData.language)
     }
 
     // STANDARD MODE: Process existing image
@@ -194,8 +196,8 @@ serve(async (req) => {
  * Handle text-to-image generation mode
  * Gets prompt from DB and generates image using Gemini 3 Pro Image
  */
-async function handleTextToImageGeneration(supabase: any, newsId: string): Promise<Response> {
-  console.log('🎨 Starting text-to-image generation for news:', newsId)
+async function handleTextToImageGeneration(supabase: any, newsId: string, language?: 'en' | 'no' | 'ua'): Promise<Response> {
+  console.log('🎨 Starting text-to-image generation for news:', newsId, language ? `(language: ${language})` : '')
 
   // 1. Get news record with the stored prompt
   const { data: news, error: newsError } = await supabase
@@ -257,8 +259,8 @@ Colors: Vibrant but professional.`
   }
 
   // 4. Generate image using Gemini 3 Pro Image (text-to-image)
-  console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')')
-  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey)
+  console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')', language ? `(language: ${language})` : '')
+  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language)
 
   if (!processedImageUrl) {
     console.log('❌ Image generation failed')
@@ -308,12 +310,24 @@ Colors: Vibrant but professional.`
 // Store last API error for debugging
 let lastApiError: string | null = null
 
-async function generateImageFromText(prompt: string, apiKey: string): Promise<string | null> {
+async function generateImageFromText(prompt: string, apiKey: string, language?: 'en' | 'no' | 'ua'): Promise<string | null> {
   lastApiError = null
 
   try {
     console.log('📤 Generating image with Gemini 3 Pro Image (text-to-image)...')
     console.log('📝 Prompt length:', prompt.length, 'chars')
+    if (language) {
+      console.log('🌐 Language for text on image:', language)
+    }
+
+    // Language instructions for Gemini
+    const languageInstructions: Record<string, string> = {
+      'ua': 'IMPORTANT: All text on the image MUST be in Ukrainian language (Cyrillic script).',
+      'no': 'IMPORTANT: All text on the image MUST be in Norwegian language (Latin script).',
+      'en': 'IMPORTANT: All text on the image MUST be in English language.'
+    }
+
+    const langInstruction = language ? `\n\n${languageInstructions[language]}` : '\n\nNo text on the image.'
 
     // Gemini 3 Pro Image endpoint for text-to-image generation
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
@@ -321,7 +335,7 @@ async function generateImageFromText(prompt: string, apiKey: string): Promise<st
     const requestBody = {
       contents: [{
         parts: [{
-          text: `Generate an image based on this description. Make it professional, suitable for LinkedIn/Instagram. Aspect ratio: 1:1 square. No text on the image.\n\nDescription: ${prompt}`
+          text: `Generate an image based on this description. Make it professional, suitable for LinkedIn/Instagram. Aspect ratio: 1:1 square.${langInstruction}\n\nDescription: ${prompt}`
         }]
       }],
       generationConfig: {
