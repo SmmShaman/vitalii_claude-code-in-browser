@@ -17,6 +17,15 @@ interface NewsMonitorSource {
   is_active: boolean
 }
 
+interface ImageWithMeta {
+  url: string
+  alt?: string
+  title?: string
+  credit?: string
+  caption?: string
+  source?: string
+}
+
 interface RSSArticle {
   id: string
   title: string
@@ -24,6 +33,8 @@ interface RSSArticle {
   description: string
   pubDate: string
   imageUrl: string | null
+  images?: string[]
+  imagesWithMeta?: ImageWithMeta[]
   sourceName?: string
 }
 
@@ -167,6 +178,8 @@ serve(async (req) => {
                   title: article.title,
                   description: article.description,
                   imageUrl: article.imageUrl,
+                  images: article.images || [],
+                  imagesWithMeta: article.imagesWithMeta || [],
                   sourceId: src.id,
                   sourceName: src.name,
                   skipTelegram: true // Don't send immediately - we'll batch at the end

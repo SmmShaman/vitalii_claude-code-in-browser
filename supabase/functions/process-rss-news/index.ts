@@ -11,12 +11,23 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
+interface ImageWithMeta {
+  url: string
+  alt?: string
+  title?: string
+  credit?: string
+  caption?: string
+  source?: string
+}
+
 interface RSSNewsRewriteRequest {
   newsId: string
   title?: string
   content?: string
   url?: string
   imageUrl?: string | null
+  images?: string[] | null  // Array of all image URLs
+  imagesWithMeta?: ImageWithMeta[] | null  // Images with copyright metadata
 }
 
 /**
@@ -73,7 +84,11 @@ serve(async (req) => {
     const rssPrompt = prompts[0]
     console.log('Using news rewrite prompt:', rssPrompt.name)
 
-    return await processWithPrompt(rssPrompt, requestData.newsId, title, content, sourceUrl, supabase, requestData.imageUrl || news.image_url)
+    // Get images array from request or database
+    const images = requestData.images || news.images || []
+    const imagesWithMeta = requestData.imagesWithMeta || news.images_with_meta || []
+
+    return await processWithPrompt(rssPrompt, requestData.newsId, title, content, sourceUrl, supabase, requestData.imageUrl || news.image_url, images, imagesWithMeta)
 
   } catch (error: any) {
     console.error('❌ Error processing RSS news:', error)
@@ -97,7 +112,9 @@ async function processWithPrompt(
   content: string,
   sourceUrl: string,
   supabase: any,
-  imageUrl: string | null
+  imageUrl: string | null,
+  images: string[],
+  imagesWithMeta: ImageWithMeta[]
 ) {
   if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
     throw new Error('Azure OpenAI not configured')
@@ -222,6 +239,8 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
 
   // Update news item with rewritten content
   console.log(`📷 Saving image_url: ${imageUrl || 'none'}`)
+  console.log(`📷 Saving images array: ${images.length} images`)
+  console.log(`📷 Saving images_with_meta: ${imagesWithMeta.length} images with copyright info`)
   const { error: updateError } = await supabase
     .from('news')
     .update({
@@ -239,6 +258,8 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
       slug_no: generateSlug(rewrittenContent.no.title),
       tags: tags.length > 0 ? tags : null,
       image_url: imageUrl,
+      images: images.length > 0 ? images : null,
+      images_with_meta: imagesWithMeta.length > 0 ? imagesWithMeta : null,
       is_rewritten: true,
       is_published: true,
       published_at: new Date().toISOString(),

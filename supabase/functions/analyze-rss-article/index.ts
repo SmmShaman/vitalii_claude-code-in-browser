@@ -13,6 +13,15 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
+interface ImageWithMeta {
+  url: string
+  alt?: string
+  title?: string
+  credit?: string
+  caption?: string
+  source?: string
+}
+
 interface RSSAnalysisRequest {
   url: string
   sourceId?: string
@@ -20,6 +29,8 @@ interface RSSAnalysisRequest {
   title?: string
   description?: string
   imageUrl?: string | null
+  images?: string[]           // Array of image URLs
+  imagesWithMeta?: ImageWithMeta[]  // Images with copyright metadata
   skipTelegram?: boolean  // Skip Telegram notification (for batch mode)
 }
 
@@ -191,7 +202,7 @@ serve(async (req) => {
       .update({ usage_count: analysisPrompt.usage_count + 1 })
       .eq('id', analysisPrompt.id)
 
-    // Create news record with RSS data
+    // Create news record with RSS data (including images with metadata for copyright)
     const { data: newsRecord, error: insertError } = await supabase
       .from('news')
       .insert({
@@ -202,6 +213,8 @@ serve(async (req) => {
         source_type: 'rss',
         rss_analysis: analysis,
         image_url: requestData.imageUrl || articleContent.imageUrl,
+        images: requestData.images || null,
+        images_with_meta: requestData.imagesWithMeta || null,
         pre_moderation_status: analysis.recommended_action === 'skip' ? 'rejected' : 'pending',
         is_published: false,
         is_rewritten: false

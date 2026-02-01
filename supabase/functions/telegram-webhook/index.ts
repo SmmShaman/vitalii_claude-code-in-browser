@@ -1111,7 +1111,9 @@ serve(async (req) => {
               title: news.original_title || '',
               content: news.original_content || '',
               url: news.rss_source_url || news.original_url || '',
-              imageUrl: news.processed_image_url || news.image_url || null
+              imageUrl: news.processed_image_url || news.image_url || null,
+              images: news.images || [],
+              imagesWithMeta: news.images_with_meta || []
             })
           }
         )
