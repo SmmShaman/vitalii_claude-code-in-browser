@@ -8,7 +8,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-01-23-v2-force-redeploy'
+const VERSION = '2026-02-01-v1-date-logo'
+
+// Logo URL for overlay
+const LOGO_URL = 'https://vitalii.no/logo.png'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -304,6 +307,64 @@ Colors: Vibrant but professional.`
 }
 
 /**
+ * Overlay logo on generated image using canvas
+ * Places logo in bottom-right corner
+ */
+async function overlayLogo(imageBase64: string): Promise<string> {
+  try {
+    console.log('🖼️ Overlaying logo on image...')
+
+    // Import canvas dynamically
+    const { createCanvas, loadImage } = await import('https://deno.land/x/canvas@v1.4.2/mod.ts')
+
+    // 1. Load generated image from base64
+    const imageBuffer = Uint8Array.from(atob(imageBase64), c => c.charCodeAt(0))
+    const generatedImage = await loadImage(imageBuffer)
+
+    // 2. Load logo from URL (production site)
+    console.log('📥 Loading logo from:', LOGO_URL)
+    const logoResponse = await fetch(LOGO_URL)
+    if (!logoResponse.ok) {
+      console.log('⚠️ Failed to load logo, returning original image')
+      return imageBase64
+    }
+    const logoBuffer = await logoResponse.arrayBuffer()
+    const logo = await loadImage(new Uint8Array(logoBuffer))
+
+    // 3. Create canvas and draw
+    const canvas = createCanvas(generatedImage.width(), generatedImage.height())
+    const ctx = canvas.getContext('2d')
+
+    // Draw generated image
+    ctx.drawImage(generatedImage, 0, 0)
+
+    // Draw logo in bottom-right corner (small, ~50px)
+    const logoSize = 50
+    const padding = 15
+    ctx.drawImage(
+      logo,
+      canvas.width - logoSize - padding,
+      canvas.height - logoSize - padding,
+      logoSize,
+      logoSize
+    )
+
+    // 4. Export as base64 JPEG
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
+    const base64Result = dataUrl.replace('data:image/jpeg;base64,', '')
+
+    console.log('✅ Logo overlay completed successfully')
+    return base64Result
+
+  } catch (error: any) {
+    console.error('⚠️ Logo overlay failed:', error.message || error)
+    console.log('📌 Returning original image without logo')
+    // Return original if overlay fails
+    return imageBase64
+  }
+}
+
+/**
  * Generate image from text prompt using Gemini 3 Pro Image
  * This is the pure text-to-image generation (no reference image needed)
  */
@@ -320,14 +381,30 @@ async function generateImageFromText(prompt: string, apiKey: string, language?: 
       console.log('🌐 Language for text on image:', language)
     }
 
-    // Language instructions for Gemini
-    const languageInstructions: Record<string, string> = {
-      'ua': 'IMPORTANT: All text on the image MUST be in Ukrainian language (Cyrillic script).',
-      'no': 'IMPORTANT: All text on the image MUST be in Norwegian language (Latin script).',
-      'en': 'IMPORTANT: All text on the image MUST be in English language.'
+    // Date formatting based on language
+    const now = new Date()
+    const dateFormats: Record<string, string> = {
+      'ua': now.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }),
+      'no': now.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }),
+      'en': now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     }
 
-    const langInstruction = language ? `\n\n${languageInstructions[language]}` : '\n\nNo text on the image.'
+    // Language instructions for Gemini with correct date and vitalii.no branding
+    const languageInstructions: Record<string, string> = {
+      'ua': `IMPORTANT: All text on the image MUST be in Ukrainian language (Cyrillic script).
+If you show a date, use ONLY this date: ${dateFormats['ua']}.
+At the bottom of the image, add small text: "vitalii.no"`,
+      'no': `IMPORTANT: All text on the image MUST be in Norwegian language (Latin script).
+If you show a date, use ONLY this date: ${dateFormats['no']}.
+At the bottom of the image, add small text: "vitalii.no"`,
+      'en': `IMPORTANT: All text on the image MUST be in English language.
+If you show a date, use ONLY this date: ${dateFormats['en']}.
+At the bottom of the image, add small text: "vitalii.no"`
+    }
+
+    const langInstruction = language
+      ? `\n\n${languageInstructions[language]}`
+      : `\n\nNo text on the image except "vitalii.no" at the bottom.`
 
     // Gemini 3 Pro Image endpoint for text-to-image generation
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
@@ -390,8 +467,10 @@ async function generateImageFromText(prompt: string, apiKey: string, language?: 
         if (imageData && imageData.data) {
           console.log('✅ Gemini 3 Pro Image generated image successfully')
           console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
+          // Overlay logo on the generated image
+          const imageWithLogo = await overlayLogo(imageData.data)
           // Upload to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(imageData.data)
+          const processedImageUrl = await uploadProcessedImage(imageWithLogo)
           return processedImageUrl
         }
         if (part.text) {
@@ -601,8 +680,10 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
         if (imageData && imageData.data) {
           console.log('✅ Found generated image in response')
           console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
+          // Overlay logo on the generated image
+          const imageWithLogo = await overlayLogo(imageData.data)
           // Upload processed image to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(imageData.data)
+          const processedImageUrl = await uploadProcessedImage(imageWithLogo)
           return processedImageUrl
         }
         if (part.text) {
@@ -670,7 +751,9 @@ async function tryImagenGeneration(prompt: string, apiKey: string): Promise<stri
 
     if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
       console.log('✅ Imagen 3 generated image successfully')
-      const processedImageUrl = await uploadProcessedImage(result.predictions[0].bytesBase64Encoded)
+      // Overlay logo on the generated image
+      const imageWithLogo = await overlayLogo(result.predictions[0].bytesBase64Encoded)
+      const processedImageUrl = await uploadProcessedImage(imageWithLogo)
       return processedImageUrl
     }
 
