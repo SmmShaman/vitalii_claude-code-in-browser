@@ -8,10 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-01-v1-date-logo'
-
-// Logo URL for overlay
-const LOGO_URL = 'https://vitalii.no/logo.png'
+const VERSION = '2026-02-01-v2-no-canvas'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -307,64 +304,6 @@ Colors: Vibrant but professional.`
 }
 
 /**
- * Overlay logo on generated image using canvas
- * Places logo in bottom-right corner
- */
-async function overlayLogo(imageBase64: string): Promise<string> {
-  try {
-    console.log('🖼️ Overlaying logo on image...')
-
-    // Import canvas dynamically
-    const { createCanvas, loadImage } = await import('https://deno.land/x/canvas@v1.4.2/mod.ts')
-
-    // 1. Load generated image from base64
-    const imageBuffer = Uint8Array.from(atob(imageBase64), c => c.charCodeAt(0))
-    const generatedImage = await loadImage(imageBuffer)
-
-    // 2. Load logo from URL (production site)
-    console.log('📥 Loading logo from:', LOGO_URL)
-    const logoResponse = await fetch(LOGO_URL)
-    if (!logoResponse.ok) {
-      console.log('⚠️ Failed to load logo, returning original image')
-      return imageBase64
-    }
-    const logoBuffer = await logoResponse.arrayBuffer()
-    const logo = await loadImage(new Uint8Array(logoBuffer))
-
-    // 3. Create canvas and draw
-    const canvas = createCanvas(generatedImage.width(), generatedImage.height())
-    const ctx = canvas.getContext('2d')
-
-    // Draw generated image
-    ctx.drawImage(generatedImage, 0, 0)
-
-    // Draw logo in bottom-right corner (small, ~50px)
-    const logoSize = 50
-    const padding = 15
-    ctx.drawImage(
-      logo,
-      canvas.width - logoSize - padding,
-      canvas.height - logoSize - padding,
-      logoSize,
-      logoSize
-    )
-
-    // 4. Export as base64 JPEG
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
-    const base64Result = dataUrl.replace('data:image/jpeg;base64,', '')
-
-    console.log('✅ Logo overlay completed successfully')
-    return base64Result
-
-  } catch (error: any) {
-    console.error('⚠️ Logo overlay failed:', error.message || error)
-    console.log('📌 Returning original image without logo')
-    // Return original if overlay fails
-    return imageBase64
-  }
-}
-
-/**
  * Generate image from text prompt using Gemini 3 Pro Image
  * This is the pure text-to-image generation (no reference image needed)
  */
@@ -467,10 +406,8 @@ At the bottom of the image, add small text: "vitalii.no"`
         if (imageData && imageData.data) {
           console.log('✅ Gemini 3 Pro Image generated image successfully')
           console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
-          // Overlay logo on the generated image
-          const imageWithLogo = await overlayLogo(imageData.data)
-          // Upload to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(imageWithLogo)
+          // Upload to Supabase Storage (logo/branding via Gemini prompt)
+          const processedImageUrl = await uploadProcessedImage(imageData.data)
           return processedImageUrl
         }
         if (part.text) {
@@ -680,10 +617,8 @@ async function processImageWithAI(imageBase64: string, prompt: string, apiKey: s
         if (imageData && imageData.data) {
           console.log('✅ Found generated image in response')
           console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
-          // Overlay logo on the generated image
-          const imageWithLogo = await overlayLogo(imageData.data)
-          // Upload processed image to Supabase Storage
-          const processedImageUrl = await uploadProcessedImage(imageWithLogo)
+          // Upload processed image to Supabase Storage (logo/branding via Gemini prompt)
+          const processedImageUrl = await uploadProcessedImage(imageData.data)
           return processedImageUrl
         }
         if (part.text) {
@@ -751,9 +686,8 @@ async function tryImagenGeneration(prompt: string, apiKey: string): Promise<stri
 
     if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
       console.log('✅ Imagen 3 generated image successfully')
-      // Overlay logo on the generated image
-      const imageWithLogo = await overlayLogo(result.predictions[0].bytesBase64Encoded)
-      const processedImageUrl = await uploadProcessedImage(imageWithLogo)
+      // Upload to Supabase Storage (logo/branding via Gemini prompt)
+      const processedImageUrl = await uploadProcessedImage(result.predictions[0].bytesBase64Encoded)
       return processedImageUrl
     }
 
