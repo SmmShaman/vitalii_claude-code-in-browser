@@ -671,6 +671,9 @@ serve(async (req) => {
       let socialPlatform: string | null = null
       let socialLanguage: string | null = null
 
+      // Track language for image generation
+      let imageLanguage: string | null = null
+
       if (callbackData.startsWith('publish_news_')) {
         action = 'publish'
         publicationType = 'news'
@@ -806,7 +809,7 @@ serve(async (req) => {
           console.error('❌ CRITICAL: newsId is empty or undefined in regen_img callback!')
         }
         // Store language in a variable we can access later
-        ;(callbackQuery as any)._imageLanguage = lang
+        imageLanguage = lang
       } else if (callbackData.startsWith('back_to_rss_')) {
         action = 'back_to_rss'
         newsId = callbackData.replace('back_to_rss_', '')
@@ -3988,9 +3991,9 @@ serve(async (req) => {
 
       } else if (action === 'regen_img_with_lang') {
         // 🔄 RSS: Generate new AI image with selected language
-        const imageLanguage = (callbackQuery as any)._imageLanguage || 'en'
+        const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'українською', no: 'норвезькою', en: 'англійською' }
-        console.log('User selected language for image:', imageLanguage, 'for news:', newsId)
+        console.log('User selected language for image:', selectedLang, 'for news:', newsId)
 
         // Show "generating" message
         await fetch(
@@ -4000,7 +4003,7 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: `🎨 Генерую зображення ${langNames[imageLanguage] || imageLanguage}...`,
+              text: `🎨 Генерую зображення ${langNames[selectedLang] || selectedLang}...`,
               show_alert: false
             })
           }
@@ -4015,7 +4018,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n⏳ <b>Генерація зображення ${langNames[imageLanguage] || imageLanguage}...</b>\n<i>Це може зайняти до 30 секунд</i>`,
+              text: messageText + `\n\n⏳ <b>Генерація зображення ${langNames[selectedLang] || selectedLang}...</b>\n<i>Це може зайняти до 30 секунд</i>`,
               parse_mode: 'HTML'
             })
           }
@@ -4044,7 +4047,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 newsId: newsId,
                 generateFromPrompt: true,
-                language: imageLanguage
+                language: selectedLang
               })
             }
           )
@@ -4078,7 +4081,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${imageLanguage.toUpperCase()})!</b>\n🖼️ ${escapeHtml(newImageUrl)}`,
+                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${selectedLang.toUpperCase()})!</b>\n🖼️ ${escapeHtml(newImageUrl)}`,
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
