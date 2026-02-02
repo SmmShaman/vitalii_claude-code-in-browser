@@ -22,6 +22,21 @@ interface RSSArticle {
   videoType: string | null
 }
 
+/**
+ * Decode HTML/XML entities in URLs
+ * RSS feeds often contain XML-escaped URLs where & is encoded as &amp;
+ */
+function decodeHTMLEntities(text: string | null): string | null {
+  if (!text) return null
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -390,14 +405,14 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
         // Try media:thumbnail
         const mediaThumbnail = item.querySelector('thumbnail')
         if (mediaThumbnail) {
-          imageUrl = mediaThumbnail.getAttribute('url')
+          imageUrl = decodeHTMLEntities(mediaThumbnail.getAttribute('url'))
         }
 
         // Try enclosure
         if (!imageUrl) {
           const enclosure = item.querySelector('enclosure')
           if (enclosure && enclosure.getAttribute('type')?.startsWith('image/')) {
-            imageUrl = enclosure.getAttribute('url')
+            imageUrl = decodeHTMLEntities(enclosure.getAttribute('url'))
           }
         }
 
@@ -405,7 +420,7 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
         if (!imageUrl) {
           const mediaContent = item.querySelector('content')
           if (mediaContent && mediaContent.getAttribute('medium') === 'image') {
-            imageUrl = mediaContent.getAttribute('url')
+            imageUrl = decodeHTMLEntities(mediaContent.getAttribute('url'))
           }
         }
 
@@ -416,7 +431,7 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
         // Try enclosure with video type
         const videoEnclosure = item.querySelector('enclosure')
         if (videoEnclosure && videoEnclosure.getAttribute('type')?.startsWith('video/')) {
-          videoUrl = videoEnclosure.getAttribute('url')
+          videoUrl = decodeHTMLEntities(videoEnclosure.getAttribute('url'))
           videoType = 'direct_url'
           console.log(`🎥 Found RSS video: ${videoUrl}`)
         }
@@ -425,7 +440,7 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
         if (!videoUrl) {
           const videoContent = item.querySelector('content')
           if (videoContent && videoContent.getAttribute('medium') === 'video') {
-            videoUrl = videoContent.getAttribute('url')
+            videoUrl = decodeHTMLEntities(videoContent.getAttribute('url'))
             videoType = 'direct_url'
             console.log(`🎥 Found media:content video: ${videoUrl}`)
           }

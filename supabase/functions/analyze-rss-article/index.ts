@@ -355,11 +355,11 @@ function extractArticleContent(html: string): {
     }
   }
 
-  // Extract og:image
+  // Extract og:image (decode HTML entities in URL)
   let imageUrl: string | null = null
   const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
   if (ogImageMatch) {
-    imageUrl = ogImageMatch[1]
+    imageUrl = decodeHTMLEntities(ogImageMatch[1])
   }
 
   // Remove scripts, styles, and other non-content elements
