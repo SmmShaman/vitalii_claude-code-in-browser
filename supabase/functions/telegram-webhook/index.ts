@@ -3743,7 +3743,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано!</b>\n🖼️ ${newImageUrl}`,
+                  text: messageText + `\n\n✅ <b>Зображення згенеровано!</b>\n🖼️ ${escapeHtml(newImageUrl)}`,
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
@@ -4078,7 +4078,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${imageLanguage.toUpperCase()})!</b>\n🖼️ ${newImageUrl}`,
+                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${imageLanguage.toUpperCase()})!</b>\n🖼️ ${escapeHtml(newImageUrl)}`,
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })

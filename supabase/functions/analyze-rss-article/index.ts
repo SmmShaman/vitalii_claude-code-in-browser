@@ -489,7 +489,7 @@ async function sendTelegramNotification(
     imageStatusText = `
 
 🖼️ <b>Зображення:</b> ✅ Готове
-${imageUrl}`
+${escapeHtml(imageUrl)}`
   } else if (imagePrompt) {
     imageStatusText = `
 

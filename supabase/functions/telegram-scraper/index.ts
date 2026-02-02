@@ -18,6 +18,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * Escape HTML special characters to prevent Telegram HTML parsing errors
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
@@ -1255,7 +1265,7 @@ async function sendToTelegramBot(
 <b>Content:</b>
 ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 
-<b>Original URL:</b> ${post.originalUrl}
+<b>Original URL:</b> ${escapeHtml(post.originalUrl)}
 
 <i>Posted:</i> ${post.date.toISOString()}`
 
@@ -1268,7 +1278,7 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
       message += `
 
 🖼️ <b>Зображення:</b> ✅ Готове
-${uploadedPhotoUrl}`
+${escapeHtml(uploadedPhotoUrl)}`
     } else if (hasVideo) {
       message += `
 
