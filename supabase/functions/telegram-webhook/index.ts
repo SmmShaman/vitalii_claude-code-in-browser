@@ -33,6 +33,16 @@ function extractSourceLink(text: string): string | null {
   return null
 }
 
+/**
+ * Escape HTML special characters to prevent Telegram HTML parsing errors
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 serve(async (req) => {
   try {
     const update = await req.json()
@@ -646,7 +656,7 @@ serve(async (req) => {
       const callbackId = update.callback_query.id
       const messageId = update.callback_query.message.message_id
       const chatId = update.callback_query.message.chat.id
-      const messageText = update.callback_query.message.text || ''
+      const messageText = escapeHtml(update.callback_query.message.text || '')
 
       console.log('Callback received:', callbackData)
 
@@ -784,11 +794,17 @@ serve(async (req) => {
         newsId = callbackData.replace('regenerate_rss_image_', '')
       } else if (callbackData.startsWith('regen_img_')) {
         // regen_img_ua_123, regen_img_no_123, regen_img_en_123
+        console.log('🔍 Received regen_img callback:', callbackData)
         action = 'regen_img_with_lang'
         const parts = callbackData.split('_')
+        console.log('🔍 Callback parts:', JSON.stringify(parts))
         // parts: ['regen', 'img', 'ua', '123'] or ['regen', 'img', 'ua', '123', '456'] for UUID
         const lang = parts[2]
         newsId = parts.slice(3).join('_')
+        console.log('🔍 Extracted: lang=', lang, 'newsId=', newsId)
+        if (!newsId || newsId === 'undefined') {
+          console.error('❌ CRITICAL: newsId is empty or undefined in regen_img callback!')
+        }
         // Store language in a variable we can access later
         ;(callbackQuery as any)._imageLanguage = lang
       } else if (callbackData.startsWith('back_to_rss_')) {
@@ -3923,6 +3939,11 @@ serve(async (req) => {
         // 🔄 RSS: Show language selection for image text
         console.log('User wants to regenerate RSS image for news:', newsId, '- showing language selection')
 
+        // Validate newsId before creating buttons
+        if (!newsId) {
+          console.error('❌ CRITICAL: newsId is undefined when creating language buttons!')
+        }
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -3948,6 +3969,7 @@ serve(async (req) => {
             ]
           ]
         }
+        console.log('🔍 Language keyboard callbacks:', JSON.stringify(langKeyboard.inline_keyboard[0].map(b => b.callback_data)))
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
@@ -3985,7 +4007,7 @@ serve(async (req) => {
         )
 
         // Update message to show progress
-        await fetch(
+        const progressEditResponse = await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
             method: 'POST',
@@ -3998,6 +4020,10 @@ serve(async (req) => {
             })
           }
         )
+        const progressEditResult = await progressEditResponse.json()
+        if (!progressEditResult.ok) {
+          console.error('❌ Failed to edit message (progress):', progressEditResult.description || progressEditResult)
+        }
 
         // Clear existing processed_image_url before regenerating
         await supabase
@@ -4044,7 +4070,7 @@ serve(async (req) => {
               ]
             }
 
-            await fetch(
+            const successEditResponse = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
                 method: 'POST',
@@ -4058,6 +4084,10 @@ serve(async (req) => {
                 })
               }
             )
+            const successEditResult = await successEditResponse.json()
+            if (!successEditResult.ok) {
+              console.error('❌ Failed to edit message (success):', successEditResult.description || successEditResult)
+            }
           } else {
             // Failed - show error and keep regenerate button
             const errorMsg = imageGenResult.error || 'Невідома помилка'
@@ -4079,7 +4109,7 @@ serve(async (req) => {
               ]
             }
 
-            await fetch(
+            const errorEditResponse = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
                 method: 'POST',
@@ -4093,6 +4123,10 @@ serve(async (req) => {
                 })
               }
             )
+            const errorEditResult = await errorEditResponse.json()
+            if (!errorEditResult.ok) {
+              console.error('❌ Failed to edit message (gen error):', errorEditResult.description || errorEditResult)
+            }
           }
         } catch (genError: any) {
           console.error('Error regenerating RSS image:', genError)
@@ -4111,7 +4145,7 @@ serve(async (req) => {
             ]
           }
 
-          await fetch(
+          const catchEditResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
@@ -4125,6 +4159,10 @@ serve(async (req) => {
               })
             }
           )
+          const catchEditResult = await catchEditResponse.json()
+          if (!catchEditResult.ok) {
+            console.error('❌ Failed to edit message (catch error):', catchEditResult.description || catchEditResult)
+          }
         }
 
       } else if (action === 'back_to_rss') {
