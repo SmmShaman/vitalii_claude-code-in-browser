@@ -12,7 +12,7 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-01-23-v3-no-text-prompts'
+const VERSION = '2026-02-03-v4-quality-boost'
 
 interface GeneratePromptRequest {
   newsId: string
@@ -336,6 +336,14 @@ STYLE GUIDE:
 - High-end product photography aesthetic
 - NO text, logos, or written words in the image
 - Focus purely on visual storytelling
+
+QUALITY BOOST (MANDATORY):
+- Ultra high resolution, 8K quality rendering
+- Vibrant saturated colors with high contrast
+- Sharp crisp details, absolutely no blur or artifacts
+- Professional studio lighting with soft shadows
+- Rich color depth and dynamic range
+- Photorealistic textures and materials
 
 MOOD: Professional, innovative, forward-thinking technology`
 }

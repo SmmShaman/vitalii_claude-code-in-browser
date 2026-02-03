@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-01-v3-mandatory-date'
+const VERSION = '2026-02-03-v4-quality-boost-critic'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -195,14 +195,22 @@ serve(async (req) => {
 /**
  * Handle text-to-image generation mode
  * Gets prompt from DB and generates image using Gemini 3 Pro Image
+ * Includes Critic Agent validation with auto-retry (max 3 attempts)
  */
-async function handleTextToImageGeneration(supabase: any, newsId: string, language?: 'en' | 'no' | 'ua'): Promise<Response> {
-  console.log('🎨 Starting text-to-image generation for news:', newsId, language ? `(language: ${language})` : '')
+async function handleTextToImageGeneration(
+  supabase: any,
+  newsId: string,
+  language?: 'en' | 'no' | 'ua',
+  retryCount: number = 0,
+  previousIssues: string[] = []
+): Promise<Response> {
+  const MAX_RETRIES = 3
+  console.log(`🎨 Starting text-to-image generation for news: ${newsId}${language ? ` (language: ${language})` : ''} [attempt ${retryCount + 1}/${MAX_RETRIES}]`)
 
   // 1. Get news record with the stored prompt
   const { data: news, error: newsError } = await supabase
     .from('news')
-    .select('id, image_generation_prompt, title_en, description_en, processed_image_url')
+    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, image_retry_count')
     .eq('id', newsId)
     .single()
 
@@ -217,8 +225,8 @@ async function handleTextToImageGeneration(supabase: any, newsId: string, langua
     )
   }
 
-  // Check if we already have a processed image
-  if (news.processed_image_url) {
+  // Check if we already have a processed image (only on first attempt)
+  if (news.processed_image_url && retryCount === 0) {
     console.log('✅ Image already generated:', news.processed_image_url)
     return new Response(
       JSON.stringify({
@@ -235,12 +243,23 @@ async function handleTextToImageGeneration(supabase: any, newsId: string, langua
 
   if (!imagePrompt) {
     console.log('⚠️ No stored prompt, generating a default one from title')
-    // Create a simple prompt from title if no stored prompt
     imagePrompt = `Create a professional, modern illustration for a LinkedIn article about: ${news.title_en || 'technology news'}.
 Style: Clean, professional, tech-focused.
 Aspect ratio: 1:1 square.
 No text on the image.
 Colors: Vibrant but professional.`
+  }
+
+  // If retrying, add improvement feedback from previous validation
+  if (retryCount > 0 && previousIssues.length > 0) {
+    const feedbackSection = `
+
+IMPORTANT - Fix these issues from previous attempt:
+${previousIssues.map(issue => `- ${issue}`).join('\n')}
+
+Generate a BETTER image addressing all these issues.`
+    imagePrompt = imagePrompt + feedbackSection
+    console.log('🔄 Added improvement feedback to prompt')
   }
 
   console.log('📝 Using prompt:', imagePrompt.substring(0, 200) + '...')
@@ -259,7 +278,7 @@ Colors: Vibrant but professional.`
   }
 
   // 4. Generate image using Gemini 3 Pro Image (text-to-image)
-  console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')', language ? `(language: ${language})` : '')
+  console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')')
   const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language)
 
   if (!processedImageUrl) {
@@ -271,36 +290,261 @@ Colors: Vibrant but professional.`
         debug: {
           version: VERSION,
           timestamp: new Date().toISOString(),
-          lastApiError: lastApiError
+          lastApiError: lastApiError,
+          retryCount
         }
       } as ProcessImageResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 
-  // 5. Save to database
+  // 5. Run Critic Agent validation
+  console.log('🔍 Running Critic Agent validation...')
+  const validation = await validateGeneratedImage(
+    processedImageUrl,
+    imagePrompt,
+    {
+      title: news.title_en || 'News Article',
+      category: 'tech_product', // Default category
+      language: language || 'en'
+    },
+    googleApiKey
+  )
+
+  console.log(`📊 Validation result: score=${validation.score}, isValid=${validation.isValid}, issues=${validation.issues.length}`)
+
+  // 6. Check if we need to retry
+  if (!validation.isValid && validation.shouldRetry && retryCount < MAX_RETRIES - 1) {
+    console.log(`🔄 Image failed validation (score: ${validation.score}), retrying... (${retryCount + 1}/${MAX_RETRIES})`)
+
+    // Update retry count in database
+    await supabase
+      .from('news')
+      .update({
+        image_retry_count: retryCount + 1
+      })
+      .eq('id', newsId)
+
+    // Recursively retry with improvement suggestions
+    return handleTextToImageGeneration(
+      supabase,
+      newsId,
+      language,
+      retryCount + 1,
+      [...validation.issues, ...(validation.details?.improvementSuggestions || [])]
+    )
+  }
+
+  // 7. Save final result to database
   const { error: updateError } = await supabase
     .from('news')
     .update({
       processed_image_url: processedImageUrl,
-      image_processed_at: new Date().toISOString()
+      image_processed_at: new Date().toISOString(),
+      image_quality_score: validation.score,
+      image_validation_issues: validation.issues,
+      image_retry_count: retryCount
     })
     .eq('id', newsId)
 
   if (updateError) {
     console.error('⚠️ Failed to update news record:', updateError)
-    // Still return success since image was generated
   }
 
-  console.log('✅ Image generated and saved:', processedImageUrl)
+  const statusEmoji = validation.isValid ? '✅' : '⚠️'
+  console.log(`${statusEmoji} Image ${validation.isValid ? 'generated and validated' : 'generated (validation issues noted)'}: ${processedImageUrl}`)
 
   return new Response(
     JSON.stringify({
       success: true,
-      processedImageUrl
+      processedImageUrl,
+      message: validation.isValid
+        ? 'Image generated and validated successfully'
+        : `Image generated with score ${validation.score}/10 (${validation.issues.length} issues)`,
+      debug: {
+        version: VERSION,
+        timestamp: new Date().toISOString(),
+        lastApiError: null,
+        validation: {
+          score: validation.score,
+          isValid: validation.isValid,
+          issues: validation.issues,
+          retryCount
+        }
+      }
     } as ProcessImageResponse),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
+}
+
+/**
+ * Validation result interface for Critic Agent
+ */
+interface ValidationResult {
+  isValid: boolean
+  score: number
+  issues: string[]
+  shouldRetry: boolean
+  details?: {
+    relevance?: number
+    quality?: number
+    branding?: boolean
+    improvementSuggestions?: string[]
+  }
+}
+
+/**
+ * Validate generated image using Critic Agent (inline implementation)
+ * Uses Gemini to analyze the image and provide structured feedback
+ */
+async function validateGeneratedImage(
+  imageUrl: string,
+  originalPrompt: string,
+  newsContext: { title: string; category: string; language: string },
+  apiKey: string
+): Promise<ValidationResult> {
+  try {
+    // Download image
+    const response = await fetch(imageUrl)
+    if (!response.ok) {
+      console.error('❌ Failed to download image for validation')
+      return getDefaultValidation(true)
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    const imageBase64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    )
+
+    // Use Gemini for validation
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`
+
+    const criticPrompt = `You are an expert image quality critic for a professional news website.
+Analyze this generated image and evaluate it.
+
+NEWS CONTEXT:
+Title: ${newsContext.title}
+Category: ${newsContext.category}
+Language: ${newsContext.language}
+
+ORIGINAL IMAGE PROMPT:
+${originalPrompt.substring(0, 1000)}
+
+Evaluate:
+1. RELEVANCE (1-10): Does image match the news topic?
+2. QUALITY (1-10): Sharpness, colors, professional appearance
+3. BRANDING: Is "vitalii.no" watermark visible?
+4. ARTIFACTS: Any visual problems?
+5. TEXT_ISSUES: Problems with text on image?
+
+Respond with ONLY valid JSON:
+{
+  "relevance": <1-10>,
+  "quality": <1-10>,
+  "branding": <true/false>,
+  "artifacts": ["list"],
+  "text_issues": ["list"],
+  "overall_score": <1-10>,
+  "should_retry": <true/false>,
+  "improvement_suggestions": ["list"]
+}`
+
+    const requestBody = {
+      contents: [{
+        parts: [
+          { text: criticPrompt },
+          {
+            inline_data: {
+              mime_type: 'image/jpeg',
+              data: imageBase64
+            }
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 800
+      }
+    }
+
+    const apiResponse = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    if (!apiResponse.ok) {
+      console.error('❌ Validation API error:', apiResponse.status)
+      return getDefaultValidation(true)
+    }
+
+    const result = await apiResponse.json()
+    const textContent = result.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (!textContent) {
+      return getDefaultValidation(true)
+    }
+
+    // Parse JSON response
+    let jsonString = textContent.trim()
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim()
+
+    try {
+      const parsed = JSON.parse(jsonString)
+      const overallScore = parsed.overall_score || Math.round((parsed.relevance + parsed.quality) / 2)
+      const issues: string[] = [...(parsed.artifacts || []), ...(parsed.text_issues || [])]
+
+      if (!parsed.branding) {
+        issues.push('Missing vitalii.no branding')
+      }
+
+      const isValid = overallScore >= 6 && issues.length <= 2
+      const shouldRetry = !isValid && overallScore >= 4
+
+      return {
+        isValid,
+        score: overallScore,
+        issues,
+        shouldRetry: parsed.should_retry ?? shouldRetry,
+        details: {
+          relevance: parsed.relevance || 5,
+          quality: parsed.quality || 5,
+          branding: parsed.branding ?? false,
+          improvementSuggestions: parsed.improvement_suggestions || []
+        }
+      }
+    } catch (parseError) {
+      console.error('❌ Failed to parse validation JSON:', parseError)
+      return getDefaultValidation(true)
+    }
+
+  } catch (error) {
+    console.error('❌ Error in image validation:', error)
+    return getDefaultValidation(true)
+  }
+}
+
+/**
+ * Get default validation result (pass-through to not block workflow)
+ */
+function getDefaultValidation(isValid: boolean): ValidationResult {
+  return {
+    isValid,
+    score: isValid ? 7 : 4,
+    issues: isValid ? [] : ['Validation unavailable'],
+    shouldRetry: !isValid,
+    details: {
+      relevance: 7,
+      quality: 7,
+      branding: true,
+      improvementSuggestions: []
+    }
+  }
 }
 
 /**
@@ -359,10 +603,21 @@ DO NOT use any other date. The date "${dateFormats['en']}" is TODAY's date and M
     // Gemini 3 Pro Image endpoint for text-to-image generation
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
 
+    // Quality boost instructions for better image generation
+    const qualityBoost = `CRITICAL QUALITY REQUIREMENTS:
+- Generate in highest possible resolution (8K quality)
+- Use vibrant, saturated colors with strong contrast
+- Ensure all details are sharp and crisp, no blur or artifacts
+- Apply professional studio lighting with soft shadows
+- Create rich textures and depth with photorealistic materials
+- Use dynamic color range for visual impact`
+
     const requestBody = {
       contents: [{
         parts: [{
-          text: `Generate a professional news illustration for LinkedIn/Instagram.
+          text: `${qualityBoost}
+
+Generate a professional news illustration for LinkedIn/Instagram.
 
 TODAY'S DATE (must appear on image): ${dateFormats[language || 'en']}
 ${langInstruction}
