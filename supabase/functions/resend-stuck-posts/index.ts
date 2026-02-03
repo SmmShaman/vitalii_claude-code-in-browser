@@ -122,7 +122,7 @@ serve(async (req) => {
     const cutoffDate = new Date()
     cutoffDate.setHours(cutoffDate.getHours() - hoursAgo)
 
-    // Get stuck posts: approved but not published/rewritten
+    // Get stuck posts: approved but not published/rewritten and never sent to bot
     const { data: stuckPosts, error } = await supabase
       .from('news')
       .select(`
@@ -140,6 +140,7 @@ serve(async (req) => {
       .eq('pre_moderation_status', 'approved')
       .eq('is_published', false)
       .eq('is_rewritten', false)
+      .is('telegram_message_id', null)  // Only posts that were never sent to bot
       .gte('created_at', cutoffDate.toISOString())
       .order('created_at', { ascending: false })
       .limit(limit)

@@ -502,8 +502,19 @@ serve(async (req) => {
               }
 
               // 🔄 RETRY LOGIC: If post was approved but not published/rewritten AND not already sent to bot
-              if (existingPost.pre_moderation_status === 'approved' && !existingPost.is_published && !existingPost.is_rewritten && !existingPost.telegram_message_id) {
-                console.log(`🔄 Retry sending approved but unpublished post to bot: ${existingPost.id}`)
+              // ⚠️ IMPORTANT: Only retry posts < 1 hour old to prevent infinite retry loops for old "stuck" posts
+              const { data: existingPostData } = await supabase
+                .from('news')
+                .select('created_at')
+                .eq('id', existingPost.id)
+                .single()
+
+              const postAgeHours = existingPostData?.created_at
+                ? (Date.now() - new Date(existingPostData.created_at).getTime()) / (1000 * 60 * 60)
+                : 999 // If no created_at, treat as old post
+
+              if (existingPost.pre_moderation_status === 'approved' && !existingPost.is_published && !existingPost.is_rewritten && !existingPost.telegram_message_id && postAgeHours < 1) {
+                console.log(`🔄 Retry sending approved but unpublished post to bot: ${existingPost.id} (age: ${postAgeHours.toFixed(2)} hours)`)
 
                 // Generate image prompt for retry
                 let imagePrompt: string | null = null
@@ -598,7 +609,9 @@ serve(async (req) => {
                     ? 'already published'
                     : existingPost.is_rewritten
                       ? 'already rewritten'
-                      : `status: ${existingPost.pre_moderation_status}`
+                      : postAgeHours >= 1
+                        ? `too old for retry (${postAgeHours.toFixed(2)} hours)`
+                        : `status: ${existingPost.pre_moderation_status}`
                 console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (${skipReason})`)
               }
 

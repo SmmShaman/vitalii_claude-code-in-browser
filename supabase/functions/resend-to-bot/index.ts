@@ -34,13 +34,14 @@ serve(async (req) => {
 
     console.log(`📤 Resending approved posts since ${fromDate}`)
 
-    // Get approved posts that weren't sent to bot (not published, not rewritten)
+    // Get approved posts that weren't sent to bot (not published, not rewritten, no telegram_message_id)
     const { data: posts, error } = await supabase
       .from('news')
       .select('id, original_title, original_content, original_url, created_at')
       .eq('pre_moderation_status', 'approved')
       .eq('is_published', false)
       .eq('is_rewritten', false)
+      .is('telegram_message_id', null)  // Only posts that were never sent to bot
       .gte('created_at', fromDate)
       .order('created_at', { ascending: true })
 
