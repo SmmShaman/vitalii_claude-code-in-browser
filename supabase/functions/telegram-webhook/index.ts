@@ -3947,6 +3947,49 @@ serve(async (req) => {
           console.error('❌ CRITICAL: newsId is undefined when creating language buttons!')
         }
 
+        // Verify news record exists before showing language selection
+        const { data: newsCheck, error: newsCheckError } = await supabase
+          .from('news')
+          .select('id, original_title')
+          .eq('id', newsId)
+          .single()
+
+        if (newsCheckError || !newsCheck) {
+          console.error('❌ News record not found for regeneration:', newsId, newsCheckError?.message)
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: `❌ Помилка: новина не знайдена в базі даних`,
+                show_alert: true
+              })
+            }
+          )
+
+          // Update message to show error
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + `\n\n❌ <b>Помилка:</b> Новина не знайдена в базі даних.\n<code>${newsId}</code>\n\n<i>Можливо запис був видалений або не був створений.</i>`,
+                parse_mode: 'HTML'
+              })
+            }
+          )
+
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        console.log('✅ News record verified for regeneration:', newsCheck.id)
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -3994,6 +4037,49 @@ serve(async (req) => {
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'українською', no: 'норвезькою', en: 'англійською' }
         console.log('User selected language for image:', selectedLang, 'for news:', newsId)
+
+        // Verify news record exists BEFORE calling process-image
+        const { data: newsCheck, error: newsCheckError } = await supabase
+          .from('news')
+          .select('id, original_title')
+          .eq('id', newsId)
+          .single()
+
+        if (newsCheckError || !newsCheck) {
+          console.error('❌ News record not found for regeneration:', newsId, newsCheckError?.message)
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: `❌ Помилка: новина не знайдена в базі даних (${newsId.substring(0, 8)}...)`,
+                show_alert: true
+              })
+            }
+          )
+
+          // Update message to show error
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + `\n\n❌ <b>Помилка:</b> Новина не знайдена в базі даних.\n<code>${newsId}</code>\n\n<i>Можливо запис був видалений або не був створений.</i>`,
+                parse_mode: 'HTML'
+              })
+            }
+          )
+
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        console.log('✅ News record verified:', newsCheck.id, newsCheck.original_title?.substring(0, 50))
 
         // Show "generating" message
         await fetch(

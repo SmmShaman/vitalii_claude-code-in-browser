@@ -228,6 +228,12 @@ serve(async (req) => {
     }
 
     console.log('📝 News record created:', newsRecord.id)
+    console.log('🔍 DEBUG: Full newsRecord:', JSON.stringify({
+      id: newsRecord.id,
+      title: newsRecord.original_title?.substring(0, 50),
+      pre_moderation_status: newsRecord.pre_moderation_status,
+      created_at: newsRecord.created_at
+    }))
 
     // Generate image prompt for RSS article (same as Telegram donor workflow)
     let imagePrompt: string | null = null
