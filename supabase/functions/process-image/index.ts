@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-03-v4-quality-boost-critic'
+const VERSION = '2026-02-03-v5-image-other-fallback'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -210,7 +210,7 @@ async function handleTextToImageGeneration(
   // 1. Get news record with the stored prompt
   const { data: news, error: newsError } = await supabase
     .from('news')
-    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, image_retry_count')
+    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, image_retry_count, category')
     .eq('id', newsId)
     .single()
 
@@ -278,8 +278,11 @@ Generate a BETTER image addressing all these issues.`
   }
 
   // 4. Generate image using Gemini 3 Pro Image (text-to-image)
+  // Extract category for potential content policy fallback
+  const newsCategory = news.category || 'general'
   console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')')
-  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language)
+  console.log('📂 News category:', newsCategory)
+  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language, newsCategory, false)
 
   if (!processedImageUrl) {
     console.log('❌ Image generation failed')
@@ -305,7 +308,7 @@ Generate a BETTER image addressing all these issues.`
     imagePrompt,
     {
       title: news.title_en || 'News Article',
-      category: 'tech_product', // Default category
+      category: newsCategory,
       language: language || 'en'
     },
     googleApiKey
@@ -554,12 +557,39 @@ function getDefaultValidation(isValid: boolean): ValidationResult {
 // Store last API error for debugging
 let lastApiError: string | null = null
 
-async function generateImageFromText(prompt: string, apiKey: string, language?: 'en' | 'no' | 'ua'): Promise<string | null> {
+// Abstract fallback prompts for content policy bypass (IMAGE_OTHER errors)
+// Used when Gemini blocks generation due to sensitive topics (politics, famous people, brands, etc.)
+const FALLBACK_ABSTRACT_PROMPTS: Record<string, string> = {
+  'business_news': 'Professional abstract illustration representing business analytics, financial growth charts, and corporate success with modern geometric design elements, data visualization graphs, upward trending arrows, and clean corporate aesthetics',
+  'tech_product': 'Futuristic technology visualization with glowing digital elements, circuit patterns, microchip details, and innovation symbolism in vibrant blue and purple tones, abstract tech landscape with holographic interfaces',
+  'ai_research': 'Abstract neural network concept with interconnected glowing nodes, data streams, artificial intelligence symbolism, digital brain visualization with flowing data particles and modern gradient colors',
+  'science': 'Scientific discovery concept with abstract molecular structures, laboratory symbolism, DNA helix patterns, research innovation elements, beakers and scientific equipment in modern minimalist style',
+  'marketing_campaign': 'Dynamic marketing concept with abstract growth arrows, engagement symbols, social media icons floating in digital space, modern promotional design elements with vibrant gradient backgrounds',
+  'lifestyle': 'Contemporary lifestyle illustration with modern design aesthetics, vibrant colors, positive energy symbolism, abstract geometric patterns representing wellbeing and modern living',
+  'general': 'Professional abstract business illustration with geometric shapes, modern gradients, corporate aesthetics, interconnected nodes and flowing lines representing innovation and progress'
+}
+
+async function generateImageFromText(
+  prompt: string,
+  apiKey: string,
+  language?: 'en' | 'no' | 'ua',
+  category?: string,
+  useAbstractFallback?: boolean
+): Promise<string | null> {
   lastApiError = null
 
   try {
+    // If using abstract fallback due to content policy, use pre-defined safe prompt
+    const effectivePrompt = useAbstractFallback
+      ? (FALLBACK_ABSTRACT_PROMPTS[category || 'general'] || FALLBACK_ABSTRACT_PROMPTS['general'])
+      : prompt
+
     console.log('📤 Generating image with Gemini 3 Pro Image (text-to-image)...')
-    console.log('📝 Prompt length:', prompt.length, 'chars')
+    if (useAbstractFallback) {
+      console.log('🔄 Using ABSTRACT FALLBACK prompt due to content policy')
+      console.log('📂 Category:', category || 'general')
+    }
+    console.log('📝 Prompt length:', effectivePrompt.length, 'chars')
     if (language) {
       console.log('🌐 Language for text on image:', language)
     }
@@ -622,7 +652,7 @@ Generate a professional news illustration for LinkedIn/Instagram.
 TODAY'S DATE (must appear on image): ${dateFormats[language || 'en']}
 ${langInstruction}
 
-Visual concept: ${prompt}
+Visual concept: ${effectivePrompt}
 
 Style: Modern, professional, 1:1 square aspect ratio.`
         }]
@@ -668,6 +698,25 @@ Style: Modern, professional, 1:1 square aspect ratio.`
 
     const result = await response.json()
     console.log('📥 Gemini response received, checking for image...')
+
+    // Check for content policy block (IMAGE_OTHER) FIRST before looking for image
+    const candidate = result.candidates?.[0]
+    if (candidate?.finishReason === 'IMAGE_OTHER') {
+      const finishMsg = candidate.finishMessage || 'Content policy violation - unable to generate image'
+      console.warn('⚠️ Content policy blocked (IMAGE_OTHER):', finishMsg)
+
+      // If not already using abstract fallback, retry with safe abstract prompt
+      if (!useAbstractFallback) {
+        console.log('🔄 Retrying with abstract fallback prompt to bypass content policy...')
+        console.log('📂 Using category:', category || 'general')
+        return generateImageFromText(prompt, apiKey, language, category, true)
+      }
+
+      // Already tried fallback and still blocked - give up gracefully
+      lastApiError = `Content policy blocked even abstract prompt: ${finishMsg}`
+      console.error('❌ Content policy blocked even with abstract fallback prompt')
+      return null
+    }
 
     // Extract image from Gemini response
     if (result.candidates && result.candidates[0]?.content?.parts) {
