@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-03-v5-image-other-fallback'
+const VERSION = '2026-02-03-v6-debug-news-not-found'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -215,11 +215,20 @@ async function handleTextToImageGeneration(
     .single()
 
   if (newsError || !news) {
-    console.error('❌ News not found:', newsError)
+    console.error('❌ News not found:', newsId)
+    console.error('🔍 DEBUG: newsError code:', newsError?.code)
+    console.error('🔍 DEBUG: newsError message:', newsError?.message)
+    console.error('🔍 DEBUG: newsError details:', newsError?.details)
+    console.error('🔍 DEBUG: news data:', news)
     return new Response(
       JSON.stringify({
         success: false,
-        error: `News not found: ${newsId}`
+        error: `News not found: ${newsId}`,
+        debug: {
+          errorCode: newsError?.code,
+          errorMessage: newsError?.message,
+          errorDetails: newsError?.details
+        }
       } as ProcessImageResponse),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
