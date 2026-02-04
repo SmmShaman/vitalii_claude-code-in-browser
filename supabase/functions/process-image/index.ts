@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-03-v6-debug-news-not-found'
+const VERSION = '2026-02-03-v7-fix-category-column'
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -210,7 +210,7 @@ async function handleTextToImageGeneration(
   // 1. Get news record with the stored prompt
   const { data: news, error: newsError } = await supabase
     .from('news')
-    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, image_retry_count, category')
+    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, image_retry_count')
     .eq('id', newsId)
     .single()
 
@@ -287,8 +287,8 @@ Generate a BETTER image addressing all these issues.`
   }
 
   // 4. Generate image using Gemini 3 Pro Image (text-to-image)
-  // Extract category for potential content policy fallback
-  const newsCategory = news.category || 'general'
+  // Note: news table doesn't have category column, use 'general' as default
+  const newsCategory = 'general'
   console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')')
   console.log('📂 News category:', newsCategory)
   const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language, newsCategory, false)

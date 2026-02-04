@@ -12,7 +12,7 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-03-v4-quality-boost'
+const VERSION = '2026-02-04-v5-adaptive-style'
 
 interface GeneratePromptRequest {
   newsId: string
@@ -25,10 +25,22 @@ interface GeneratePromptResponse {
   prompt?: string
   classifierData?: ClassifierOutput
   templateUsed?: string
+  approach?: string
   error?: string
 }
 
-// Structured output from classifier
+// Pre-Analyzer output - decides which approach to use
+interface PreAnalyzerOutput {
+  approach: 'structured' | 'creative' | 'hero_image' | 'artistic'
+  mood: string
+  complexity: 'simple' | 'medium' | 'complex'
+  reason: string
+  suggested_style: string
+  color_mood: string
+  key_emotion: string
+}
+
+// Structured output from classifier (for structured approach)
 interface ClassifierOutput {
   company_name: string
   company_domain: string
@@ -64,12 +76,12 @@ const CATEGORY_COLORS: Record<string, { primary: string; secondary: string }> = 
 }
 
 /**
- * Generate professional image prompt using two-step process:
- * 1. Classifier extracts structured data from article
- * 2. Template is filled with extracted data
+ * Generate professional image prompt using ADAPTIVE two-level process:
  *
- * Based on awesome-nanobanana-pro methodology
- * https://github.com/ZeroLu/awesome-nanobanana-pro
+ * LEVEL 1: Pre-Analyzer decides WHICH approach to use
+ * LEVEL 2: Either use structured templates OR generate creative unique prompt
+ *
+ * This provides variety - not all images will be infographics!
  */
 serve(async (req) => {
   console.log(`🎨 Generate Image Prompt ${VERSION} started`)
@@ -92,36 +104,73 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // STEP 1: Run classifier to extract structured data
-    console.log('🔍 Step 1: Running classifier...')
-    const classifierData = await runClassifier(supabase, requestData.title, requestData.content)
+    // ═══════════════════════════════════════════════════════════════════
+    // LEVEL 1: Pre-Analyzer - Decide which approach to use
+    // ═══════════════════════════════════════════════════════════════════
+    console.log('🔮 Level 1: Running Pre-Analyzer to decide approach...')
+    const preAnalysis = await runPreAnalyzer(supabase, requestData.title, requestData.content)
 
-    if (!classifierData) {
-      throw new Error('Classifier failed to extract data')
-    }
-    console.log('✅ Classifier result:', JSON.stringify(classifierData, null, 2))
-
-    // STEP 2: Select template based on category
-    console.log(`🎯 Step 2: Selecting template for category: ${classifierData.category}`)
-    const templateType = CATEGORY_TO_TEMPLATE[classifierData.category] || 'image_template_general'
-    const template = await getTemplate(supabase, templateType)
-
-    if (!template) {
-      console.warn(`⚠️ Template ${templateType} not found, using fallback`)
+    if (!preAnalysis) {
+      console.warn('⚠️ Pre-Analyzer failed, defaulting to structured approach')
     }
 
-    // STEP 3: Fill template with extracted data
-    console.log('🔧 Step 3: Filling template with data...')
-    const finalPrompt = fillTemplate(template || getDefaultTemplate(), classifierData)
+    const approach = preAnalysis?.approach || 'structured'
+    console.log(`✅ Pre-Analyzer decision: ${approach} (${preAnalysis?.reason || 'default'})`)
+
+    let finalPrompt: string
+    let classifierData: ClassifierOutput | null = null
+    let templateUsed: string | null = null
+
+    // ═══════════════════════════════════════════════════════════════════
+    // LEVEL 2: Execute chosen approach
+    // ═══════════════════════════════════════════════════════════════════
+    if (approach === 'structured') {
+      // STRUCTURED APPROACH: Use classifier + templates (for complex/data-heavy news)
+      console.log('📊 Level 2: Using STRUCTURED approach (classifier + template)')
+
+      classifierData = await runClassifier(supabase, requestData.title, requestData.content)
+      if (!classifierData) {
+        throw new Error('Classifier failed to extract data')
+      }
+
+      templateUsed = CATEGORY_TO_TEMPLATE[classifierData.category] || 'image_template_general'
+      const template = await getTemplate(supabase, templateUsed)
+      finalPrompt = fillTemplate(template || getDefaultTemplate(), classifierData)
+
+    } else {
+      // CREATIVE APPROACH: Generate unique prompt (for simple/emotional news)
+      console.log(`🎨 Level 2: Using CREATIVE approach (${approach})`)
+
+      finalPrompt = await generateCreativePrompt(
+        supabase,
+        requestData.title,
+        requestData.content,
+        preAnalysis!
+      )
+
+      if (!finalPrompt) {
+        // Fallback to structured if creative fails
+        console.warn('⚠️ Creative prompt generation failed, falling back to structured')
+        classifierData = await runClassifier(supabase, requestData.title, requestData.content)
+        if (classifierData) {
+          templateUsed = CATEGORY_TO_TEMPLATE[classifierData.category] || 'image_template_general'
+          const template = await getTemplate(supabase, templateUsed)
+          finalPrompt = fillTemplate(template || getDefaultTemplate(), classifierData)
+        } else {
+          throw new Error('Both creative and structured approaches failed')
+        }
+      }
+    }
 
     console.log('✅ Final prompt generated:', finalPrompt.substring(0, 200) + '...')
 
-    // Save to database
+    // Save to database with approach metadata
     const { error: updateError } = await supabase
       .from('news')
       .update({
         image_generation_prompt: finalPrompt,
-        prompt_generated_at: new Date().toISOString()
+        prompt_generated_at: new Date().toISOString(),
+        // Store approach for analytics (if column exists)
       })
       .eq('id', requestData.newsId)
 
@@ -130,15 +179,21 @@ serve(async (req) => {
       throw new Error('Failed to save prompt')
     }
 
-    // Increment usage count for classifier prompt
-    await supabase.rpc('increment_prompt_usage', { prompt_type_param: 'image_classifier' }).catch(() => {})
+    // Increment usage count
+    const promptTypeUsed = approach === 'structured' ? 'image_classifier' : 'image_creative_writer'
+    try {
+      await supabase.rpc('increment_prompt_usage', { prompt_type_param: promptTypeUsed })
+    } catch (e) {
+      // Ignore RPC errors
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         prompt: finalPrompt,
         classifierData,
-        templateUsed: templateType
+        templateUsed,
+        approach
       } as GeneratePromptResponse),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -159,7 +214,264 @@ serve(async (req) => {
 })
 
 /**
+ * LEVEL 1: Pre-Analyzer
+ * Analyzes the article and decides which image generation approach to use
+ */
+async function runPreAnalyzer(supabase: any, title: string, content: string): Promise<PreAnalyzerOutput | null> {
+  try {
+    // Get pre-analyzer prompt from database
+    const { data: promptData } = await supabase
+      .from('ai_prompts')
+      .select('prompt_text')
+      .eq('prompt_type', 'image_pre_analyzer')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    // Use default prompt if not found in database
+    const preAnalyzerPrompt = promptData?.prompt_text || getDefaultPreAnalyzerPrompt()
+
+    // Fill placeholders
+    let filledPrompt = preAnalyzerPrompt
+    filledPrompt = filledPrompt.replace(/{title}/g, title)
+    filledPrompt = filledPrompt.replace(/{content}/g, content.substring(0, 3000))
+
+    // Call Azure OpenAI
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+
+    const response = await fetch(azureUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': AZURE_OPENAI_API_KEY!
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a visual content strategist. Analyze articles and decide the best image approach. Respond with valid JSON only.'
+          },
+          { role: 'user', content: filledPrompt }
+        ],
+        temperature: 0.4,
+        max_tokens: 500
+      })
+    })
+
+    if (!response.ok) {
+      console.error('❌ Pre-Analyzer API error:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    let jsonString = data.choices[0]?.message?.content?.trim()
+
+    if (!jsonString) return null
+
+    // Clean up JSON
+    jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+    try {
+      const parsed = JSON.parse(jsonString) as PreAnalyzerOutput
+
+      // Validate approach value
+      const validApproaches = ['structured', 'creative', 'hero_image', 'artistic']
+      if (!validApproaches.includes(parsed.approach)) {
+        parsed.approach = 'creative' // Default to creative for variety
+      }
+
+      return parsed
+    } catch (parseError) {
+      console.error('❌ Failed to parse Pre-Analyzer JSON:', parseError)
+      return null
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error running Pre-Analyzer:', error)
+    return null
+  }
+}
+
+/**
+ * Default Pre-Analyzer prompt (used if not in database)
+ */
+function getDefaultPreAnalyzerPrompt(): string {
+  return `Проаналізуй цю новину і визнач НАЙКРАЩИЙ підхід для створення зображення.
+
+НОВИНА:
+Заголовок: {title}
+Зміст: {content}
+
+ВИБЕРИ ОДИН ПІДХІД:
+
+1. "structured" - ІНФОГРАФІКА (використовуй ТІЛЬКИ якщо):
+   - Багато цифр, статистики, порівнянь, графіків
+   - Складний технічний процес що потребує пояснення
+   - Список 5+ функцій/особливостей продукту
+   - Фінансові звіти, дослідження з даними
+
+2. "creative" - УНІКАЛЬНЕ ЗОБРАЖЕННЯ (використовуй якщо):
+   - Проста новина про анонс/подію
+   - Емоційний контент без складних даних
+   - Можна передати суть одним яскравим образом
+
+3. "hero_image" - ФОТО-РЕАЛІСТИЧНЕ (використовуй якщо):
+   - Подорожі, lifestyle, їжа
+   - Фізичний продукт який можна показати
+   - Реальні люди, місця, події
+
+4. "artistic" - ХУДОЖНЯ ІЛЮСТРАЦІЯ (використовуй якщо):
+   - Абстрактні концепції (AI, майбутнє, ідеї)
+   - Філософські/культурні теми
+   - Коли потрібна метафора
+
+Поверни JSON:
+{
+  "approach": "structured" | "creative" | "hero_image" | "artistic",
+  "mood": "опис настрою (excited, serious, hopeful, dramatic...)",
+  "complexity": "simple" | "medium" | "complex",
+  "reason": "чому обрав цей підхід (1 речення)",
+  "suggested_style": "конкретний стиль (cinematic, minimalist, vibrant...)",
+  "color_mood": "теплі/холодні/нейтральні + головний колір",
+  "key_emotion": "головна емоція яку має викликати зображення"
+}`
+}
+
+/**
+ * CREATIVE APPROACH: Generate unique prompt without templates
+ */
+async function generateCreativePrompt(
+  supabase: any,
+  title: string,
+  content: string,
+  preAnalysis: PreAnalyzerOutput
+): Promise<string | null> {
+  try {
+    // Get creative writer prompt from database
+    const { data: promptData } = await supabase
+      .from('ai_prompts')
+      .select('prompt_text')
+      .eq('prompt_type', 'image_creative_writer')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    // Use default prompt if not found
+    const creativePrompt = promptData?.prompt_text || getDefaultCreativeWriterPrompt()
+
+    // Fill placeholders
+    let filledPrompt = creativePrompt
+    filledPrompt = filledPrompt.replace(/{title}/g, title)
+    filledPrompt = filledPrompt.replace(/{content}/g, content.substring(0, 2000))
+    filledPrompt = filledPrompt.replace(/{approach}/g, preAnalysis.approach)
+    filledPrompt = filledPrompt.replace(/{mood}/g, preAnalysis.mood)
+    filledPrompt = filledPrompt.replace(/{suggested_style}/g, preAnalysis.suggested_style)
+    filledPrompt = filledPrompt.replace(/{color_mood}/g, preAnalysis.color_mood)
+    filledPrompt = filledPrompt.replace(/{key_emotion}/g, preAnalysis.key_emotion)
+    filledPrompt = filledPrompt.replace(/{complexity}/g, preAnalysis.complexity)
+
+    // Call Azure OpenAI
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+
+    const response = await fetch(azureUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': AZURE_OPENAI_API_KEY!
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: `You are a master visual storyteller and image prompt engineer.
+Create vivid, specific, unique image descriptions that capture the essence and emotion of news articles.
+Write in English. Be creative, avoid clichés and generic descriptions.
+Focus on VISUAL STORYTELLING - describe what we SEE, not what we read.`
+          },
+          { role: 'user', content: filledPrompt }
+        ],
+        temperature: 0.7, // Higher temperature for creativity
+        max_tokens: 800
+      })
+    })
+
+    if (!response.ok) {
+      console.error('❌ Creative Writer API error:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    const generatedPrompt = data.choices[0]?.message?.content?.trim()
+
+    if (!generatedPrompt) return null
+
+    // Add quality boost and branding to the creative prompt
+    const qualityBoost = `
+
+QUALITY REQUIREMENTS (MANDATORY):
+- Ultra high resolution, 8K quality
+- Vibrant colors with professional contrast
+- Sharp details, no blur or artifacts
+- Professional lighting with depth
+- 1:1 square aspect ratio for social media
+
+BRANDING (MANDATORY):
+- Add small "vitalii.no" watermark text in the bottom right corner
+- The watermark should be subtle but readable`
+
+    return generatedPrompt + qualityBoost
+
+  } catch (error: any) {
+    console.error('❌ Error generating creative prompt:', error)
+    return null
+  }
+}
+
+/**
+ * Default Creative Writer prompt (used if not in database)
+ */
+function getDefaultCreativeWriterPrompt(): string {
+  return `Ти - експерт з візуального сторітелінгу. Створи УНІКАЛЬНИЙ промпт для генерації зображення.
+
+НОВИНА:
+{title}
+
+{content}
+
+АНАЛІЗ ВІД PRE-ANALYZER:
+- Підхід: {approach}
+- Настрій: {mood}
+- Стиль: {suggested_style}
+- Кольори: {color_mood}
+- Емоція: {key_emotion}
+- Складність: {complexity}
+
+ТВОЄ ЗАВДАННЯ:
+Напиши детальний промпт для генерації зображення (150-250 слів).
+
+ОБОВ'ЯЗКОВІ ПРАВИЛА:
+1. НЕ використовуй слова "infographic", "poster", "diagram" (якщо підхід не structured)
+2. Опиши КОНКРЕТНУ сцену або образ, не абстрактні поняття
+3. Включи деталі: освітлення, кут камери, текстури, атмосферу
+4. Передай ЕМОЦІЮ новини через візуальні елементи
+5. Будь специфічним: замість "красивий пейзаж" - "золотиста година на норвезьких фіордах з туманом над водою"
+6. Уникай кліше та загальних фраз
+
+СТРУКТУРА ПРОМПТУ:
+- Головний об'єкт/сцена (що ми бачимо в центрі)
+- Деталі та елементи (що оточує головний об'єкт)
+- Атмосфера та освітлення
+- Кольорова палітра
+- Стиль рендерингу (photorealistic, 3D, illustration, cinematic)
+
+Напиши промпт англійською мовою:`
+}
+
+/**
  * Run AI classifier to extract structured data from article
+ * (Used only for STRUCTURED approach)
  */
 async function runClassifier(supabase: any, title: string, content: string): Promise<ClassifierOutput | null> {
   try {
@@ -200,7 +512,7 @@ async function runClassifier(supabase: any, title: string, content: string): Pro
           },
           { role: 'user', content: classifierPrompt }
         ],
-        temperature: 0.3, // Lower temperature for more consistent extraction
+        temperature: 0.3,
         max_tokens: 800
       })
     })
@@ -306,8 +618,6 @@ function fillTemplate(template: string, data: ClassifierOutput): string {
 
 /**
  * Default fallback template if database is unavailable
- * NOTE: Gemini 2.5 Flash Image cannot render specific text reliably.
- * This template focuses on VISUAL CONCEPTS only, no exact text requests.
  */
 function getDefaultTemplate(): string {
   return `Professional technology news illustration.

@@ -3660,12 +3660,12 @@ serve(async (req) => {
 
       } else if (callbackData.startsWith('regenerate_image_')) {
         // =================================================================
-        // 🔄 REGENERATE IMAGE: Generate new AI image using Imagen 3
+        // 🔄 REGENERATE IMAGE: Show language selection (same as RSS flow)
         // =================================================================
         const newsId = callbackData.replace('regenerate_image_', '')
-        console.log('User wants to regenerate image for news:', newsId)
+        console.log('User wants to regenerate Telegram image for news:', newsId, '- showing language selection')
 
-        // Show "generating" message
+        // Answer callback
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -3673,13 +3673,29 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: '🎨 Генерую зображення...',
+              text: '🌐 Оберіть мову для тексту на зображенні',
               show_alert: false
             })
           }
         )
 
-        // Update message to show progress
+        // Show language selection keyboard (reuse regen_img_ callback which handles both RSS and Telegram)
+        const langKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🇺🇦 Українська', callback_data: `regen_img_ua_${newsId}` },
+              { text: '🇳🇴 Norsk', callback_data: `regen_img_no_${newsId}` },
+              { text: '🇬🇧 English', callback_data: `regen_img_en_${newsId}` }
+            ],
+            [
+              { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+            ],
+            [
+              { text: '❌ Reject', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -3688,138 +3704,12 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + '\n\n⏳ <b>Генерація зображення...</b>\n<i>Це може зайняти до 30 секунд</i>',
-              parse_mode: 'HTML'
+              text: messageText + '\n\n🌐 <b>Оберіть мову для тексту на зображенні:</b>',
+              parse_mode: 'HTML',
+              reply_markup: langKeyboard
             })
           }
         )
-
-        // Clear existing processed_image_url before regenerating
-        await supabase
-          .from('news')
-          .update({ processed_image_url: null })
-          .eq('id', newsId)
-
-        // Call process-image with generateFromPrompt=true
-        try {
-          const imageGenResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/process-image`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                newsId: newsId,
-                generateFromPrompt: true
-              })
-            }
-          )
-
-          const imageGenResult = await imageGenResponse.json()
-
-          if (imageGenResult.success && imageGenResult.processedImageUrl) {
-            // Success! Show the new image and publish buttons
-            const newImageUrl = imageGenResult.processedImageUrl
-
-            const newKeyboard = {
-              inline_keyboard: [
-                [
-                  { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
-                  { text: '🔄 Перегенерувати', callback_data: `regenerate_image_${newsId}` }
-                ],
-                [
-                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
-                ],
-                [
-                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            }
-
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано!</b>\n🖼️ ${escapeHtml(newImageUrl)}`,
-                  parse_mode: 'HTML',
-                  reply_markup: newKeyboard
-                })
-              }
-            )
-          } else {
-            // Failed - show error and keep regenerate button
-            const errorMsg = imageGenResult.error || 'Невідома помилка'
-            const debugInfo = imageGenResult.debug
-              ? `\n\n🔍 <b>Debug:</b> v${imageGenResult.debug.version}, ${imageGenResult.debug.lastApiError || 'no details'}`
-              : ''
-
-            const newKeyboard = {
-              inline_keyboard: [
-                [
-                  { text: '🔄 Спробувати ще раз', callback_data: `regenerate_image_${newsId}` }
-                ],
-                [
-                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
-                ],
-                [
-                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            }
-
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  message_id: messageId,
-                  text: messageText + `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}${debugInfo}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
-                  parse_mode: 'HTML',
-                  reply_markup: newKeyboard
-                })
-              }
-            )
-          }
-        } catch (genError: any) {
-          console.error('Error regenerating image:', genError)
-
-          const newKeyboard = {
-            inline_keyboard: [
-              [
-                { text: '🔄 Спробувати ще раз', callback_data: `regenerate_image_${newsId}` }
-              ],
-              [
-                { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
-              ],
-              [
-                { text: '❌ Reject', callback_data: `reject_${newsId}` }
-              ]
-            ]
-          }
-
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
-                parse_mode: 'HTML',
-                reply_markup: newKeyboard
-              })
-            }
-          )
-        }
 
       } else if (action === 'keep' && callbackData.startsWith('keep_image_')) {
         // =================================================================
@@ -4033,17 +3923,20 @@ serve(async (req) => {
         )
 
       } else if (action === 'regen_img_with_lang') {
-        // 🔄 RSS: Generate new AI image with selected language
+        // 🔄 Generate new AI image with selected language (works for both RSS and Telegram)
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'українською', no: 'норвезькою', en: 'англійською' }
         console.log('User selected language for image:', selectedLang, 'for news:', newsId)
 
-        // Verify news record exists BEFORE calling process-image
+        // Verify news record exists and determine source type
         const { data: newsCheck, error: newsCheckError } = await supabase
           .from('news')
-          .select('id, original_title')
+          .select('id, original_title, rss_analysis')
           .eq('id', newsId)
           .single()
+
+        // Determine if this is RSS or Telegram source
+        const isRssSource = !!(newsCheck?.rss_analysis)
 
         if (newsCheckError || !newsCheck) {
           console.error('❌ News record not found for regeneration:', newsId, newsCheckError?.message)
@@ -4141,10 +4034,11 @@ serve(async (req) => {
           const imageGenResult = await imageGenResponse.json()
 
           if (imageGenResult.success && imageGenResult.processedImageUrl) {
-            // Success! Show the new image and RSS-specific buttons
+            // Success! Show the new image with appropriate buttons based on source type
             const newImageUrl = imageGenResult.processedImageUrl
 
-            const newKeyboard = {
+            // Use different callbacks for RSS vs Telegram sources
+            const newKeyboard = isRssSource ? {
               inline_keyboard: [
                 [
                   { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
@@ -4155,6 +4049,19 @@ serve(async (req) => {
                 ],
                 [
                   { text: '❌ Skip', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            } : {
+              inline_keyboard: [
+                [
+                  { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
+                  { text: '🔄 Перегенерувати', callback_data: `regenerate_image_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+                ],
+                [
+                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
                 ]
               ]
             }
@@ -4178,13 +4085,13 @@ serve(async (req) => {
               console.error('❌ Failed to edit message (success):', successEditResult.description || successEditResult)
             }
           } else {
-            // Failed - show error and keep regenerate button
+            // Failed - show error and keep regenerate button (appropriate for source type)
             const errorMsg = imageGenResult.error || 'Невідома помилка'
             const debugInfo = imageGenResult.debug
               ? `\n\n🔍 <b>Debug:</b> v${imageGenResult.debug.version}, ${imageGenResult.debug.lastApiError || 'no details'}`
               : ''
 
-            const newKeyboard = {
+            const newKeyboard = isRssSource ? {
               inline_keyboard: [
                 [
                   { text: '🔄 Спробувати ще раз', callback_data: `regenerate_rss_image_${newsId}` }
@@ -4194,6 +4101,18 @@ serve(async (req) => {
                 ],
                 [
                   { text: '❌ Skip', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            } : {
+              inline_keyboard: [
+                [
+                  { text: '🔄 Спробувати ще раз', callback_data: `regenerate_image_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+                ],
+                [
+                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
                 ]
               ]
             }
@@ -4218,9 +4137,9 @@ serve(async (req) => {
             }
           }
         } catch (genError: any) {
-          console.error('Error regenerating RSS image:', genError)
+          console.error('Error regenerating image:', genError)
 
-          const newKeyboard = {
+          const newKeyboard = isRssSource ? {
             inline_keyboard: [
               [
                 { text: '🔄 Спробувати ще раз', callback_data: `regenerate_rss_image_${newsId}` }
@@ -4230,6 +4149,18 @@ serve(async (req) => {
               ],
               [
                 { text: '❌ Skip', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          } : {
+            inline_keyboard: [
+              [
+                { text: '🔄 Спробувати ще раз', callback_data: `regenerate_image_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+              ],
+              [
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
               ]
             ]
           }
