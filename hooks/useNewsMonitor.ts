@@ -120,6 +120,8 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
 
   // Load sources from database
   const loadSources = useCallback(async () => {
+    const SOURCES_INITIALIZED_KEY = 'rss_sources_initialized'
+
     try {
       const { data, error } = await supabase
         .from('news_monitor_sources')
@@ -130,30 +132,68 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
 
       if (error) {
         console.error('Failed to load sources:', error)
-        // Fallback to default sources
-        const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
-          ...s,
-          id: `default-${i}`,
-          sortOrder: i + 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }))
-        setSources(fallbackSources)
+        // Only use defaults if not yet initialized
+        const isInitialized = localStorage.getItem(SOURCES_INITIALIZED_KEY) === 'true'
+        if (!isInitialized) {
+          const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
+            ...s,
+            id: `default-${i}`,
+            sortOrder: i + 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }))
+          setSources(fallbackSources)
+        } else {
+          setSources([])
+        }
         return
       }
 
       if (data && data.length > 0) {
+        // Mark as initialized since we have DB data
+        localStorage.setItem(SOURCES_INITIALIZED_KEY, 'true')
         setSources(data.map(mapDBSourceToSource))
       } else {
-        // No sources in DB, use defaults
-        const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
-          ...s,
-          id: `default-${i}`,
-          sortOrder: i + 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }))
-        setSources(fallbackSources)
+        // No sources in DB - check if initialized
+        const isInitialized = localStorage.getItem(SOURCES_INITIALIZED_KEY) === 'true'
+
+        if (!isInitialized) {
+          // First time: save defaults to DB
+          console.log('Initializing RSS sources in database...')
+          const sourcesToInsert = DEFAULT_SOURCES.map((s, i) => ({
+            name: s.name,
+            url: s.url,
+            rss_url: s.rssUrl,
+            tier: s.tier,
+            is_active: s.isActive,
+            is_default: s.isDefault,
+            sort_order: i + 1,
+          }))
+
+          const { data: insertedData, error: insertError } = await supabase
+            .from('news_monitor_sources')
+            .insert(sourcesToInsert)
+            .select()
+
+          if (insertError) {
+            console.error('Failed to initialize sources:', insertError)
+            // Fallback to in-memory defaults
+            const fallbackSources: RSSSource[] = DEFAULT_SOURCES.map((s, i) => ({
+              ...s,
+              id: `default-${i}`,
+              sortOrder: i + 1,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }))
+            setSources(fallbackSources)
+          } else {
+            localStorage.setItem(SOURCES_INITIALIZED_KEY, 'true')
+            setSources(insertedData.map(mapDBSourceToSource))
+          }
+        } else {
+          // Already initialized, DB is intentionally empty
+          setSources([])
+        }
       }
     } catch (err) {
       console.error('Error loading sources:', err)
