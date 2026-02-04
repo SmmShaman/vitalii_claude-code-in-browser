@@ -3,7 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, AlertCircle, Loader2, ExternalLink, Rss, GripVertical } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, AlertCircle, Loader2, ExternalLink, GripVertical } from 'lucide-react'
 import { RSSSource, SourceState } from './types'
 import { ArticleItem } from './ArticleItem'
 
@@ -121,13 +121,9 @@ export function SortableSourceCard({
             )}
           </button>
 
-          <div className={`p-1.5 rounded ${source.isActive ? 'bg-white/10' : 'bg-gray-800'}`}>
-            <Rss className={`h-3.5 w-3.5 ${source.isActive ? 'text-white' : 'text-gray-500'}`} />
-          </div>
-
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className={`font-medium text-sm truncate ${source.isActive ? 'text-white' : 'text-gray-500'}`}>
+              <span className={`font-medium text-sm ${source.isActive ? 'text-white' : 'text-gray-500'}`}>
                 {source.name}
               </span>
               {source.url && (
@@ -141,40 +137,36 @@ export function SortableSourceCard({
                   <ExternalLink className="h-3 w-3" />
                 </a>
               )}
-            </div>
-            <div className="flex items-center gap-2 mt-0.5">
               {isLoading && (
                 <span className="text-xs text-blue-400 flex items-center gap-1">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading...
                 </span>
               )}
               {hasError && (
                 <span className="text-xs text-red-400 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
-                  Error
-                </span>
-              )}
-              {!isLoading && !hasError && hasArticles && (
-                <span className="text-xs text-gray-500">
-                  {state?.articles.length} articles
                 </span>
               )}
               {!source.isActive && (
-                <span className="text-xs text-gray-500">Disabled</span>
+                <span className="text-xs text-gray-500">(off)</span>
               )}
             </div>
             {stats && source.isActive && (
-              <div className="flex items-center gap-1.5 text-[10px] mt-0.5">
+              <div className="flex items-center gap-3 text-[10px] mt-0.5">
                 <span className="text-cyan-400" title="Час з останньої статті">
-                  ⏱{formatTimeSince(stats.lastArticle)}
+                  ⏱ {formatTimeSince(stats.lastArticle)}
                 </span>
                 <span className="text-amber-400" title="Всього статей">
-                  📊{stats.total}
+                  📊 {stats.total}
                 </span>
                 <span className="text-emerald-400" title="Опубліковано">
-                  ✅{stats.published}
+                  ✅ {stats.published}
                 </span>
+                {!isLoading && !hasError && hasArticles && (
+                  <span className="text-gray-500" title="Завантажено статей">
+                    📰 {state?.articles.length}
+                  </span>
+                )}
               </div>
             )}
           </div>
