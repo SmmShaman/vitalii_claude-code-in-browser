@@ -587,10 +587,10 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     }
   }, [sources])
 
-  // Delete source (only non-default)
+  // Delete source
   const deleteSource = useCallback(async (sourceId: string): Promise<boolean> => {
     const source = sources.find(s => s.id === sourceId)
-    if (!source || source.isDefault) return false
+    if (!source) return false
 
     try {
       const { error } = await supabase
