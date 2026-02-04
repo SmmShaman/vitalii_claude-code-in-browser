@@ -20,11 +20,18 @@ import {
 import { RSSSource, SourceState, TierConfig } from './types'
 import { SortableSourceCard } from './SortableSourceCard'
 
+interface SourceStats {
+  total: number
+  published: number
+  lastArticle: Date | null
+}
+
 interface TierColumnProps {
   tier: TierConfig
   sources: RSSSource[]
   sourceStates: Map<string, SourceState>
   expandedSources: Set<string>
+  sourceStats?: Map<string, SourceStats>
   onToggleSource: (id: string) => void
   onAddSource: (tier: number) => void
   onDeleteSource: (id: string) => void
@@ -38,6 +45,7 @@ export function TierColumn({
   sources,
   sourceStates,
   expandedSources,
+  sourceStats,
   onToggleSource,
   onAddSource,
   onDeleteSource,
@@ -134,6 +142,7 @@ export function TierColumn({
                   key={source.id}
                   source={source}
                   state={sourceStates.get(source.id)}
+                  stats={sourceStats?.get(source.id)}
                   isExpanded={expandedSources.has(source.id)}
                   onToggleExpand={() => onToggleSource(source.id)}
                   onDelete={onDeleteSource}

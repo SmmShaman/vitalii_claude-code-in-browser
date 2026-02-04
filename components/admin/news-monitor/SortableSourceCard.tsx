@@ -7,9 +7,42 @@ import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, Ale
 import { RSSSource, SourceState } from './types'
 import { ArticleItem } from './ArticleItem'
 
+interface SourceStats {
+  total: number
+  published: number
+  lastArticle: Date | null
+}
+
+// Format time since last article
+function formatTimeSince(date: Date | null): string {
+  if (!date) return '—'
+
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (minutes < 1) return 'щойно'
+  if (minutes < 60) return `${minutes}хв`
+  if (hours < 24) {
+    const remainingMinutes = minutes % 60
+    return remainingMinutes > 0 ? `${hours}г ${remainingMinutes}хв` : `${hours}г`
+  }
+  if (days < 7) {
+    const remainingHours = hours % 24
+    return remainingHours > 0 ? `${days}д ${remainingHours}г` : `${days}д`
+  }
+  const weeks = Math.floor(days / 7)
+  const remainingDays = days % 7
+  return remainingDays > 0 ? `${weeks}т ${remainingDays}д` : `${weeks}т`
+}
+
 interface SortableSourceCardProps {
   source: RSSSource
   state: SourceState | undefined
+  stats?: SourceStats
   isExpanded: boolean
   onToggleExpand: () => void
   onDelete?: (id: string) => void
@@ -21,6 +54,7 @@ interface SortableSourceCardProps {
 export function SortableSourceCard({
   source,
   state,
+  stats,
   isExpanded,
   onToggleExpand,
   onDelete,
@@ -130,6 +164,19 @@ export function SortableSourceCard({
                 <span className="text-xs text-gray-500">Disabled</span>
               )}
             </div>
+            {stats && source.isActive && (
+              <div className="flex items-center gap-1.5 text-[10px] mt-0.5">
+                <span className="text-cyan-400" title="Час з останньої статті">
+                  ⏱{formatTimeSince(stats.lastArticle)}
+                </span>
+                <span className="text-amber-400" title="Всього статей">
+                  📊{stats.total}
+                </span>
+                <span className="text-emerald-400" title="Опубліковано">
+                  ✅{stats.published}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

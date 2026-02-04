@@ -19,10 +19,44 @@ interface TelegramSource {
   last_fetched_at: string | null
 }
 
+interface SourceStats {
+  total: number
+  published: number
+  lastArticle: Date | null
+}
+
+// Format time since last article
+function formatTimeSince(date: Date | null): string {
+  if (!date) return '—'
+
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (minutes < 1) return 'щойно'
+  if (minutes < 60) return `${minutes}хв`
+  if (hours < 24) {
+    const remainingMinutes = minutes % 60
+    return remainingMinutes > 0 ? `${hours}г ${remainingMinutes}хв` : `${hours}г`
+  }
+  if (days < 7) {
+    const remainingHours = hours % 24
+    return remainingHours > 0 ? `${days}д ${remainingHours}г` : `${days}д`
+  }
+  const weeks = Math.floor(days / 7)
+  const remainingDays = days % 7
+  return remainingDays > 0 ? `${weeks}т ${remainingDays}д` : `${weeks}т`
+}
+
 export const DashboardOverview = () => {
   const [telegramSources, setTelegramSources] = useState<TelegramSource[]>([])
   const [telegramLoading, setTelegramLoading] = useState(true)
   const [refreshingTelegram, setRefreshingTelegram] = useState(false)
+  const [telegramStats, setTelegramStats] = useState<Map<string, SourceStats>>(new Map())
+  const [rssStats, setRssStats] = useState<Map<string, SourceStats>>(new Map())
 
   // RSS Monitor hook
   const {
@@ -61,6 +95,120 @@ export const DashboardOverview = () => {
   useEffect(() => {
     loadTelegramSources()
   }, [])
+
+  // Load stats when telegram sources are loaded
+  useEffect(() => {
+    if (telegramSources.length === 0) return
+    loadTelegramStats()
+  }, [telegramSources])
+
+  // Load stats when RSS sources are loaded
+  useEffect(() => {
+    if (rssSources.length === 0) return
+    loadRssStats()
+  }, [rssSources])
+
+  const loadTelegramStats = async () => {
+    try {
+      const sourceIds = telegramSources.map(s => s.id)
+
+      const { data, error } = await supabase
+        .from('news')
+        .select('source_id, is_published, created_at')
+        .in('source_id', sourceIds)
+
+      if (error) throw error
+
+      // Aggregate stats in JavaScript
+      const statsMap = new Map<string, SourceStats>()
+
+      // Initialize all sources with zero stats
+      sourceIds.forEach(id => {
+        statsMap.set(id, { total: 0, published: 0, lastArticle: null })
+      })
+
+      // Process data
+      data?.forEach(item => {
+        const stats = statsMap.get(item.source_id)
+        if (stats) {
+          stats.total++
+          if (item.is_published) stats.published++
+          const articleDate = new Date(item.created_at)
+          if (!stats.lastArticle || articleDate > stats.lastArticle) {
+            stats.lastArticle = articleDate
+          }
+        }
+      })
+
+      setTelegramStats(statsMap)
+    } catch (error) {
+      console.error('Failed to load telegram stats:', error)
+    }
+  }
+
+  const loadRssStats = async () => {
+    try {
+      // Get news with rss_source_url
+      const { data, error } = await supabase
+        .from('news')
+        .select('rss_source_url, is_published, created_at')
+        .not('rss_source_url', 'is', null)
+
+      if (error) throw error
+
+      // Create a map from RSS source URL to source ID
+      const urlToSourceId = new Map<string, string>()
+      rssSources.forEach(source => {
+        // Match by rss_url or url
+        if (source.rssUrl) urlToSourceId.set(source.rssUrl, source.id)
+        if (source.url) urlToSourceId.set(source.url, source.id)
+      })
+
+      // Aggregate stats
+      const statsMap = new Map<string, SourceStats>()
+
+      // Initialize all sources with zero stats
+      rssSources.forEach(source => {
+        statsMap.set(source.id, { total: 0, published: 0, lastArticle: null })
+      })
+
+      // Process data - match by URL domain/path
+      data?.forEach(item => {
+        if (!item.rss_source_url) return
+
+        // Try to find matching source
+        let matchedSourceId: string | null = null
+
+        // Check if rss_source_url starts with any known source URL
+        for (const source of rssSources) {
+          if (source.rssUrl && item.rss_source_url.includes(new URL(source.rssUrl).hostname)) {
+            matchedSourceId = source.id
+            break
+          }
+          if (source.url && item.rss_source_url.includes(new URL(source.url).hostname)) {
+            matchedSourceId = source.id
+            break
+          }
+        }
+
+        if (matchedSourceId) {
+          const stats = statsMap.get(matchedSourceId)
+          if (stats) {
+            stats.total++
+            if (item.is_published) stats.published++
+            const articleDate = new Date(item.created_at)
+            if (!stats.lastArticle || articleDate > stats.lastArticle) {
+              stats.lastArticle = articleDate
+            }
+          }
+        }
+      })
+
+      setRssStats(statsMap)
+    } catch (error) {
+      console.error('Failed to load RSS stats:', error)
+    }
+  }
 
   const loadTelegramSources = async () => {
     try {
@@ -165,7 +313,11 @@ export const DashboardOverview = () => {
           ) : (
             <div className="grid grid-cols-2 gap-1.5">
               {telegramSources.map((source) => (
-                <MiniTelegramCard key={source.id} source={source} />
+                <MiniTelegramCard
+                  key={source.id}
+                  source={source}
+                  stats={telegramStats.get(source.id)}
+                />
               ))}
             </div>
           )}
@@ -225,6 +377,7 @@ export const DashboardOverview = () => {
                 sources={rssSources.filter(s => s.isActive)}
                 sourceStates={sourceStates}
                 expandedSources={expandedSources}
+                sourceStats={rssStats}
                 onToggleSource={toggleSource}
                 onAddSource={handleAddSource}
                 onDeleteSource={handleDeleteSource}
@@ -256,22 +409,37 @@ export const DashboardOverview = () => {
   )
 }
 
-// Compact Telegram card - just name and status dot
-function MiniTelegramCard({ source }: { source: TelegramSource }) {
+// Compact Telegram card with stats
+function MiniTelegramCard({ source, stats }: { source: TelegramSource; stats?: SourceStats }) {
   const isActive = source.is_active
 
   return (
     <div
       className={`
-        flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs
+        px-2 py-1.5 rounded-md text-xs
         ${isActive
           ? 'bg-blue-500/20 border border-blue-500/30'
           : 'bg-gray-500/10 border border-gray-500/20 opacity-60'
         }
       `}
     >
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isActive ? 'bg-green-400' : 'bg-gray-500'}`} />
-      <span className="text-white truncate" title={source.name}>{source.name}</span>
+      <div className="flex items-center gap-1.5">
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isActive ? 'bg-green-400' : 'bg-gray-500'}`} />
+        <span className="text-white truncate" title={source.name}>{source.name}</span>
+      </div>
+      {stats && (
+        <div className="flex items-center gap-1.5 text-[10px] mt-1 ml-3">
+          <span className="text-cyan-400" title="Час з останньої статті">
+            ⏱{formatTimeSince(stats.lastArticle)}
+          </span>
+          <span className="text-amber-400" title="Всього статей">
+            📊{stats.total}
+          </span>
+          <span className="text-emerald-400" title="Опубліковано">
+            ✅{stats.published}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
