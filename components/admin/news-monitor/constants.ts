@@ -71,14 +71,6 @@ export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' |
     isDefault: true,
   },
   {
-    name: 'Skatteetaten Skattekalender (bedrift)',
-    url: 'https://www.skatteetaten.no/skattekalender-for-bedrift/',
-    rssUrl: 'https://www.skatteetaten.no/rss/skattekalender-for-bedrift/',
-    tier: 1,
-    isActive: true,
-    isDefault: true,
-  },
-  {
     name: 'Skatteetaten Skattekalender (person)',
     url: 'https://www.skatteetaten.no/skattekalender-for-person/',
     rssUrl: 'https://www.skatteetaten.no/rss/skattekalender-for-person/',
