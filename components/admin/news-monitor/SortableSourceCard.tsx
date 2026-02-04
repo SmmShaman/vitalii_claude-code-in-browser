@@ -211,7 +211,7 @@ export function SortableSourceCard({
             )}
           </motion.button>
 
-          {!source.isDefault && onDelete && (
+          {onDelete && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}

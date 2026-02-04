@@ -123,7 +123,7 @@ export function SourceCard({ source, state, isExpanded, onToggleExpand, onDelete
             )}
           </motion.button>
 
-          {!source.isDefault && onDelete && (
+          {onDelete && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
