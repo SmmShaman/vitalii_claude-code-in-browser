@@ -632,6 +632,45 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     const source = sources.find(s => s.id === sourceId)
     if (!source) return false
 
+    // If source has a temporary ID (default-*), we need to find the real DB ID
+    if (sourceId.startsWith('default-')) {
+      // Find the source in DB by name and rssUrl
+      const { data: dbSource, error: findError } = await supabase
+        .from('news_monitor_sources')
+        .select('id')
+        .eq('name', source.name)
+        .eq('rss_url', source.rssUrl)
+        .single()
+
+      if (findError || !dbSource) {
+        console.error('Could not find source in DB:', source.name)
+        // Remove from UI anyway
+        setSources(prev => prev.filter(s => s.id !== sourceId))
+        return true
+      }
+
+      // Use the real DB ID for deletion
+      const realId = dbSource.id
+
+      const { error } = await supabase
+        .from('news_monitor_sources')
+        .delete()
+        .eq('id', realId)
+
+      if (error) {
+        console.error('Failed to delete source:', error)
+        return false
+      }
+
+      setSources(prev => prev.filter(s => s.id !== sourceId))
+      setSourceStates(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(sourceId)
+        return newMap
+      })
+      return true
+    }
+
     try {
       const { error } = await supabase
         .from('news_monitor_sources')
