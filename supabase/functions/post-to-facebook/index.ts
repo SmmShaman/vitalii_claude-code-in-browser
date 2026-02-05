@@ -199,11 +199,11 @@ serve(async (req) => {
       )
     }
 
-    // Post to Facebook
+    // Post to Facebook (prefer wide image for better feed display)
     const result = await postToFacebookPage({
       message,
       link: articleUrl,
-      imageUrl: content.imageUrl
+      imageUrl: content.imageUrlWide || content.imageUrl
     })
 
     if (result.success && result.postId) {

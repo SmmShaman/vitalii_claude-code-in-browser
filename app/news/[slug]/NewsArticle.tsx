@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { getNewsBySlug, getRelatedNews } from '@/integrations/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -11,6 +11,7 @@ import { useTrackingSafe } from '@/contexts/TrackingContext'
 import { ShareButtons } from '@/components/ui/ShareButtons'
 import { ArticleSkeleton } from '@/components/ui/Skeleton'
 import { ScrollReveal } from '@/components/ui/ScrollReveal'
+import { ImageLightbox, useLightbox, LightboxImage } from '@/components/ui/ImageLightbox'
 import {
   generateNewsArticleSchema,
   formatDate,
@@ -33,6 +34,7 @@ export function NewsArticle({ slug }: NewsArticleProps) {
   const [relatedNews, setRelatedNews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const hasTrackedView = useRef(false)
+  const { isOpen, currentIndex, images, openWithImage, closeLightbox, setImages } = useLightbox()
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -83,6 +85,33 @@ export function NewsArticle({ slug }: NewsArticleProps) {
   const currentSlug = news[`slug_${lang}`] || news.slug_en || slug
 
   const heroImage = news.processed_image_url || news.images?.[0] || news.image_url
+
+  // Collect all images for lightbox (hero + images from content)
+  const allImages = useMemo(() => {
+    const imageList: LightboxImage[] = []
+    if (heroImage) {
+      imageList.push({ src: heroImage, alt: title })
+    }
+    // Add additional images from news.images array
+    if (news.images && Array.isArray(news.images)) {
+      news.images.forEach((img: string, index: number) => {
+        if (img !== heroImage) {
+          imageList.push({ src: img, alt: `${title} - Image ${index + 1}` })
+        }
+      })
+    }
+    return imageList
+  }, [heroImage, news.images, title])
+
+  // Update lightbox images when allImages changes
+  useEffect(() => {
+    setImages(allImages)
+  }, [allImages, setImages])
+
+  // Handle image click for lightbox
+  const handleImageClick = useCallback((imageSrc: string) => {
+    openWithImage(imageSrc, allImages)
+  }, [openWithImage, allImages])
 
   return (
     <>
@@ -154,7 +183,12 @@ export function NewsArticle({ slug }: NewsArticleProps) {
 
         {/* Hero Section - Full Width */}
         {heroImage && !news.video_url && (
-          <div className="relative w-full h-[35vh] md:h-[45vh] lg:h-[50vh] bg-gray-100">
+          <button
+            type="button"
+            onClick={() => handleImageClick(heroImage)}
+            className="relative w-full h-[35vh] md:h-[45vh] lg:h-[50vh] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2"
+            aria-label={`View ${title} image in fullscreen`}
+          >
             <Image
               src={heroImage}
               alt={title}
@@ -164,8 +198,8 @@ export function NewsArticle({ slug }: NewsArticleProps) {
               className="object-cover"
             />
             {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-          </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
+          </button>
         )}
 
         {/* Video Hero (if video exists) */}
@@ -282,6 +316,24 @@ export function NewsArticle({ slug }: NewsArticleProps) {
                     h3: ({ children }) => (
                       <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2">{children}</h3>
                     ),
+                    img: ({ src, alt }) => {
+                      const imgSrc = typeof src === 'string' ? src : ''
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => imgSrc && handleImageClick(imgSrc)}
+                          className="block w-full my-4 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2 rounded-lg overflow-hidden"
+                          aria-label={`View ${alt || 'image'} in fullscreen`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imgSrc}
+                            alt={alt || ''}
+                            className="w-full h-auto rounded-lg hover:scale-[1.02] transition-transform"
+                          />
+                        </button>
+                      )
+                    },
                   }}
                 >
                   {content}
@@ -404,6 +456,14 @@ export function NewsArticle({ slug }: NewsArticleProps) {
           </div>
         )}
       </article>
+
+      {/* Lightbox for fullscreen image viewing */}
+      <ImageLightbox
+        images={images}
+        isOpen={isOpen}
+        onClose={closeLightbox}
+        currentIndex={currentIndex}
+      />
     </>
   )
 }

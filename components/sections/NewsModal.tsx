@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { X, Search, Calendar, Tag, ExternalLink, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getAllNews, getAllTags, getNewsById } from '@/integrations/supabase/client';
+import { ImageLightbox, useLightbox, LightboxImage } from '@/components/ui/ImageLightbox';
 import type { NewsItem, LatestNews } from '@/integrations/supabase/types';
 
 interface NewsModalProps {
@@ -29,6 +30,34 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
   const [totalPages, setTotalPages] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const itemsPerPage = 9;
+  const { isOpen: lightboxOpen, currentIndex, images: lightboxImages, openWithImage, closeLightbox, setImages } = useLightbox();
+
+  // Get all images for the selected news item
+  const getNewsImages = useCallback((newsItem: NewsItem | null): LightboxImage[] => {
+    if (!newsItem) return [];
+    const imageList: LightboxImage[] = [];
+    const heroImage = (newsItem as any).processed_image_url || newsItem.image_url;
+    const title = newsItem.title_en || 'News';
+    if (heroImage) {
+      imageList.push({ src: heroImage, alt: title });
+    }
+    // Add additional images if available
+    if ((newsItem as any).images && Array.isArray((newsItem as any).images)) {
+      (newsItem as any).images.forEach((img: string, index: number) => {
+        if (img !== heroImage) {
+          imageList.push({ src: img, alt: `${title} - Image ${index + 1}` });
+        }
+      });
+    }
+    return imageList;
+  }, []);
+
+  // Handle image click for lightbox
+  const handleImageClick = useCallback((imageSrc: string, newsItem: NewsItem | null) => {
+    const images = getNewsImages(newsItem);
+    setImages(images);
+    openWithImage(imageSrc, images);
+  }, [getNewsImages, openWithImage, setImages]);
 
   useEffect(() => {
     if (isOpen) {
@@ -380,12 +409,22 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                           )}
                         </div>
                       ) : ((selectedNews as any).processed_image_url || selectedNews.image_url) && (
-                        <img
-                          src={((selectedNews as any).processed_image_url || selectedNews.image_url) as string}
-                          alt={String(getTranslatedContent(selectedNews).title)}
-                          className="w-full h-auto object-cover"
-                          style={{ aspectRatio: '16/9' }}
-                        />
+                        <button
+                          type="button"
+                          onClick={() => handleImageClick(
+                            ((selectedNews as any).processed_image_url || selectedNews.image_url) as string,
+                            selectedNews
+                          )}
+                          className="w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                          aria-label={`View ${getTranslatedContent(selectedNews).title} image in fullscreen`}
+                        >
+                          <img
+                            src={((selectedNews as any).processed_image_url || selectedNews.image_url) as string}
+                            alt={String(getTranslatedContent(selectedNews).title)}
+                            className="w-full h-auto object-cover hover:opacity-95 transition-opacity"
+                            style={{ aspectRatio: '16/9' }}
+                          />
+                        </button>
                       )}
                     </div>
                   )}
@@ -708,6 +747,14 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
             )}
           </div>
         </motion.div>
+
+        {/* Lightbox for fullscreen image viewing */}
+        <ImageLightbox
+          images={lightboxImages}
+          isOpen={lightboxOpen}
+          onClose={closeLightbox}
+          currentIndex={currentIndex}
+        />
       </motion.div>
     </AnimatePresence>
   );

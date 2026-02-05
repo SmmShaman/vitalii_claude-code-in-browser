@@ -48,7 +48,8 @@ export interface ContentData {
   description: string;
   content: string;
   slug: string;
-  imageUrl?: string;
+  imageUrl?: string;         // Default: square (1:1) for Instagram, or original
+  imageUrlWide?: string;     // Wide (16:9) for LinkedIn/Facebook
   videoUrl?: string;
   videoType?: string;
   originalVideoUrl?: string;  // Direct video URL from Telegram (for Instagram Reels)
@@ -111,7 +112,10 @@ export async function getContent(
     description: (data[descKey] as string) || data.description_en || '',
     content: (data[contentKey] as string) || data.content_en || data.original_content || '',
     slug: (data[slugKey] as string) || data.slug_en || '',
+    // Square (1:1) image for Instagram, or fallback to original
     imageUrl: data.processed_image_url || data.image_url || data.cover_image_url || null,
+    // Wide (16:9) image for LinkedIn/Facebook
+    imageUrlWide: data.processed_image_url_wide || data.processed_image_url || data.image_url || data.cover_image_url || null,
     videoUrl: data.video_url,
     videoType: data.video_type,
     originalVideoUrl: data.original_video_url || null,  // Direct Telegram video URL for Instagram

@@ -374,8 +374,8 @@ async function fetchNewsContent(
   // Build URL - no language prefix in URL (language is handled client-side)
   const url = `${SITE_URL}/news/${slug}`
 
-  // Use processed image if available, otherwise original
-  const imageUrl = news.processed_image_url || news.image_url
+  // Use wide image (16:9) for LinkedIn if available, otherwise fall back to square or original
+  const imageUrl = news.processed_image_url_wide || news.processed_image_url || news.image_url
 
   // Get source link (external source URL extracted from Telegram post)
   const sourceLink = news.source_link || null
@@ -424,8 +424,8 @@ async function fetchBlogContent(
   // Build URL - no language prefix in URL (language is handled client-side)
   const url = `${SITE_URL}/blog/${slug}`
 
-  // Use processed image if available, otherwise original
-  const imageUrl = post.processed_image_url || post.image_url
+  // Use wide image (16:9) for LinkedIn if available, otherwise fall back to square or original
+  const imageUrl = post.processed_image_url_wide || post.processed_image_url || post.image_url
 
   // Get source link from blog_posts.original_url (which stores the source)
   const sourceLink = post.original_url || null

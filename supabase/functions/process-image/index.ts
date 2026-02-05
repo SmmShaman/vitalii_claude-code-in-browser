@@ -54,14 +54,18 @@ interface ProcessImageRequest {
   generateFromPrompt?: boolean
   // Language for text on the image (ua, no, en)
   language?: 'en' | 'no' | 'ua'
+  // Aspect ratio for generated images: '1:1' for Instagram, '16:9' for LinkedIn/Facebook
+  aspectRatio?: '1:1' | '16:9'
 }
 
 interface ProcessImageResponse {
   success: boolean
   processedImageUrl?: string
+  processedImageUrlWide?: string  // 16:9 format URL
   originalImageUrl?: string
   error?: string
   message?: string
+  aspectRatio?: '1:1' | '16:9'
   debug?: {
     version: string
     timestamp: string
@@ -85,15 +89,17 @@ serve(async (req) => {
       newsId: requestData.newsId,
       promptType: requestData.promptType,
       generateFromPrompt: requestData.generateFromPrompt,
-      hasNewsContext: !!(requestData.newsTitle || requestData.newsDescription)
+      hasNewsContext: !!(requestData.newsTitle || requestData.newsDescription),
+      aspectRatio: requestData.aspectRatio || '1:1'
     })
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     // TEXT-TO-IMAGE MODE: Generate image from prompt stored in DB
     if (requestData.generateFromPrompt && requestData.newsId) {
-      console.log('🎨 Text-to-image mode: generating from stored prompt', requestData.language ? `(language: ${requestData.language})` : '')
-      return await handleTextToImageGeneration(supabase, requestData.newsId, requestData.language)
+      const aspectRatio = requestData.aspectRatio || '1:1'
+      console.log('🎨 Text-to-image mode: generating from stored prompt', requestData.language ? `(language: ${requestData.language})` : '', `(aspectRatio: ${aspectRatio})`)
+      return await handleTextToImageGeneration(supabase, requestData.newsId, requestData.language, aspectRatio)
     }
 
     // STANDARD MODE: Process existing image
@@ -201,16 +207,17 @@ async function handleTextToImageGeneration(
   supabase: any,
   newsId: string,
   language?: 'en' | 'no' | 'ua',
+  aspectRatio: '1:1' | '16:9' = '1:1',
   retryCount: number = 0,
   previousIssues: string[] = []
 ): Promise<Response> {
   const MAX_RETRIES = 3
-  console.log(`🎨 Starting text-to-image generation for news: ${newsId}${language ? ` (language: ${language})` : ''} [attempt ${retryCount + 1}/${MAX_RETRIES}]`)
+  console.log(`🎨 Starting text-to-image generation for news: ${newsId}${language ? ` (language: ${language})` : ''} [aspectRatio: ${aspectRatio}] [attempt ${retryCount + 1}/${MAX_RETRIES}]`)
 
   // 1. Get news record with the stored prompt
   const { data: news, error: newsError } = await supabase
     .from('news')
-    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, image_retry_count')
+    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, processed_image_url_wide, image_retry_count')
     .eq('id', newsId)
     .single()
 
@@ -234,14 +241,16 @@ async function handleTextToImageGeneration(
     )
   }
 
-  // Check if we already have a processed image (only on first attempt)
-  if (news.processed_image_url && retryCount === 0) {
-    console.log('✅ Image already generated:', news.processed_image_url)
+  // Check if we already have a processed image for this aspect ratio (only on first attempt)
+  const existingImageUrl = aspectRatio === '16:9' ? news.processed_image_url_wide : news.processed_image_url
+  if (existingImageUrl && retryCount === 0) {
+    console.log(`✅ Image already generated for ${aspectRatio}:`, existingImageUrl)
     return new Response(
       JSON.stringify({
         success: true,
-        processedImageUrl: news.processed_image_url,
-        message: 'Image already exists'
+        processedImageUrl: existingImageUrl,
+        aspectRatio,
+        message: `Image already exists for ${aspectRatio}`
       } as ProcessImageResponse),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -252,9 +261,10 @@ async function handleTextToImageGeneration(
 
   if (!imagePrompt) {
     console.log('⚠️ No stored prompt, generating a default one from title')
+    const aspectRatioDescription = aspectRatio === '16:9' ? '16:9 landscape (wide)' : '1:1 square'
     imagePrompt = `Create a professional, modern illustration for a LinkedIn article about: ${news.title_en || 'technology news'}.
 Style: Clean, professional, tech-focused.
-Aspect ratio: 1:1 square.
+Aspect ratio: ${aspectRatioDescription}.
 No text on the image.
 Colors: Vibrant but professional.`
   }
@@ -291,7 +301,8 @@ Generate a BETTER image addressing all these issues.`
   const newsCategory = 'general'
   console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')')
   console.log('📂 News category:', newsCategory)
-  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language, newsCategory, false)
+  console.log('📐 Aspect ratio:', aspectRatio)
+  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language, newsCategory, false, aspectRatio)
 
   if (!processedImageUrl) {
     console.log('❌ Image generation failed')
@@ -342,21 +353,30 @@ Generate a BETTER image addressing all these issues.`
       supabase,
       newsId,
       language,
+      aspectRatio,
       retryCount + 1,
       [...validation.issues, ...(validation.details?.improvementSuggestions || [])]
     )
   }
 
-  // 7. Save final result to database
+  // 7. Save final result to database (different column based on aspect ratio)
+  const updateData: Record<string, any> = {
+    image_processed_at: new Date().toISOString(),
+    image_quality_score: validation.score,
+    image_validation_issues: validation.issues,
+    image_retry_count: retryCount
+  }
+
+  // Save to appropriate column based on aspect ratio
+  if (aspectRatio === '16:9') {
+    updateData.processed_image_url_wide = processedImageUrl
+  } else {
+    updateData.processed_image_url = processedImageUrl
+  }
+
   const { error: updateError } = await supabase
     .from('news')
-    .update({
-      processed_image_url: processedImageUrl,
-      image_processed_at: new Date().toISOString(),
-      image_quality_score: validation.score,
-      image_validation_issues: validation.issues,
-      image_retry_count: retryCount
-    })
+    .update(updateData)
     .eq('id', newsId)
 
   if (updateError) {
@@ -370,9 +390,10 @@ Generate a BETTER image addressing all these issues.`
     JSON.stringify({
       success: true,
       processedImageUrl,
+      aspectRatio,
       message: validation.isValid
-        ? 'Image generated and validated successfully'
-        : `Image generated with score ${validation.score}/10 (${validation.issues.length} issues)`,
+        ? `Image generated and validated successfully (${aspectRatio})`
+        : `Image generated with score ${validation.score}/10 (${validation.issues.length} issues) - ${aspectRatio}`,
       debug: {
         version: VERSION,
         timestamp: new Date().toISOString(),
@@ -381,7 +402,8 @@ Generate a BETTER image addressing all these issues.`
           score: validation.score,
           isValid: validation.isValid,
           issues: validation.issues,
-          retryCount
+          retryCount,
+          aspectRatio
         }
       }
     } as ProcessImageResponse),
@@ -583,7 +605,8 @@ async function generateImageFromText(
   apiKey: string,
   language?: 'en' | 'no' | 'ua',
   category?: string,
-  useAbstractFallback?: boolean
+  useAbstractFallback?: boolean,
+  aspectRatio: '1:1' | '16:9' = '1:1'
 ): Promise<string | null> {
   lastApiError = null
 
@@ -599,6 +622,7 @@ async function generateImageFromText(
       console.log('📂 Category:', category || 'general')
     }
     console.log('📝 Prompt length:', effectivePrompt.length, 'chars')
+    console.log('📐 Aspect ratio:', aspectRatio)
     if (language) {
       console.log('🌐 Language for text on image:', language)
     }
@@ -651,6 +675,11 @@ DO NOT use any other date. The date "${dateFormats['en']}" is TODAY's date and M
 - Create rich textures and depth with photorealistic materials
 - Use dynamic color range for visual impact`
 
+    // Aspect ratio description for the prompt
+    const aspectRatioDescription = aspectRatio === '16:9'
+      ? '16:9 landscape (wide horizontal format, suitable for LinkedIn/Facebook feed)'
+      : '1:1 square (suitable for Instagram and profile posts)'
+
     const requestBody = {
       contents: [{
         parts: [{
@@ -663,7 +692,8 @@ ${langInstruction}
 
 Visual concept: ${effectivePrompt}
 
-Style: Modern, professional, 1:1 square aspect ratio.`
+Style: Modern, professional, ${aspectRatioDescription}.
+IMPORTANT: The image MUST be in ${aspectRatio} aspect ratio.`
         }]
       }],
       generationConfig: {
@@ -718,7 +748,7 @@ Style: Modern, professional, 1:1 square aspect ratio.`
       if (!useAbstractFallback) {
         console.log('🔄 Retrying with abstract fallback prompt to bypass content policy...')
         console.log('📂 Using category:', category || 'general')
-        return generateImageFromText(prompt, apiKey, language, category, true)
+        return generateImageFromText(prompt, apiKey, language, category, true, aspectRatio)
       }
 
       // Already tried fallback and still blocked - give up gracefully

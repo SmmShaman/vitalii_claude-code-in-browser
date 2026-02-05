@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { X, Search, Calendar, Tag, ChevronLeft, ChevronRight, Filter, Clock, BookOpen, ExternalLink } from 'lucide-react';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getAllBlogPosts, getAllTags, getBlogPostById } from '@/integrations/supabase/client';
+import { ImageLightbox, useLightbox, LightboxImage } from '@/components/ui/ImageLightbox';
 import type { BlogPost, LatestBlogPost } from '@/integrations/supabase/types';
 
 interface BlogModalProps {
@@ -29,6 +30,34 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
   const [totalPages, setTotalPages] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const itemsPerPage = 9;
+  const { isOpen: lightboxOpen, currentIndex, images: lightboxImages, openWithImage, closeLightbox, setImages } = useLightbox();
+
+  // Get all images for the selected blog post
+  const getPostImages = useCallback((post: BlogPost | null): LightboxImage[] => {
+    if (!post) return [];
+    const imageList: LightboxImage[] = [];
+    const heroImage = (post as any).processed_image_url || post.image_url;
+    const title = post.title_en || 'Blog Post';
+    if (heroImage) {
+      imageList.push({ src: heroImage, alt: title });
+    }
+    // Add additional images if available
+    if ((post as any).images && Array.isArray((post as any).images)) {
+      (post as any).images.forEach((img: string, index: number) => {
+        if (img !== heroImage) {
+          imageList.push({ src: img, alt: `${title} - Image ${index + 1}` });
+        }
+      });
+    }
+    return imageList;
+  }, []);
+
+  // Handle image click for lightbox
+  const handleImageClick = useCallback((imageSrc: string, post: BlogPost | null) => {
+    const images = getPostImages(post);
+    setImages(images);
+    openWithImage(imageSrc, images);
+  }, [getPostImages, openWithImage, setImages]);
 
   useEffect(() => {
     if (isOpen) {
@@ -212,13 +241,21 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
               >
                 {/* Featured Image */}
                 {((selectedPost as any).processed_image_url || selectedPost.image_url) && (
-                  <div className="w-full h-96 rounded-xl overflow-hidden mb-6">
+                  <button
+                    type="button"
+                    onClick={() => handleImageClick(
+                      ((selectedPost as any).processed_image_url || selectedPost.image_url) as string,
+                      selectedPost
+                    )}
+                    className="w-full h-96 rounded-xl overflow-hidden mb-6 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                    aria-label={`View ${getTranslatedContent(selectedPost).title} image in fullscreen`}
+                  >
                     <img
                       src={((selectedPost as any).processed_image_url || selectedPost.image_url) as string}
                       alt={String(getTranslatedContent(selectedPost).title)}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover hover:opacity-95 transition-opacity"
                     />
-                  </div>
+                  </button>
                 )}
 
                 {/* Category Badge */}
@@ -525,6 +562,14 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
             )}
           </div>
         </motion.div>
+
+        {/* Lightbox for fullscreen image viewing */}
+        <ImageLightbox
+          images={lightboxImages}
+          isOpen={lightboxOpen}
+          onClose={closeLightbox}
+          currentIndex={currentIndex}
+        />
       </motion.div>
     </AnimatePresence>
   );
