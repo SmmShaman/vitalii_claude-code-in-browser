@@ -191,7 +191,8 @@ serve(async (req) => {
       content.title,
       content.description,
       articleUrl,
-      content.tags || []
+      content.tags || [],
+      requestData.language
     )
 
     // Determine which media URL to use (prefer video for Reels)

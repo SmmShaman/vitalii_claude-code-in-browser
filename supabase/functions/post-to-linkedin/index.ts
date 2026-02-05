@@ -212,14 +212,17 @@ serve(async (req) => {
       imageUrl?: string
       sourceLink?: string
       teaser?: string      // Generated teaser (priority)
+      language: 'en' | 'no' | 'ua'  // For localized CTA
     }
 
     const recordId = requestData.contentType === 'news' ? requestData.newsId : requestData.blogPostId
 
     if (requestData.contentType === 'news' && requestData.newsId) {
-      content = await fetchNewsContent(supabase, requestData.newsId, requestData.language)
+      const fetchedContent = await fetchNewsContent(supabase, requestData.newsId, requestData.language)
+      content = { ...fetchedContent, language: requestData.language }
     } else if (requestData.contentType === 'blog' && requestData.blogPostId) {
-      content = await fetchBlogContent(supabase, requestData.blogPostId, requestData.language)
+      const fetchedContent = await fetchBlogContent(supabase, requestData.blogPostId, requestData.language)
+      content = { ...fetchedContent, language: requestData.language }
     } else {
       throw new Error('Invalid request: must provide either newsId or blogPostId with corresponding contentType')
     }
@@ -521,6 +524,13 @@ async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
   }
 }
 
+// Localized CTA for LinkedIn fallback
+const LINKEDIN_READ_MORE_CTA: Record<string, string> = {
+  en: 'Read more',
+  no: 'Les mer',
+  ua: 'Читати далі'
+}
+
 /**
  * Post content to LinkedIn using Share API v2
  * Supports both ARTICLE (with link preview) and IMAGE (with uploaded image) modes
@@ -533,6 +543,7 @@ async function postToLinkedIn(content: {
   imageUrl?: string
   sourceLink?: string
   teaser?: string  // AI-generated teaser (priority)
+  language: 'en' | 'no' | 'ua'  // For localized CTA
 }): Promise<{ success: boolean; postId?: string; error?: string }> {
   try {
     // Build the share commentary (LinkedIn limit is 3000 chars)
@@ -542,13 +553,14 @@ async function postToLinkedIn(content: {
     if (content.teaser) {
       // Use AI-generated teaser - already includes emojis and CTA
       commentary = content.teaser
-      // Add link to full article (teaser should end with CTA like "Читати повністю →")
+      // Add link to full article (teaser should end with CTA like "Read full article →")
       commentary += `\n\n🔗 ${content.url}`
       console.log('📝 Using AI-generated teaser for LinkedIn post')
     } else {
-      // Fallback to old behavior: title + description
+      // Fallback to old behavior: title + description with localized CTA
+      const readMoreText = LINKEDIN_READ_MORE_CTA[content.language] || LINKEDIN_READ_MORE_CTA.en
       commentary = `${content.title}\n\n${content.description}`
-      commentary += `\n\n🔗 Read more: ${content.url}`
+      commentary += `\n\n🔗 ${readMoreText}: ${content.url}`
       console.log('📝 Using title+description fallback for LinkedIn post')
     }
 

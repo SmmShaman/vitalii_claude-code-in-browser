@@ -766,6 +766,13 @@ export async function debugInstagramToken(): Promise<TokenDebugInfo> {
   }
 }
 
+// Localized CTA for Instagram captions
+const INSTAGRAM_LINK_CTA: Record<string, string> = {
+  en: '🔗 Read on vitalii.no',
+  no: '🔗 Les på vitalii.no',
+  ua: '🔗 Читати на vitalii.no'
+}
+
 /**
  * Format text for Instagram (2200 char limit, handles hashtags)
  * NOTE: Instagram does NOT support clickable links in captions!
@@ -775,11 +782,12 @@ export function formatInstagramCaption(
   title: string,
   description: string,
   url: string,
-  hashtags: string[] = []
+  hashtags: string[] = [],
+  language: 'en' | 'no' | 'ua' = 'en'
 ): string {
   // Instagram doesn't support clickable links - use "link in bio" style
   // Show domain name only (users can find the article on the website)
-  const linkText = `\n\n🔗 Читати на vitalii.no`;
+  const linkText = `\n\n${INSTAGRAM_LINK_CTA[language] || INSTAGRAM_LINK_CTA.en}`;
 
   const hashtagText = hashtags.length > 0
     ? `\n\n${hashtags.slice(0, 10).map(t => `#${t.replace(/[^a-zA-Z0-9а-яА-ЯіІїЇєЄ]/g, '')}`).join(' ')}`
