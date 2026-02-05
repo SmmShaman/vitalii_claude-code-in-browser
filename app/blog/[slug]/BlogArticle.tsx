@@ -60,6 +60,45 @@ export function BlogArticle({ slug }: BlogArticleProps) {
     fetchPost()
   }, [slug, currentLanguage, tracking])
 
+  // Get translated content (must be before conditional returns for hooks)
+  const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
+  const title = post?.[`title_${lang}`] || post?.title_en || ''
+  const content = post?.[`content_${lang}`] || post?.content_en || post?.[`description_${lang}`] || post?.description_en || ''
+  const currentSlug = post?.[`slug_${lang}`] || post?.slug_en || slug
+  const readingTime = post?.reading_time || calculateReadingTime(content)
+  const heroImage = post?.processed_image_url || post?.images?.[0] || post?.image_url || post?.cover_image_url
+
+  // Collect all images for lightbox (hero + images from content) - MUST be before conditional returns
+  const allImages = useMemo(() => {
+    if (!post) return []
+    const imageList: LightboxImage[] = []
+    if (heroImage) {
+      imageList.push({ src: heroImage, alt: title })
+    }
+    // Add additional images from post.images array
+    if (post.images && Array.isArray(post.images)) {
+      post.images.forEach((img: string, index: number) => {
+        if (img !== heroImage) {
+          imageList.push({ src: img, alt: `${title} - Image ${index + 1}` })
+        }
+      })
+    }
+    return imageList
+  }, [heroImage, post, title])
+
+  // Update lightbox images when allImages changes - MUST be before conditional returns
+  useEffect(() => {
+    setImages(allImages)
+  }, [allImages, setImages])
+
+  // Handle image click for lightbox - MUST be before conditional returns
+  const handleImageClick = useCallback((imageSrc: string) => {
+    openWithImage(imageSrc, allImages)
+  }, [openWithImage, allImages])
+
+  // Generate JSON-LD schema (safe to call with null)
+  const blogPostSchema = post ? generateBlogPostSchema(post) : null
+
   if (loading) {
     return <ArticleSkeleton />
   }
@@ -74,45 +113,6 @@ export function BlogArticle({ slug }: BlogArticleProps) {
       </div>
     )
   }
-
-  // Generate JSON-LD schema
-  const blogPostSchema = generateBlogPostSchema(post)
-
-  // Get translated content
-  const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
-  const title = post[`title_${lang}`] || post.title_en
-  const content = post[`content_${lang}`] || post.content_en || post[`description_${lang}`] || post.description_en
-  const currentSlug = post[`slug_${lang}`] || post.slug_en || slug
-
-  const readingTime = post.reading_time || calculateReadingTime(content)
-  const heroImage = (post as any).processed_image_url || post.images?.[0] || post.image_url || post.cover_image_url
-
-  // Collect all images for lightbox (hero + images from content)
-  const allImages = useMemo(() => {
-    const imageList: LightboxImage[] = []
-    if (heroImage) {
-      imageList.push({ src: heroImage, alt: title })
-    }
-    // Add additional images from post.images array
-    if (post.images && Array.isArray(post.images)) {
-      post.images.forEach((img: string, index: number) => {
-        if (img !== heroImage) {
-          imageList.push({ src: img, alt: `${title} - Image ${index + 1}` })
-        }
-      })
-    }
-    return imageList
-  }, [heroImage, post.images, title])
-
-  // Update lightbox images when allImages changes
-  useEffect(() => {
-    setImages(allImages)
-  }, [allImages, setImages])
-
-  // Handle image click for lightbox
-  const handleImageClick = useCallback((imageSrc: string) => {
-    openWithImage(imageSrc, allImages)
-  }, [openWithImage, allImages])
 
   return (
     <>

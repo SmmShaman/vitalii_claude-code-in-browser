@@ -59,6 +59,45 @@ export function NewsArticle({ slug }: NewsArticleProps) {
     fetchNews()
   }, [slug, currentLanguage, tracking])
 
+  // Get translated content (must be before conditional returns for hooks)
+  const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
+  const title = news?.[`title_${lang}`] || news?.title_en || ''
+  const description = news?.[`description_${lang}`] || news?.description_en || ''
+  const content = news?.[`content_${lang}`] || news?.content_en || description
+  const currentSlug = news?.[`slug_${lang}`] || news?.slug_en || slug
+  const heroImage = news?.processed_image_url || news?.images?.[0] || news?.image_url
+
+  // Collect all images for lightbox (hero + images from content) - MUST be before conditional returns
+  const allImages = useMemo(() => {
+    if (!news) return []
+    const imageList: LightboxImage[] = []
+    if (heroImage) {
+      imageList.push({ src: heroImage, alt: title })
+    }
+    // Add additional images from news.images array
+    if (news.images && Array.isArray(news.images)) {
+      news.images.forEach((img: string, index: number) => {
+        if (img !== heroImage) {
+          imageList.push({ src: img, alt: `${title} - Image ${index + 1}` })
+        }
+      })
+    }
+    return imageList
+  }, [heroImage, news, title])
+
+  // Update lightbox images when allImages changes - MUST be before conditional returns
+  useEffect(() => {
+    setImages(allImages)
+  }, [allImages, setImages])
+
+  // Handle image click for lightbox - MUST be before conditional returns
+  const handleImageClick = useCallback((imageSrc: string) => {
+    openWithImage(imageSrc, allImages)
+  }, [openWithImage, allImages])
+
+  // Generate JSON-LD schema (safe to call with null)
+  const newsArticleSchema = news ? generateNewsArticleSchema(news) : null
+
   if (loading) {
     return <ArticleSkeleton />
   }
@@ -73,45 +112,6 @@ export function NewsArticle({ slug }: NewsArticleProps) {
       </div>
     )
   }
-
-  // Generate JSON-LD schema
-  const newsArticleSchema = generateNewsArticleSchema(news)
-
-  // Get translated content
-  const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
-  const title = news[`title_${lang}`] || news.title_en
-  const description = news[`description_${lang}`] || news.description_en
-  const content = news[`content_${lang}`] || news.content_en || description
-  const currentSlug = news[`slug_${lang}`] || news.slug_en || slug
-
-  const heroImage = news.processed_image_url || news.images?.[0] || news.image_url
-
-  // Collect all images for lightbox (hero + images from content)
-  const allImages = useMemo(() => {
-    const imageList: LightboxImage[] = []
-    if (heroImage) {
-      imageList.push({ src: heroImage, alt: title })
-    }
-    // Add additional images from news.images array
-    if (news.images && Array.isArray(news.images)) {
-      news.images.forEach((img: string, index: number) => {
-        if (img !== heroImage) {
-          imageList.push({ src: img, alt: `${title} - Image ${index + 1}` })
-        }
-      })
-    }
-    return imageList
-  }, [heroImage, news.images, title])
-
-  // Update lightbox images when allImages changes
-  useEffect(() => {
-    setImages(allImages)
-  }, [allImages, setImages])
-
-  // Handle image click for lightbox
-  const handleImageClick = useCallback((imageSrc: string) => {
-    openWithImage(imageSrc, allImages)
-  }, [openWithImage, allImages])
 
   return (
     <>
