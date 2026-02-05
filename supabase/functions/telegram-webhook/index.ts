@@ -4007,14 +4007,15 @@ serve(async (req) => {
           console.error('❌ Failed to edit message (progress):', progressEditResult.description || progressEditResult)
         }
 
-        // Clear existing processed_image_url before regenerating
+        // Clear existing processed images before regenerating (both formats)
         await supabase
           .from('news')
-          .update({ processed_image_url: null })
+          .update({ processed_image_url: null, processed_image_url_wide: null })
           .eq('id', newsId)
 
-        // Call process-image with generateFromPrompt=true and language
+        // Call process-image for BOTH aspect ratios (1:1 for Instagram, 16:9 for LinkedIn/Facebook)
         try {
+          // Generate 1:1 (square) image first
           const imageGenResponse = await fetch(
             `${SUPABASE_URL}/functions/v1/process-image`,
             {
@@ -4026,15 +4027,49 @@ serve(async (req) => {
               body: JSON.stringify({
                 newsId: newsId,
                 generateFromPrompt: true,
-                language: selectedLang
+                language: selectedLang,
+                aspectRatio: '1:1'
               })
             }
           )
 
           const imageGenResult = await imageGenResponse.json()
 
+          // Generate 16:9 (wide) image in parallel (don't wait for result to show first image)
+          let wideImageUrl: string | null = null
+          const wideImagePromise = fetch(
+            `${SUPABASE_URL}/functions/v1/process-image`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId: newsId,
+                generateFromPrompt: true,
+                language: selectedLang,
+                aspectRatio: '16:9'
+              })
+            }
+          ).then(res => res.json()).then(result => {
+            if (result.success && result.processedImageUrl) {
+              wideImageUrl = result.processedImageUrl
+              console.log(`✅ Wide image (16:9) generated: ${wideImageUrl}`)
+            } else {
+              console.warn(`⚠️ Wide image (16:9) generation failed:`, result.error || 'unknown error')
+            }
+            return result
+          }).catch(err => {
+            console.error(`❌ Wide image (16:9) generation error:`, err)
+            return null
+          })
+
           if (imageGenResult.success && imageGenResult.processedImageUrl) {
-            // Success! Show the new image with appropriate buttons based on source type
+            // Wait for wide image to complete before showing result
+            await wideImagePromise
+
+            // Success! Show both images with appropriate buttons based on source type
             const newImageUrl = imageGenResult.processedImageUrl
 
             // Use different callbacks for RSS vs Telegram sources
@@ -4066,6 +4101,12 @@ serve(async (req) => {
               ]
             }
 
+            // Build message with both image links
+            const squareImageLink = `🖼️ <b>1:1</b> (Instagram): ${escapeHtml(newImageUrl)}`
+            const wideImageLink = wideImageUrl
+              ? `\n📐 <b>16:9</b> (LinkedIn/FB): ${escapeHtml(wideImageUrl)}`
+              : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
+
             const successEditResponse = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -4074,7 +4115,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${selectedLang.toUpperCase()})!</b>\n🖼️ ${escapeHtml(newImageUrl)}`,
+                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${selectedLang.toUpperCase()})!</b>\n${squareImageLink}${wideImageLink}`,
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })

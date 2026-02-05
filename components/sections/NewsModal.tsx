@@ -135,18 +135,6 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
     const slugKey = `slug_${lang}`;
     const slug = newsItem[slugKey as keyof typeof newsItem] as string | null;
     const fallbackSlug = (newsItem as any).slug_en;
-    console.log('🔍 getNewsSlug called:', {
-      lang,
-      slugKey,
-      currentSlug: slug,
-      fallbackSlug,
-      finalResult: slug || fallbackSlug || null,
-      allSlugs: {
-        slug_en: (newsItem as any).slug_en,
-        slug_no: (newsItem as any).slug_no,
-        slug_ua: (newsItem as any).slug_ua
-      }
-    });
     // Fallback to English slug if current language slug doesn't exist
     return slug || fallbackSlug || null;
   };
@@ -190,14 +178,9 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
     setCurrentPage(1);
   };
 
-  console.log('🔍 NewsModal RENDER - isOpen:', isOpen, 'selectedNews:', !!selectedNews, 'selectedNewsId:', selectedNewsId);
-
   if (!isOpen) {
-    console.log('❌ NewsModal NOT RENDERING - isOpen is false');
     return null;
   }
-
-  console.log('✅ NewsModal IS RENDERING - isOpen is true');
 
   return (
     <AnimatePresence>
@@ -249,44 +232,16 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                 animate={{ opacity: 1, x: 0 }}
                 className="max-w-4xl mx-auto"
               >
-                {(() => {
-                  console.log('🔍 NEWS LAYOUT DEBUG:');
-                  console.log('📱 Window width:', window.innerWidth);
-                  console.log('📱 Window height:', window.innerHeight);
-                  console.log('🖥️ Is Desktop (≥640px)?', window.innerWidth >= 640);
-                  console.log('📰 Selected news:', selectedNews);
-                  console.log('🎥 Has video?', !!(selectedNews as any).video_url);
-                  console.log('🖼️ Has image?', !!selectedNews.image_url);
-                  return null;
-                })()}
                 <style>{`
                   /* Mobile: Stack layout */
                   .news-detail-grid {
                     display: flex;
                     flex-direction: column;
                     gap: 1rem;
-                    border: 2px solid red; /* DEBUG */
                   }
 
                   .news-media-container {
                     width: 100%;
-                    border: 2px solid blue; /* DEBUG */
-                  }
-
-                  .news-title {
-                    border: 2px solid green; /* DEBUG */
-                  }
-
-                  .news-meta {
-                    border: 2px solid orange; /* DEBUG */
-                  }
-
-                  .news-content {
-                    border: 2px solid purple; /* DEBUG */
-                  }
-
-                  .news-links {
-                    border: 2px solid yellow; /* DEBUG */
                   }
 
                   /* Desktop: Grid layout with media on left, content on right */
@@ -300,43 +255,33 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                         "media meta"
                         "media content"
                         "links links";
-                      border: 2px solid lime; /* DEBUG - grid active */
                     }
 
                     .news-media-container {
                       grid-area: media;
                       width: 448px;
-                      border: 2px solid cyan; /* DEBUG */
                     }
 
                     .news-title {
                       grid-area: title;
-                      border: 2px solid magenta; /* DEBUG */
                     }
 
                     .news-meta {
                       grid-area: meta;
-                      border: 2px solid pink; /* DEBUG */
                     }
 
                     .news-content {
                       grid-area: content;
                       grid-column: 1 / -1; /* Span both columns after media ends */
-                      border: 2px solid brown; /* DEBUG */
                     }
 
                     .news-links {
                       grid-area: links;
-                      border: 2px solid teal; /* DEBUG */
                     }
                   }
                 `}</style>
 
-                <div className="news-detail-grid" onClick={() => {
-                  console.log('🖱️ CLICKED on grid container');
-                  console.log('📐 Grid container width:', document.querySelector('.news-detail-grid')?.clientWidth);
-                  console.log('📐 Grid computed style:', window.getComputedStyle(document.querySelector('.news-detail-grid')!).display);
-                }}>
+                <div className="news-detail-grid">
                   {/* Video Player or Image */}
                   {((selectedNews as any).video_url || (selectedNews as any).processed_image_url || selectedNews.image_url) && (
                     <div className="news-media-container rounded-xl overflow-hidden shadow-lg">
