@@ -12,7 +12,7 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-04-v5-adaptive-style'
+const VERSION = '2026-02-05-v6-editorial-metaphor'
 
 interface GeneratePromptRequest {
   newsId: string
@@ -38,6 +38,8 @@ interface PreAnalyzerOutput {
   suggested_style: string
   color_mood: string
   key_emotion: string
+  core_idea: string
+  visual_metaphor: string
 }
 
 // Structured output from classifier (for structured approach)
@@ -326,6 +328,27 @@ function getDefaultPreAnalyzerPrompt(): string {
    - Філософські/культурні теми
    - Коли потрібна метафора
 
+═══════════════════════════════════════
+РЕДАКТОРСЬКИЙ АНАЛІЗ (ОБОВ'ЯЗКОВО):
+═══════════════════════════════════════
+
+Визнач КЛЮЧОВУ ІДЕЮ статті:
+- Це НЕ тема і НЕ факти. Це СУТЬ — що змінюється, що з чим конфліктує, що народжується.
+- Формат: "X → Y" (трансформація), "X vs Y" (конфлікт), "X = Y" (несподіване порівняння)
+- Приклади:
+  * "Норвезький стартап виграв контракт" → "маленька риба перемагає океан"
+  * "AI замінює програмістів" → "інструмент з'їдає свого творця"
+  * "Highsoft отримав $40M" → "невидимий фундамент стає видимим"
+
+Визнач ФІЗИЧНУ МЕТАФОРУ для ідеї:
+- Категорії метафор:
+  * АРХІТЕКТУРНА: мости, фундаменти, вежі, арки, руїни
+  * ПРИРОДНА: коріння, ріки, кристали, вулкани, льодовики
+  * КОНФЛІКТ: зіткнення, баланс, тиск, розрив, злам
+  * СИСТЕМНА: механізми, потоки, мережі, ланцюги, орбіти
+- Метафора має бути ФІЗИЧНОЮ (те що можна побачити і намалювати)
+- НЕ абстрактна ("інновація"), а конкретна ("кристал що росте з тріщини в скелі")
+
 Поверни JSON:
 {
   "approach": "structured" | "creative" | "hero_image" | "artistic",
@@ -334,7 +357,9 @@ function getDefaultPreAnalyzerPrompt(): string {
   "reason": "чому обрав цей підхід (1 речення)",
   "suggested_style": "конкретний стиль (cinematic, minimalist, vibrant...)",
   "color_mood": "теплі/холодні/нейтральні + головний колір",
-  "key_emotion": "головна емоція яку має викликати зображення"
+  "key_emotion": "головна емоція яку має викликати зображення",
+  "core_idea": "ключова ідея у форматі X → Y / X vs Y / X = Y",
+  "visual_metaphor": "конкретна фізична метафора (1 речення)"
 }`
 }
 
@@ -371,6 +396,8 @@ async function generateCreativePrompt(
     filledPrompt = filledPrompt.replace(/{color_mood}/g, preAnalysis.color_mood)
     filledPrompt = filledPrompt.replace(/{key_emotion}/g, preAnalysis.key_emotion)
     filledPrompt = filledPrompt.replace(/{complexity}/g, preAnalysis.complexity)
+    filledPrompt = filledPrompt.replace(/{core_idea}/g, preAnalysis.core_idea || 'Not provided')
+    filledPrompt = filledPrompt.replace(/{visual_metaphor}/g, preAnalysis.visual_metaphor || 'Not provided')
 
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
@@ -385,10 +412,17 @@ async function generateCreativePrompt(
         messages: [
           {
             role: 'system',
-            content: `You are a master visual storyteller and image prompt engineer.
-Create vivid, specific, unique image descriptions that capture the essence and emotion of news articles.
-Write in English. Be creative, avoid clichés and generic descriptions.
-Focus on VISUAL STORYTELLING - describe what we SEE, not what we read.`
+            content: `You are an editorial art director who thinks in METAPHORS, not scenes.
+Your method: Idea → Metaphor → Tension → Style.
+
+RULES:
+- NEVER describe literal scenes (people in offices, meetings, screens, handshakes)
+- NEVER use generic stock-photo compositions (group of people, person at laptop, city skyline)
+- ALWAYS build on the provided core_idea and visual_metaphor from the pre-analysis
+- Think architecturally: structures, mechanisms, forces, contrasts
+- Add TENSION or MOVEMENT: growth, collision, balance, transformation, scale shift
+- Give CONSTRAINTS not details: limit the palette, force asymmetry, demand one focal point
+- Write in English. Be specific and visual.`
           },
           { role: 'user', content: filledPrompt }
         ],
@@ -433,40 +467,74 @@ BRANDING (MANDATORY):
  * Default Creative Writer prompt (used if not in database)
  */
 function getDefaultCreativeWriterPrompt(): string {
-  return `Ти - експерт з візуального сторітелінгу. Створи УНІКАЛЬНИЙ промпт для генерації зображення.
+  return `You are creating an image prompt for a news article. Follow the EDITORIAL METHOD strictly.
 
-НОВИНА:
+ARTICLE:
 {title}
 
 {content}
 
-АНАЛІЗ ВІД PRE-ANALYZER:
-- Підхід: {approach}
-- Настрій: {mood}
-- Стиль: {suggested_style}
-- Кольори: {color_mood}
-- Емоція: {key_emotion}
-- Складність: {complexity}
+PRE-ANALYSIS:
+- Approach: {approach}
+- Mood: {mood}
+- Style: {suggested_style}
+- Colors: {color_mood}
+- Emotion: {key_emotion}
+- Complexity: {complexity}
+- Core Idea: {core_idea}
+- Visual Metaphor: {visual_metaphor}
 
-ТВОЄ ЗАВДАННЯ:
-Напиши детальний промпт для генерації зображення (150-250 слів).
+═══════════════════════════════════════
+EDITORIAL METHOD — Follow these 4 steps:
+═══════════════════════════════════════
 
-ОБОВ'ЯЗКОВІ ПРАВИЛА:
-1. НЕ використовуй слова "infographic", "poster", "diagram" (якщо підхід не structured)
-2. Опиши КОНКРЕТНУ сцену або образ, не абстрактні поняття
-3. Включи деталі: освітлення, кут камери, текстури, атмосферу
-4. Передай ЕМОЦІЮ новини через візуальні елементи
-5. Будь специфічним: замість "красивий пейзаж" - "золотиста година на норвезьких фіордах з туманом над водою"
-6. Уникай кліше та загальних фраз
+STEP 1 — IDEA:
+Take the core_idea from pre-analysis. If it's weak or missing, extract the ESSENCE yourself:
+What is TRANSFORMING? What is in CONFLICT? What SURPRISING connection exists?
+Format: "X → Y" or "X vs Y" or "X = Y"
 
-СТРУКТУРА ПРОМПТУ:
-- Головний об'єкт/сцена (що ми бачимо в центрі)
-- Деталі та елементи (що оточує головний об'єкт)
-- Атмосфера та освітлення
-- Кольорова палітра
-- Стиль рендерингу (photorealistic, 3D, illustration, cinematic)
+STEP 2 — METAPHOR:
+Take the visual_metaphor from pre-analysis and develop it into a CONCRETE visual image.
+Make it PHYSICAL — something you can photograph or sculpt:
+- Architecture: bridges, foundations, towers, arches, ruins, scaffolding
+- Nature: roots, rivers, crystals, volcanoes, glaciers, tectonic plates
+- Mechanisms: gears, pendulums, pressure valves, chain reactions
+- Forces: collision, erosion, crystallization, magnetism, gravity
 
-Напиши промпт англійською мовою:`
+STEP 3 — TENSION / MOVEMENT:
+Add ONE dynamic force to the metaphor:
+- GROWTH: something emerging, sprouting, rising, expanding
+- COLLISION: two forces meeting, friction, impact
+- BALANCE: precarious equilibrium, tipping point
+- TRANSFORMATION: melting, crystallizing, metamorphosis
+- SCALE SHIFT: microscopic vs cosmic, detail vs panorama
+
+STEP 4 — STYLE & CONSTRAINTS:
+- Limit palette to 2-3 colors maximum
+- Force ONE focal point (not a busy scene)
+- Choose rendering: cinematic photography, architectural visualization, macro photography, or editorial illustration
+- Add lighting direction and atmosphere
+
+═══════════════════════════════════════
+FORBIDDEN (never include):
+═══════════════════════════════════════
+- People sitting at desks, tables, or meetings
+- Office scenes, conference rooms, coworking spaces
+- Generic cityscapes or skylines
+- Hands shaking, thumbs up, people pointing at screens
+- Laptops, phones, or screens showing content
+- Groups of smiling professionals
+- Any stock-photo cliché composition
+
+═══════════════════════════════════════
+EXAMPLE:
+═══════════════════════════════════════
+Article: "Highsoft from Vik raises $40M for data visualization"
+Core idea: "invisible infrastructure becomes visible"
+Metaphor: "crystalline data structure rising from a fjord village"
+Result: "A massive translucent crystalline structure emerges from between traditional Norwegian wooden houses in a narrow fjord valley. The crystal facets refract morning light into data-like patterns on the mountain walls. Fog rolls through the valley at the crystal's base. Cinematic wide shot, cool Nordic blue palette with warm amber refractions. Architectural visualization style, dramatic scale contrast between tiny village and towering crystal formation."
+
+Write the image prompt in English (150-250 words):`
 }
 
 /**

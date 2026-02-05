@@ -26,7 +26,7 @@ const PROMPT_CATEGORIES: Record<string, { label: string; icon: string; types: st
   image_generation: {
     label: 'Генерація зображень',
     icon: '🖼️',
-    types: ['image_classifier', 'image_template_tech_product', 'image_template_marketing_campaign', 'image_template_ai_research', 'image_template_business_news', 'image_template_science', 'image_template_lifestyle', 'image_template_general']
+    types: ['image_pre_analyzer', 'image_creative_writer', 'image_classifier', 'image_template_tech_product', 'image_template_marketing_campaign', 'image_template_ai_research', 'image_template_business_news', 'image_template_science', 'image_template_lifestyle', 'image_template_general']
   },
   image_processing: {
     label: 'Обробка зображень',
@@ -558,7 +558,9 @@ Return ONLY valid JSON in this exact format:
                     <option value="summarize">Summarize</option>
                   </optgroup>
                   <optgroup label="🖼️ Генерація зображень">
-                    <option value="image_classifier">Image Classifier (Step 1)</option>
+                    <option value="image_pre_analyzer">Image Pre-Analyzer (Approach + Metaphor)</option>
+                    <option value="image_creative_writer">Image Creative Writer (Editorial Method)</option>
+                    <option value="image_classifier">Image Classifier (Structured Step 1)</option>
                     <option value="image_template_tech_product">Template: Tech Product</option>
                     <option value="image_template_marketing_campaign">Template: Marketing Campaign</option>
                     <option value="image_template_ai_research">Template: AI Research</option>
