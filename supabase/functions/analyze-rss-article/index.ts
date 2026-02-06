@@ -269,7 +269,7 @@ serve(async (req) => {
 
     // Send to Telegram Bot for moderation (score >= 5, unless skipTelegram is set)
     if (analysis.relevance_score >= 5 && !requestData.skipTelegram && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-      await sendTelegramNotification(
+      const telegramMessageId = await sendTelegramNotification(
         newsRecord.id,
         title,
         requestData.url,
@@ -279,6 +279,15 @@ serve(async (req) => {
         imagePrompt,
         imageVariants
       )
+
+      // Save telegram_message_id to prevent duplicate sends
+      if (telegramMessageId) {
+        await supabase
+          .from('news')
+          .update({ telegram_message_id: telegramMessageId })
+          .eq('id', newsRecord.id)
+        console.log(`💾 Saved telegram_message_id: ${telegramMessageId}`)
+      }
     } else {
       // Skip articles with score < 5
       const skipReason = `Low relevance (score ${analysis.relevance_score}/10 < 5) - not sent to bot`
@@ -468,7 +477,7 @@ async function sendTelegramNotification(
   imageUrl: string | null = null,
   imagePrompt: string | null = null,
   variants: Array<{label: string, description: string}> | null = null
-): Promise<void> {
+): Promise<number | null> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.warn('⚠️ Telegram credentials not configured')
     return
@@ -607,11 +616,16 @@ newsId:${newsId}`
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Telegram API error:', errorText)
-    } else {
-      console.log('✅ Telegram notification sent')
+      return null
     }
+
+    const result = await response.json()
+    const messageId = result.result?.message_id || null
+    console.log(`✅ Telegram notification sent (message_id: ${messageId})`)
+    return messageId
   } catch (error) {
     console.error('Failed to send Telegram notification:', error)
+    return null
   }
 }
 

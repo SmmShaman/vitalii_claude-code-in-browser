@@ -271,11 +271,16 @@ serve(async (req) => {
               totalApproved++
 
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                const sent = await sendToTelegramBot(newsEntry.id, article, source.name)
-                if (sent) {
+                const telegramMessageId = await sendToTelegramBot(newsEntry.id, article, source.name)
+                if (telegramMessageId) {
+                  // Save telegram_message_id to prevent duplicate sends
+                  await supabase
+                    .from('news')
+                    .update({ telegram_message_id: telegramMessageId })
+                    .eq('id', newsEntry.id)
                   sentToBotCount++
                   totalSentToBot++
-                  console.log(`✅ Article sent to Telegram bot for moderation`)
+                  console.log(`✅ Article sent to Telegram bot (message_id: ${telegramMessageId})`)
                 } else {
                   console.warn(`⚠️  Failed to send article to Telegram bot (saved in DB anyway)`)
                 }
@@ -489,10 +494,10 @@ async function sendToTelegramBot(
   newsId: string,
   article: RSSArticle,
   sourceName: string
-): Promise<boolean> {
+): Promise<number | null> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
-    return false
+    return null
   }
 
   try {
@@ -534,13 +539,16 @@ ${article.description.substring(0, 500)}${article.description.length > 500 ? '..
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`❌ Telegram API error: ${errorText}`)
-      return false
+      return null
     }
 
-    return true
+    const result = await response.json()
+    const messageId = result.result?.message_id || null
+    console.log(`✅ Telegram message sent (message_id: ${messageId})`)
+    return messageId
   } catch (error) {
     console.error('❌ Error sending to Telegram bot:', error)
-    return false
+    return null
   }
 }
 
