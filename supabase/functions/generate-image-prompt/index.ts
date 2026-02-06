@@ -12,17 +12,25 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-05-v6-editorial-metaphor'
+const VERSION = '2026-02-06-v8-photorealistic-variants'
+
+interface PromptVariant {
+  label: string
+  description: string
+}
 
 interface GeneratePromptRequest {
   newsId: string
   title: string
   content: string
+  mode?: 'variants' | 'full'
+  selectedVariant?: PromptVariant
 }
 
 interface GeneratePromptResponse {
   success: boolean
   prompt?: string
+  variants?: PromptVariant[]
   classifierData?: ClassifierOutput
   templateUsed?: string
   approach?: string
@@ -94,7 +102,8 @@ serve(async (req) => {
 
   try {
     const requestData: GeneratePromptRequest = await req.json()
-    console.log('📝 Processing article:', requestData.title?.substring(0, 50) + '...')
+    const mode = requestData.mode || 'full'
+    console.log(`📝 Processing article (mode=${mode}):`, requestData.title?.substring(0, 50) + '...')
 
     if (!requestData.newsId || !requestData.title || !requestData.content) {
       throw new Error('Missing required fields: newsId, title, content')
@@ -107,10 +116,49 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     // ═══════════════════════════════════════════════════════════════════
+    // MODE: VARIANTS - Generate 4 visual concept options
+    // ═══════════════════════════════════════════════════════════════════
+    if (mode === 'variants') {
+      console.log('🎨 Generating 4 visual concept variants...')
+      const variants = await generateVariants(supabase, requestData.title, requestData.content)
+
+      if (!variants || variants.length === 0) {
+        throw new Error('Failed to generate visual concept variants')
+      }
+
+      // Save variants to database
+      const { error: updateError } = await supabase
+        .from('news')
+        .update({
+          image_prompt_variants: variants,
+        })
+        .eq('id', requestData.newsId)
+
+      if (updateError) {
+        console.error('Failed to save variants to database:', updateError)
+        throw new Error('Failed to save variants')
+      }
+
+      console.log(`✅ ${variants.length} variants generated and saved`)
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          variants,
+        } as GeneratePromptResponse),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // MODE: FULL - Generate complete image prompt (original flow)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════════════
     // LEVEL 1: Pre-Analyzer - Decide which approach to use
     // ═══════════════════════════════════════════════════════════════════
     console.log('🔮 Level 1: Running Pre-Analyzer to decide approach...')
-    const preAnalysis = await runPreAnalyzer(supabase, requestData.title, requestData.content)
+    const preAnalysis = await runPreAnalyzer(supabase, requestData.title, requestData.content, requestData.selectedVariant)
 
     if (!preAnalysis) {
       console.warn('⚠️ Pre-Analyzer failed, defaulting to structured approach')
@@ -147,7 +195,8 @@ serve(async (req) => {
         supabase,
         requestData.title,
         requestData.content,
-        preAnalysis!
+        preAnalysis!,
+        requestData.selectedVariant
       )
 
       if (!finalPrompt) {
@@ -172,7 +221,6 @@ serve(async (req) => {
       .update({
         image_generation_prompt: finalPrompt,
         prompt_generated_at: new Date().toISOString(),
-        // Store approach for analytics (if column exists)
       })
       .eq('id', requestData.newsId)
 
@@ -219,7 +267,7 @@ serve(async (req) => {
  * LEVEL 1: Pre-Analyzer
  * Analyzes the article and decides which image generation approach to use
  */
-async function runPreAnalyzer(supabase: any, title: string, content: string): Promise<PreAnalyzerOutput | null> {
+async function runPreAnalyzer(supabase: any, title: string, content: string, selectedVariant?: PromptVariant): Promise<PreAnalyzerOutput | null> {
   try {
     // Get pre-analyzer prompt from database
     const { data: promptData } = await supabase
@@ -238,6 +286,17 @@ async function runPreAnalyzer(supabase: any, title: string, content: string): Pr
     let filledPrompt = preAnalyzerPrompt
     filledPrompt = filledPrompt.replace(/{title}/g, title)
     filledPrompt = filledPrompt.replace(/{content}/g, content.substring(0, 3000))
+
+    // Add selected variant guidance if provided
+    if (selectedVariant) {
+      filledPrompt += `\n\n═══════════════════════════════════════
+ОБРАНИЙ ВІЗУАЛЬНИЙ НАПРЯМОК (ОБОВ'ЯЗКОВО використай як основу):
+═══════════════════════════════════════
+Концепція: ${selectedVariant.label}
+Опис: ${selectedVariant.description}
+
+Базуй свій аналіз на цьому візуальному напрямку. visual_metaphor та core_idea мають відповідати обраній концепції.`
+    }
 
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
@@ -370,7 +429,8 @@ async function generateCreativePrompt(
   supabase: any,
   title: string,
   content: string,
-  preAnalysis: PreAnalyzerOutput
+  preAnalysis: PreAnalyzerOutput,
+  selectedVariant?: PromptVariant
 ): Promise<string | null> {
   try {
     // Get creative writer prompt from database
@@ -399,8 +459,46 @@ async function generateCreativePrompt(
     filledPrompt = filledPrompt.replace(/{core_idea}/g, preAnalysis.core_idea || 'Not provided')
     filledPrompt = filledPrompt.replace(/{visual_metaphor}/g, preAnalysis.visual_metaphor || 'Not provided')
 
+    // Add selected variant guidance if provided
+    if (selectedVariant) {
+      filledPrompt += `\n\n═══════════════════════════════════════
+SELECTED VISUAL CONCEPT (MANDATORY - build the prompt around this):
+═══════════════════════════════════════
+Concept: ${selectedVariant.label}
+Description: ${selectedVariant.description}
+
+You MUST create the image prompt based on this visual direction. Develop and enrich this concept with specific details, lighting, and composition.`
+    }
+
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+
+    const systemContent = selectedVariant
+      ? `You are an editorial art director who thinks in METAPHORS, not scenes.
+Your method: Idea → Metaphor → Tension → Style.
+
+IMPORTANT: The moderator has selected a specific visual concept. You MUST build the image prompt around this concept.
+Develop the selected concept into a rich, detailed image prompt with specific composition, lighting, colors, and atmosphere.
+
+RULES:
+- NEVER describe literal scenes (people in offices, meetings, screens, handshakes)
+- NEVER use generic stock-photo compositions (group of people, person at laptop, city skyline)
+- ALWAYS build on the SELECTED VISUAL CONCEPT provided
+- Think architecturally: structures, mechanisms, forces, contrasts
+- Add TENSION or MOVEMENT: growth, collision, balance, transformation, scale shift
+- Give CONSTRAINTS not details: limit the palette, force asymmetry, demand one focal point
+- Write in English. Be specific and visual.`
+      : `You are an editorial art director who thinks in METAPHORS, not scenes.
+Your method: Idea → Metaphor → Tension → Style.
+
+RULES:
+- NEVER describe literal scenes (people in offices, meetings, screens, handshakes)
+- NEVER use generic stock-photo compositions (group of people, person at laptop, city skyline)
+- ALWAYS build on the provided core_idea and visual_metaphor from the pre-analysis
+- Think architecturally: structures, mechanisms, forces, contrasts
+- Add TENSION or MOVEMENT: growth, collision, balance, transformation, scale shift
+- Give CONSTRAINTS not details: limit the palette, force asymmetry, demand one focal point
+- Write in English. Be specific and visual.`
 
     const response = await fetch(azureUrl, {
       method: 'POST',
@@ -412,17 +510,7 @@ async function generateCreativePrompt(
         messages: [
           {
             role: 'system',
-            content: `You are an editorial art director who thinks in METAPHORS, not scenes.
-Your method: Idea → Metaphor → Tension → Style.
-
-RULES:
-- NEVER describe literal scenes (people in offices, meetings, screens, handshakes)
-- NEVER use generic stock-photo compositions (group of people, person at laptop, city skyline)
-- ALWAYS build on the provided core_idea and visual_metaphor from the pre-analysis
-- Think architecturally: structures, mechanisms, forces, contrasts
-- Add TENSION or MOVEMENT: growth, collision, balance, transformation, scale shift
-- Give CONSTRAINTS not details: limit the palette, force asymmetry, demand one focal point
-- Write in English. Be specific and visual.`
+            content: systemContent
           },
           { role: 'user', content: filledPrompt }
         ],
@@ -535,6 +623,146 @@ Metaphor: "crystalline data structure rising from a fjord village"
 Result: "A massive translucent crystalline structure emerges from between traditional Norwegian wooden houses in a narrow fjord valley. The crystal facets refract morning light into data-like patterns on the mountain walls. Fog rolls through the valley at the crystal's base. Cinematic wide shot, cool Nordic blue palette with warm amber refractions. Architectural visualization style, dramatic scale contrast between tiny village and towering crystal formation."
 
 Write the image prompt in English (150-250 words):`
+}
+
+/**
+ * Generate 4 visual concept variants for moderator to choose from
+ */
+async function generateVariants(supabase: any, title: string, content: string): Promise<PromptVariant[] | null> {
+  try {
+    // Get variants prompt from database
+    const { data: promptData } = await supabase
+      .from('ai_prompts')
+      .select('prompt_text')
+      .eq('prompt_type', 'image_prompt_variants')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const variantsPrompt = promptData?.prompt_text || getDefaultVariantsPrompt()
+
+    // Fill placeholders
+    let filledPrompt = variantsPrompt
+    filledPrompt = filledPrompt.replace(/{title}/g, title)
+    filledPrompt = filledPrompt.replace(/{content}/g, content.substring(0, 3000))
+
+    // Call Azure OpenAI
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+
+    const response = await fetch(azureUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': AZURE_OPENAI_API_KEY!
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an editorial art director for a premium news publication. You create PHOTOREALISTIC 4K visual concepts for news article illustrations. Every concept MUST clearly reference the specific subject, company names, product names, and technologies mentioned in the article. No abstract symbols or simple illustrations — only cinematic photorealistic scenes. Respond with valid JSON array only, no markdown formatting.'
+          },
+          { role: 'user', content: filledPrompt }
+        ],
+        temperature: 0.8,
+        max_tokens: 1000
+      })
+    })
+
+    if (!response.ok) {
+      console.error('❌ Variants API error:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    let jsonString = data.choices[0]?.message?.content?.trim()
+
+    if (!jsonString) return null
+
+    // Clean up JSON
+    jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+    try {
+      const parsed = JSON.parse(jsonString)
+
+      // Validate it's an array of variants
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        console.error('❌ Variants response is not a valid array')
+        return null
+      }
+
+      // Ensure exactly 4 variants, validate structure
+      const variants: PromptVariant[] = parsed
+        .filter((v: any) => v.label && v.description)
+        .slice(0, 4)
+        .map((v: any) => ({
+          label: String(v.label).substring(0, 50),
+          description: String(v.description).substring(0, 300)
+        }))
+
+      if (variants.length < 2) {
+        console.error('❌ Too few valid variants:', variants.length)
+        return null
+      }
+
+      return variants
+    } catch (parseError) {
+      console.error('❌ Failed to parse variants JSON:', parseError)
+      return null
+    }
+  } catch (error: any) {
+    console.error('❌ Error generating variants:', error)
+    return null
+  }
+}
+
+/**
+ * Default prompt for generating 4 visual concept variants
+ */
+function getDefaultVariantsPrompt(): string {
+  return `You are an art director for a premium news publication. Read the article and propose 4 DIFFERENT PHOTOREALISTIC 4K visual concepts for illustration.
+
+ARTICLE:
+Title: {title}
+Content: {content}
+
+═══════════════════════════════════════
+MANDATORY RULES:
+═══════════════════════════════════════
+1. Every concept MUST mention specific names, companies, products, or technologies from the article
+2. All 4 concepts must be PHOTOREALISTIC 4K scenes (cinematic quality, as if shot by a professional photographer)
+3. NO abstract symbols, NO simple illustrations, NO generic imagery without article connection
+4. Each description must paint a concrete visual scene with lighting, composition, and atmosphere
+
+═══════════════════════════════════════
+4 CONCEPT CATEGORIES:
+═══════════════════════════════════════
+1. PHOTOREALISTIC METAPHOR with product/technology — a cinematic scene where the article's subject is shown through a powerful visual metaphor. Must include the specific product/company name in context.
+2. TECHNOLOGICAL/INDUSTRIAL visualization — show the technology, hardware, infrastructure, or system described in the article. Photorealistic render of the actual tech/product.
+3. CINEMATIC DRAMATIC scene — an editorial photography-style scene capturing the IMPACT or CONSEQUENCE of what the article describes. Human scale, dramatic lighting.
+4. MACRO DETAIL shot — extreme close-up of a key element from the article. Shallow depth of field, revealing texture and detail of the subject matter.
+
+For each concept provide:
+- label: short title (3-5 words, must reference article subject)
+- description: photorealistic scene description (2-3 sentences with specific details, lighting, camera angle)
+
+═══════════════════════════════════════
+EXAMPLE (article about "OpenAI Trusted Access for Cyber"):
+═══════════════════════════════════════
+[
+  {"label": "OpenAI cyber shield metaphor", "description": "A glowing translucent security shield bearing the OpenAI logo hovers protectively over a sprawling server room. Blue-white light refracts through the shield casting geometric patterns on the dark server racks below. Cinematic wide angle, cool blue palette with warm amber accents from status LEDs."},
+  {"label": "AI security operations center", "description": "A state-of-the-art cybersecurity operations center with curved displays showing real-time threat maps and OpenAI's neural network visualizations. Dramatic low-key lighting with screens casting blue glow across polished surfaces. Shot from behind an operator's shoulder, 4K editorial photography."},
+  {"label": "Digital fortress architecture", "description": "A photorealistic architectural visualization of a massive data center entrance designed like a futuristic vault door, with the OpenAI wordmark etched into brushed steel. Morning fog surrounds the structure. Cinematic drone shot perspective, golden hour lighting."},
+  {"label": "Neural network circuit macro", "description": "Extreme macro photography of a custom AI security chip with visible neural pathways glowing cyan. Tiny OpenAI branding laser-etched on the silicon die. Shallow depth of field, dark background, studio lighting revealing microscopic circuit traces."}
+]
+
+Return ONLY a JSON array:
+[
+  {"label": "...", "description": "..."},
+  {"label": "...", "description": "..."},
+  {"label": "...", "description": "..."},
+  {"label": "...", "description": "..."}
+]`
 }
 
 /**

@@ -740,9 +740,10 @@ serve(async (req) => {
               approvedCount++
               totalApproved++
 
-              // 🎨 Generate image prompt for Google AI Studio
-              console.log(`🎨 Generating image prompt for post ${post.messageId}...`)
+              // 🎨 Generate image concept variants (moderator will choose before image generation)
+              console.log(`🎨 Generating image concept variants for post ${post.messageId}...`)
               let imagePrompt: string | null = null
+              let imageVariants: Array<{label: string, description: string}> | null = null
 
               try {
                 const promptResponse = await fetch(
@@ -756,59 +757,21 @@ serve(async (req) => {
                     body: JSON.stringify({
                       newsId: newsEntry.id,
                       title: post.text.substring(0, 200),
-                      content: post.text
+                      content: post.text,
+                      mode: 'variants'
                     })
                   }
                 )
 
                 if (promptResponse.ok) {
                   const promptResult = await promptResponse.json()
-                  imagePrompt = promptResult.prompt
-                  console.log(`✅ Image prompt generated: ${imagePrompt?.substring(0, 100)}...`)
-
-                  // 🎨 AUTO-GENERATE IMAGE: Call process-image to generate image from prompt
-                  // This happens ONLY if we don't already have an image
-                  if (!photoUrl) {
-                    console.log(`🖼️ Auto-generating image for post ${post.messageId}...`)
-                    try {
-                      const imageGenResponse = await fetch(
-                        `${SUPABASE_URL}/functions/v1/process-image`,
-                        {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                            'Content-Type': 'application/json'
-                          },
-                          body: JSON.stringify({
-                            newsId: newsEntry.id,
-                            generateFromPrompt: true  // NEW: text-to-image mode
-                          })
-                        }
-                      )
-
-                      if (imageGenResponse.ok) {
-                        const imageGenResult = await imageGenResponse.json()
-                        if (imageGenResult.success && imageGenResult.processedImageUrl) {
-                          photoUrl = imageGenResult.processedImageUrl
-                          console.log(`✅ Image auto-generated: ${photoUrl}`)
-                        } else {
-                          console.warn(`⚠️ Image generation returned: ${imageGenResult.error || 'no image'}`)
-                        }
-                      } else {
-                        const errorText = await imageGenResponse.text()
-                        console.warn(`⚠️ Image generation failed: ${imageGenResponse.status} - ${errorText.substring(0, 200)}`)
-                      }
-                    } catch (imageGenError) {
-                      console.error(`❌ Error auto-generating image:`, imageGenError)
-                    }
-                  } else {
-                    console.log(`📸 Post already has image, skipping auto-generation`)
-                  }
+                  imageVariants = promptResult.variants || null
+                  console.log(`✅ Image variants generated: ${imageVariants?.length || 0} concepts`)
                 } else {
-                  console.warn(`⚠️  Failed to generate image prompt for post ${post.messageId}`)
+                  console.warn(`⚠️  Failed to generate image variants for post ${post.messageId}`)
                 }
               } catch (promptError) {
-                console.error(`❌ Error generating image prompt:`, promptError)
+                console.error(`❌ Error generating image variants:`, promptError)
               }
 
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
@@ -819,7 +782,8 @@ serve(async (req) => {
                   imagePrompt,
                   post.videoUrl || null,
                   post.videoType || null,
-                  photoUrl || null // Pass updated photoUrl from Supabase Storage
+                  photoUrl || null, // Pass updated photoUrl from Supabase Storage
+                  imageVariants     // Pass image concept variants
                 )
                 if (result.success) {
                   sentToBotCount++
@@ -1262,7 +1226,8 @@ async function sendToTelegramBot(
   imagePrompt: string | null = null,
   videoUrl: string | null = null,
   videoType: string | null = null,
-  uploadedPhotoUrl: string | null = null // Updated photoUrl from Supabase Storage
+  uploadedPhotoUrl: string | null = null, // Updated photoUrl from Supabase Storage
+  variants: Array<{label: string, description: string}> | null = null
 ): Promise<TelegramMessageInfo> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
@@ -1282,30 +1247,34 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 
 <i>Posted:</i> ${post.date.toISOString()}`
 
-    // 🎬 SEQUENTIAL WORKFLOW: Start with image selection OR go straight to publish if video
+    // 🎬 SEQUENTIAL WORKFLOW: Start with variant selection, image selection, OR go straight to publish if video
     const hasVideo = videoUrl && videoType
     const hasImage = uploadedPhotoUrl // Use uploaded photoUrl, not original post.photoUrl
+    const hasVariants = variants && variants.length > 0
 
-    // Show image status
-    if (hasImage) {
+    // Show image/variant status
+    if (hasVideo) {
+      message += `
+
+🎥 <b>Відео:</b> ✅ Готове`
+    } else if (hasVariants) {
+      // Show 4 concept variants for moderator to choose
+      const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+      message += `
+
+🎨 <b>Оберіть концепцію зображення:</b>
+`
+      variants!.forEach((v, i) => {
+        message += `
+${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>
+<i>${escapeHtml(v.description)}</i>
+`
+      })
+    } else if (hasImage) {
       message += `
 
 🖼️ <b>Зображення:</b> ✅ Готове
 ${escapeHtml(uploadedPhotoUrl)}`
-    } else if (hasVideo) {
-      message += `
-
-🎥 <b>Відео:</b> ✅ Готове`
-    } else if (imagePrompt) {
-      // No image, but we have a prompt - show fallback for manual generation
-      message += `
-
-⚠️ <b>Зображення:</b> Не вдалося згенерувати автоматично
-
-🎨 <b>Промпт (для ручної генерації):</b>
-<code>${imagePrompt.substring(0, 500)}</code>
-
-💡 <i>Використай промпт в Google AI Studio або завантаж своє зображення</i>`
     } else {
       message += `
 
@@ -1331,39 +1300,39 @@ ${escapeHtml(uploadedPhotoUrl)}`
           ]
         ]
       }
+    } else if (hasVariants) {
+      // 🎨 Variants available → Show variant selection buttons
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+            { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+            { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+            { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+          ],
+          [
+            { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+          ],
+          [
+            { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` },
+            { text: '❌ Reject', callback_data: `reject_${newsId}` }
+          ]
+        ]
+      }
     } else {
-      // 🖼️ No video → Show image workflow first
-      if (hasImage) {
-        // Has image (auto-generated or from Telegram) → Confirm, regenerate, or upload custom
-        keyboard = {
-          inline_keyboard: [
-            [
-              { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
-              { text: '🔄 Перегенерувати', callback_data: `regenerate_image_${newsId}` }
-            ],
-            [
-              { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
-            ],
-            [
-              { text: '❌ Reject', callback_data: `reject_${newsId}` }
-            ]
+      // No variants, no image → Show generate/upload options
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
+          ],
+          [
+            { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+          ],
+          [
+            { text: '❌ Reject', callback_data: `reject_${newsId}` }
           ]
-        }
-      } else {
-        // No image → Try to generate or upload custom
-        keyboard = {
-          inline_keyboard: [
-            [
-              { text: '🎨 Згенерувати', callback_data: `regenerate_image_${newsId}` }
-            ],
-            [
-              { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
-            ],
-            [
-              { text: '❌ Reject', callback_data: `reject_${newsId}` }
-            ]
-          ]
-        }
+        ]
       }
     }
 

@@ -81,6 +81,7 @@ serve(async (req) => {
     const url = news.original_url || news.rss_source_url
     const imageUrl = news.image_url
     const imagePrompt = news.image_generation_prompt
+    const variants = news.image_prompt_variants as Array<{label: string, description: string}> | null
 
     // Send to Telegram
     const messageId = await sendTelegramNotification(
@@ -90,7 +91,8 @@ serve(async (req) => {
       analysis,
       'RSS Feed', // sourceName
       imageUrl,
-      imagePrompt
+      imagePrompt,
+      variants
     )
 
     // Update news record with telegram_message_id
@@ -135,7 +137,8 @@ async function sendTelegramNotification(
   analysis: AIAnalysisResult,
   sourceName: string,
   imageUrl: string | null = null,
-  imagePrompt: string | null = null
+  imagePrompt: string | null = null,
+  variants: Array<{label: string, description: string}> | null = null
 ): Promise<number | null> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.warn('⚠️ Telegram credentials not configured')
@@ -161,18 +164,21 @@ async function sendTelegramNotification(
     'other': '📰 Other'
   }
 
+  const hasVariants = variants && variants.length > 0
+
   // Build image status section
   let imageStatusText = ''
-  if (imageUrl) {
+  if (hasVariants) {
+    const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+    imageStatusText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
+    variants!.forEach((v, i) => {
+      imageStatusText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+    })
+  } else if (imageUrl) {
     imageStatusText = `
 
 🖼️ <b>Зображення:</b> ✅ Готове
 ${escapeHtml(imageUrl)}`
-  } else if (imagePrompt) {
-    imageStatusText = `
-
-⚠️ <b>Зображення:</b> Немає (є промпт)
-🎨 <i>Натисни "Згенерувати" для створення AI зображення</i>`
   } else {
     imageStatusText = `
 
@@ -198,10 +204,29 @@ ${analysis.skip_reason ? `ℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}${ima
 
 newsId:${newsId}`
 
-  // Build keyboard with image workflow buttons (same pattern as Telegram donors)
+  // Build keyboard
   let keyboard: { inline_keyboard: any[] }
 
-  if (imageUrl) {
+  if (hasVariants) {
+    // Has variants → Show variant selection buttons
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+          { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+          { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+          { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+        ],
+        [
+          { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+        ],
+        [
+          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` },
+          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+        ]
+      ]
+    }
+  } else if (imageUrl) {
     // Has image from RSS → Confirm, regenerate, or upload custom
     keyboard = {
       inline_keyboard: [
@@ -218,11 +243,11 @@ newsId:${newsId}`
       ]
     }
   } else {
-    // No image → Generate or upload custom
+    // No image, no variants → Generate variants or upload custom
     keyboard = {
       inline_keyboard: [
         [
-          { text: '🎨 Згенерувати зображення', callback_data: `regenerate_rss_image_${newsId}` }
+          { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
         ],
         [
           { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }

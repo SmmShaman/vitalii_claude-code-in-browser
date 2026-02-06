@@ -235,10 +235,11 @@ serve(async (req) => {
       created_at: newsRecord.created_at
     }))
 
-    // Generate image prompt for RSS article (same as Telegram donor workflow)
+    // Generate image concept variants for RSS article
     let imagePrompt: string | null = null
+    let imageVariants: Array<{label: string, description: string}> | null = null
     try {
-      console.log('🎨 Generating image prompt for RSS article...')
+      console.log('🎨 Generating image concept variants for RSS article...')
       const promptResponse = await fetch(
         `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
         {
@@ -249,20 +250,21 @@ serve(async (req) => {
           body: JSON.stringify({
             newsId: newsRecord.id,
             title: title,
-            content: articleContent.text.substring(0, 2000)
+            content: articleContent.text.substring(0, 2000),
+            mode: 'variants'
           })
         }
       )
 
       if (promptResponse.ok) {
         const promptResult = await promptResponse.json()
-        imagePrompt = promptResult.prompt
-        console.log(`✅ Image prompt generated: ${imagePrompt?.substring(0, 100)}...`)
+        imageVariants = promptResult.variants || null
+        console.log(`✅ Image variants generated: ${imageVariants?.length || 0} concepts`)
       } else {
-        console.warn('⚠️ Image prompt generation failed:', await promptResponse.text())
+        console.warn('⚠️ Image variants generation failed:', await promptResponse.text())
       }
     } catch (promptError) {
-      console.warn('⚠️ Image prompt generation error:', promptError)
+      console.warn('⚠️ Image variants generation error:', promptError)
     }
 
     // Send to Telegram Bot for moderation (score >= 5, unless skipTelegram is set)
@@ -274,7 +276,8 @@ serve(async (req) => {
         analysis,
         requestData.sourceName || 'RSS Feed',
         requestData.imageUrl || articleContent.imageUrl,
-        imagePrompt
+        imagePrompt,
+        imageVariants
       )
     } else {
       // Skip articles with score < 5
@@ -463,7 +466,8 @@ async function sendTelegramNotification(
   analysis: AIAnalysisResult,
   sourceName: string,
   imageUrl: string | null = null,
-  imagePrompt: string | null = null
+  imagePrompt: string | null = null,
+  variants: Array<{label: string, description: string}> | null = null
 ): Promise<void> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.warn('⚠️ Telegram credentials not configured')
@@ -489,18 +493,21 @@ async function sendTelegramNotification(
     'other': '📰 Other'
   }
 
+  const hasVariants = variants && variants.length > 0
+
   // Build image status section
   let imageStatusText = ''
-  if (imageUrl) {
+  if (hasVariants) {
+    const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+    imageStatusText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
+    variants!.forEach((v, i) => {
+      imageStatusText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+    })
+  } else if (imageUrl) {
     imageStatusText = `
 
 🖼️ <b>Зображення:</b> ✅ Готове
 ${escapeHtml(imageUrl)}`
-  } else if (imagePrompt) {
-    imageStatusText = `
-
-⚠️ <b>Зображення:</b> Немає (є промпт)
-🎨 <i>Натисни "Згенерувати" для створення AI зображення</i>`
   } else {
     imageStatusText = `
 
@@ -526,10 +533,29 @@ ${analysis.skip_reason ? `ℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}${ima
 
 newsId:${newsId}`
 
-  // Build keyboard with image workflow buttons (same pattern as Telegram donors)
+  // Build keyboard
   let keyboard: { inline_keyboard: any[] }
 
-  if (imageUrl) {
+  if (hasVariants) {
+    // Has variants → Show variant selection buttons
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+          { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+          { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+          { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+        ],
+        [
+          { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+        ],
+        [
+          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` },
+          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+        ]
+      ]
+    }
+  } else if (imageUrl) {
     // Has image from RSS → Confirm, regenerate, or upload custom
     keyboard = {
       inline_keyboard: [
@@ -546,11 +572,11 @@ newsId:${newsId}`
       ]
     }
   } else {
-    // No image → Generate or upload custom
+    // No image, no variants → Generate variants or upload custom
     keyboard = {
       inline_keyboard: [
         [
-          { text: '🎨 Згенерувати зображення', callback_data: `regenerate_rss_image_${newsId}` }
+          { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
         ],
         [
           { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }

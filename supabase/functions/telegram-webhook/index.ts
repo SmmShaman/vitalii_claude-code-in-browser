@@ -785,6 +785,30 @@ serve(async (req) => {
       } else if (callbackData.startsWith('skip_social_')) {
         action = 'skip_social'
         newsId = callbackData.replace('skip_social_', '')
+      // Image variant selection callbacks (select_variant_1_<uuid>, select_variant_2_<uuid>, etc.)
+      } else if (callbackData.startsWith('select_variant_')) {
+        action = 'select_variant'
+        // Format: select_variant_N_<newsId>
+        // Remove prefix "select_variant_" to get "N_<newsId>"
+        const remainder = callbackData.replace('select_variant_', '')
+        const firstUnderscore = remainder.indexOf('_')
+        imageLanguage = remainder.substring(0, firstUnderscore) // variant index as string ("1"-"4")
+        newsId = remainder.substring(firstUnderscore + 1)
+      // Variant + language selection: vl_N_LL_<uuid> (N=1-4, LL=ua/no/en)
+      } else if (callbackData.startsWith('vl_')) {
+        action = 'variant_with_lang'
+        // Format: vl_N_LL_<uuid>
+        const parts = callbackData.split('_')
+        // parts: ['vl', '1', 'ua', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'] (UUID may contain dashes)
+        socialLanguage = parts[1] // variant index '1'-'4'
+        imageLanguage = parts[2]  // 'ua', 'no', 'en'
+        newsId = parts.slice(3).join('_')
+      } else if (callbackData.startsWith('new_variants_')) {
+        action = 'new_variants'
+        newsId = callbackData.replace('new_variants_', '')
+      } else if (callbackData.startsWith('back_to_variants_')) {
+        action = 'back_to_variants'
+        newsId = callbackData.replace('back_to_variants_', '')
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
@@ -3660,12 +3684,20 @@ serve(async (req) => {
 
       } else if (callbackData.startsWith('regenerate_image_')) {
         // =================================================================
-        // 🔄 REGENERATE IMAGE: Show language selection (same as RSS flow)
+        // 🔄 REGENERATE IMAGE: Redirect to variant selection
         // =================================================================
         const newsId = callbackData.replace('regenerate_image_', '')
-        console.log('User wants to regenerate Telegram image for news:', newsId, '- showing language selection')
+        console.log('User wants to regenerate Telegram image for news:', newsId, '- redirecting to variant selection')
 
-        // Answer callback
+        // Check if variants exist in DB
+        const { data: newsCheck } = await supabase
+          .from('news')
+          .select('id, image_prompt_variants')
+          .eq('id', newsId)
+          .single()
+
+        const existingVariants = newsCheck?.image_prompt_variants as Array<{label: string, description: string}> | null
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -3673,43 +3705,83 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: '🌐 Оберіть мову для тексту на зображенні',
+              text: existingVariants ? '🎨 Оберіть концепцію зображення' : '🔄 Генерація варіантів...',
               show_alert: false
             })
           }
         )
 
-        // Show language selection keyboard (reuse regen_img_ callback which handles both RSS and Telegram)
-        const langKeyboard = {
-          inline_keyboard: [
-            [
-              { text: '🇺🇦 Українська', callback_data: `regen_img_ua_${newsId}` },
-              { text: '🇳🇴 Norsk', callback_data: `regen_img_no_${newsId}` },
-              { text: '🇬🇧 English', callback_data: `regen_img_en_${newsId}` }
-            ],
-            [
-              { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
-            ],
-            [
-              { text: '❌ Reject', callback_data: `reject_${newsId}` }
-            ]
-          ]
-        }
+        if (existingVariants && existingVariants.length > 0) {
+          // Show existing variants
+          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
+          existingVariants.forEach((v, i) => {
+            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+          })
 
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + '\n\n🌐 <b>Оберіть мову для тексту на зображенні:</b>',
-              parse_mode: 'HTML',
-              reply_markup: langKeyboard
-            })
+          const variantKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+                { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+                { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+                { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+              ],
+              [
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` },
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
           }
-        )
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + variantsText,
+                parse_mode: 'HTML',
+                reply_markup: variantKeyboard
+              })
+            }
+          )
+        } else {
+          // No variants — show generate button
+          const genKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+              ],
+              [
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + '\n\n🎨 <b>Варіанти не знайдені</b>\n<i>Натисніть для генерації...</i>',
+                parse_mode: 'HTML',
+                reply_markup: genKeyboard
+              })
+            }
+          )
+        }
 
       } else if (action === 'keep' && callbackData.startsWith('keep_image_')) {
         // =================================================================
@@ -3829,18 +3901,18 @@ serve(async (req) => {
         )
 
       } else if (action === 'regenerate_rss_image') {
-        // 🔄 RSS: Show language selection for image text
-        console.log('User wants to regenerate RSS image for news:', newsId, '- showing language selection')
+        // 🔄 RSS: Redirect to variant selection
+        console.log('User wants to regenerate RSS image for news:', newsId, '- redirecting to variant selection')
 
         // Validate newsId before creating buttons
         if (!newsId) {
-          console.error('❌ CRITICAL: newsId is undefined when creating language buttons!')
+          console.error('❌ CRITICAL: newsId is undefined when creating variant buttons!')
         }
 
-        // Verify news record exists before showing language selection
+        // Verify news record exists and get variants
         const { data: newsCheck, error: newsCheckError } = await supabase
           .from('news')
-          .select('id, original_title')
+          .select('id, original_title, image_prompt_variants')
           .eq('id', newsId)
           .single()
 
@@ -3860,7 +3932,6 @@ serve(async (req) => {
             }
           )
 
-          // Update message to show error
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -3880,6 +3951,8 @@ serve(async (req) => {
 
         console.log('✅ News record verified for regeneration:', newsCheck.id)
 
+        const existingVariants = newsCheck.image_prompt_variants as Array<{label: string, description: string}> | null
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -3887,40 +3960,82 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: '🌐 Оберіть мову тексту на зображенні',
+              text: existingVariants ? '🎨 Оберіть концепцію зображення' : '🔄 Генерація варіантів...',
               show_alert: false
             })
           }
         )
 
-        const langKeyboard = {
-          inline_keyboard: [
-            [
-              { text: '🇺🇦 Українська', callback_data: `regen_img_ua_${newsId}` },
-              { text: '🇳🇴 Norsk', callback_data: `regen_img_no_${newsId}` },
-              { text: '🇬🇧 English', callback_data: `regen_img_en_${newsId}` }
-            ],
-            [
-              { text: '← Назад', callback_data: `back_to_rss_${newsId}` }
-            ]
-          ]
-        }
-        console.log('🔍 Language keyboard callbacks:', JSON.stringify(langKeyboard.inline_keyboard[0].map(b => b.callback_data)))
+        if (existingVariants && existingVariants.length > 0) {
+          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
+          existingVariants.forEach((v, i) => {
+            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+          })
 
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + '\n\n🌐 <b>Оберіть мову тексту на зображенні:</b>',
-              parse_mode: 'HTML',
-              reply_markup: langKeyboard
-            })
+          const variantKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+                { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+                { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+                { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+              ],
+              [
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` },
+                { text: '❌ Skip', callback_data: `reject_${newsId}` }
+              ]
+            ]
           }
-        )
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + variantsText,
+                parse_mode: 'HTML',
+                reply_markup: variantKeyboard
+              })
+            }
+          )
+        } else {
+          // No variants — show generate button
+          const genKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+              ],
+              [
+                { text: '❌ Skip', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + '\n\n🎨 <b>Варіанти не знайдені</b>\n<i>Натисніть для генерації...</i>',
+                parse_mode: 'HTML',
+                reply_markup: genKeyboard
+              })
+            }
+          )
+        }
 
       } else if (action === 'regen_img_with_lang') {
         // 🔄 Generate new AI image with selected language (works for both RSS and Telegram)
@@ -4305,6 +4420,647 @@ serve(async (req) => {
             })
           }
         )
+
+      // =================================================================
+      // 🎨 IMAGE VARIANT WORKFLOW: select_variant, new_variants
+      // =================================================================
+
+      } else if (action === 'select_variant') {
+        // Moderator selected a visual concept variant → show language selection
+        const variantIndex = parseInt(imageLanguage || '1')
+        console.log(`🎨 User selected variant ${variantIndex} for news:`, newsId)
+
+        // 1. Read variants from DB
+        const { data: newsRecord, error: newsError } = await supabase
+          .from('news')
+          .select('id, image_prompt_variants')
+          .eq('id', newsId)
+          .single()
+
+        if (newsError || !newsRecord) {
+          console.error('❌ News not found for variant selection:', newsId)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Новина не знайдена',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        const variants = newsRecord.image_prompt_variants as Array<{label: string, description: string}> | null
+
+        if (!variants || variants.length < variantIndex) {
+          console.error('❌ Variant not found:', variantIndex, 'available:', variants?.length)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Варіант не знайдено',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        const selectedVariant = variants[variantIndex - 1]
+        console.log(`✅ Selected variant: "${selectedVariant.label}"`)
+
+        // 2. Show language selection buttons
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: `🎨 Обрано: "${selectedVariant.label}" — оберіть мову`,
+              show_alert: false
+            })
+          }
+        )
+
+        const langKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🇺🇦 UA', callback_data: `vl_${variantIndex}_ua_${newsId}` },
+              { text: '🇳🇴 NO', callback_data: `vl_${variantIndex}_no_${newsId}` },
+              { text: '🇬🇧 EN', callback_data: `vl_${variantIndex}_en_${newsId}` }
+            ],
+            [
+              { text: '← Назад до варіантів', callback_data: `back_to_variants_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n🎨 <b>Обрано: "${escapeHtml(selectedVariant.label)}"</b>\n<i>${escapeHtml(selectedVariant.description)}</i>\n\n🌐 <b>Оберіть мову для зображення:</b>`,
+              parse_mode: 'HTML',
+              reply_markup: langKeyboard
+            })
+          }
+        )
+
+      } else if (action === 'variant_with_lang') {
+        // Moderator selected variant + language → generate full prompt → generate image
+        const variantIndex = parseInt(socialLanguage || '1')
+        const selectedLang = imageLanguage || 'en'
+        const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
+        console.log(`🎨 Generating variant ${variantIndex} in ${selectedLang} for news:`, newsId)
+
+        // 1. Read variants from DB
+        const { data: newsRecord, error: newsError } = await supabase
+          .from('news')
+          .select('id, original_title, original_content, image_prompt_variants, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        if (newsError || !newsRecord) {
+          console.error('❌ News not found for variant generation:', newsId)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Новина не знайдена',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        const isRssSource = !!(newsRecord.rss_analysis)
+        const variants = newsRecord.image_prompt_variants as Array<{label: string, description: string}> | null
+
+        if (!variants || variants.length < variantIndex) {
+          console.error('❌ Variant not found:', variantIndex, 'available:', variants?.length)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Варіант не знайдено',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        const selectedVariant = variants[variantIndex - 1]
+        console.log(`✅ Selected variant: "${selectedVariant.label}", language: ${selectedLang}`)
+
+        // 2. Show progress
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: `🎨 Генерація "${selectedVariant.label}" (${langNames[selectedLang] || selectedLang})...`,
+              show_alert: false
+            })
+          }
+        )
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + `\n\n⏳ <b>Обрано: "${escapeHtml(selectedVariant.label)}" (${langNames[selectedLang] || selectedLang})</b>\n<i>Генерація промпта та зображення...</i>`,
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
+        // 3. Generate full prompt with selected variant
+        try {
+          const title = newsRecord.original_title || ''
+          const content = newsRecord.original_content || title
+
+          const promptResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId: newsId,
+                title: title.substring(0, 200),
+                content: content.substring(0, 2000),
+                mode: 'full',
+                selectedVariant: selectedVariant
+              })
+            }
+          )
+
+          if (!promptResponse.ok) {
+            throw new Error(`Prompt generation failed: ${promptResponse.status}`)
+          }
+
+          const promptResult = await promptResponse.json()
+          console.log(`✅ Full prompt generated from variant`)
+
+          // 4. Clear existing images and generate new ones (1:1 and 16:9) with language
+          await supabase
+            .from('news')
+            .update({ processed_image_url: null, processed_image_url_wide: null })
+            .eq('id', newsId)
+
+          // Generate 1:1 image with language
+          const imageGenResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/process-image`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId: newsId,
+                generateFromPrompt: true,
+                language: selectedLang,
+                aspectRatio: '1:1'
+              })
+            }
+          )
+
+          const imageGenResult = await imageGenResponse.json()
+
+          // Generate 16:9 image in parallel with language
+          let wideImageUrl: string | null = null
+          const wideImagePromise = fetch(
+            `${SUPABASE_URL}/functions/v1/process-image`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId: newsId,
+                generateFromPrompt: true,
+                language: selectedLang,
+                aspectRatio: '16:9'
+              })
+            }
+          ).then(res => res.json()).then(result => {
+            if (result.success && result.processedImageUrl) {
+              wideImageUrl = result.processedImageUrl
+              console.log(`✅ Wide image (16:9) generated: ${wideImageUrl}`)
+            }
+            return result
+          }).catch(err => {
+            console.error(`❌ Wide image error:`, err)
+            return null
+          })
+
+          if (imageGenResult.success && imageGenResult.processedImageUrl) {
+            await wideImagePromise
+
+            const newImageUrl = imageGenResult.processedImageUrl
+            const squareImageLink = `🖼️ <b>1:1</b> (Instagram): ${escapeHtml(newImageUrl)}`
+            const wideImageLink = wideImageUrl
+              ? `\n📐 <b>16:9</b> (LinkedIn/FB): ${escapeHtml(wideImageUrl)}`
+              : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
+
+            // Show result with confirm/regenerate buttons
+            const newKeyboard = isRssSource ? {
+              inline_keyboard: [
+                [
+                  { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
+                  { text: '🔄 Інший варіант', callback_data: `back_to_variants_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+                ],
+                [
+                  { text: '❌ Skip', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            } : {
+              inline_keyboard: [
+                [
+                  { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
+                  { text: '🔄 Інший варіант', callback_data: `back_to_variants_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+                ],
+                [
+                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            }
+
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n${squareImageLink}${wideImageLink}`,
+                  parse_mode: 'HTML',
+                  reply_markup: newKeyboard
+                })
+              }
+            )
+          } else {
+            // Image generation failed
+            const errorMsg = imageGenResult.error || 'Невідома помилка'
+            const retryKeyboard = {
+              inline_keyboard: [
+                [
+                  { text: '🔄 Спробувати ще', callback_data: `vl_${variantIndex}_${selectedLang}_${newsId}` },
+                  { text: '← Інший варіант', callback_data: `back_to_variants_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+                ],
+                [
+                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            }
+
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text: messageText + `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`,
+                  parse_mode: 'HTML',
+                  reply_markup: retryKeyboard
+                })
+              }
+            )
+          }
+        } catch (genError: any) {
+          console.error('❌ Error in variant image generation:', genError)
+          const retryKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🔄 Спробувати ще', callback_data: `vl_${variantIndex}_${selectedLang}_${newsId}` },
+                { text: '← Інший варіант', callback_data: `back_to_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+              ],
+              [
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`,
+                parse_mode: 'HTML',
+                reply_markup: retryKeyboard
+              })
+            }
+          )
+        }
+
+      } else if (action === 'back_to_variants') {
+        // ← Back to variant selection: show existing variants from DB
+        console.log('← Back to variants for news:', newsId)
+
+        const { data: newsRecord, error: newsError } = await supabase
+          .from('news')
+          .select('id, image_prompt_variants, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const isRssSource = !!(newsRecord?.rss_analysis)
+        const existingVariants = newsRecord?.image_prompt_variants as Array<{label: string, description: string}> | null
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '← Назад до варіантів',
+              show_alert: false
+            })
+          }
+        )
+
+        if (existingVariants && existingVariants.length > 0) {
+          // Show existing variants
+          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
+          existingVariants.forEach((v, i) => {
+            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+          })
+
+          const variantKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+                { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+                { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+                { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+              ],
+              [
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` },
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + variantsText,
+                parse_mode: 'HTML',
+                reply_markup: variantKeyboard
+              })
+            }
+          )
+        } else {
+          // No variants stored — generate new ones
+          // Redirect to new_variants action by updating message with generate button
+          const genKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+              ],
+              [
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + '\n\n⚠️ <b>Варіанти не знайдені</b>\n<i>Натисніть "Згенерувати варіанти" для створення нових</i>',
+                parse_mode: 'HTML',
+                reply_markup: genKeyboard
+              })
+            }
+          )
+        }
+
+      } else if (action === 'new_variants') {
+        // 🔄 Generate new set of 4 visual concept variants
+        console.log('🔄 Generating new variants for news:', newsId)
+
+        // Fetch news record
+        const { data: newsRecord, error: newsError } = await supabase
+          .from('news')
+          .select('id, original_title, original_content, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        if (newsError || !newsRecord) {
+          console.error('❌ News not found for new variants:', newsId)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '❌ Новина не знайдена',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        const isRssSource = !!(newsRecord.rss_analysis)
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '🔄 Генерація нових варіантів...',
+              show_alert: false
+            })
+          }
+        )
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n⏳ <b>Генерація нових візуальних концепцій...</b>',
+              parse_mode: 'HTML'
+            })
+          }
+        )
+
+        try {
+          const title = newsRecord.original_title || ''
+          const content = newsRecord.original_content || title
+
+          const promptResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newsId: newsId,
+                title: title.substring(0, 200),
+                content: content.substring(0, 2000),
+                mode: 'variants'
+              })
+            }
+          )
+
+          if (!promptResponse.ok) {
+            throw new Error(`Variants generation failed: ${promptResponse.status}`)
+          }
+
+          const promptResult = await promptResponse.json()
+          const newVariants = promptResult.variants as Array<{label: string, description: string}> | null
+
+          if (!newVariants || newVariants.length === 0) {
+            throw new Error('No variants generated')
+          }
+
+          // Show new variants
+          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
+          newVariants.forEach((v, i) => {
+            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+          })
+
+          const variantKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+                { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+                { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+                { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+              ],
+              [
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` },
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + variantsText,
+                parse_mode: 'HTML',
+                reply_markup: variantKeyboard
+              })
+            }
+          )
+        } catch (variantError: any) {
+          console.error('❌ Error generating new variants:', variantError)
+
+          const errorKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🔄 Спробувати ще', callback_data: `new_variants_${newsId}` }
+              ],
+              [
+                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+              ],
+              [
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: messageText + `\n\n❌ <b>Помилка генерації варіантів:</b> ${variantError.message}`,
+                parse_mode: 'HTML',
+                reply_markup: errorKeyboard
+              })
+            }
+          )
+        }
 
       } else if (action === 'reject') {
         console.log('News rejected by user, ID:', newsId)
