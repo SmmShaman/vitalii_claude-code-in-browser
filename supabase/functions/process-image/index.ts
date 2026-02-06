@@ -639,22 +639,22 @@ async function generateImageFromText(
     const languageInstructions: Record<string, string> = {
       'ua': `MANDATORY VISUAL REQUIREMENTS:
 1. All text MUST be in Ukrainian (Cyrillic script)
-2. Display this date prominently on the image: "${dateFormats['ua']}"
-3. Add small "vitalii.no" watermark at bottom corner
+2. Add small subtle "${dateFormats['ua']}" date text in the bottom left corner (same small size as watermark)
+3. Add small "vitalii.no" watermark text in the bottom right corner
 
-DO NOT use any other date. The date "${dateFormats['ua']}" is TODAY's date and MUST appear on the image.`,
+Date and watermark should be subtle, small, and not distract from the main image.`,
       'no': `MANDATORY VISUAL REQUIREMENTS:
 1. All text MUST be in Norwegian (Latin script)
-2. Display this date prominently on the image: "${dateFormats['no']}"
-3. Add small "vitalii.no" watermark at bottom corner
+2. Add small subtle "${dateFormats['no']}" date text in the bottom left corner (same small size as watermark)
+3. Add small "vitalii.no" watermark text in the bottom right corner
 
-DO NOT use any other date. The date "${dateFormats['no']}" is TODAY's date and MUST appear on the image.`,
+Date and watermark should be subtle, small, and not distract from the main image.`,
       'en': `MANDATORY VISUAL REQUIREMENTS:
 1. All text MUST be in English
-2. Display this date prominently on the image: "${dateFormats['en']}"
-3. Add small "vitalii.no" watermark at bottom corner
+2. Add small subtle "${dateFormats['en']}" date text in the bottom left corner (same small size as watermark)
+3. Add small "vitalii.no" watermark text in the bottom right corner
 
-DO NOT use any other date. The date "${dateFormats['en']}" is TODAY's date and MUST appear on the image.`
+Date and watermark should be subtle, small, and not distract from the main image.`
     }
 
     console.log('📅 Date being sent to AI:', dateFormats[language || 'en'])
@@ -687,7 +687,7 @@ DO NOT use any other date. The date "${dateFormats['en']}" is TODAY's date and M
 
 Generate a professional news illustration for LinkedIn/Instagram.
 
-TODAY'S DATE (must appear on image): ${dateFormats[language || 'en']}
+Date for subtle corner placement: ${dateFormats[language || 'en']}
 ${langInstruction}
 
 Visual concept: ${effectivePrompt}
