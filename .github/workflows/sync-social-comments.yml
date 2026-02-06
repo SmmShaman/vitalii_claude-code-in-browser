@@ -21,22 +21,39 @@ jobs:
           echo "🔄 Starting social media comment sync..."
           echo "Time: $(date -u)"
 
-          # Call the Supabase Edge Function
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/sync-comments" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -H "Content-Type: application/json")
+          MAX_RETRIES=3
+          RETRY_DELAY=15
+          ATTEMPT=0
 
-          # Extract HTTP status code (last line)
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          # Extract response body (all but last line)
-          BODY=$(echo "$RESPONSE" | sed '$d')
+          while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT of $MAX_RETRIES..."
+
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+              "${{ secrets.SUPABASE_URL }}/functions/v1/sync-comments" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              -H "Content-Type: application/json" \
+              --max-time 60)
+
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+
+            # If not a 5xx error, break out of retry loop
+            if [ "$HTTP_CODE" -lt 500 ] 2>/dev/null; then
+              break
+            fi
+
+            echo "⚠️ Server error (HTTP $HTTP_CODE), retrying in ${RETRY_DELAY}s..."
+            if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+              sleep $RETRY_DELAY
+            fi
+          done
 
           echo "Response: $BODY"
           echo "HTTP Status: $HTTP_CODE"
 
           if [ "$HTTP_CODE" -ne 200 ]; then
-            echo "❌ Comment sync failed with status $HTTP_CODE"
+            echo "❌ Comment sync failed with status $HTTP_CODE after $ATTEMPT attempts"
             exit 1
           fi
 
