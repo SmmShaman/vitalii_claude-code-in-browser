@@ -660,7 +660,7 @@ async function generateVariants(supabase: any, title: string, content: string): 
         messages: [
           {
             role: 'system',
-            content: 'You are an editorial art director for a premium news publication. You create PHOTOREALISTIC 4K visual concepts for news article illustrations. Every concept MUST clearly reference the specific subject, company names, product names, and technologies mentioned in the article. No abstract symbols or simple illustrations — only cinematic photorealistic scenes. Respond with valid JSON array only, no markdown formatting.'
+            content: 'Ти — арт-директор преміального новинного видання. Ти створюєш ФОТОРЕАЛІСТИЧНІ 4K візуальні концепції для ілюстрацій новинних статей. Кожна концепція ОБОВ\'ЯЗКОВО має чітко згадувати конкретну тему, назви компаній, продуктів та технологій зі статті. Жодних абстрактних символів чи простих ілюстрацій — тільки кінематографічні фотореалістичні сцени. Відповідай ТІЛЬКИ валідним JSON масивом, без markdown форматування.'
           },
           { role: 'user', content: filledPrompt }
         ],
@@ -720,43 +720,43 @@ async function generateVariants(supabase: any, title: string, content: string): 
  * Default prompt for generating 4 visual concept variants
  */
 function getDefaultVariantsPrompt(): string {
-  return `You are an art director for a premium news publication. Read the article and propose 4 DIFFERENT PHOTOREALISTIC 4K visual concepts for illustration.
+  return `Ти — арт-директор преміального новинного видання. Прочитай статтю та запропонуй 4 РІЗНИХ ФОТОРЕАЛІСТИЧНИХ 4K візуальних концепцій для ілюстрації.
 
-ARTICLE:
-Title: {title}
-Content: {content}
-
-═══════════════════════════════════════
-MANDATORY RULES:
-═══════════════════════════════════════
-1. Every concept MUST mention specific names, companies, products, or technologies from the article
-2. All 4 concepts must be PHOTOREALISTIC 4K scenes (cinematic quality, as if shot by a professional photographer)
-3. NO abstract symbols, NO simple illustrations, NO generic imagery without article connection
-4. Each description must paint a concrete visual scene with lighting, composition, and atmosphere
+СТАТТЯ:
+Заголовок: {title}
+Зміст: {content}
 
 ═══════════════════════════════════════
-4 CONCEPT CATEGORIES:
+ОБОВ'ЯЗКОВІ ПРАВИЛА:
 ═══════════════════════════════════════
-1. PHOTOREALISTIC METAPHOR with product/technology — a cinematic scene where the article's subject is shown through a powerful visual metaphor. Must include the specific product/company name in context.
-2. TECHNOLOGICAL/INDUSTRIAL visualization — show the technology, hardware, infrastructure, or system described in the article. Photorealistic render of the actual tech/product.
-3. CINEMATIC DRAMATIC scene — an editorial photography-style scene capturing the IMPACT or CONSEQUENCE of what the article describes. Human scale, dramatic lighting.
-4. MACRO DETAIL shot — extreme close-up of a key element from the article. Shallow depth of field, revealing texture and detail of the subject matter.
-
-For each concept provide:
-- label: short title (3-5 words, must reference article subject)
-- description: photorealistic scene description (2-3 sentences with specific details, lighting, camera angle)
+1. Кожна концепція ОБОВ'ЯЗКОВО має згадувати конкретні назви, компанії, продукти або технології зі статті
+2. Всі 4 концепції — ФОТОРЕАЛІСТИЧНІ 4K сцени (кінематографічна якість, як зняте професійним фотографом)
+3. ЗАБОРОНЕНО: абстрактні символи, прості ілюстрації, загальні образи без прив'язки до статті
+4. Кожен опис має малювати конкретну візуальну сцену з освітленням, композицією та атмосферою
 
 ═══════════════════════════════════════
-EXAMPLE (article about "OpenAI Trusted Access for Cyber"):
+4 КАТЕГОРІЇ КОНЦЕПЦІЙ:
+═══════════════════════════════════════
+1. ФОТОРЕАЛІСТИЧНА МЕТАФОРА з продуктом/технологією — кінематографічна сцена де тема статті показана через потужну візуальну метафору. Обов'язково включити конкретну назву продукту/компанії.
+2. ТЕХНОЛОГІЧНА/ІНДУСТРІАЛЬНА візуалізація — показати технологію, обладнання, інфраструктуру чи систему описану в статті. Фотореалістичний рендер реального продукту/технології.
+3. КІНЕМАТОГРАФІЧНА ДРАМАТИЧНА сцена — editorial фотографія що передає ВПЛИВ чи НАСЛІДКИ описаного в статті. Людський масштаб, драматичне освітлення.
+4. МАКРОЗЙОМКА ДЕТАЛІ — екстремальний крупний план ключового елементу зі статті. Мала глибина різкості, текстура та деталі предмета.
+
+Для кожної концепції дай:
+- label: короткий заголовок (3-5 слів, ОБОВ'ЯЗКОВО згадує тему статті)
+- description: опис фотореалістичної сцени (2-3 речення з конкретними деталями, освітленням, ракурсом камери)
+
+═══════════════════════════════════════
+ПРИКЛАД (стаття про "OpenAI Trusted Access for Cyber"):
 ═══════════════════════════════════════
 [
-  {"label": "OpenAI cyber shield metaphor", "description": "A glowing translucent security shield bearing the OpenAI logo hovers protectively over a sprawling server room. Blue-white light refracts through the shield casting geometric patterns on the dark server racks below. Cinematic wide angle, cool blue palette with warm amber accents from status LEDs."},
-  {"label": "AI security operations center", "description": "A state-of-the-art cybersecurity operations center with curved displays showing real-time threat maps and OpenAI's neural network visualizations. Dramatic low-key lighting with screens casting blue glow across polished surfaces. Shot from behind an operator's shoulder, 4K editorial photography."},
-  {"label": "Digital fortress architecture", "description": "A photorealistic architectural visualization of a massive data center entrance designed like a futuristic vault door, with the OpenAI wordmark etched into brushed steel. Morning fog surrounds the structure. Cinematic drone shot perspective, golden hour lighting."},
-  {"label": "Neural network circuit macro", "description": "Extreme macro photography of a custom AI security chip with visible neural pathways glowing cyan. Tiny OpenAI branding laser-etched on the silicon die. Shallow depth of field, dark background, studio lighting revealing microscopic circuit traces."}
+  {"label": "Кіберщит OpenAI метафора", "description": "Світний напівпрозорий захисний щит з логотипом OpenAI ширяє над величезною серверною кімнатою. Біло-блакитне світло заломлюється через щит, створюючи геометричні візерунки на темних серверних стійках. Кінематографічний широкий кут, холодна блакитна палітра з теплими бурштиновими акцентами від індикаторів."},
+  {"label": "Центр кіберзахисту AI", "description": "Сучасний центр кібербезпеки з вигнутими дисплеями що показують карти загроз в реальному часі та візуалізації нейромережі OpenAI. Драматичне приглушене освітлення з екранами що відкидають блакитне сяйво на поліровані поверхні. Зйомка через плече оператора, 4K editorial фотографія."},
+  {"label": "Архітектура цифрової фортеці", "description": "Фотореалістична архітектурна візуалізація масивного входу до дата-центру у вигляді футуристичних дверей сейфа з вигравіруваним написом OpenAI на матовій сталі. Ранковий туман оточує конструкцію. Кінематографічний ракурс з дрона, освітлення золотої години."},
+  {"label": "Макрозйомка нейрочіпа", "description": "Екстремальна макрозйомка спеціалізованого AI чіпа безпеки з видимими нейронними шляхами що світяться блакитним. Мініатюрне лого OpenAI вигравіруване лазером на кремнієвому кристалі. Мала глибина різкості, темний фон, студійне освітлення."}
 ]
 
-Return ONLY a JSON array:
+Повертай ТІЛЬКИ JSON масив:
 [
   {"label": "...", "description": "..."},
   {"label": "...", "description": "..."},
