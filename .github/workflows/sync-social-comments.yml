@@ -29,11 +29,23 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "Attempt $ATTEMPT of $MAX_RETRIES..."
 
+            CURL_EXIT=0
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
               "${{ secrets.SUPABASE_URL }}/functions/v1/sync-comments" \
               -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
               -H "Content-Type: application/json" \
-              --max-time 60)
+              --max-time 300) || CURL_EXIT=$?
+
+            if [ $CURL_EXIT -ne 0 ]; then
+              echo "⚠️ curl failed with exit code $CURL_EXIT (28=timeout)"
+              HTTP_CODE=0
+              BODY=""
+              if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+                echo "Retrying in ${RETRY_DELAY}s..."
+                sleep $RETRY_DELAY
+              fi
+              continue
+            fi
 
             HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
             BODY=$(echo "$RESPONSE" | sed '$d')

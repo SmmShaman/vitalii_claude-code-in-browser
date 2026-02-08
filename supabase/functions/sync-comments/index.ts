@@ -367,8 +367,8 @@ async function saveComment(
     throw error
   }
 
-  // Generate AI reply suggestion
-  await generateReplySuggestion(supabase, inserted)
+  // Generate AI reply suggestion (fire-and-forget — the function updates DB directly)
+  generateReplySuggestion(supabase, inserted)
 
   return { isNew: true, comment: inserted }
 }
