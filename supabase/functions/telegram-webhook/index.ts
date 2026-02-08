@@ -658,6 +658,15 @@ serve(async (req) => {
       const chatId = update.callback_query.message.chat.id
       const messageText = escapeHtml(update.callback_query.message.text || '')
 
+      // Helper: truncate messageText + appendedText to fit Telegram 4096 char limit
+      const truncateForTelegram = (original: string, appended: string, limit = 4000): string => {
+        const combined = original + appended
+        if (combined.length <= limit) return combined
+        console.log(`⚠️ Message too long (${combined.length}), truncating original to fit`)
+        const maxOriginalLength = limit - appended.length - 50
+        return original.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>' + appended
+      }
+
       console.log('Callback received:', callbackData)
 
       // Parse callback data: publish_news_<id>, publish_blog_<id>, or reject_<id>
@@ -3745,7 +3754,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + variantsText,
+                text: truncateForTelegram(messageText, variantsText),
                 parse_mode: 'HTML',
                 reply_markup: variantKeyboard
               })
@@ -3775,7 +3784,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + '\n\n🎨 <b>Варіанти не знайдені</b>\n<i>Натисніть для генерації...</i>',
+                text: truncateForTelegram(messageText, '\n\n🎨 <b>Варіанти не знайдені</b>\n<i>Натисніть для генерації...</i>'),
                 parse_mode: 'HTML',
                 reply_markup: genKeyboard
               })
@@ -3999,7 +4008,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + variantsText,
+                text: truncateForTelegram(messageText, variantsText),
                 parse_mode: 'HTML',
                 reply_markup: variantKeyboard
               })
@@ -4029,7 +4038,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + '\n\n🎨 <b>Варіанти не знайдені</b>\n<i>Натисніть для генерації...</i>',
+                text: truncateForTelegram(messageText, '\n\n🎨 <b>Варіанти не знайдені</b>\n<i>Натисніть для генерації...</i>'),
                 parse_mode: 'HTML',
                 reply_markup: genKeyboard
               })
@@ -4112,7 +4121,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n⏳ <b>Генерація зображення ${langNames[selectedLang] || selectedLang}...</b>\n<i>Це може зайняти до 30 секунд</i>`,
+              text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація зображення ${langNames[selectedLang] || selectedLang}...</b>\n<i>Це може зайняти до 30 секунд</i>`),
               parse_mode: 'HTML'
             })
           }
@@ -4230,7 +4239,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${selectedLang.toUpperCase()})!</b>\n${squareImageLink}${wideImageLink}`,
+                  text: truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${selectedLang.toUpperCase()})!</b>\n${squareImageLink}${wideImageLink}`),
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
@@ -4281,7 +4290,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}${debugInfo}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
+                  text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}${debugInfo}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`),
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
@@ -4329,7 +4338,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`,
+                text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або завантажте своє зображення</i>`),
                 parse_mode: 'HTML',
                 reply_markup: newKeyboard
               })
@@ -4503,7 +4512,7 @@ serve(async (req) => {
           ]
         }
 
-        await fetch(
+        const editLangResponse = await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
             method: 'POST',
@@ -4511,12 +4520,16 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n🎨 <b>Обрано: "${escapeHtml(selectedVariant.label)}"</b>\n<i>${escapeHtml(selectedVariant.description)}</i>\n\n🌐 <b>Оберіть мову для зображення:</b>`,
+              text: truncateForTelegram(messageText, `\n\n🎨 <b>Обрано: "${escapeHtml(selectedVariant.label)}"</b>\n<i>${escapeHtml(selectedVariant.description)}</i>\n\n🌐 <b>Оберіть мову для зображення:</b>`),
               parse_mode: 'HTML',
               reply_markup: langKeyboard
             })
           }
         )
+        if (!editLangResponse.ok) {
+          const editErr = await editLangResponse.text()
+          console.error('❌ editMessageText failed (select_variant):', editErr)
+        }
 
       } else if (action === 'variant_with_lang') {
         // Moderator selected variant + language → generate full prompt → generate image
@@ -4594,7 +4607,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n⏳ <b>Обрано: "${escapeHtml(selectedVariant.label)}" (${langNames[selectedLang] || selectedLang})</b>\n<i>Генерація промпта та зображення...</i>`,
+              text: truncateForTelegram(messageText, `\n\n⏳ <b>Обрано: "${escapeHtml(selectedVariant.label)}" (${langNames[selectedLang] || selectedLang})</b>\n<i>Генерація промпта та зображення...</i>`),
               parse_mode: 'HTML'
             })
           }
@@ -4722,15 +4735,6 @@ serve(async (req) => {
               ]
             }
 
-            const resultsText = `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n${squareImageLink}${wideImageLink}`
-            let finalText = messageText + resultsText
-            if (finalText.length > 4000) {
-              console.log(`⚠️ Message too long (${finalText.length}), truncating original content to fit results`)
-              const maxOriginalLength = 4000 - resultsText.length - 50
-              const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-              finalText = truncatedOriginal + resultsText
-            }
-
             const editResponse = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -4739,7 +4743,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: finalText,
+                  text: truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n${squareImageLink}${wideImageLink}`),
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
@@ -4767,14 +4771,6 @@ serve(async (req) => {
               ]
             }
 
-            const errorText = `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`
-            let finalErrorText = messageText + errorText
-            if (finalErrorText.length > 4000) {
-              const maxOriginalLength = 4000 - errorText.length - 50
-              const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-              finalErrorText = truncatedOriginal + errorText
-            }
-
             const editErrorResponse = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
@@ -4783,7 +4779,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: finalErrorText,
+                  text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`),
                   parse_mode: 'HTML',
                   reply_markup: retryKeyboard
                 })
@@ -4811,14 +4807,6 @@ serve(async (req) => {
             ]
           }
 
-          const catchErrorText = `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`
-          let finalCatchText = messageText + catchErrorText
-          if (finalCatchText.length > 4000) {
-            const maxOriginalLength = 4000 - catchErrorText.length - 50
-            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-            finalCatchText = truncatedOriginal + catchErrorText
-          }
-
           const editCatchResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -4827,7 +4815,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: finalCatchText,
+                text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`),
                 parse_mode: 'HTML',
                 reply_markup: retryKeyboard
               })
@@ -4891,14 +4879,6 @@ serve(async (req) => {
             ]
           }
 
-          let finalBackText = messageText + variantsText
-          if (finalBackText.length > 4000) {
-            console.log(`⚠️ back_to_variants message too long (${finalBackText.length}), truncating`)
-            const maxOriginalLength = 4000 - variantsText.length - 50
-            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-            finalBackText = truncatedOriginal + variantsText
-          }
-
           const editBackResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -4907,7 +4887,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: finalBackText,
+                text: truncateForTelegram(messageText, variantsText),
                 parse_mode: 'HTML',
                 reply_markup: variantKeyboard
               })
@@ -4934,14 +4914,6 @@ serve(async (req) => {
             ]
           }
 
-          const noVariantsText = '\n\n⚠️ <b>Варіанти не знайдені</b>\n<i>Натисніть "Згенерувати варіанти" для створення нових</i>'
-          let finalNoVarText = messageText + noVariantsText
-          if (finalNoVarText.length > 4000) {
-            const maxOriginalLength = 4000 - noVariantsText.length - 50
-            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-            finalNoVarText = truncatedOriginal + noVariantsText
-          }
-
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -4950,7 +4922,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: finalNoVarText,
+                text: truncateForTelegram(messageText, '\n\n⚠️ <b>Варіанти не знайдені</b>\n<i>Натисніть "Згенерувати варіанти" для створення нових</i>'),
                 parse_mode: 'HTML',
                 reply_markup: genKeyboard
               })
@@ -5001,14 +4973,6 @@ serve(async (req) => {
           }
         )
 
-        const loadingText = '\n\n⏳ <b>Генерація нових візуальних концепцій...</b>'
-        let finalLoadingText = messageText + loadingText
-        if (finalLoadingText.length > 4000) {
-          const maxOriginalLength = 4000 - loadingText.length - 50
-          const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-          finalLoadingText = truncatedOriginal + loadingText
-        }
-
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -5017,7 +4981,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: finalLoadingText,
+              text: truncateForTelegram(messageText, '\n\n⏳ <b>Генерація нових візуальних концепцій...</b>'),
               parse_mode: 'HTML'
             })
           }
@@ -5080,14 +5044,6 @@ serve(async (req) => {
             ]
           }
 
-          let finalNewVarText = messageText + variantsText
-          if (finalNewVarText.length > 4000) {
-            console.log(`⚠️ new_variants message too long (${finalNewVarText.length}), truncating`)
-            const maxOriginalLength = 4000 - variantsText.length - 50
-            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-            finalNewVarText = truncatedOriginal + variantsText
-          }
-
           const editNewVarResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -5096,7 +5052,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: finalNewVarText,
+                text: truncateForTelegram(messageText, variantsText),
                 parse_mode: 'HTML',
                 reply_markup: variantKeyboard
               })
@@ -5123,14 +5079,6 @@ serve(async (req) => {
             ]
           }
 
-          const varErrText = `\n\n❌ <b>Помилка генерації варіантів:</b> ${variantError.message}`
-          let finalVarErrText = messageText + varErrText
-          if (finalVarErrText.length > 4000) {
-            const maxOriginalLength = 4000 - varErrText.length - 50
-            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-            finalVarErrText = truncatedOriginal + varErrText
-          }
-
           const editVarErrResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -5139,7 +5087,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: finalVarErrText,
+                text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації варіантів:</b> ${variantError.message}`),
                 parse_mode: 'HTML',
                 reply_markup: errorKeyboard
               })
