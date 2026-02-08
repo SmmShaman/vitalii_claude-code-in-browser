@@ -13,11 +13,12 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-08-v9-style-prompts'
+const VERSION = '2026-02-08-v10-integrated-style'
 
 interface PromptVariant {
   label: string
   description: string
+  stylePrompt?: string  // Random style used for this variant set
 }
 
 interface GeneratePromptRequest {
@@ -462,13 +463,31 @@ async function generateCreativePrompt(
 
     // Add selected variant guidance if provided
     if (selectedVariant) {
+      // Strip the display suffix (🎨 Style: ...) from description before passing to AI
+      let cleanDescription = selectedVariant.description
+      const styleSuffixIndex = cleanDescription.indexOf('\n🎨 Style:')
+      if (styleSuffixIndex !== -1) {
+        cleanDescription = cleanDescription.substring(0, styleSuffixIndex)
+      }
+
       filledPrompt += `\n\n═══════════════════════════════════════
 SELECTED VISUAL CONCEPT (MANDATORY - build the prompt around this):
 ═══════════════════════════════════════
 Concept: ${selectedVariant.label}
-Description: ${selectedVariant.description}
+Description: ${cleanDescription}
 
 You MUST create the image prompt based on this visual direction. Develop and enrich this concept with specific details, lighting, and composition.`
+
+      // Add style as a SEPARATE prominent instruction if available
+      if (selectedVariant.stylePrompt) {
+        filledPrompt += `\n\n═══════════════════════════════════════
+MANDATORY VISUAL STYLE (use as camera/lighting/mood reference):
+═══════════════════════════════════════
+${selectedVariant.stylePrompt}
+
+Apply this style's lighting, color palette, camera technique, and mood to the image.
+The article content defines WHAT is shown. This style defines HOW it looks.`
+      }
     }
 
     // Call Azure OpenAI
@@ -652,11 +671,15 @@ async function generateVariants(supabase: any, title: string, content: string): 
     filledPrompt = filledPrompt.replace(/{title}/g, title)
     filledPrompt = filledPrompt.replace(/{content}/g, content.substring(0, 3000))
 
-    // Append style direction to the prompt
+    // Add style as a structured instruction (GPT must WEAVE it into descriptions)
     filledPrompt += `\n\n═══════════════════════════════════════
-СТИЛЬОВИЙ НАПРЯМОК (incorporate this visual style into all 4 variants):
+СТИЛЬОВИЙ РЕФЕРЕНС (ВПЛЕТИ В КОЖЕН ОПИС):
 ═══════════════════════════════════════
-${stylePrompt}`
+Стиль: ${stylePrompt}
+
+Використай з цього референсу: освітлення, кольорову палітру, техніку зйомки,
+настрій та атмосферу. НЕ копіюй сюжет — лише ВІЗУАЛЬНИЙ СТИЛЬ.
+Кожен опис має ЧИТАТИСЯ як цілісний текст з вплетеним стилем, а не "опис + ключові слова".`
 
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
@@ -671,7 +694,18 @@ ${stylePrompt}`
         messages: [
           {
             role: 'system',
-            content: 'Ти — арт-директор преміального новинного видання. Ти створюєш ФОТОРЕАЛІСТИЧНІ 4K візуальні концепції для ілюстрацій новинних статей. Кожна концепція ОБОВ\'ЯЗКОВО має чітко згадувати конкретну тему, назви компаній, продуктів та технологій зі статті. Жодних абстрактних символів чи простих ілюстрацій — тільки кінематографічні фотореалістичні сцени. Відповідай ТІЛЬКИ валідним JSON масивом, без markdown форматування.'
+            content: `Ти — арт-директор преміального новинного видання. Ти створюєш ФОТОРЕАЛІСТИЧНІ 4K візуальні концепції для ілюстрацій новинних статей.
+
+Тобі надано СТИЛЬОВИЙ РЕФЕРЕНС — це визначає ЯК виглядає сцена (камера, освітлення, настрій, техніка рендерингу).
+Тема статті визначає ЩО зображено. Стиль визначає ЯК це зображено.
+Ти ОБОВ'ЯЗКОВО маєш ВПЛЕСТИ елементи стилю В ОПИС кожної сцени.
+
+НЕПРАВИЛЬНО: "Кінематографічна сцена з екраном... + muted colors, editorial"
+ПРАВИЛЬНО: "Editorial photograph in muted earth tones: a massive digital billboard..."
+
+Кожна концепція ОБОВ'ЯЗКОВО має чітко згадувати конкретну тему, назви компаній, продуктів та технологій зі статті.
+Жодних абстрактних символів чи простих ілюстрацій — тільки кінематографічні фотореалістичні сцени.
+Відповідай ТІЛЬКИ валідним JSON масивом, без markdown форматування.`
           },
           { role: 'user', content: filledPrompt }
         ],
@@ -702,13 +736,15 @@ ${stylePrompt}`
         return null
       }
 
-      // Ensure exactly 4 variants, validate structure, append style prompt suffix
+      // Ensure exactly 4 variants, validate structure, add stylePrompt field + display suffix
+      const styleSuffix = stylePrompt.length > 120 ? stylePrompt.substring(0, 117) + '...' : stylePrompt
       const variants: PromptVariant[] = parsed
         .filter((v: any) => v.label && v.description)
         .slice(0, 4)
         .map((v: any) => ({
           label: String(v.label).substring(0, 50),
-          description: `${String(v.description)}\n+ ${stylePrompt}`
+          description: `${String(v.description)}\n🎨 Style: ${styleSuffix}`,
+          stylePrompt: stylePrompt,
         }))
 
       if (variants.length < 2) {
