@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { getRandomStylePrompt } from './style-prompts.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +13,7 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-06-v8-photorealistic-variants'
+const VERSION = '2026-02-08-v9-style-prompts'
 
 interface PromptVariant {
   label: string
@@ -630,6 +631,10 @@ Write the image prompt in English (150-250 words):`
  */
 async function generateVariants(supabase: any, title: string, content: string): Promise<PromptVariant[] | null> {
   try {
+    // Pick a random style prompt to add unique visual direction
+    const stylePrompt = getRandomStylePrompt()
+    console.log(`🎨 Selected style prompt: ${stylePrompt.substring(0, 100)}...`)
+
     // Get variants prompt from database
     const { data: promptData } = await supabase
       .from('ai_prompts')
@@ -646,6 +651,12 @@ async function generateVariants(supabase: any, title: string, content: string): 
     let filledPrompt = variantsPrompt
     filledPrompt = filledPrompt.replace(/{title}/g, title)
     filledPrompt = filledPrompt.replace(/{content}/g, content.substring(0, 3000))
+
+    // Append style direction to the prompt
+    filledPrompt += `\n\n═══════════════════════════════════════
+СТИЛЬОВИЙ НАПРЯМОК (incorporate this visual style into all 4 variants):
+═══════════════════════════════════════
+${stylePrompt}`
 
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
@@ -665,7 +676,7 @@ async function generateVariants(supabase: any, title: string, content: string): 
           { role: 'user', content: filledPrompt }
         ],
         temperature: 0.8,
-        max_tokens: 1000
+        max_tokens: 1500
       })
     })
 
@@ -691,13 +702,13 @@ async function generateVariants(supabase: any, title: string, content: string): 
         return null
       }
 
-      // Ensure exactly 4 variants, validate structure
+      // Ensure exactly 4 variants, validate structure, append style prompt suffix
       const variants: PromptVariant[] = parsed
         .filter((v: any) => v.label && v.description)
         .slice(0, 4)
         .map((v: any) => ({
           label: String(v.label).substring(0, 50),
-          description: String(v.description).substring(0, 300)
+          description: `${String(v.description)}\n+ ${stylePrompt}`
         }))
 
       if (variants.length < 2) {
