@@ -13,7 +13,7 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-08-v10-integrated-style'
+const VERSION = '2026-02-08-v11-surreal-style-first'
 
 interface PromptVariant {
   label: string
@@ -463,51 +463,32 @@ async function generateCreativePrompt(
 
     // Add selected variant guidance if provided
     if (selectedVariant) {
-      // Strip the display suffix (🎨 Style: ...) from description before passing to AI
-      let cleanDescription = selectedVariant.description
-      const styleSuffixIndex = cleanDescription.indexOf('\n🎨 Style:')
-      if (styleSuffixIndex !== -1) {
-        cleanDescription = cleanDescription.substring(0, styleSuffixIndex)
-      }
-
       filledPrompt += `\n\n═══════════════════════════════════════
-SELECTED VISUAL CONCEPT (MANDATORY - build the prompt around this):
+SELECTED VISUAL CONCEPT (expand this into a detailed image prompt):
 ═══════════════════════════════════════
 Concept: ${selectedVariant.label}
-Description: ${cleanDescription}
+Description: ${selectedVariant.description}
 
-You MUST create the image prompt based on this visual direction. Develop and enrich this concept with specific details, lighting, and composition.`
-
-      // Add style as a SEPARATE prominent instruction if available
-      if (selectedVariant.stylePrompt) {
-        filledPrompt += `\n\n═══════════════════════════════════════
-MANDATORY VISUAL STYLE (use as camera/lighting/mood reference):
-═══════════════════════════════════════
-${selectedVariant.stylePrompt}
-
-Apply this style's lighting, color palette, camera technique, and mood to the image.
-The article content defines WHAT is shown. This style defines HOW it looks.`
-      }
+Expand this surreal concept into a rich, detailed prompt. Keep the style scene as the dominant visual. Enrich with specific details, lighting, textures, and composition.`
+      // No separate style section needed - style IS the description
     }
 
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
     const systemContent = selectedVariant
-      ? `You are an editorial art director who thinks in METAPHORS, not scenes.
-Your method: Idea → Metaphor → Tension → Style.
+      ? `You are a surrealist image prompt writer. You receive a visual concept that combines a random style scene with an article keyword.
 
-IMPORTANT: The moderator has selected a specific visual concept. You MUST build the image prompt around this concept.
-Develop the selected concept into a rich, detailed image prompt with specific composition, lighting, colors, and atmosphere.
+Your job: Expand this concept into a rich, detailed image generation prompt (150-250 words).
 
 RULES:
-- NEVER describe literal scenes (people in offices, meetings, screens, handshakes)
-- NEVER use generic stock-photo compositions (group of people, person at laptop, city skyline)
-- ALWAYS build on the SELECTED VISUAL CONCEPT provided
-- Think architecturally: structures, mechanisms, forces, contrasts
-- Add TENSION or MOVEMENT: growth, collision, balance, transformation, scale shift
-- Give CONSTRAINTS not details: limit the palette, force asymmetry, demand one focal point
-- Write in English. Be specific and visual.`
+- The concept IS the scene. Do NOT replace it with something "professional" or "editorial"
+- PRESERVE the surreal, unexpected, scroll-stopping nature
+- ADD: specific lighting, camera angle, lens, color palette, atmosphere details
+- ADD: textures, materials, depth of field, composition
+- KEEP the article keyword element prominent but natural
+- Write in English
+- Do NOT add people sitting at desks, office scenes, or stock-photo clichés`
       : `You are an editorial art director who thinks in METAPHORS, not scenes.
 Your method: Idea → Metaphor → Tension → Style.
 
@@ -654,32 +635,21 @@ async function generateVariants(supabase: any, title: string, content: string): 
     const stylePrompt = getRandomStylePrompt()
     console.log(`🎨 Selected style prompt: ${stylePrompt.substring(0, 100)}...`)
 
-    // Get variants prompt from database
-    const { data: promptData } = await supabase
-      .from('ai_prompts')
-      .select('prompt_text')
-      .eq('prompt_type', 'image_prompt_variants')
-      .eq('is_active', true)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single()
+    // Build prompt with style as PRIMARY and article for keyword extraction
+    const filledPrompt = `STYLE SCENE (this is the PRIMARY visual, 70-80% of the image):
+${stylePrompt}
 
-    const variantsPrompt = promptData?.prompt_text || getDefaultVariantsPrompt()
+ARTICLE (extract ONE keyword/concept to integrate):
+Title: ${title}
+Content: ${content.substring(0, 2000)}
 
-    // Fill placeholders
-    let filledPrompt = variantsPrompt
-    filledPrompt = filledPrompt.replace(/{title}/g, title)
-    filledPrompt = filledPrompt.replace(/{content}/g, content.substring(0, 3000))
+Create 4 variants where the STYLE SCENE is the base, and one keyword from the article is naturally woven in as a recognizable element.
 
-    // Add style as a structured instruction (GPT must WEAVE it into descriptions)
-    filledPrompt += `\n\n═══════════════════════════════════════
-СТИЛЬОВИЙ РЕФЕРЕНС (ВПЛЕТИ В КОЖЕН ОПИС):
-═══════════════════════════════════════
-Стиль: ${stylePrompt}
+For each variant provide:
+- label: short title (3-5 words, mentions both the style and article topic)
+- description: scene description where style IS the base and article element is woven in naturally (2-3 sentences)
 
-Використай з цього референсу: освітлення, кольорову палітру, техніку зйомки,
-настрій та атмосферу. НЕ копіюй сюжет — лише ВІЗУАЛЬНИЙ СТИЛЬ.
-Кожен опис має ЧИТАТИСЯ як цілісний текст з вплетеним стилем, а не "опис + ключові слова".`
+JSON array:`
 
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
@@ -694,18 +664,24 @@ async function generateVariants(supabase: any, title: string, content: string): 
         messages: [
           {
             role: 'system',
-            content: `Ти — арт-директор преміального новинного видання. Ти створюєш ФОТОРЕАЛІСТИЧНІ 4K візуальні концепції для ілюстрацій новинних статей.
+            content: `You are a surrealist art director creating scroll-stopping viral images.
+You receive TWO inputs:
+1. STYLE SCENE — this is the PRIMARY visual (70-80% of the image). This IS the scene.
+2. ARTICLE KEYWORD — ONE word/concept extracted from the article. This is the easter egg (20-30%).
 
-Тобі надано СТИЛЬОВИЙ РЕФЕРЕНС — це визначає ЯК виглядає сцена (камера, освітлення, настрій, техніка рендерингу).
-Тема статті визначає ЩО зображено. Стиль визначає ЯК це зображено.
-Ти ОБОВ'ЯЗКОВО маєш ВПЛЕСТИ елементи стилю В ОПИС кожної сцени.
+Your job: Create 4 variants where the STYLE SCENE is the dominant visual, and the ARTICLE KEYWORD is naturally woven in as a recognizable element.
 
-НЕПРАВИЛЬНО: "Кінематографічна сцена з екраном... + muted colors, editorial"
-ПРАВИЛЬНО: "Editorial photograph in muted earth tones: a massive digital billboard..."
+EXAMPLE:
+Style: "baby yoda eating cheeseburger from McDonald's, hyper realistic..."
+Article keyword: "Router" (from article about OpenRouter)
+Result: "Hyperrealistic baby Yoda at McDonald's eating a cheeseburger. On the table next to him sits a glowing futuristic WiFi router projecting holographic AI model names into the air above. Same hyper-detailed style, same McDonald's setting, but with this one tech element that ties it to the article."
 
-Кожна концепція ОБОВ'ЯЗКОВО має чітко згадувати конкретну тему, назви компаній, продуктів та технологій зі статті.
-Жодних абстрактних символів чи простих ілюстрацій — тільки кінематографічні фотореалістичні сцени.
-Відповідай ТІЛЬКИ валідним JSON масивом, без markdown форматування.`
+RULES:
+- The style scene IS the image. Don't replace it.
+- The article keyword should feel like a natural part of the scene, not forced
+- Each variant should integrate the keyword DIFFERENTLY (as an object, background element, reflection, texture, etc.)
+- Keep all technical quality parameters from the style prompt
+- Respond ONLY with valid JSON array, no markdown formatting`
           },
           { role: 'user', content: filledPrompt }
         ],
@@ -736,14 +712,13 @@ async function generateVariants(supabase: any, title: string, content: string): 
         return null
       }
 
-      // Ensure exactly 4 variants, validate structure, add stylePrompt field + display suffix
-      const styleSuffix = stylePrompt.length > 120 ? stylePrompt.substring(0, 117) + '...' : stylePrompt
+      // Ensure exactly 4 variants, validate structure, store stylePrompt for reference
       const variants: PromptVariant[] = parsed
         .filter((v: any) => v.label && v.description)
         .slice(0, 4)
         .map((v: any) => ({
           label: String(v.label).substring(0, 50),
-          description: `${String(v.description)}\n🎨 Style: ${styleSuffix}`,
+          description: String(v.description),
           stylePrompt: stylePrompt,
         }))
 
