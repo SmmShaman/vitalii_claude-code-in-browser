@@ -4891,7 +4891,15 @@ serve(async (req) => {
             ]
           }
 
-          await fetch(
+          let finalBackText = messageText + variantsText
+          if (finalBackText.length > 4000) {
+            console.log(`⚠️ back_to_variants message too long (${finalBackText.length}), truncating`)
+            const maxOriginalLength = 4000 - variantsText.length - 50
+            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+            finalBackText = truncatedOriginal + variantsText
+          }
+
+          const editBackResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
@@ -4899,12 +4907,16 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + variantsText,
+                text: finalBackText,
                 parse_mode: 'HTML',
                 reply_markup: variantKeyboard
               })
             }
           )
+          if (!editBackResponse.ok) {
+            const editErr = await editBackResponse.text()
+            console.error('❌ editMessageText failed (back_to_variants):', editErr)
+          }
         } else {
           // No variants stored — generate new ones
           // Redirect to new_variants action by updating message with generate button
@@ -4922,6 +4934,14 @@ serve(async (req) => {
             ]
           }
 
+          const noVariantsText = '\n\n⚠️ <b>Варіанти не знайдені</b>\n<i>Натисніть "Згенерувати варіанти" для створення нових</i>'
+          let finalNoVarText = messageText + noVariantsText
+          if (finalNoVarText.length > 4000) {
+            const maxOriginalLength = 4000 - noVariantsText.length - 50
+            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+            finalNoVarText = truncatedOriginal + noVariantsText
+          }
+
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
@@ -4930,7 +4950,7 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + '\n\n⚠️ <b>Варіанти не знайдені</b>\n<i>Натисніть "Згенерувати варіанти" для створення нових</i>',
+                text: finalNoVarText,
                 parse_mode: 'HTML',
                 reply_markup: genKeyboard
               })
@@ -4981,6 +5001,14 @@ serve(async (req) => {
           }
         )
 
+        const loadingText = '\n\n⏳ <b>Генерація нових візуальних концепцій...</b>'
+        let finalLoadingText = messageText + loadingText
+        if (finalLoadingText.length > 4000) {
+          const maxOriginalLength = 4000 - loadingText.length - 50
+          const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+          finalLoadingText = truncatedOriginal + loadingText
+        }
+
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -4989,7 +5017,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + '\n\n⏳ <b>Генерація нових візуальних концепцій...</b>',
+              text: finalLoadingText,
               parse_mode: 'HTML'
             })
           }
@@ -5052,7 +5080,15 @@ serve(async (req) => {
             ]
           }
 
-          await fetch(
+          let finalNewVarText = messageText + variantsText
+          if (finalNewVarText.length > 4000) {
+            console.log(`⚠️ new_variants message too long (${finalNewVarText.length}), truncating`)
+            const maxOriginalLength = 4000 - variantsText.length - 50
+            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+            finalNewVarText = truncatedOriginal + variantsText
+          }
+
+          const editNewVarResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
@@ -5060,12 +5096,16 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + variantsText,
+                text: finalNewVarText,
                 parse_mode: 'HTML',
                 reply_markup: variantKeyboard
               })
             }
           )
+          if (!editNewVarResponse.ok) {
+            const editErr = await editNewVarResponse.text()
+            console.error('❌ editMessageText failed (new_variants):', editErr)
+          }
         } catch (variantError: any) {
           console.error('❌ Error generating new variants:', variantError)
 
@@ -5083,7 +5123,15 @@ serve(async (req) => {
             ]
           }
 
-          await fetch(
+          const varErrText = `\n\n❌ <b>Помилка генерації варіантів:</b> ${variantError.message}`
+          let finalVarErrText = messageText + varErrText
+          if (finalVarErrText.length > 4000) {
+            const maxOriginalLength = 4000 - varErrText.length - 50
+            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+            finalVarErrText = truncatedOriginal + varErrText
+          }
+
+          const editVarErrResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
@@ -5091,12 +5139,16 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + `\n\n❌ <b>Помилка генерації варіантів:</b> ${variantError.message}`,
+                text: finalVarErrText,
                 parse_mode: 'HTML',
                 reply_markup: errorKeyboard
               })
             }
           )
+          if (!editVarErrResponse.ok) {
+            const editErr = await editVarErrResponse.text()
+            console.error('❌ editMessageText failed (new_variants error):', editErr)
+          }
         }
 
       } else if (action === 'reject') {
