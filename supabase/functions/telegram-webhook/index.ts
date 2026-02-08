@@ -4722,7 +4722,16 @@ serve(async (req) => {
               ]
             }
 
-            await fetch(
+            const resultsText = `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n${squareImageLink}${wideImageLink}`
+            let finalText = messageText + resultsText
+            if (finalText.length > 4000) {
+              console.log(`⚠️ Message too long (${finalText.length}), truncating original content to fit results`)
+              const maxOriginalLength = 4000 - resultsText.length - 50
+              const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+              finalText = truncatedOriginal + resultsText
+            }
+
+            const editResponse = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
                 method: 'POST',
@@ -4730,12 +4739,16 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n${squareImageLink}${wideImageLink}`,
+                  text: finalText,
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
               }
             )
+            if (!editResponse.ok) {
+              const editError = await editResponse.text()
+              console.error('❌ editMessageText failed (success path):', editError)
+            }
           } else {
             // Image generation failed
             const errorMsg = imageGenResult.error || 'Невідома помилка'
@@ -4754,7 +4767,15 @@ serve(async (req) => {
               ]
             }
 
-            await fetch(
+            const errorText = `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`
+            let finalErrorText = messageText + errorText
+            if (finalErrorText.length > 4000) {
+              const maxOriginalLength = 4000 - errorText.length - 50
+              const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+              finalErrorText = truncatedOriginal + errorText
+            }
+
+            const editErrorResponse = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
               {
                 method: 'POST',
@@ -4762,12 +4783,16 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: messageText + `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`,
+                  text: finalErrorText,
                   parse_mode: 'HTML',
                   reply_markup: retryKeyboard
                 })
               }
             )
+            if (!editErrorResponse.ok) {
+              const editErr = await editErrorResponse.text()
+              console.error('❌ editMessageText failed (error path):', editErr)
+            }
           }
         } catch (genError: any) {
           console.error('❌ Error in variant image generation:', genError)
@@ -4786,7 +4811,15 @@ serve(async (req) => {
             ]
           }
 
-          await fetch(
+          const catchErrorText = `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`
+          let finalCatchText = messageText + catchErrorText
+          if (finalCatchText.length > 4000) {
+            const maxOriginalLength = 4000 - catchErrorText.length - 50
+            const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
+            finalCatchText = truncatedOriginal + catchErrorText
+          }
+
+          const editCatchResponse = await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
             {
               method: 'POST',
@@ -4794,12 +4827,16 @@ serve(async (req) => {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: messageId,
-                text: messageText + `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`,
+                text: finalCatchText,
                 parse_mode: 'HTML',
                 reply_markup: retryKeyboard
               })
             }
           )
+          if (!editCatchResponse.ok) {
+            const editErr = await editCatchResponse.text()
+            console.error('❌ editMessageText failed (catch path):', editErr)
+          }
         }
 
       } else if (action === 'back_to_variants') {
