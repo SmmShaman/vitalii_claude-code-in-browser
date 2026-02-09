@@ -1,0 +1,109 @@
+name: Backfill Translations
+
+on:
+  workflow_dispatch:
+    inputs:
+      table:
+        description: 'Table to process'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - news
+          - blog
+      limit:
+        description: 'Batch size (max 20)'
+        required: false
+        default: '10'
+      offset:
+        description: 'Offset (skip first N)'
+        required: false
+        default: '0'
+      dry_run:
+        description: 'Dry run (preview only)'
+        required: false
+        default: 'true'
+        type: boolean
+      slugs_only:
+        description: 'Only generate missing slugs (no AI)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Backfill Translations
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          echo "🔄 Calling backfill-translations Edge Function..."
+          echo "  Table: ${{ inputs.table }}"
+          echo "  Limit: ${{ inputs.limit }}"
+          echo "  Offset: ${{ inputs.offset }}"
+          echo "  Dry run: ${{ inputs.dry_run }}"
+          echo "  Slugs only: ${{ inputs.slugs_only }}"
+
+          CLEAN_URL=$(echo "$SUPABASE_URL" | tr -d '[:space:]')
+          CLEAN_KEY=$(echo "$SUPABASE_ANON_KEY" | tr -d '\n\r')
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${CLEAN_URL}/functions/v1/backfill-translations" \
+            -H "Authorization: Bearer ${CLEAN_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "table": "${{ inputs.table }}",
+              "limit": ${{ inputs.limit }},
+              "offset": ${{ inputs.offset }},
+              "dryRun": ${{ inputs.dry_run }},
+              "slugsOnly": ${{ inputs.slugs_only }}
+            }')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo ""
+          echo "HTTP Code: $HTTP_CODE"
+          echo "Response: $BODY" | jq . 2>/dev/null || echo "$BODY"
+
+          # Parse results
+          SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+          PROCESSED=$(echo "$BODY" | jq -r '.processed // 0')
+          TRANSLATED=$(echo "$BODY" | jq -r '.translated // 0')
+          SLUGS_ONLY=$(echo "$BODY" | jq -r '.slugsOnly // 0')
+          FAILED=$(echo "$BODY" | jq -r '.failed // 0')
+          REMAINING=$(echo "$BODY" | jq -r '.totalRemaining // 0')
+          MESSAGE=$(echo "$BODY" | jq -r '.message // "No message"')
+
+          echo ""
+          echo "📊 Results:"
+          echo "  - Success: $SUCCESS"
+          echo "  - Processed: $PROCESSED"
+          echo "  - Translated: $TRANSLATED"
+          echo "  - Slugs only: $SLUGS_ONLY"
+          echo "  - Failed: $FAILED"
+          echo "  - Remaining: $REMAINING"
+          echo "  - Message: $MESSAGE"
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "❌ Backfill failed!"
+            exit 1
+          fi
+
+          if [ "$REMAINING" = "0" ]; then
+            echo ""
+            echo "🎉 All articles have been backfilled!"
+          else
+            echo ""
+            echo "📌 Run again with offset=$(( ${{ inputs.offset }} + ${{ inputs.limit }} )) to continue"
+          fi
+
+      - name: Check for errors
+        if: failure()
+        run: |
+          echo "❌ Backfill translations job failed. Check logs above."
+          exit 1
