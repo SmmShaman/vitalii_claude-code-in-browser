@@ -25,9 +25,10 @@ function extractYouTubeId(url: string): string {
 
 interface NewsArticleProps {
   slug: string
+  initialLanguage?: 'en' | 'no' | 'ua'
 }
 
-export function NewsArticle({ slug }: NewsArticleProps) {
+export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
   const { currentLanguage } = useTranslations()
   const tracking = useTrackingSafe()
   const [news, setNews] = useState<any>(null)
@@ -95,8 +96,9 @@ export function NewsArticle({ slug }: NewsArticleProps) {
     openWithImage(imageSrc, allImages)
   }, [openWithImage, allImages])
 
-  // Generate JSON-LD schema (safe to call with null)
-  const newsArticleSchema = news ? generateNewsArticleSchema(news) : null
+  // Generate JSON-LD schema using slug language for SEO (what Google sees on first render)
+  const schemaLang = initialLanguage || lang
+  const newsArticleSchema = news ? generateNewsArticleSchema(news, schemaLang) : null
 
   if (loading) {
     return <ArticleSkeleton />

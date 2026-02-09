@@ -163,6 +163,24 @@ export function generateWebsiteSchema() {
 }
 
 // ============================================
+// Language Detection
+// ============================================
+
+/**
+ * Detect which language a slug belongs to by matching against all slug variants.
+ * Used by server-side generateMetadata to serve localized titles/descriptions.
+ */
+export function detectSlugLanguage(
+  slugs: { slug_en?: string | null; slug_no?: string | null; slug_ua?: string | null },
+  currentSlug: string
+): 'en' | 'no' | 'ua' {
+  if (slugs.slug_en === currentSlug) return 'en'
+  if (slugs.slug_no === currentSlug) return 'no'
+  if (slugs.slug_ua === currentSlug) return 'ua'
+  return 'en'
+}
+
+// ============================================
 // Metadata Helpers
 // ============================================
 
@@ -202,16 +220,21 @@ export function generateOpenGraph(
     authors?: string[]
     tags?: string[] | null
     section?: string | null
-  }
+  },
+  language: 'en' | 'no' | 'ua' = 'en'
 ) {
+  const localeMap = { en: 'en_US', no: 'nb_NO', ua: 'uk_UA' }
+  const allLocales = ['en_US', 'nb_NO', 'uk_UA']
+  const currentLocale = localeMap[language]
+
   return {
     title,
     description,
     type,
     url,
     siteName: SITE_INFO.name,
-    locale: 'en_US',
-    alternateLocale: ['nb_NO', 'uk_UA'],
+    locale: currentLocale,
+    alternateLocale: allLocales.filter(l => l !== currentLocale),
     images: imageUrl
       ? [
           {

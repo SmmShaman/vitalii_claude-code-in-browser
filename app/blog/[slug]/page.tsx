@@ -4,6 +4,7 @@ import { BlogArticle } from './BlogArticle'
 import { ArticleLayout } from '@/components/ArticleLayout'
 import {
   BASE_URL,
+  detectSlugLanguage,
   generateAlternates,
   generateOpenGraph,
   generateTwitterCard,
@@ -27,8 +28,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   }
 
-  const title = post.title_en || 'Blog Post'
-  const description = truncateDescription(post.description_en)
+  const lang = detectSlugLanguage({ slug_en: post.slug_en, slug_no: post.slug_no, slug_ua: post.slug_ua }, slug)
+  const title = post[`title_${lang}`] || post.title_en || 'Blog Post'
+  const description = truncateDescription(post[`description_${lang}`] || post.description_en)
   const url = `${BASE_URL}/blog/${slug}`
 
   return {
@@ -53,7 +55,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         authors: ['Vitalii Berbeha'],
         tags: post.tags,
         section: post.category,
-      }
+      },
+      lang
     ),
     twitter: generateTwitterCard(title, description, (post as any).processed_image_url || post.image_url || post.cover_image_url),
     robots: generateRobots(true, true),
@@ -67,10 +70,12 @@ export const dynamicParams = true
 
 export default async function BlogPage({ params }: Props) {
   const { slug } = await params
+  const post = await getBlogPostBySlug(slug)
+  const lang = post ? detectSlugLanguage({ slug_en: post.slug_en, slug_no: post.slug_no, slug_ua: post.slug_ua }, slug) : 'en'
 
   return (
     <ArticleLayout>
-      <BlogArticle slug={slug} />
+      <BlogArticle slug={slug} initialLanguage={lang} />
     </ArticleLayout>
   )
 }
