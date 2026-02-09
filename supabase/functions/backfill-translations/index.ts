@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -251,32 +252,24 @@ async function processTable(
         }
       }
 
-      // Generate missing slugs
+      // Generate missing slugs with transliteration
       const uniqueSuffix = article.id.substring(0, 8)
-      const generateSlug = (text: string): string => {
-        const baseSlug = text
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .substring(0, 80)
-        return `${baseSlug}-${uniqueSuffix}`
-      }
 
       if (needsSlugEn && article.title_en) {
-        updateData.slug_en = generateSlug(article.title_en)
+        updateData.slug_en = generateLocalizedSlug(article.title_en, 'en', uniqueSuffix)
         fieldsUpdated.push('slug_en')
       }
 
       // For NO/UA slugs, use translated title if we just got it, or existing title
       const noTitle = updateData.title_no || article.title_no
       if (needsSlugNo && noTitle) {
-        updateData.slug_no = generateSlug(noTitle)
+        updateData.slug_no = generateLocalizedSlug(noTitle, 'no', uniqueSuffix)
         fieldsUpdated.push('slug_no')
       }
 
       const uaTitle = updateData.title_ua || article.title_ua
       if (needsSlugUa && uaTitle) {
-        updateData.slug_ua = generateSlug(uaTitle)
+        updateData.slug_ua = generateLocalizedSlug(uaTitle, 'ua', uniqueSuffix)
         fieldsUpdated.push('slug_ua')
       }
 

@@ -57,8 +57,21 @@ export const NewsManager = () => {
     loadNews()
   }, [])
 
-  const generateSlug = (title: string): string => {
-    return title
+  const generateSlug = (title: string, lang: 'en' | 'no' | 'ua' = 'en'): string => {
+    let text = title
+    if (lang === 'no') {
+      const noMap: Record<string, string> = { 'æ': 'ae', 'ø': 'oe', 'å': 'aa', 'é': 'e', 'ö': 'o', 'ä': 'a', 'ü': 'u' }
+      text = [...text].map(c => noMap[c.toLowerCase()] ?? c).join('')
+    } else if (lang === 'ua') {
+      const uaMap: Record<string, string> = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ye',
+        'ж': 'zh', 'з': 'z', 'и': 'y', 'і': 'i', 'ї': 'yi', 'й': 'y', 'к': 'k', 'л': 'l',
+        'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ь': '', 'ю': 'yu', 'я': 'ya', 'ъ': '',
+      }
+      text = [...text].map(c => uaMap[c.toLowerCase()] ?? c).join('')
+    }
+    return text
       .toLowerCase()
       .trim()
       .replace(/[^\w\s-]/g, '')
@@ -380,7 +393,7 @@ export const NewsManager = () => {
                       setFormData({
                         ...formData,
                         title_en: newTitle,
-                        slug_en: formData.slug_en || generateSlug(newTitle)
+                        slug_en: formData.slug_en || generateSlug(newTitle, 'en')
                       })
                     }}
                     required
@@ -441,7 +454,7 @@ export const NewsManager = () => {
                       setFormData({
                         ...formData,
                         title_no: newTitle,
-                        slug_no: formData.slug_no || generateSlug(newTitle)
+                        slug_no: formData.slug_no || generateSlug(newTitle, 'no')
                       })
                     }}
                     className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -498,7 +511,7 @@ export const NewsManager = () => {
                       setFormData({
                         ...formData,
                         title_ua: newTitle,
-                        slug_ua: formData.slug_ua || generateSlug(newTitle)
+                        slug_ua: formData.slug_ua || generateSlug(newTitle, 'ua')
                       })
                     }}
                     className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"

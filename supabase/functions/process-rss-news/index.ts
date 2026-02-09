@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -226,16 +227,8 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
     rewrittenContent.ua.content = formatSourceLink(rewrittenContent.ua.content, 'Детальніше', sourceUrl)
   }
 
-  // Generate slugs with unique suffix
+  // Generate slugs with transliteration and unique suffix
   const uniqueSuffix = newsId.substring(0, 8)
-  const generateSlug = (text: string): string => {
-    const baseSlug = text
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .substring(0, 80)
-    return `${baseSlug}-${uniqueSuffix}`
-  }
 
   // Update news item with rewritten content
   console.log(`📷 Saving image_url: ${imageUrl || 'none'}`)
@@ -247,15 +240,15 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
       title_en: rewrittenContent.en.title,
       content_en: rewrittenContent.en.content,
       description_en: rewrittenContent.en.description,
-      slug_en: generateSlug(rewrittenContent.en.title),
+      slug_en: generateLocalizedSlug(rewrittenContent.en.title, 'en', uniqueSuffix),
       title_ua: rewrittenContent.ua.title,
       content_ua: rewrittenContent.ua.content,
       description_ua: rewrittenContent.ua.description,
-      slug_ua: generateSlug(rewrittenContent.ua.title),
+      slug_ua: generateLocalizedSlug(rewrittenContent.ua.title, 'ua', uniqueSuffix),
       title_no: rewrittenContent.no.title,
       content_no: rewrittenContent.no.content,
       description_no: rewrittenContent.no.description,
-      slug_no: generateSlug(rewrittenContent.no.title),
+      slug_no: generateLocalizedSlug(rewrittenContent.no.title, 'no', uniqueSuffix),
       tags: tags.length > 0 ? tags : null,
       image_url: imageUrl,
       images: images.length > 0 ? images : null,
