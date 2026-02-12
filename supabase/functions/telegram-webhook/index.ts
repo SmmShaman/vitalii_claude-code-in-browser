@@ -885,6 +885,13 @@ serve(async (req) => {
         const lang = remainder.substring(0, 2)
         newsId = remainder.substring(3) // skip "LL_"
         imageLanguage = lang
+      } else if (callbackData.startsWith('cb_go_')) {
+        action = 'cb_go'
+        // Format: cb_go_LL_{uuid} (LL = ua, no, en) — confirm prompt & generate image
+        const remainder = callbackData.substring(6) // remove "cb_go_"
+        const lang = remainder.substring(0, 2)
+        newsId = remainder.substring(3) // skip "LL_"
+        imageLanguage = lang
       } else {
         // Backward compatibility with old format "publish_<id>"
         const parts = callbackData.split('_')
@@ -5640,10 +5647,10 @@ serve(async (req) => {
         })
 
       } else if (action === 'cb_lang') {
-        // Language selected → generate image from Creative Builder
+        // Language selected → generate PROMPT ONLY, show for review before image generation
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
-        console.log(`🎨 Creative Builder: generating in ${selectedLang} for news:`, newsId)
+        console.log(`🎨 Creative Builder: generating prompt in ${selectedLang} for news:`, newsId)
 
         const { data: newsRecord } = await supabase
           .from('news')
@@ -5660,13 +5667,12 @@ serve(async (req) => {
           return new Response(JSON.stringify({ ok: true }))
         }
 
-        const isRssSource = !!(newsRecord.rss_analysis)
         const state = (newsRecord.creative_builder_state || {}) as Record<string, any>
 
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ callback_query_id: callbackId, text: `🎨 Генерація (${langNames[selectedLang] || selectedLang})...`, show_alert: false })
+          body: JSON.stringify({ callback_query_id: callbackId, text: `🎨 Створюю промпт...`, show_alert: false })
         })
 
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
@@ -5674,7 +5680,7 @@ serve(async (req) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId, message_id: messageId,
-            text: truncateForTelegram(messageText, `\n\n⏳ <b>Creative Builder: генерація зображення (${langNames[selectedLang] || selectedLang})...</b>\n<i>Створюю промпт та генерую зображення...</i>`),
+            text: truncateForTelegram(messageText, `\n\n⏳ <b>Creative Builder: створюю промпт (${langNames[selectedLang] || selectedLang})...</b>`),
             parse_mode: 'HTML'
           })
         })
@@ -5693,7 +5699,7 @@ serve(async (req) => {
             }
           }
 
-          // 1. Generate prompt via Creative Builder mode
+          // Generate prompt ONLY (no image yet)
           const promptResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-image-prompt`, {
             method: 'POST',
             headers: {
@@ -5713,10 +5719,111 @@ serve(async (req) => {
             throw new Error(`Prompt generation failed: ${promptResponse.status}`)
           }
 
-          await promptResponse.json()
-          console.log('✅ Creative Builder prompt generated')
+          const promptResult = await promptResponse.json()
+          const generatedPrompt = promptResult.prompt || ''
+          console.log('✅ Creative Builder prompt generated, showing for review')
 
-          // 2. Clear existing images and generate new ones
+          // Show prompt for review with confirm/edit buttons
+          // Truncate prompt for display (Telegram limit)
+          const promptPreview = generatedPrompt
+            .replace(/\n\nQUALITY REQUIREMENTS[\s\S]*$/, '') // Remove quality boost suffix for cleaner display
+            .substring(0, 1500)
+
+          const reviewKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '✅ Генерувати зображення', callback_data: `cb_go_${selectedLang}_${newsId}` }
+              ],
+              [
+                { text: '🔄 Новий промпт', callback_data: `cb_lg_${selectedLang}_${newsId}` },
+                { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
+              ],
+              [
+                { text: '❌ Відхилити', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId, message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n📝 <b>Промпт (${langNames[selectedLang] || selectedLang}):</b>\n\n<code>${escapeHtml(promptPreview)}</code>\n\n<i>Натисніть "Генерувати зображення" для створення або "Новий промпт" для перегенерації</i>`),
+              parse_mode: 'HTML',
+              reply_markup: reviewKeyboard
+            })
+          })
+        } catch (genError: any) {
+          console.error('❌ Creative Builder prompt error:', genError)
+          const retryKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🔄 Спробувати ще', callback_data: `cb_lg_${selectedLang}_${newsId}` },
+                { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
+              ],
+              [
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId, message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка:</b> ${genError.message}`),
+              parse_mode: 'HTML',
+              reply_markup: retryKeyboard
+            })
+          })
+        }
+
+      } else if (action === 'cb_go') {
+        // Prompt confirmed → now generate image from saved prompt
+        const selectedLang = imageLanguage || 'en'
+        const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
+        console.log(`🖼️ Creative Builder: generating IMAGE in ${selectedLang} for news:`, newsId)
+
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('id, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        if (!newsRecord) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Новина не знайдена', show_alert: true })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        const isRssSource = !!(newsRecord.rss_analysis)
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: `🖼️ Генерація зображення...`, show_alert: false })
+        })
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація зображення (${langNames[selectedLang] || selectedLang})...</b>\n<i>Промпт підтверджено, створюю зображення...</i>`),
+            parse_mode: 'HTML'
+          })
+        })
+
+        try {
+          const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+          const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+          // Clear existing images
           await supabase
             .from('news')
             .update({ processed_image_url: null, processed_image_url_wide: null })
@@ -5815,7 +5922,7 @@ serve(async (req) => {
             const retryKeyboard = {
               inline_keyboard: [
                 [
-                  { text: '🔄 Спробувати ще', callback_data: `cb_lg_${selectedLang}_${newsId}` },
+                  { text: '🔄 Спробувати ще', callback_data: `cb_go_${selectedLang}_${newsId}` },
                   { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
                 ],
                 [
@@ -5839,11 +5946,11 @@ serve(async (req) => {
             })
           }
         } catch (genError: any) {
-          console.error('❌ Creative Builder generation error:', genError)
+          console.error('❌ Creative Builder image generation error:', genError)
           const retryKeyboard = {
             inline_keyboard: [
               [
-                { text: '🔄 Спробувати ще', callback_data: `cb_lg_${selectedLang}_${newsId}` },
+                { text: '🔄 Спробувати ще', callback_data: `cb_go_${selectedLang}_${newsId}` },
                 { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
               ],
               [
