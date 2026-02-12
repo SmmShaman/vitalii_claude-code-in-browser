@@ -208,7 +208,7 @@ newsId:${newsId}`
   let keyboard: { inline_keyboard: any[] }
 
   if (hasVariants) {
-    // Has variants → Show variant selection buttons
+    // Has variants → Show variant selection buttons + Creative Builder
     keyboard = {
       inline_keyboard: [
         [
@@ -218,7 +218,8 @@ newsId:${newsId}`
           { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
         ],
         [
-          { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+          { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
+          { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
         ],
         [
           { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` },
@@ -243,11 +244,12 @@ newsId:${newsId}`
       ]
     }
   } else {
-    // No image, no variants → Generate variants or upload custom
+    // No image, no variants → Generate variants or upload custom + Creative Builder
     keyboard = {
       inline_keyboard: [
         [
-          { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
+          { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` },
+          { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
         ],
         [
           { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }

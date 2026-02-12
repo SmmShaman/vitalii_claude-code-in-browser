@@ -13,7 +13,7 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-08-v11-surreal-style-first'
+const VERSION = '2026-02-12-v12-creative-builder'
 
 interface PromptVariant {
   label: string
@@ -21,12 +21,23 @@ interface PromptVariant {
   stylePrompt?: string  // Random style used for this variant set
 }
 
+interface CreativeParameters {
+  style?: { code: string; label: string; prompt_fragment: string }
+  color?: { code: string; label: string; prompt_fragment: string }
+  object?: { code: string; label: string; prompt_fragment: string }
+  action?: { code: string; label: string; prompt_fragment: string }
+  background?: { code: string; label: string; prompt_fragment: string }
+  effects?: { code: string; label: string; prompt_fragment: string }
+  text?: { code: string; label: string; prompt_fragment: string }
+}
+
 interface GeneratePromptRequest {
   newsId: string
   title: string
   content: string
-  mode?: 'variants' | 'full'
+  mode?: 'variants' | 'full' | 'custom' | 'extract_objects'
   selectedVariant?: PromptVariant
+  creativeParameters?: CreativeParameters
 }
 
 interface GeneratePromptResponse {
@@ -147,6 +158,75 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           variants,
+        } as GeneratePromptResponse),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // MODE: EXTRACT_OBJECTS - Extract visual objects from article for Creative Builder
+    // ═══════════════════════════════════════════════════════════════════
+    if (mode === 'extract_objects') {
+      console.log('🔮 Extracting visual objects from article...')
+      const objects = await extractVisualObjects(supabase, requestData.title, requestData.content)
+
+      if (!objects || objects.length === 0) {
+        throw new Error('Failed to extract visual objects from article')
+      }
+
+      console.log(`✅ ${objects.length} objects extracted`)
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          objects,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // MODE: CUSTOM - Generate prompt from Creative Builder selections
+    // ═══════════════════════════════════════════════════════════════════
+    if (mode === 'custom') {
+      console.log('🎨 Generating prompt from Creative Builder selections...')
+
+      if (!requestData.creativeParameters) {
+        throw new Error('Missing creativeParameters for custom mode')
+      }
+
+      const customPrompt = await generateFromCreativeBuilder(
+        supabase,
+        requestData.title,
+        requestData.content,
+        requestData.creativeParameters
+      )
+
+      if (!customPrompt) {
+        throw new Error('Failed to generate prompt from Creative Builder')
+      }
+
+      // Save to database
+      const { error: updateError } = await supabase
+        .from('news')
+        .update({
+          image_generation_prompt: customPrompt,
+          prompt_generated_at: new Date().toISOString(),
+        })
+        .eq('id', requestData.newsId)
+
+      if (updateError) {
+        console.error('Failed to save custom prompt to database:', updateError)
+        throw new Error('Failed to save prompt')
+      }
+
+      console.log('✅ Creative Builder prompt generated and saved')
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          prompt: customPrompt,
+          approach: 'creative_builder'
         } as GeneratePromptResponse),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -974,4 +1054,200 @@ QUALITY BOOST (MANDATORY):
 - Photorealistic textures and materials
 
 MOOD: Professional, innovative, forward-thinking technology`
+}
+
+/**
+ * CREATIVE BUILDER: Generate prompt from user-selected creative elements
+ */
+async function generateFromCreativeBuilder(
+  supabase: any,
+  title: string,
+  content: string,
+  params: CreativeParameters
+): Promise<string | null> {
+  try {
+    // Get creative builder assembler prompt from database
+    const { data: promptData } = await supabase
+      .from('ai_prompts')
+      .select('prompt_text')
+      .eq('prompt_type', 'image_creative_builder')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const systemPrompt = promptData?.prompt_text || `You are a visual composition director. The user has hand-selected creative building blocks for an image.
+Your job: weave these selections together with the article's meaning into a cohesive, detailed image prompt (150-250 words).
+
+RULES:
+- Every selected element MUST be clearly present in the final scene
+- Unselected categories: you decide what fits best based on the article
+- Integrate article's KEY meaning, not just surface topics
+- Create a unified scene, not a collage of disconnected elements
+- Add cinematographic details: camera angle, lighting direction, depth of field, time of day
+- The result should be a scroll-stopping, unique visual
+
+Output: A single detailed English prompt ready for image generation AI.`
+
+    // Build selected elements text
+    const elements: string[] = []
+    if (params.style) elements.push(`- Style: ${params.style.prompt_fragment}`)
+    if (params.color) elements.push(`- Color Mood: ${params.color.prompt_fragment}`)
+    if (params.object) elements.push(`- Central Object: ${params.object.prompt_fragment}`)
+    if (params.action) elements.push(`- Action: ${params.action.prompt_fragment}`)
+    if (params.background) elements.push(`- Background: ${params.background.prompt_fragment}`)
+    if (params.effects) elements.push(`- Effects: ${params.effects.prompt_fragment}`)
+    if (params.text) elements.push(`- Typography: ${params.text.prompt_fragment}`)
+
+    const userMessage = `ARTICLE:
+Title: ${title}
+Content: ${content.substring(0, 2000)}
+
+SELECTED CREATIVE ELEMENTS:
+${elements.length > 0 ? elements.join('\n') : '(No elements selected - use your best judgment based on the article)'}
+
+Create a detailed image prompt combining these elements with the article's core meaning.`
+
+    // Call Azure OpenAI
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+
+    const response = await fetch(azureUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': AZURE_OPENAI_API_KEY!
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        temperature: 0.7,
+        max_tokens: 800
+      })
+    })
+
+    if (!response.ok) {
+      console.error('❌ Creative Builder API error:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    const generatedPrompt = data.choices[0]?.message?.content?.trim()
+
+    if (!generatedPrompt) return null
+
+    // Add quality boost
+    const qualityBoost = `
+
+QUALITY REQUIREMENTS (MANDATORY):
+- Ultra high resolution, 8K quality
+- Vibrant colors with professional contrast
+- Sharp details, no blur or artifacts
+- Professional lighting with depth
+- 1:1 square aspect ratio for social media
+
+BRANDING (MANDATORY):
+- Add small "vitalii.no" watermark text in the bottom right corner
+- The watermark should be subtle but readable`
+
+    return generatedPrompt + qualityBoost
+
+  } catch (error: any) {
+    console.error('❌ Error in Creative Builder prompt generation:', error)
+    return null
+  }
+}
+
+/**
+ * Extract 4-6 concrete visual objects from article for Creative Builder
+ */
+async function extractVisualObjects(
+  supabase: any,
+  title: string,
+  content: string
+): Promise<Array<{ label: string; prompt_fragment: string }> | null> {
+  try {
+    // Get object extractor prompt from database
+    const { data: promptData } = await supabase
+      .from('ai_prompts')
+      .select('prompt_text')
+      .eq('prompt_type', 'image_object_extractor')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const systemPrompt = promptData?.prompt_text || `Analyze this article and suggest 4-6 concrete VISUAL OBJECTS that could be the central element of an illustration.
+
+Return as JSON array: [{"label": "Smartphone", "prompt_fragment": "A sleek modern smartphone with glowing screen displaying data"}]
+
+Rules:
+- Each object must be a SPECIFIC, PHOTOGRAPHABLE thing (not abstract concepts like "innovation" or "progress")
+- Objects should directly relate to the article's subject, companies, or technologies mentioned
+- Include physical objects, devices, structures, or natural elements
+- Each prompt_fragment should describe the object in 1 sentence with visual details
+- Aim for variety: mix of literal objects and metaphorical representations`
+
+    const userMessage = `ARTICLE:
+Title: ${title}
+Content: ${content.substring(0, 2000)}
+
+Extract 4-6 concrete visual objects. Return ONLY a JSON array.`
+
+    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+
+    const response = await fetch(azureUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': AZURE_OPENAI_API_KEY!
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: 'You extract visual objects from articles. Respond with valid JSON array only, no markdown.' },
+          { role: 'user', content: systemPrompt + '\n\n' + userMessage }
+        ],
+        temperature: 0.5,
+        max_tokens: 600
+      })
+    })
+
+    if (!response.ok) {
+      console.error('❌ Object Extractor API error:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    let jsonString = data.choices[0]?.message?.content?.trim()
+
+    if (!jsonString) return null
+
+    // Clean up JSON
+    jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+    try {
+      const parsed = JSON.parse(jsonString)
+
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        console.error('❌ Object extraction returned empty or non-array')
+        return null
+      }
+
+      return parsed
+        .filter((o: any) => o.label && o.prompt_fragment)
+        .slice(0, 6)
+        .map((o: any) => ({
+          label: String(o.label).substring(0, 30),
+          prompt_fragment: String(o.prompt_fragment)
+        }))
+    } catch (parseError) {
+      console.error('❌ Failed to parse objects JSON:', parseError)
+      return null
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error extracting visual objects:', error)
+    return null
+  }
 }

@@ -1301,7 +1301,7 @@ ${escapeHtml(uploadedPhotoUrl)}`
         ]
       }
     } else if (hasVariants) {
-      // 🎨 Variants available → Show variant selection buttons
+      // 🎨 Variants available → Show variant selection buttons + Creative Builder
       keyboard = {
         inline_keyboard: [
           [
@@ -1311,7 +1311,8 @@ ${escapeHtml(uploadedPhotoUrl)}`
             { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
           ],
           [
-            { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+            { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
+            { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
           ],
           [
             { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` },
@@ -1320,11 +1321,12 @@ ${escapeHtml(uploadedPhotoUrl)}`
         ]
       }
     } else {
-      // No variants, no image → Show generate/upload options
+      // No variants, no image → Show generate/upload options + Creative Builder
       keyboard = {
         inline_keyboard: [
           [
-            { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
+            { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` },
+            { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
           ],
           [
             { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }

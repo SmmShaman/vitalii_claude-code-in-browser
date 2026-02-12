@@ -849,6 +849,42 @@ serve(async (req) => {
       } else if (callbackData.startsWith('upload_rss_image_')) {
         action = 'upload_rss_image'
         newsId = callbackData.replace('upload_rss_image_', '')
+      // ═══ Creative Builder callbacks ═══
+      } else if (callbackData.startsWith('cb_hub_')) {
+        action = 'cb_hub'
+        newsId = callbackData.replace('cb_hub_', '')
+      } else if (callbackData.startsWith('cb_c_')) {
+        action = 'cb_category'
+        // Format: cb_c_XX_{uuid} (XX = category code like ST, CL, OB, AC, BG, FX, TX)
+        const remainder = callbackData.substring(5) // remove "cb_c_"
+        const catCode = remainder.substring(0, 2)
+        newsId = remainder.substring(3) // skip "XX_"
+        // Store category code in socialLanguage (reuse variable)
+        socialLanguage = catCode
+      } else if (callbackData.startsWith('cb_s_')) {
+        action = 'cb_select'
+        // Format: cb_s_XX_N_{uuid} (XX = category, N = option index)
+        const remainder = callbackData.substring(5) // remove "cb_s_"
+        const catCode = remainder.substring(0, 2)
+        const rest = remainder.substring(3) // skip "XX_"
+        const idxEnd = rest.indexOf('_')
+        const optionIdx = rest.substring(0, idxEnd)
+        newsId = rest.substring(idxEnd + 1)
+        socialLanguage = catCode
+        imageLanguage = optionIdx
+      } else if (callbackData.startsWith('cb_gen_')) {
+        action = 'cb_generate'
+        newsId = callbackData.replace('cb_gen_', '')
+      } else if (callbackData.startsWith('cb_rst_')) {
+        action = 'cb_reset'
+        newsId = callbackData.replace('cb_rst_', '')
+      } else if (callbackData.startsWith('cb_lg_')) {
+        action = 'cb_lang'
+        // Format: cb_lg_LL_{uuid} (LL = ua, no, en)
+        const remainder = callbackData.substring(6) // remove "cb_lg_"
+        const lang = remainder.substring(0, 2)
+        newsId = remainder.substring(3) // skip "LL_"
+        imageLanguage = lang
       } else {
         // Backward compatibility with old format "publish_<id>"
         const parts = callbackData.split('_')
@@ -3737,7 +3773,8 @@ serve(async (req) => {
                 { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
               ],
               [
-                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
                 { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` },
@@ -3991,7 +4028,8 @@ serve(async (req) => {
                 { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
               ],
               [
-                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
                 { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` },
@@ -4870,7 +4908,8 @@ serve(async (req) => {
                 { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
               ],
               [
-                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
                 { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` },
@@ -4898,12 +4937,12 @@ serve(async (req) => {
             console.error('❌ editMessageText failed (back_to_variants):', editErr)
           }
         } else {
-          // No variants stored — generate new ones
-          // Redirect to new_variants action by updating message with generate button
+          // No variants stored — generate new ones or use Creative Builder
           const genKeyboard = {
             inline_keyboard: [
               [
-                { text: '🎨 Згенерувати варіанти', callback_data: `new_variants_${newsId}` }
+                { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
                 { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
@@ -5035,7 +5074,8 @@ serve(async (req) => {
                 { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
               ],
               [
-                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` }
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
                 { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` },
@@ -5068,7 +5108,8 @@ serve(async (req) => {
           const errorKeyboard = {
             inline_keyboard: [
               [
-                { text: '🔄 Спробувати ще', callback_data: `new_variants_${newsId}` }
+                { text: '🔄 Спробувати ще', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
                 { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
@@ -5098,6 +5139,808 @@ serve(async (req) => {
             console.error('❌ editMessageText failed (new_variants error):', editErr)
           }
         }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // CREATIVE BUILDER HANDLERS
+      // ═══════════════════════════════════════════════════════════════════
+      } else if (action === 'cb_hub') {
+        // Show/return to Creative Builder hub screen
+        console.log('🎨 Creative Builder hub for news:', newsId)
+
+        const { data: newsRecord, error: newsError } = await supabase
+          .from('news')
+          .select('id, original_title, creative_builder_state, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        if (newsError || !newsRecord) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Новина не знайдена', show_alert: true })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '🎨 Creative Builder', show_alert: false })
+        })
+
+        const state = (newsRecord.creative_builder_state || {}) as Record<string, any>
+        const isRssSource = !!(newsRecord.rss_analysis)
+
+        // Category map: code → { key, label, emoji }
+        const categories = [
+          { key: 'style', code: 'ST', label: 'Стиль', emoji: '🎨' },
+          { key: 'color', code: 'CL', label: 'Тон', emoji: '🌈' },
+          { key: 'object', code: 'OB', label: "Об'єкт", emoji: '🔮' },
+          { key: 'action', code: 'AC', label: 'Дія', emoji: '💫' },
+          { key: 'background', code: 'BG', label: 'Фон', emoji: '🌆' },
+          { key: 'effects', code: 'FX', label: 'Ефекти', emoji: '✨' },
+          { key: 'text', code: 'TX', label: 'Текст', emoji: '📝' },
+        ]
+
+        // Build status text
+        let selectedCount = 0
+        let statusLines = ''
+        for (const cat of categories) {
+          const sel = state[cat.key]
+          if (sel && sel.label) {
+            statusLines += `\n✅ ${cat.label}: ${escapeHtml(sel.label)}`
+            selectedCount++
+          } else {
+            statusLines += `\n⬜ ${cat.label}: --`
+          }
+        }
+
+        const articleTitle = newsRecord.original_title
+          ? escapeHtml(newsRecord.original_title.substring(0, 60)) + (newsRecord.original_title.length > 60 ? '...' : '')
+          : 'N/A'
+
+        const hubText = `\n\n🎨 <b>Creative Builder</b>\n\n📰 "${articleTitle}"\n\n<b>Ваші вибори:</b>${statusLines}`
+
+        // Build keyboard: 2 per row for first 6, then text alone, then generate/reset/back
+        const catButtons = categories.map(cat => {
+          const sel = state[cat.key]
+          const checkmark = sel && sel.label ? ' ✅' : ''
+          return { text: `${cat.emoji} ${cat.label}${checkmark}`, callback_data: `cb_c_${cat.code}_${newsId}` }
+        })
+
+        const hubKeyboard = {
+          inline_keyboard: [
+            [catButtons[0], catButtons[1]],
+            [catButtons[2], catButtons[3]],
+            [catButtons[4], catButtons[5]],
+            [catButtons[6]],
+            [
+              { text: `🚀 Генерувати (${selectedCount}/7)`, callback_data: `cb_gen_${newsId}` },
+              { text: '🔄 Скинути', callback_data: `cb_rst_${newsId}` }
+            ],
+            [
+              { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` }
+            ],
+            [
+              { text: '← Назад', callback_data: `back_to_variants_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: messageId,
+            text: truncateForTelegram(messageText, hubText),
+            parse_mode: 'HTML',
+            reply_markup: hubKeyboard
+          })
+        })
+
+      } else if (action === 'cb_category') {
+        // Show options for a specific category
+        const catCode = socialLanguage || ''
+        console.log(`🎨 Creative Builder: showing category ${catCode} for news:`, newsId)
+
+        const catMap: Record<string, string> = {
+          'ST': 'style', 'CL': 'color', 'OB': 'object',
+          'AC': 'action', 'BG': 'background', 'FX': 'effects', 'TX': 'text'
+        }
+        const catLabelMap: Record<string, string> = {
+          'ST': '🎨 Стиль', 'CL': '🌈 Тон', 'OB': "🔮 Об'єкт",
+          'AC': '💫 Дія', 'BG': '🌆 Фон', 'FX': '✨ Ефекти', 'TX': '📝 Текст'
+        }
+        const categoryName = catMap[catCode]
+
+        if (!categoryName) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Невідома категорія', show_alert: true })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: catLabelMap[catCode] || categoryName, show_alert: false })
+        })
+
+        // Special handling for Object category — dynamically generated
+        if (catCode === 'OB') {
+          const { data: newsRecord } = await supabase
+            .from('news')
+            .select('id, original_title, original_content, creative_builder_state')
+            .eq('id', newsId)
+            .single()
+
+          if (!newsRecord) {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId, message_id: messageId,
+                text: truncateForTelegram(messageText, '\n\n❌ Новина не знайдена'),
+                parse_mode: 'HTML'
+              })
+            })
+            return new Response(JSON.stringify({ ok: true }))
+          }
+
+          const state = (newsRecord.creative_builder_state || {}) as Record<string, any>
+          let suggestedObjects = state.suggested_objects as Array<{ label: string; prompt_fragment: string }> | null
+
+          // If no cached objects, extract them via GPT
+          if (!suggestedObjects || suggestedObjects.length === 0) {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId, message_id: messageId,
+                text: truncateForTelegram(messageText, "\n\n⏳ <b>Аналізую статтю для визначення об'єктів...</b>"),
+                parse_mode: 'HTML'
+              })
+            })
+
+            try {
+              const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+              const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+              const objResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-image-prompt`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  newsId,
+                  title: (newsRecord.original_title || '').substring(0, 200),
+                  content: (newsRecord.original_content || '').substring(0, 2000),
+                  mode: 'extract_objects'
+                })
+              })
+
+              if (objResponse.ok) {
+                const objResult = await objResponse.json()
+                suggestedObjects = objResult.objects || []
+
+                // Cache in DB
+                await supabase
+                  .from('news')
+                  .update({
+                    creative_builder_state: { ...state, suggested_objects: suggestedObjects }
+                  })
+                  .eq('id', newsId)
+              }
+            } catch (objErr: any) {
+              console.error('❌ Error extracting objects:', objErr)
+            }
+          }
+
+          if (!suggestedObjects || suggestedObjects.length === 0) {
+            suggestedObjects = [{ label: 'Default Object', prompt_fragment: 'A symbolic object representing the article topic' }]
+          }
+
+          // Build object selection buttons (1 per row)
+          const selectedObj = state.object
+          const objButtons = suggestedObjects.map((obj, i) => {
+            const isSelected = selectedObj && selectedObj.label === obj.label
+            return [{ text: `${isSelected ? '✅ ' : ''}${obj.label}`, callback_data: `cb_s_OB_${i}_${newsId}` }]
+          })
+          objButtons.push([{ text: '← Назад', callback_data: `cb_hub_${newsId}` }])
+
+          let objText = "\n\n🔮 <b>Оберіть центральний об'єкт:</b>\n"
+          suggestedObjects.forEach((obj, i) => {
+            const isSelected = selectedObj && selectedObj.label === obj.label
+            objText += `\n${isSelected ? '✅' : `${i + 1}.`} <b>${escapeHtml(obj.label)}</b>\n<i>${escapeHtml(obj.prompt_fragment)}</i>\n`
+          })
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId, message_id: messageId,
+              text: truncateForTelegram(messageText, objText),
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: objButtons }
+            })
+          })
+
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        // Regular categories: fetch from creative_elements table
+        const { data: elements } = await supabase
+          .from('creative_elements')
+          .select('code, label_ua, label_en, prompt_fragment, emoji, sort_order')
+          .eq('category', categoryName)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+
+        if (!elements || elements.length === 0) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId, message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n⚠️ Елементи для категорії "${categoryName}" не знайдені`),
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: [[{ text: '← Назад', callback_data: `cb_hub_${newsId}` }]] }
+            })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        // Get current selection
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('creative_builder_state')
+          .eq('id', newsId)
+          .single()
+
+        const currentState = (newsRecord?.creative_builder_state || {}) as Record<string, any>
+        const currentSelection = currentState[categoryName]
+
+        // Build buttons (2 per row)
+        const optionButtons: any[][] = []
+        let row: any[] = []
+        elements.forEach((el: any, i: number) => {
+          const isSelected = currentSelection && currentSelection.code === el.code
+          const btnText = `${isSelected ? '✅ ' : ''}${el.emoji || ''} ${el.label_ua}`
+          row.push({ text: btnText, callback_data: `cb_s_${catCode}_${i}_${newsId}` })
+          if (row.length === 2 || i === elements.length - 1) {
+            optionButtons.push([...row])
+            row = []
+          }
+        })
+        optionButtons.push([{ text: '← Назад', callback_data: `cb_hub_${newsId}` }])
+
+        let catText = `\n\n${catLabelMap[catCode]} <b>— оберіть:</b>\n`
+        elements.forEach((el: any) => {
+          const isSelected = currentSelection && currentSelection.code === el.code
+          catText += `\n${isSelected ? '✅' : '○'} ${el.emoji || ''} <b>${escapeHtml(el.label_ua)}</b> — <i>${escapeHtml(el.label_en)}</i>`
+        })
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, catText),
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: optionButtons }
+          })
+        })
+
+      } else if (action === 'cb_select') {
+        // Select an option within a category
+        const catCode = socialLanguage || ''
+        const optionIndex = parseInt(imageLanguage || '0')
+        console.log(`🎨 Creative Builder: select option ${optionIndex} in category ${catCode} for news:`, newsId)
+
+        const catMap: Record<string, string> = {
+          'ST': 'style', 'CL': 'color', 'OB': 'object',
+          'AC': 'action', 'BG': 'background', 'FX': 'effects', 'TX': 'text'
+        }
+        const categoryName = catMap[catCode]
+
+        if (!categoryName) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Невідома категорія', show_alert: true })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        // Get current state
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('creative_builder_state')
+          .eq('id', newsId)
+          .single()
+
+        const currentState = (newsRecord?.creative_builder_state || {}) as Record<string, any>
+
+        let selectedElement: { code: string; label: string; prompt_fragment: string } | null = null
+
+        if (catCode === 'OB') {
+          // Object: get from cached suggested_objects
+          const suggestedObjects = currentState.suggested_objects as Array<{ label: string; prompt_fragment: string }> | null
+          if (suggestedObjects && suggestedObjects[optionIndex]) {
+            const obj = suggestedObjects[optionIndex]
+            selectedElement = { code: `ob_${optionIndex}`, label: obj.label, prompt_fragment: obj.prompt_fragment }
+          }
+        } else {
+          // Regular category: fetch from creative_elements by sort order index
+          const { data: elements } = await supabase
+            .from('creative_elements')
+            .select('code, label_ua, label_en, prompt_fragment')
+            .eq('category', categoryName)
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true })
+
+          if (elements && elements[optionIndex]) {
+            const el = elements[optionIndex]
+            selectedElement = { code: el.code, label: el.label_ua, prompt_fragment: el.prompt_fragment }
+          }
+        }
+
+        if (!selectedElement) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Елемент не знайдено', show_alert: true })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        // Update state
+        const newState = { ...currentState, [categoryName]: selectedElement }
+        await supabase
+          .from('news')
+          .update({ creative_builder_state: newState })
+          .eq('id', newsId)
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: `✅ ${selectedElement.label}`, show_alert: false })
+        })
+
+        // Return to hub (simulate cb_hub action by re-rendering hub)
+        // Re-read updated state
+        const { data: updatedNews } = await supabase
+          .from('news')
+          .select('id, original_title, creative_builder_state, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const updatedState = (updatedNews?.creative_builder_state || {}) as Record<string, any>
+
+        const categories = [
+          { key: 'style', code: 'ST', label: 'Стиль', emoji: '🎨' },
+          { key: 'color', code: 'CL', label: 'Тон', emoji: '🌈' },
+          { key: 'object', code: 'OB', label: "Об'єкт", emoji: '🔮' },
+          { key: 'action', code: 'AC', label: 'Дія', emoji: '💫' },
+          { key: 'background', code: 'BG', label: 'Фон', emoji: '🌆' },
+          { key: 'effects', code: 'FX', label: 'Ефекти', emoji: '✨' },
+          { key: 'text', code: 'TX', label: 'Текст', emoji: '📝' },
+        ]
+
+        let selectedCount = 0
+        let statusLines = ''
+        for (const cat of categories) {
+          const sel = updatedState[cat.key]
+          if (sel && sel.label) {
+            statusLines += `\n✅ ${cat.label}: ${escapeHtml(sel.label)}`
+            selectedCount++
+          } else {
+            statusLines += `\n⬜ ${cat.label}: --`
+          }
+        }
+
+        const articleTitle = updatedNews?.original_title
+          ? escapeHtml(updatedNews.original_title.substring(0, 60)) + (updatedNews.original_title.length > 60 ? '...' : '')
+          : 'N/A'
+
+        const hubText = `\n\n🎨 <b>Creative Builder</b>\n\n📰 "${articleTitle}"\n\n<b>Ваші вибори:</b>${statusLines}`
+
+        const catButtons = categories.map(cat => {
+          const sel = updatedState[cat.key]
+          const checkmark = sel && sel.label ? ' ✅' : ''
+          return { text: `${cat.emoji} ${cat.label}${checkmark}`, callback_data: `cb_c_${cat.code}_${newsId}` }
+        })
+
+        const hubKeyboard = {
+          inline_keyboard: [
+            [catButtons[0], catButtons[1]],
+            [catButtons[2], catButtons[3]],
+            [catButtons[4], catButtons[5]],
+            [catButtons[6]],
+            [
+              { text: `🚀 Генерувати (${selectedCount}/7)`, callback_data: `cb_gen_${newsId}` },
+              { text: '🔄 Скинути', callback_data: `cb_rst_${newsId}` }
+            ],
+            [
+              { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` }
+            ],
+            [
+              { text: '← Назад', callback_data: `back_to_variants_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, hubText),
+            parse_mode: 'HTML',
+            reply_markup: hubKeyboard
+          })
+        })
+
+      } else if (action === 'cb_generate') {
+        // Show language selection before generating from Creative Builder
+        console.log('🚀 Creative Builder: generate for news:', newsId)
+
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('creative_builder_state')
+          .eq('id', newsId)
+          .single()
+
+        const state = (newsRecord?.creative_builder_state || {}) as Record<string, any>
+
+        // Count selections
+        const catKeys = ['style', 'color', 'object', 'action', 'background', 'effects', 'text']
+        const selectedCount = catKeys.filter(k => state[k] && state[k].label).length
+
+        if (selectedCount === 0) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '⚠️ Оберіть хоча б 1 елемент!', show_alert: true })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '🚀 Оберіть мову', show_alert: false })
+        })
+
+        const langKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🇺🇦 UA', callback_data: `cb_lg_ua_${newsId}` },
+              { text: '🇳🇴 NO', callback_data: `cb_lg_no_${newsId}` },
+              { text: '🇬🇧 EN', callback_data: `cb_lg_en_${newsId}` }
+            ],
+            [
+              { text: '← Назад до конструктора', callback_data: `cb_hub_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, `\n\n🚀 <b>Генерація зображення</b> (${selectedCount}/7 елементів)\n\n🌐 <b>Оберіть мову тексту на зображенні:</b>`),
+            parse_mode: 'HTML',
+            reply_markup: langKeyboard
+          })
+        })
+
+      } else if (action === 'cb_lang') {
+        // Language selected → generate image from Creative Builder
+        const selectedLang = imageLanguage || 'en'
+        const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
+        console.log(`🎨 Creative Builder: generating in ${selectedLang} for news:`, newsId)
+
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('id, original_title, original_content, creative_builder_state, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        if (!newsRecord) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Новина не знайдена', show_alert: true })
+          })
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        const isRssSource = !!(newsRecord.rss_analysis)
+        const state = (newsRecord.creative_builder_state || {}) as Record<string, any>
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: `🎨 Генерація (${langNames[selectedLang] || selectedLang})...`, show_alert: false })
+        })
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, `\n\n⏳ <b>Creative Builder: генерація зображення (${langNames[selectedLang] || selectedLang})...</b>\n<i>Створюю промпт та генерую зображення...</i>`),
+            parse_mode: 'HTML'
+          })
+        })
+
+        try {
+          const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+          const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+          const title = newsRecord.original_title || ''
+          const content = newsRecord.original_content || title
+
+          // Build creativeParameters from state
+          const creativeParameters: Record<string, any> = {}
+          for (const key of ['style', 'color', 'object', 'action', 'background', 'effects', 'text']) {
+            if (state[key] && state[key].prompt_fragment) {
+              creativeParameters[key] = state[key]
+            }
+          }
+
+          // 1. Generate prompt via Creative Builder mode
+          const promptResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-image-prompt`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId,
+              title: title.substring(0, 200),
+              content: content.substring(0, 2000),
+              mode: 'custom',
+              creativeParameters
+            })
+          })
+
+          if (!promptResponse.ok) {
+            throw new Error(`Prompt generation failed: ${promptResponse.status}`)
+          }
+
+          await promptResponse.json()
+          console.log('✅ Creative Builder prompt generated')
+
+          // 2. Clear existing images and generate new ones
+          await supabase
+            .from('news')
+            .update({ processed_image_url: null, processed_image_url_wide: null })
+            .eq('id', newsId)
+
+          // Generate 1:1 image
+          const imageGenResponse = await fetch(`${SUPABASE_URL}/functions/v1/process-image`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId,
+              generateFromPrompt: true,
+              language: selectedLang,
+              aspectRatio: '1:1'
+            })
+          })
+
+          const imageGenResult = await imageGenResponse.json()
+
+          // Generate 16:9 image in parallel
+          let wideImageUrl: string | null = null
+          const wideImagePromise = fetch(`${SUPABASE_URL}/functions/v1/process-image`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId,
+              generateFromPrompt: true,
+              language: selectedLang,
+              aspectRatio: '16:9'
+            })
+          }).then(res => res.json()).then(result => {
+            if (result.success && result.processedImageUrl) {
+              wideImageUrl = result.processedImageUrl
+            }
+            return result
+          }).catch(err => {
+            console.error('❌ Wide image error:', err)
+            return null
+          })
+
+          if (imageGenResult.success && imageGenResult.processedImageUrl) {
+            await wideImagePromise
+
+            const newImageUrl = imageGenResult.processedImageUrl
+            const squareImageLink = `🖼️ <b>1:1</b>: ${escapeHtml(newImageUrl)}`
+            const wideImageLink = wideImageUrl
+              ? `\n📐 <b>16:9</b>: ${escapeHtml(wideImageUrl)}`
+              : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
+
+            const resultKeyboard = isRssSource ? {
+              inline_keyboard: [
+                [
+                  { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
+                  { text: '🔄 Змінити елементи', callback_data: `cb_hub_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+                ],
+                [
+                  { text: '❌ Skip', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            } : {
+              inline_keyboard: [
+                [
+                  { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
+                  { text: '🔄 Змінити елементи', callback_data: `cb_hub_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+                ],
+                [
+                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            }
+
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId, message_id: messageId,
+                text: truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n${squareImageLink}${wideImageLink}`),
+                parse_mode: 'HTML',
+                reply_markup: resultKeyboard
+              })
+            })
+          } else {
+            const errorMsg = imageGenResult.error || 'Невідома помилка'
+            const retryKeyboard = {
+              inline_keyboard: [
+                [
+                  { text: '🔄 Спробувати ще', callback_data: `cb_lg_${selectedLang}_${newsId}` },
+                  { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
+                ],
+                [
+                  { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+                ],
+                [
+                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
+                ]
+              ]
+            }
+
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId, message_id: messageId,
+                text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}`),
+                parse_mode: 'HTML',
+                reply_markup: retryKeyboard
+              })
+            })
+          }
+        } catch (genError: any) {
+          console.error('❌ Creative Builder generation error:', genError)
+          const retryKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🔄 Спробувати ще', callback_data: `cb_lg_${selectedLang}_${newsId}` },
+                { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
+              ],
+              [
+                { text: '❌ Reject', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId, message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка:</b> ${genError.message}`),
+              parse_mode: 'HTML',
+              reply_markup: retryKeyboard
+            })
+          })
+        }
+
+      } else if (action === 'cb_reset') {
+        // Reset all Creative Builder selections
+        console.log('🔄 Creative Builder: reset for news:', newsId)
+
+        await supabase
+          .from('news')
+          .update({ creative_builder_state: {} })
+          .eq('id', newsId)
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '🔄 Скинуто', show_alert: false })
+        })
+
+        // Re-render hub with empty state (simulate cb_hub)
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('id, original_title, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const articleTitle = newsRecord?.original_title
+          ? escapeHtml(newsRecord.original_title.substring(0, 60)) + (newsRecord.original_title.length > 60 ? '...' : '')
+          : 'N/A'
+
+        const categories = [
+          { key: 'style', code: 'ST', label: 'Стиль', emoji: '🎨' },
+          { key: 'color', code: 'CL', label: 'Тон', emoji: '🌈' },
+          { key: 'object', code: 'OB', label: "Об'єкт", emoji: '🔮' },
+          { key: 'action', code: 'AC', label: 'Дія', emoji: '💫' },
+          { key: 'background', code: 'BG', label: 'Фон', emoji: '🌆' },
+          { key: 'effects', code: 'FX', label: 'Ефекти', emoji: '✨' },
+          { key: 'text', code: 'TX', label: 'Текст', emoji: '📝' },
+        ]
+
+        let statusLines = ''
+        for (const cat of categories) {
+          statusLines += `\n⬜ ${cat.label}: --`
+        }
+
+        const hubText = `\n\n🎨 <b>Creative Builder</b>\n\n📰 "${articleTitle}"\n\n<b>Ваші вибори:</b>${statusLines}`
+
+        const catButtons = categories.map(cat => ({
+          text: `${cat.emoji} ${cat.label}`,
+          callback_data: `cb_c_${cat.code}_${newsId}`
+        }))
+
+        const hubKeyboard = {
+          inline_keyboard: [
+            [catButtons[0], catButtons[1]],
+            [catButtons[2], catButtons[3]],
+            [catButtons[4], catButtons[5]],
+            [catButtons[6]],
+            [
+              { text: '🚀 Генерувати (0/7)', callback_data: `cb_gen_${newsId}` },
+              { text: '🔄 Скинути', callback_data: `cb_rst_${newsId}` }
+            ],
+            [
+              { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` }
+            ],
+            [
+              { text: '← Назад', callback_data: `back_to_variants_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, hubText),
+            parse_mode: 'HTML',
+            reply_markup: hubKeyboard
+          })
+        })
 
       } else if (action === 'reject') {
         console.log('News rejected by user, ID:', newsId)
