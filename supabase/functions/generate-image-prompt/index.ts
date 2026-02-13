@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
-import { getRandomStylePrompt } from './style-prompts.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,12 +12,12 @@ const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
-const VERSION = '2026-02-12-v12-creative-builder'
+const VERSION = '2026-02-13-v13-editorial-variants'
 
 interface PromptVariant {
+  type: string       // Image type code (infographic, metaphor, realistic, caricature, stylized, macro, abstract, minimal)
   label: string
   description: string
-  stylePrompt?: string  // Random style used for this variant set
 }
 
 interface CreativeParameters {
@@ -237,17 +236,39 @@ serve(async (req) => {
     // ═══════════════════════════════════════════════════════════════════
 
     // ═══════════════════════════════════════════════════════════════════
-    // LEVEL 1: Pre-Analyzer - Decide which approach to use
+    // LEVEL 1: Determine approach — from variant type OR Pre-Analyzer
     // ═══════════════════════════════════════════════════════════════════
-    console.log('🔮 Level 1: Running Pre-Analyzer to decide approach...')
-    const preAnalysis = await runPreAnalyzer(supabase, requestData.title, requestData.content, requestData.selectedVariant)
+    let preAnalysis: PreAnalyzerOutput | null = null
+    let approach: PreAnalyzerOutput['approach']
 
-    if (!preAnalysis) {
-      console.warn('⚠️ Pre-Analyzer failed, defaulting to structured approach')
+    // If a variant with type was selected, map directly to approach (saves 1 API call)
+    const variantType = requestData.selectedVariant?.type
+    if (variantType && VARIANT_TYPE_TO_APPROACH[variantType]) {
+      approach = VARIANT_TYPE_TO_APPROACH[variantType]
+      // Build a minimal preAnalysis from the variant for creative prompt generation
+      preAnalysis = {
+        approach,
+        mood: 'editorial',
+        complexity: 'medium',
+        reason: `Mapped from variant type: ${variantType}`,
+        suggested_style: variantType === 'realistic' ? 'cinematic photography' : variantType === 'macro' ? 'macro photography' : 'editorial illustration',
+        color_mood: 'determined by article context',
+        key_emotion: 'determined by article context',
+        core_idea: requestData.selectedVariant?.label || '',
+        visual_metaphor: requestData.selectedVariant?.description || '',
+      }
+      console.log(`🎯 Approach from variant type "${variantType}": ${approach} (Pre-Analyzer skipped)`)
+    } else {
+      console.log('🔮 Level 1: Running Pre-Analyzer to decide approach...')
+      preAnalysis = await runPreAnalyzer(supabase, requestData.title, requestData.content, requestData.selectedVariant)
+
+      if (!preAnalysis) {
+        console.warn('⚠️ Pre-Analyzer failed, defaulting to structured approach')
+      }
+
+      approach = preAnalysis?.approach || 'structured'
+      console.log(`✅ Pre-Analyzer decision: ${approach} (${preAnalysis?.reason || 'default'})`)
     }
-
-    const approach = preAnalysis?.approach || 'structured'
-    console.log(`✅ Pre-Analyzer decision: ${approach} (${preAnalysis?.reason || 'default'})`)
 
     let finalPrompt: string
     let classifierData: ClassifierOutput | null = null
@@ -546,29 +567,28 @@ async function generateCreativePrompt(
       filledPrompt += `\n\n═══════════════════════════════════════
 SELECTED VISUAL CONCEPT (expand this into a detailed image prompt):
 ═══════════════════════════════════════
+Image Type: ${selectedVariant.type || 'creative'}
 Concept: ${selectedVariant.label}
 Description: ${selectedVariant.description}
 
-Expand this surreal concept into a rich, detailed prompt. Keep the style scene as the dominant visual. Enrich with specific details, lighting, textures, and composition.`
-      // No separate style section needed - style IS the description
+Expand this concept into a rich, detailed prompt. Maintain the chosen image type direction. Enrich with specific details, lighting, textures, and composition.`
     }
 
     // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
     const systemContent = selectedVariant
-      ? `You are a surrealist image prompt writer. You receive a visual concept that combines a random style scene with an article keyword.
+      ? `You are an editorial art director. Expand the selected visual concept into a rich, detailed image generation prompt (150-250 words).
 
-Your job: Expand this concept into a rich, detailed image generation prompt (150-250 words).
+Build on the concept's TYPE and DESCRIPTION — do not override the chosen direction.
 
 RULES:
-- The concept IS the scene. Do NOT replace it with something "professional" or "editorial"
-- PRESERVE the surreal, unexpected, scroll-stopping nature
-- ADD: specific lighting, camera angle, lens, color palette, atmosphere details
-- ADD: textures, materials, depth of field, composition
-- KEEP the article keyword element prominent but natural
+- PRESERVE the concept's image type (infographic, metaphor, realistic, etc.)
+- ADD: specific lighting, camera angle, lens, color palette, atmosphere, textures, depth of field
+- Reference SPECIFIC entities from the article (names, products, numbers)
 - Write in English
-- Do NOT add people sitting at desks, office scenes, or stock-photo clichés`
+- Do NOT add people sitting at desks, office scenes, or stock-photo clichés
+- Do NOT replace the concept with something generic`
       : `You are an editorial art director who thinks in METAPHORS, not scenes.
 Your method: Idea → Metaphor → Tension → Style.
 
@@ -706,32 +726,30 @@ Result: "A massive translucent crystalline structure emerges from between tradit
 Write the image prompt in English (150-250 words):`
 }
 
+// Map variant type to full-generation approach (skips Pre-Analyzer)
+const VARIANT_TYPE_TO_APPROACH: Record<string, PreAnalyzerOutput['approach']> = {
+  'infographic': 'structured',
+  'metaphor': 'creative',
+  'realistic': 'hero_image',
+  'caricature': 'creative',
+  'stylized': 'artistic',
+  'macro': 'hero_image',
+  'abstract': 'artistic',
+  'minimal': 'structured',
+}
+
 /**
- * Generate 4 visual concept variants for moderator to choose from
+ * Generate 4 visual concept variants for moderator to choose from.
+ * Uses decision-tree classification: each variant is a genuinely different image type.
  */
 async function generateVariants(supabase: any, title: string, content: string): Promise<PromptVariant[] | null> {
   try {
-    // Pick a random style prompt to add unique visual direction
-    const stylePrompt = getRandomStylePrompt()
-    console.log(`🎨 Selected style prompt: ${stylePrompt.substring(0, 100)}...`)
-
-    // Build prompt with style as PRIMARY and article for keyword extraction
-    const filledPrompt = `STYLE SCENE (this is the PRIMARY visual, 70-80% of the image):
-${stylePrompt}
-
-ARTICLE (extract ONE keyword/concept to integrate):
+    const userPrompt = `ARTICLE:
 Title: ${title}
-Content: ${content.substring(0, 2000)}
+Content: ${content.substring(0, 3000)}
 
-Create 4 variants where the STYLE SCENE is the base, and one keyword from the article is naturally woven in as a recognizable element.
+Analyze this article and generate 4 image concept variants. Return ONLY a valid JSON array.`
 
-For each variant provide:
-- label: short title (3-5 words, mentions both the style and article topic)
-- description: scene description where style IS the base and article element is woven in naturally (2-3 sentences)
-
-JSON array:`
-
-    // Call Azure OpenAI
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
     const response = await fetch(azureUrl, {
@@ -744,28 +762,44 @@ JSON array:`
         messages: [
           {
             role: 'system',
-            content: `You are a surrealist art director creating scroll-stopping viral images.
-You receive TWO inputs:
-1. STYLE SCENE — this is the PRIMARY visual (70-80% of the image). This IS the scene.
-2. ARTICLE KEYWORD — ONE word/concept extracted from the article. This is the easter egg (20-30%).
+            content: `You are an editorial art director for a professional news publication.
 
-Your job: Create 4 variants where the STYLE SCENE is the dominant visual, and the ARTICLE KEYWORD is naturally woven in as a recognizable element.
+STEP 1 — CLASSIFY THE ARTICLE:
+- Purpose: explain data | attract attention | entertain | convey atmosphere
+- Tone: serious/dramatic | provocative/critical | neutral/emotional | humorous
+- Key entities: companies, products, technologies, people mentioned
 
-EXAMPLE:
-Style: "baby yoda eating cheeseburger from McDonald's, hyper realistic..."
-Article keyword: "Router" (from article about OpenRouter)
-Result: "Hyperrealistic baby Yoda at McDonald's eating a cheeseburger. On the table next to him sits a glowing futuristic WiFi router projecting holographic AI model names into the air above. Same hyper-detailed style, same McDonald's setting, but with this one tech element that ties it to the article."
+STEP 2 — SELECT 4 DIFFERENT IMAGE TYPES (one per variant, from this list):
+1. INFOGRAPHIC (type: "infographic") — numbers, statistics, processes, comparisons. 3D charts, data visualization, structured layouts.
+2. CONCEPTUAL METAPHOR (type: "metaphor") — serious tone, abstract ideas, transformations. Physical metaphors: vise, bridge, crystal, tectonic shift.
+3. PHOTOREALISTIC SCENE (type: "realistic") — physical products, places, events, lifestyle. Cinematic wide shots, editorial photography quality.
+4. CARICATURE/SATIRE (type: "caricature") — humor, provocation, criticism. Exaggerated features, editorial cartoon style, bold commentary.
+5. STYLIZED PHOTO/MONTAGE (type: "stylized") — emotional content, aesthetic topics. Double exposure, color grading, artistic photo manipulation.
+6. MACRO DETAIL (type: "macro") — key technology or object is central. Extreme close-up, shallow depth of field, texture and material focus.
+7. ABSTRACT/ART (type: "abstract") — culture, philosophy, AI, futuristic themes. Generative art, geometric patterns, otherworldly compositions.
+8. MINIMALIST/VECTOR (type: "minimal") — short news, clean data, mobile-first. Bold typography, icon grids, limited palette, clean negative space.
 
 RULES:
-- The style scene IS the image. Don't replace it.
-- The article keyword should feel like a natural part of the scene, not forced
-- Each variant should integrate the keyword DIFFERENTLY (as an object, background element, reflection, texture, etc.)
-- Keep all technical quality parameters from the style prompt
-- Respond ONLY with valid JSON array, no markdown formatting`
+- Each variant MUST be a DIFFERENT type from the list above
+- Prefer types that match the article's tone, purpose, and content
+- Do NOT pick types randomly — justify each choice based on the article
+
+STEP 3 — For each selected type, generate a concrete visual concept:
+- Reference SPECIFIC entities from the article (company names, products, numbers, technologies)
+- Describe composition, mood, and color palette in 2-3 sentences
+- Make each concept visually distinct and immediately recognizable
+
+OUTPUT FORMAT — JSON array of exactly 4 objects:
+[
+  {"type": "<type_code>", "label": "<3-5 word title referencing article topic>", "description": "<2-3 sentences: concrete visual scene with composition, mood, colors>"},
+  ...
+]
+
+Respond ONLY with valid JSON array, no markdown formatting.`
           },
-          { role: 'user', content: filledPrompt }
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0.8,
+        temperature: 0.7,
         max_tokens: 1500
       })
     })
@@ -786,20 +820,20 @@ RULES:
     try {
       const parsed = JSON.parse(jsonString)
 
-      // Validate it's an array of variants
       if (!Array.isArray(parsed) || parsed.length === 0) {
         console.error('❌ Variants response is not a valid array')
         return null
       }
 
-      // Ensure exactly 4 variants, validate structure, store stylePrompt for reference
+      const validTypes = ['infographic', 'metaphor', 'realistic', 'caricature', 'stylized', 'macro', 'abstract', 'minimal']
+
       const variants: PromptVariant[] = parsed
-        .filter((v: any) => v.label && v.description)
+        .filter((v: any) => v.label && v.description && v.type)
         .slice(0, 4)
         .map((v: any) => ({
+          type: validTypes.includes(String(v.type)) ? String(v.type) : 'metaphor',
           label: String(v.label).substring(0, 50),
           description: String(v.description),
-          stylePrompt: stylePrompt,
         }))
 
       if (variants.length < 2) {
@@ -807,6 +841,7 @@ RULES:
         return null
       }
 
+      console.log(`✅ Generated ${variants.length} variants: ${variants.map(v => v.type).join(', ')}`)
       return variants
     } catch (parseError) {
       console.error('❌ Failed to parse variants JSON:', parseError)
@@ -816,55 +851,6 @@ RULES:
     console.error('❌ Error generating variants:', error)
     return null
   }
-}
-
-/**
- * Default prompt for generating 4 visual concept variants
- */
-function getDefaultVariantsPrompt(): string {
-  return `Ти — арт-директор преміального новинного видання. Прочитай статтю та запропонуй 4 РІЗНИХ ФОТОРЕАЛІСТИЧНИХ 4K візуальних концепцій для ілюстрації.
-
-СТАТТЯ:
-Заголовок: {title}
-Зміст: {content}
-
-═══════════════════════════════════════
-ОБОВ'ЯЗКОВІ ПРАВИЛА:
-═══════════════════════════════════════
-1. Кожна концепція ОБОВ'ЯЗКОВО має згадувати конкретні назви, компанії, продукти або технології зі статті
-2. Всі 4 концепції — ФОТОРЕАЛІСТИЧНІ 4K сцени (кінематографічна якість, як зняте професійним фотографом)
-3. ЗАБОРОНЕНО: абстрактні символи, прості ілюстрації, загальні образи без прив'язки до статті
-4. Кожен опис має малювати конкретну візуальну сцену з освітленням, композицією та атмосферою
-
-═══════════════════════════════════════
-4 КАТЕГОРІЇ КОНЦЕПЦІЙ:
-═══════════════════════════════════════
-1. ФОТОРЕАЛІСТИЧНА МЕТАФОРА з продуктом/технологією — кінематографічна сцена де тема статті показана через потужну візуальну метафору. Обов'язково включити конкретну назву продукту/компанії.
-2. ТЕХНОЛОГІЧНА/ІНДУСТРІАЛЬНА візуалізація — показати технологію, обладнання, інфраструктуру чи систему описану в статті. Фотореалістичний рендер реального продукту/технології.
-3. КІНЕМАТОГРАФІЧНА ДРАМАТИЧНА сцена — editorial фотографія що передає ВПЛИВ чи НАСЛІДКИ описаного в статті. Людський масштаб, драматичне освітлення.
-4. МАКРОЗЙОМКА ДЕТАЛІ — екстремальний крупний план ключового елементу зі статті. Мала глибина різкості, текстура та деталі предмета.
-
-Для кожної концепції дай:
-- label: короткий заголовок (3-5 слів, ОБОВ'ЯЗКОВО згадує тему статті)
-- description: опис фотореалістичної сцени (2-3 речення з конкретними деталями, освітленням, ракурсом камери)
-
-═══════════════════════════════════════
-ПРИКЛАД (стаття про "OpenAI Trusted Access for Cyber"):
-═══════════════════════════════════════
-[
-  {"label": "Кіберщит OpenAI метафора", "description": "Світний напівпрозорий захисний щит з логотипом OpenAI ширяє над величезною серверною кімнатою. Біло-блакитне світло заломлюється через щит, створюючи геометричні візерунки на темних серверних стійках. Кінематографічний широкий кут, холодна блакитна палітра з теплими бурштиновими акцентами від індикаторів."},
-  {"label": "Центр кіберзахисту AI", "description": "Сучасний центр кібербезпеки з вигнутими дисплеями що показують карти загроз в реальному часі та візуалізації нейромережі OpenAI. Драматичне приглушене освітлення з екранами що відкидають блакитне сяйво на поліровані поверхні. Зйомка через плече оператора, 4K editorial фотографія."},
-  {"label": "Архітектура цифрової фортеці", "description": "Фотореалістична архітектурна візуалізація масивного входу до дата-центру у вигляді футуристичних дверей сейфа з вигравіруваним написом OpenAI на матовій сталі. Ранковий туман оточує конструкцію. Кінематографічний ракурс з дрона, освітлення золотої години."},
-  {"label": "Макрозйомка нейрочіпа", "description": "Екстремальна макрозйомка спеціалізованого AI чіпа безпеки з видимими нейронними шляхами що світяться блакитним. Мініатюрне лого OpenAI вигравіруване лазером на кремнієвому кристалі. Мала глибина різкості, темний фон, студійне освітлення."}
-]
-
-Повертай ТІЛЬКИ JSON масив:
-[
-  {"label": "...", "description": "..."},
-  {"label": "...", "description": "..."},
-  {"label": "...", "description": "..."},
-  {"label": "...", "description": "..."}
-]`
 }
 
 /**
