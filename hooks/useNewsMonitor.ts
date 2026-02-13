@@ -35,7 +35,7 @@ interface UseNewsMonitorReturn {
   fetchSource: (sourceId: string) => Promise<void>
   fetchAllSources: () => Promise<void>
   updateSettings: (newSettings: Partial<ViewerSettings>) => Promise<void>
-  addSource: (source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>) => Promise<boolean>
+  addSource: (source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder' | 'skipPreModeration'>) => Promise<boolean>
   deleteSource: (sourceId: string) => Promise<boolean>
   toggleSourceActive: (sourceId: string) => Promise<boolean>
   validateRssUrl: (rssUrl: string) => Promise<{ valid: boolean; articles?: RSSArticle[]; error?: string }>
@@ -43,6 +43,7 @@ interface UseNewsMonitorReturn {
   analysisStatus: AnalysisStatus
   analyzeArticle: (article: RSSArticle, sourceName: string, skipTelegram?: boolean) => Promise<{ success: boolean; newsId?: string; score?: number }>
   clearAnalyzedUrls: () => void
+  toggleSkipPreModeration: (sourceId: string) => Promise<boolean>
   updateSourceOrder: (sourceId: string, newOrder: number) => Promise<boolean>
   reorderSources: (tier: number, orderedIds: string[]) => Promise<boolean>
 }
@@ -57,6 +58,7 @@ function mapDBSourceToSource(dbSource: DBNewsMonitorSource): RSSSource {
     isActive: dbSource.is_active,
     isDefault: dbSource.is_default,
     sortOrder: dbSource.sort_order ?? 0,
+    skipPreModeration: dbSource.skip_pre_moderation ?? false,
     createdAt: dbSource.created_at,
     updatedAt: dbSource.updated_at,
   }
@@ -139,6 +141,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
             ...s,
             id: `default-${i}`,
             sortOrder: i + 1,
+            skipPreModeration: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           }))
@@ -182,6 +185,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
               ...s,
               id: `default-${i}`,
               sortOrder: i + 1,
+              skipPreModeration: false,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             }))
@@ -591,7 +595,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
 
   // Add new source
   const addSource = useCallback(async (
-    source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>
+    source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder' | 'skipPreModeration'>
   ): Promise<boolean> => {
     try {
       // Get max sort_order for this tier to add at the end
@@ -721,6 +725,53 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     }
   }, [sources])
 
+  // Toggle skip pre-moderation for a source
+  const toggleSkipPreModeration = useCallback(async (sourceId: string): Promise<boolean> => {
+    const source = sources.find(s => s.id === sourceId)
+    if (!source) return false
+
+    const newValue = !source.skipPreModeration
+
+    // Optimistic UI update
+    setSources(prev =>
+      prev.map(s => s.id === sourceId ? { ...s, skipPreModeration: newValue } : s)
+    )
+
+    try {
+      // Update news_monitor_sources
+      const { error } = await supabase
+        .from('news_monitor_sources')
+        .update({ skip_pre_moderation: newValue })
+        .eq('id', sourceId)
+
+      if (error) {
+        console.error('Failed to toggle skip_pre_moderation:', error)
+        // Revert optimistic update
+        setSources(prev =>
+          prev.map(s => s.id === sourceId ? { ...s, skipPreModeration: !newValue } : s)
+        )
+        return false
+      }
+
+      // Cross-update news_sources by matching rss_url
+      if (source.rssUrl) {
+        await supabase
+          .from('news_sources')
+          .update({ skip_pre_moderation: newValue })
+          .eq('rss_url', source.rssUrl)
+      }
+
+      return true
+    } catch (err) {
+      console.error('Error toggling skip_pre_moderation:', err)
+      // Revert optimistic update
+      setSources(prev =>
+        prev.map(s => s.id === sourceId ? { ...s, skipPreModeration: !newValue } : s)
+      )
+      return false
+    }
+  }, [sources])
+
   // Reload sources
   const reloadSources = useCallback(async () => {
     await loadSources()
@@ -841,6 +892,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
     analysisStatus,
     analyzeArticle,
     clearAnalyzedUrls,
+    toggleSkipPreModeration,
     updateSourceOrder,
     reorderSources,
   }

@@ -36,7 +36,7 @@ export const TIER_CONFIGS: TierConfig[] = [
 ]
 
 // Default sources - used as fallback if DB is empty
-export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>[] = [
+export const DEFAULT_SOURCES: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder' | 'skipPreModeration'>[] = [
   // Tier 1 - Norwegian Government/Tax (9 sources)
   {
     name: 'Skatteetaten',

@@ -7,6 +7,7 @@ export interface RSSSource {
   isActive: boolean
   isDefault: boolean
   sortOrder: number
+  skipPreModeration: boolean
   createdAt: string
   updatedAt: string
 }
@@ -64,6 +65,7 @@ export interface DBNewsMonitorSource {
   is_active: boolean
   is_default: boolean
   sort_order: number
+  skip_pre_moderation: boolean
   created_at: string
   updated_at: string
 }

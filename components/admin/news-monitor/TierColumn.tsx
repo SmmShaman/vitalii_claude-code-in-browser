@@ -36,6 +36,7 @@ interface TierColumnProps {
   onAddSource: (tier: number) => void
   onDeleteSource: (id: string) => void
   onToggleActive: (id: string) => void
+  onTogglePreModeration?: (id: string) => void
   onRefreshSource: (id: string) => void
   onReorderSources?: (tier: number, orderedIds: string[]) => Promise<boolean>
 }
@@ -50,6 +51,7 @@ export function TierColumn({
   onAddSource,
   onDeleteSource,
   onToggleActive,
+  onTogglePreModeration,
   onRefreshSource,
   onReorderSources,
 }: TierColumnProps) {
@@ -147,6 +149,7 @@ export function TierColumn({
                   onToggleExpand={() => onToggleSource(source.id)}
                   onDelete={onDeleteSource}
                   onToggleActive={onToggleActive}
+                  onTogglePreModeration={onTogglePreModeration}
                   onRefresh={onRefreshSource}
                   isDraggable={!!onReorderSources}
                 />

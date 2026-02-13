@@ -3,7 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, AlertCircle, Loader2, ExternalLink, GripVertical } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, AlertCircle, Loader2, ExternalLink, GripVertical, Shield, ShieldOff } from 'lucide-react'
 import { RSSSource, SourceState } from './types'
 import { ArticleItem } from './ArticleItem'
 
@@ -47,6 +47,7 @@ interface SortableSourceCardProps {
   onToggleExpand: () => void
   onDelete?: (id: string) => void
   onToggleActive: (id: string) => void
+  onTogglePreModeration?: (id: string) => void
   onRefresh: (id: string) => void
   isDraggable?: boolean
 }
@@ -59,6 +60,7 @@ export function SortableSourceCard({
   onToggleExpand,
   onDelete,
   onToggleActive,
+  onTogglePreModeration,
   onRefresh,
   isDraggable = true,
 }: SortableSourceCardProps) {
@@ -184,6 +186,26 @@ export function SortableSourceCard({
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </motion.button>
+
+          {onTogglePreModeration && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => onTogglePreModeration(source.id)}
+              className={`p-1.5 transition-colors ${
+                source.skipPreModeration
+                  ? 'text-yellow-400 hover:text-yellow-300'
+                  : 'text-emerald-400 hover:text-emerald-300'
+              }`}
+              title={source.skipPreModeration ? 'Pre-moderation OFF (click to enable)' : 'Pre-moderation ON (click to disable)'}
+            >
+              {source.skipPreModeration ? (
+                <ShieldOff className="h-4 w-4" />
+              ) : (
+                <Shield className="h-4 w-4" />
+              )}
+            </motion.button>
+          )}
 
           <motion.button
             whileHover={{ scale: 1.1 }}

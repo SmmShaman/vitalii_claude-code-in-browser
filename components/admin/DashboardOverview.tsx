@@ -70,6 +70,7 @@ export const DashboardOverview = () => {
     addSource,
     deleteSource,
     toggleSourceActive,
+    toggleSkipPreModeration,
     validateRssUrl,
     reorderSources,
   } = useNewsMonitor()
@@ -382,6 +383,7 @@ export const DashboardOverview = () => {
                 onAddSource={handleAddSource}
                 onDeleteSource={handleDeleteSource}
                 onToggleActive={toggleSourceActive}
+                onTogglePreModeration={toggleSkipPreModeration}
                 onRefreshSource={fetchSource}
                 onReorderSources={reorderSources}
               />
