@@ -673,13 +673,14 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       // Use the real DB ID for deletion
       const realId = dbSource.id
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('news_monitor_sources')
         .delete()
         .eq('id', realId)
+        .select()
 
-      if (error) {
-        console.error('Failed to delete source:', error)
+      if (error || !data || data.length === 0) {
+        console.error('Failed to delete source:', error || 'no rows affected (check auth session)')
         return false
       }
 
@@ -693,13 +694,14 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('news_monitor_sources')
         .delete()
         .eq('id', sourceId)
+        .select()
 
-      if (error) {
-        console.error('Failed to delete source:', error)
+      if (error || !data || data.length === 0) {
+        console.error('Failed to delete source:', error || 'no rows affected (check auth session)')
         return false
       }
 
@@ -722,13 +724,14 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
     if (!source) return false
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('news_monitor_sources')
         .update({ is_active: !source.isActive })
         .eq('id', sourceId)
+        .select()
 
-      if (error) {
-        console.error('Failed to toggle source:', error)
+      if (error || !data || data.length === 0) {
+        console.error('Failed to toggle source:', error || 'no rows affected (check auth session)')
         return false
       }
 
@@ -756,13 +759,14 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
 
     try {
       // Update news_monitor_sources
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('news_monitor_sources')
         .update({ skip_pre_moderation: newValue })
         .eq('id', sourceId)
+        .select()
 
-      if (error) {
-        console.error('Failed to toggle skip_pre_moderation:', error)
+      if (error || !data || data.length === 0) {
+        console.error('Failed to toggle skip_pre_moderation:', error || 'no rows affected (check auth session)')
         // Revert optimistic update
         setSources(prev =>
           prev.map(s => s.id === sourceId ? { ...s, skipPreModeration: !newValue } : s)
@@ -797,13 +801,14 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
   // Update sort order for a single source
   const updateSourceOrder = useCallback(async (sourceId: string, newOrder: number): Promise<boolean> => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('news_monitor_sources')
         .update({ sort_order: newOrder })
         .eq('id', sourceId)
+        .select()
 
-      if (error) {
-        console.error('Failed to update source order:', error)
+      if (error || !data || data.length === 0) {
+        console.error('Failed to update source order:', error || 'no rows affected (check auth session)')
         return false
       }
 
@@ -839,10 +844,11 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
           .from('news_monitor_sources')
           .update({ sort_order: index + 1 })
           .eq('id', id)
+          .select()
       )
 
       const results = await Promise.all(updates)
-      const hasError = results.some(r => r.error)
+      const hasError = results.some(r => r.error || !r.data || r.data.length === 0)
 
       if (hasError) {
         console.error('Some sources failed to update order')

@@ -113,7 +113,10 @@ export function NewsMonitorManager() {
 
   const handleDeleteSource = async (id: string) => {
     if (!confirm('Are you sure you want to delete this source?')) return
-    await deleteSource(id)
+    const success = await deleteSource(id)
+    if (!success) {
+      alert('Failed to delete source. Your session may have expired — please re-login.')
+    }
   }
 
   const activeSources = sources.filter(s => s.isActive).length

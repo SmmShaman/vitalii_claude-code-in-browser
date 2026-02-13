@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { NewsManager } from '@/components/admin/NewsManager'
 import { BlogManager } from '@/components/admin/BlogManager'
@@ -39,6 +39,7 @@ export default function AdminDashboardPage() {
   const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('sources')
   const [loading, setLoading] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
   const [headerStats, setHeaderStats] = useState<HeaderStats>({
     totalNews: 0,
     publishedNews: 0,
@@ -46,9 +47,31 @@ export default function AdminDashboardPage() {
     publishedBlog: 0,
   })
 
+  // Auth guard — redirect to login if session is missing or expires
   useEffect(() => {
-    loadHeaderStats()
-  }, [])
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/admin/login')
+        return
+      }
+      setAuthChecked(true)
+    }
+    checkAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/admin/login')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [router])
+
+  useEffect(() => {
+    if (authChecked) {
+      loadHeaderStats()
+    }
+  }, [authChecked])
 
   const loadHeaderStats = async () => {
     try {
@@ -92,6 +115,14 @@ export default function AdminDashboardPage() {
     { id: 'skills' as TabType, label: 'Skills', icon: Sparkles },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ]
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex">
