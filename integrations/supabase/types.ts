@@ -42,6 +42,7 @@ export interface Database {
           last_fetched_at: string | null;
           created_at: string;
           updated_at: string;
+          skip_pre_moderation: boolean;
         };
         Insert: {
           id?: string;
@@ -55,6 +56,7 @@ export interface Database {
           last_fetched_at?: string | null;
           created_at?: string;
           updated_at?: string;
+          skip_pre_moderation?: boolean;
         };
         Update: {
           id?: string;
@@ -67,6 +69,7 @@ export interface Database {
           fetch_interval?: number;
           last_fetched_at?: string | null;
           updated_at?: string;
+          skip_pre_moderation?: boolean;
         };
       };
       news: {

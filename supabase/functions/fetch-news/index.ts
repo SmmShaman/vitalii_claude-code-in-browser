@@ -73,7 +73,7 @@ serve(async (req) => {
     // Get active RSS sources from database
     const { data: sources, error: sourcesError } = await supabase
       .from('news_sources')
-      .select('id, name, url, rss_url, is_active, last_fetched_at, fetch_interval')
+      .select('id, name, url, rss_url, is_active, last_fetched_at, fetch_interval, skip_pre_moderation')
       .eq('source_type', 'rss')
       .eq('is_active', true)
 
@@ -243,7 +243,7 @@ serve(async (req) => {
               quality_score: 5
             }
 
-            if (isPreModerationEnabled) {
+            if (isPreModerationEnabled && !source.skip_pre_moderation) {
               console.log(`🤖 Running AI pre-moderation for article...`)
               moderationResult = await preModerate(
                 article.title,
@@ -252,7 +252,7 @@ serve(async (req) => {
               )
               console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
             } else {
-              console.log(`⏭️ Pre-moderation disabled, auto-approving article`)
+              console.log(`⏭️ Pre-moderation ${!isPreModerationEnabled ? 'disabled globally' : 'skipped for source: ' + source.name}, auto-approving article`)
             }
 
             // Update pre-moderation status in DB

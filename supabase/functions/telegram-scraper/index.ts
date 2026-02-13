@@ -48,6 +48,7 @@ interface TelegramSource {
   is_active: boolean
   last_fetched_at: string | null
   fetch_interval: number // in seconds
+  skip_pre_moderation: boolean
 }
 
 interface ScrapedPost {
@@ -272,7 +273,7 @@ serve(async (req) => {
     // Get active Telegram sources from database
     let sourcesQuery = supabase
       .from('news_sources')
-      .select('id, name, url, is_active, last_fetched_at, fetch_interval')
+      .select('id, name, url, is_active, last_fetched_at, fetch_interval, skip_pre_moderation')
       .eq('source_type', 'telegram')
       .eq('is_active', true)
 
@@ -713,7 +714,7 @@ serve(async (req) => {
               quality_score: 5
             }
 
-            if (isPreModerationEnabled) {
+            if (isPreModerationEnabled && !source.skip_pre_moderation) {
               console.log(`🤖 Running AI pre-moderation for post ${post.messageId}...`)
               moderationResult = await preModerate(
                 post.text.substring(0, 200),
@@ -722,7 +723,7 @@ serve(async (req) => {
               )
               console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
             } else {
-              console.log(`⏭️ Pre-moderation disabled, auto-approving post ${post.messageId}`)
+              console.log(`⏭️ Pre-moderation ${!isPreModerationEnabled ? 'disabled globally' : 'skipped for source: ' + source.name}, auto-approving post ${post.messageId}`)
             }
 
             // Update pre-moderation status in DB

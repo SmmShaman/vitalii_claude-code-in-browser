@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit, Trash2, Globe, Rss, Send, X, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Edit, Trash2, Globe, Rss, Send, X, ToggleLeft, ToggleRight, Shield, ShieldOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
 interface NewsSource {
@@ -13,6 +13,7 @@ interface NewsSource {
   source_type: string
   category: string | null
   is_active: boolean
+  skip_pre_moderation: boolean
   fetch_interval: number
   last_fetched_at: string | null
   created_at: string
@@ -31,6 +32,7 @@ export const NewsSourcesManager = () => {
     source_type: 'rss',
     category: '',
     is_active: true,
+    skip_pre_moderation: false,
     fetch_interval: 3600,
   })
 
@@ -64,6 +66,7 @@ export const NewsSourcesManager = () => {
       source_type: 'rss',
       category: '',
       is_active: true,
+      skip_pre_moderation: false,
       fetch_interval: 3600,
     })
     setShowModal(true)
@@ -78,6 +81,7 @@ export const NewsSourcesManager = () => {
       source_type: source.source_type,
       category: source.category || '',
       is_active: source.is_active,
+      skip_pre_moderation: source.skip_pre_moderation,
       fetch_interval: source.fetch_interval,
     })
     setShowModal(true)
@@ -142,6 +146,20 @@ export const NewsSourcesManager = () => {
       loadSources()
     } catch (error) {
       console.error('Failed to toggle active status:', error)
+    }
+  }
+
+  const toggleSkipPreModeration = async (source: NewsSource) => {
+    try {
+      const { error } = await supabase
+        .from('news_sources')
+        .update({ skip_pre_moderation: !source.skip_pre_moderation })
+        .eq('id', source.id)
+
+      if (error) throw error
+      loadSources()
+    } catch (error) {
+      console.error('Failed to toggle pre-moderation:', error)
     }
   }
 
@@ -241,6 +259,7 @@ export const NewsSourcesManager = () => {
                 source_type: 'telegram',
                 category: 'tech',
                 is_active: true,
+                skip_pre_moderation: false,
                 fetch_interval: 3600,
               })
               setEditingSource(null)
@@ -293,6 +312,13 @@ export const NewsSourcesManager = () => {
                             {source.category}
                           </span>
                         )}
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          source.skip_pre_moderation
+                            ? 'bg-yellow-500/20 text-yellow-300'
+                            : 'bg-emerald-500/20 text-emerald-300'
+                        }`}>
+                          {source.skip_pre_moderation ? 'No AI Filter' : 'AI Filtered'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -332,6 +358,23 @@ export const NewsSourcesManager = () => {
                       <ToggleRight className="h-5 w-5" />
                     ) : (
                       <ToggleLeft className="h-5 w-5" />
+                    )}
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => toggleSkipPreModeration(source)}
+                    className={`p-2 transition-colors ${
+                      source.skip_pre_moderation
+                        ? 'text-yellow-400 hover:text-yellow-300'
+                        : 'text-emerald-400 hover:text-emerald-300'
+                    }`}
+                    title={source.skip_pre_moderation ? 'Enable AI pre-moderation' : 'Skip AI pre-moderation'}
+                  >
+                    {source.skip_pre_moderation ? (
+                      <ShieldOff className="h-5 w-5" />
+                    ) : (
+                      <Shield className="h-5 w-5" />
                     )}
                   </motion.button>
                   <motion.button
@@ -484,6 +527,19 @@ export const NewsSourcesManager = () => {
                 />
                 <label htmlFor="is_active" className="text-sm font-medium text-gray-300">
                   Active (start monitoring immediately)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="skip_pre_moderation"
+                  checked={formData.skip_pre_moderation}
+                  onChange={(e) => setFormData({ ...formData, skip_pre_moderation: e.target.checked })}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-yellow-600 focus:ring-2 focus:ring-yellow-500"
+                />
+                <label htmlFor="skip_pre_moderation" className="text-sm font-medium text-gray-300">
+                  Skip AI pre-moderation (trusted source)
                 </label>
               </div>
 
