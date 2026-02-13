@@ -77,7 +77,7 @@ export const DashboardOverview = ({ onNavigateToSources }: DashboardOverviewProp
     toggleSkipPreModeration,
     validateRssUrl,
     reorderSources,
-  } = useNewsMonitor()
+  } = useNewsMonitor({ disableAutoRefresh: true })
 
   const [showSettings, setShowSettings] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)

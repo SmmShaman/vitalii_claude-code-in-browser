@@ -64,7 +64,12 @@ function mapDBSourceToSource(dbSource: DBNewsMonitorSource): RSSSource {
   }
 }
 
-export function useNewsMonitor(): UseNewsMonitorReturn {
+interface UseNewsMonitorOptions {
+  disableAutoRefresh?: boolean
+}
+
+export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMonitorReturn {
+  const { disableAutoRefresh = false } = options
   const [sources, setSources] = useState<RSSSource[]>([])
   const [sourceStates, setSourceStates] = useState<Map<string, SourceState>>(new Map())
   const [settings, setSettings] = useState<ViewerSettings>(DEFAULT_SETTINGS)
@@ -78,6 +83,8 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
   })
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const analyzedUrlsRef = useRef<Set<string>>(new Set())
+  const fetchAllSourcesRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const isFetchingRef = useRef(false)
 
   // Load analyzed URLs from localStorage on mount
   useEffect(() => {
@@ -512,21 +519,31 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
 
   // Fetch all active sources
   const fetchAllSources = useCallback(async () => {
-    const activeSources = sources.filter(s => s.isActive)
-    setLastRefresh(new Date())
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
 
-    // Fetch in parallel with a small delay between batches to avoid rate limiting
-    const batchSize = 4
-    for (let i = 0; i < activeSources.length; i += batchSize) {
-      const batch = activeSources.slice(i, i + batchSize)
-      await Promise.all(batch.map(s => fetchSource(s.id)))
+    try {
+      const activeSources = sources.filter(s => s.isActive)
+      setLastRefresh(new Date())
 
-      // Small delay between batches
-      if (i + batchSize < activeSources.length) {
-        await new Promise(resolve => setTimeout(resolve, 500))
+      // Fetch in parallel with a small delay between batches to avoid rate limiting
+      const batchSize = 4
+      for (let i = 0; i < activeSources.length; i += batchSize) {
+        const batch = activeSources.slice(i, i + batchSize)
+        await Promise.all(batch.map(s => fetchSource(s.id)))
+
+        // Small delay between batches
+        if (i + batchSize < activeSources.length) {
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
       }
+    } finally {
+      isFetchingRef.current = false
     }
   }, [sources, fetchSource])
+
+  // Keep ref synced for stable auto-refresh effect
+  fetchAllSourcesRef.current = fetchAllSources
 
   // Update settings
   const updateSettings = useCallback(async (newSettings: Partial<ViewerSettings>) => {
@@ -858,13 +875,15 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
       clearInterval(intervalRef.current)
     }
 
+    if (disableAutoRefresh) return
+
     if (settings.autoRefresh && sources.length > 0) {
       // Initial fetch
-      fetchAllSources()
+      fetchAllSourcesRef.current()
 
       // Set up interval
       intervalRef.current = setInterval(() => {
-        fetchAllSources()
+        fetchAllSourcesRef.current()
       }, settings.refreshInterval * 1000)
     }
 
@@ -873,7 +892,7 @@ export function useNewsMonitor(): UseNewsMonitorReturn {
         clearInterval(intervalRef.current)
       }
     }
-  }, [settings.autoRefresh, settings.refreshInterval, sources.length, fetchAllSources])
+  }, [disableAutoRefresh, settings.autoRefresh, settings.refreshInterval, sources.length])
 
   return {
     sources,
