@@ -51,7 +51,11 @@ function formatTimeSince(date: Date | null): string {
   return remainingDays > 0 ? `${weeks}т ${remainingDays}д` : `${weeks}т`
 }
 
-export const DashboardOverview = () => {
+interface DashboardOverviewProps {
+  onNavigateToSources?: () => void
+}
+
+export const DashboardOverview = ({ onNavigateToSources }: DashboardOverviewProps) => {
   const [telegramSources, setTelegramSources] = useState<TelegramSource[]>([])
   const [telegramLoading, setTelegramLoading] = useState(true)
   const [refreshingTelegram, setRefreshingTelegram] = useState(false)
@@ -322,9 +326,12 @@ export const DashboardOverview = () => {
               />
             ))}
             {inactiveTelegramSources.length > 0 && (
-              <div className="px-3 py-2 rounded-lg text-xs bg-gray-500/10 border border-gray-500/20 text-gray-500">
-                Неактивні канали ({inactiveTelegramSources.length})
-              </div>
+              <button
+                onClick={onNavigateToSources}
+                className="px-3 py-2 rounded-lg text-xs bg-gray-500/10 border border-gray-500/20 text-gray-500 hover:bg-gray-500/20 hover:text-gray-400 transition-colors cursor-pointer"
+              >
+                Неактивні канали ({inactiveTelegramSources.length}) →
+              </button>
             )}
           </div>
         )}
@@ -374,7 +381,7 @@ export const DashboardOverview = () => {
         </div>
 
         {/* RSS Tier Grid - Full width with better breakpoints */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4 flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 grid-rows-[1fr] gap-4 flex-1 min-h-0">
           {TIER_CONFIGS.map((tier) => (
             <TierColumn
               key={tier.id}

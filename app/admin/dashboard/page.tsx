@@ -292,7 +292,12 @@ export default function AdminDashboardPage() {
             transition={{ duration: 0.3 }}
             className={activeTab === 'overview' ? 'p-6 h-full flex flex-col' : 'p-6'}
           >
-            {activeTab === 'overview' && <DashboardOverview />}
+            {activeTab === 'overview' && (
+              <DashboardOverview onNavigateToSources={() => {
+                setActiveTab('settings')
+                setSettingsSubTab('sources')
+              }} />
+            )}
             {activeTab === 'queue' && <NewsQueueManager />}
             {activeTab === 'news' && <NewsManager />}
             {activeTab === 'blog' && <BlogManager />}
