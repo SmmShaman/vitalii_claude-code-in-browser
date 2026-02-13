@@ -97,7 +97,7 @@ export function TierColumn({
       className={`flex flex-col rounded-xl border ${tier.borderColor} ${tier.bgColor} overflow-hidden min-h-0`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
         <div>
           <h3 className={`font-bold text-lg ${tier.color}`}>
             Tier {tier.id}
@@ -160,7 +160,7 @@ export function TierColumn({
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-white/10 bg-black/20">
+      <div className="p-3 border-t border-white/10 bg-black/20 flex-shrink-0">
         <p className="text-xs text-gray-500 text-center">
           {tierSources.length} source{tierSources.length !== 1 ? 's' : ''} |{' '}
           {tierSources.filter(s => s.isActive).length} active
