@@ -268,8 +268,10 @@ export const DashboardOverview = () => {
     await deleteSource(id)
   }
 
-  const activeTelegram = telegramSources.filter(s => s.is_active).length
-  const activeRSS = rssSources.filter(s => s.isActive).length
+  const activeTelegramSources = telegramSources.filter(s => s.is_active === true)
+  const inactiveTelegramSources = telegramSources.filter(s => s.is_active !== true)
+  const activeTelegram = activeTelegramSources.length
+  const activeRSS = rssSources.filter(s => s.isActive === true).length
 
   if (telegramLoading || rssLoading) {
     return (
@@ -283,7 +285,7 @@ export const DashboardOverview = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-full">
       {/* Telegram Section - Compact horizontal strip */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 flex-shrink-0">
         {/* Header */}
@@ -311,20 +313,25 @@ export const DashboardOverview = () => {
             <p className="text-xs">No channels</p>
           </div>
         ) : (
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {telegramSources.map((source) => (
+          <div className="flex flex-wrap gap-2">
+            {activeTelegramSources.map((source) => (
               <MiniTelegramCard
                 key={source.id}
                 source={source}
                 stats={telegramStats.get(source.id)}
               />
             ))}
+            {inactiveTelegramSources.length > 0 && (
+              <div className="px-3 py-2 rounded-lg text-xs bg-gray-500/10 border border-gray-500/20 text-gray-500">
+                Неактивні канали ({inactiveTelegramSources.length})
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* RSS Section - Full width */}
-      <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+      <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 flex-1 min-h-0 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -367,12 +374,12 @@ export const DashboardOverview = () => {
         </div>
 
         {/* RSS Tier Grid - Full width with better breakpoints */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4 flex-1 min-h-0">
           {TIER_CONFIGS.map((tier) => (
             <TierColumn
               key={tier.id}
               tier={tier}
-              sources={rssSources.filter(s => s.isActive)}
+              sources={rssSources.filter(s => s.isActive === true)}
               sourceStates={sourceStates}
               expandedSources={expandedSources}
               sourceStats={rssStats}
@@ -414,7 +421,7 @@ function MiniTelegramCard({ source, stats }: { source: TelegramSource; stats?: S
   return (
     <div
       className={`
-        flex-shrink-0 min-w-[160px] px-3 py-2 rounded-lg text-xs
+        min-w-[140px] px-3 py-2 rounded-lg text-xs
         ${isActive
           ? 'bg-blue-500/20 border border-blue-500/30'
           : 'bg-gray-500/10 border border-gray-500/20 opacity-60'

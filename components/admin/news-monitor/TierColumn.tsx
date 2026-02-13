@@ -94,7 +94,7 @@ export function TierColumn({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: tier.id * 0.1 }}
-      className={`flex flex-col rounded-xl border ${tier.borderColor} ${tier.bgColor} overflow-hidden`}
+      className={`flex flex-col rounded-xl border ${tier.borderColor} ${tier.bgColor} overflow-hidden min-h-0`}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10">
@@ -118,7 +118,7 @@ export function TierColumn({
       </div>
 
       {/* Sources */}
-      <div className="flex-1 p-3 space-y-3">
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto min-h-0">
         {tierSources.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 text-sm">No sources in this tier</p>

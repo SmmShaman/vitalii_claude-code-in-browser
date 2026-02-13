@@ -283,14 +283,14 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className={`flex-1 ${activeTab === 'overview' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           <motion.div
             key={activeTab + settingsSubTab}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="p-6"
+            className={activeTab === 'overview' ? 'p-6 h-full flex flex-col' : 'p-6'}
           >
             {activeTab === 'overview' && <DashboardOverview />}
             {activeTab === 'queue' && <NewsQueueManager />}
