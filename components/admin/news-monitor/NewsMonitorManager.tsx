@@ -264,7 +264,7 @@ export function NewsMonitorManager() {
       </div>
 
       {/* Tier Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4">
         {TIER_CONFIGS.map((tier) => (
           <TierColumn
             key={tier.id}

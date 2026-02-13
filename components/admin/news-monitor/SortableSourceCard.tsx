@@ -175,16 +175,16 @@ export function SortableSourceCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => onRefresh(source.id)}
             disabled={isLoading || !source.isActive}
-            className="p-1.5 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </motion.button>
 
           {onTogglePreModeration && (
@@ -192,7 +192,7 @@ export function SortableSourceCard({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onTogglePreModeration(source.id)}
-              className={`p-1.5 transition-colors ${
+              className={`p-1 transition-colors ${
                 source.skipPreModeration
                   ? 'text-yellow-400 hover:text-yellow-300'
                   : 'text-emerald-400 hover:text-emerald-300'
@@ -200,9 +200,9 @@ export function SortableSourceCard({
               title={source.skipPreModeration ? 'Pre-moderation OFF (click to enable)' : 'Pre-moderation ON (click to disable)'}
             >
               {source.skipPreModeration ? (
-                <ShieldOff className="h-4 w-4" />
+                <ShieldOff className="h-3.5 w-3.5" />
               ) : (
-                <Shield className="h-4 w-4" />
+                <Shield className="h-3.5 w-3.5" />
               )}
             </motion.button>
           )}
@@ -211,7 +211,7 @@ export function SortableSourceCard({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => onToggleActive(source.id)}
-            className={`p-1.5 transition-colors ${
+            className={`p-1 transition-colors ${
               source.isActive
                 ? 'text-green-400 hover:text-green-300'
                 : 'text-gray-500 hover:text-gray-400'
@@ -219,9 +219,9 @@ export function SortableSourceCard({
             title={source.isActive ? 'Disable' : 'Enable'}
           >
             {source.isActive ? (
-              <ToggleRight className="h-4 w-4" />
+              <ToggleRight className="h-3.5 w-3.5" />
             ) : (
-              <ToggleLeft className="h-4 w-4" />
+              <ToggleLeft className="h-3.5 w-3.5" />
             )}
           </motion.button>
 
@@ -230,10 +230,10 @@ export function SortableSourceCard({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onDelete(source.id)}
-              className="p-1.5 text-red-400 hover:text-red-300 transition-colors"
+              className="p-1 text-red-400 hover:text-red-300 transition-colors"
               title="Delete"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </motion.button>
           )}
         </div>

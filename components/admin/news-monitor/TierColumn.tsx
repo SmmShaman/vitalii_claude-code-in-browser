@@ -118,7 +118,7 @@ export function TierColumn({
       </div>
 
       {/* Sources */}
-      <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[600px]">
+      <div className="flex-1 p-3 space-y-3">
         {tierSources.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 text-sm">No sources in this tier</p>
