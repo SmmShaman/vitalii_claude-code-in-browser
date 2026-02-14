@@ -783,6 +783,7 @@ RULES:
 - Each variant MUST be a DIFFERENT type from the list above
 - Prefer types that match the article's tone, purpose, and content
 - Do NOT pick types randomly — justify each choice based on the article
+- ALL text in "label" and "description" fields MUST be written in Ukrainian language (Українською мовою)
 
 STEP 3 — For each selected type, generate a concrete visual concept:
 - Reference SPECIFIC entities from the article (company names, products, numbers, technologies)

@@ -83,13 +83,26 @@ serve(async (req) => {
     const imagePrompt = news.image_generation_prompt
     const variants = news.image_prompt_variants as Array<{label: string, description: string}> | null
 
+    // Lookup real source name from news_sources table
+    let sourceName = 'RSS Feed'
+    if (news.rss_source_url) {
+      const { data: sourceData } = await supabase
+        .from('news_sources')
+        .select('name')
+        .eq('rss_url', news.rss_source_url)
+        .single()
+      if (sourceData?.name) {
+        sourceName = sourceData.name
+      }
+    }
+
     // Send to Telegram
     const messageId = await sendTelegramNotification(
       news.id,
       title,
       url,
       analysis,
-      'RSS Feed', // sourceName
+      sourceName,
       imageUrl,
       imagePrompt,
       variants
