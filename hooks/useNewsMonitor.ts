@@ -86,6 +86,18 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
   const fetchAllSourcesRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const isFetchingRef = useRef(false)
 
+  // Verify auth server-side before any write operation.
+  // getUser() makes a real network call (unlike getSession() which is cached),
+  // ensuring the JWT is valid and triggering a token refresh if needed.
+  const ensureAuth = useCallback(async (): Promise<boolean> => {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) {
+      console.error('Auth check failed before write:', error?.message || 'no user')
+      return false
+    }
+    return true
+  }, [])
+
   // Load analyzed URLs from localStorage on mount
   useEffect(() => {
     try {
@@ -614,6 +626,7 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
   const addSource = useCallback(async (
     source: Omit<RSSSource, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder' | 'skipPreModeration'>
   ): Promise<boolean> => {
+    if (!(await ensureAuth())) return false
     try {
       // Get max sort_order for this tier to add at the end
       const tierSources = sources.filter(s => s.tier === source.tier)
@@ -646,10 +659,11 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       console.error('Error adding source:', err)
       return false
     }
-  }, [sources])
+  }, [sources, ensureAuth])
 
   // Delete source
   const deleteSource = useCallback(async (sourceId: string): Promise<boolean> => {
+    if (!(await ensureAuth())) return false
     const source = sources.find(s => s.id === sourceId)
     if (!source) return false
 
@@ -716,10 +730,11 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       console.error('Error deleting source:', err)
       return false
     }
-  }, [sources])
+  }, [sources, ensureAuth])
 
   // Toggle source active state
   const toggleSourceActive = useCallback(async (sourceId: string): Promise<boolean> => {
+    if (!(await ensureAuth())) return false
     const source = sources.find(s => s.id === sourceId)
     if (!source) return false
 
@@ -743,10 +758,11 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       console.error('Error toggling source:', err)
       return false
     }
-  }, [sources])
+  }, [sources, ensureAuth])
 
   // Toggle skip pre-moderation for a source
   const toggleSkipPreModeration = useCallback(async (sourceId: string): Promise<boolean> => {
+    if (!(await ensureAuth())) return false
     const source = sources.find(s => s.id === sourceId)
     if (!source) return false
 
@@ -791,7 +807,7 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       )
       return false
     }
-  }, [sources])
+  }, [sources, ensureAuth])
 
   // Reload sources
   const reloadSources = useCallback(async () => {
@@ -800,6 +816,7 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
 
   // Update sort order for a single source
   const updateSourceOrder = useCallback(async (sourceId: string, newOrder: number): Promise<boolean> => {
+    if (!(await ensureAuth())) return false
     try {
       const { data, error } = await supabase
         .from('news_monitor_sources')
@@ -820,10 +837,11 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       console.error('Error updating source order:', err)
       return false
     }
-  }, [])
+  }, [ensureAuth])
 
   // Reorder all sources in a tier (after drag & drop)
   const reorderSources = useCallback(async (tier: number, orderedIds: string[]): Promise<boolean> => {
+    if (!(await ensureAuth())) return false
     try {
       // Optimistically update local state
       setSources(prev => {
@@ -863,7 +881,7 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       await loadSources()
       return false
     }
-  }, [loadSources])
+  }, [loadSources, ensureAuth])
 
   // Initial load
   useEffect(() => {

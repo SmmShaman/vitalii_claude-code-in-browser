@@ -47,11 +47,11 @@ export default function AdminDashboardPage() {
     publishedBlog: 0,
   })
 
-  // Auth guard — redirect to login if session is missing or expires
+  // Auth guard — getUser() verifies the token server-side (unlike getSession() which is cached)
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user) {
         router.push('/admin/login')
         return
       }
