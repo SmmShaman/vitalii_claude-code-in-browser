@@ -75,6 +75,16 @@ serve(async (req) => {
     const isPreModerationEnabled = preModerationSetting?.key_value !== 'false'
     console.log(`🤖 Pre-moderation enabled: ${isPreModerationEnabled}`)
 
+    // Check if auto-publish is enabled (global toggle)
+    const { data: autoPublishSetting } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', 'ENABLE_AUTO_PUBLISH')
+      .single()
+
+    const isAutoPublishEnabled = autoPublishSetting?.key_value === 'true'
+    console.log(`🤖 Auto-publish enabled: ${isAutoPublishEnabled}`)
+
     // Get active RSS sources from database
     const { data: sources, error: sourcesError } = await supabase
       .from('news_sources')
@@ -288,6 +298,44 @@ serve(async (req) => {
             if (moderationResult.approved) {
               approvedCount++
               totalApproved++
+
+              // 🤖 Auto-publish: fire-and-forget if enabled
+              if (isAutoPublishEnabled) {
+                console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for article`)
+                try {
+                  fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      newsId: newsEntry.id,
+                      source: 'rss'
+                    })
+                  }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
+
+                  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        chat_id: TELEGRAM_CHAT_ID,
+                        text: `🤖 <b>Auto-publishing RSS article...</b>\n\n📰 ${article.title?.substring(0, 150) || 'Untitled'}\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`,
+                        parse_mode: 'HTML'
+                      })
+                    })
+                  }
+
+                  sentToBotCount++
+                  totalSentToBot++
+                  processedCount++
+                  totalProcessed++
+                  continue // Skip normal Telegram bot flow
+                } catch (autoPublishError) {
+                  console.error('❌ Auto-publish trigger failed, falling back to manual:', autoPublishError)
+                }
+              }
 
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
                 const telegramMessageId = await sendToTelegramBot(newsEntry.id, article, source.name, duplicateResults)

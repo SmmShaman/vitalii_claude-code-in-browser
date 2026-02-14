@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff } from 'lucide-react'
+import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff, Zap, ZapOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
 const CRON_PRESETS = [
@@ -29,8 +29,22 @@ export const CronScheduleSettings = () => {
   const [savedPreModerationValue, setSavedPreModerationValue] = useState(true)
   const [preModerationLoading, setPreModerationLoading] = useState(false)
 
+  // Auto-publish toggle state
+  const [autoPublishEnabled, setAutoPublishEnabled] = useState(false)
+  const [savedAutoPublishValue, setSavedAutoPublishValue] = useState(false)
+  const [autoPublishLoading, setAutoPublishLoading] = useState(false)
+  const [autoPublishPlatforms, setAutoPublishPlatforms] = useState<string[]>(['linkedin', 'facebook', 'instagram'])
+  const [savedAutoPublishPlatforms, setSavedAutoPublishPlatforms] = useState<string[]>(['linkedin', 'facebook', 'instagram'])
+  const [autoPublishLanguages, setAutoPublishLanguages] = useState<string[]>(['en', 'no', 'ua'])
+  const [savedAutoPublishLanguages, setSavedAutoPublishLanguages] = useState<string[]>(['en', 'no', 'ua'])
+
   // Check if there are unsaved pre-moderation changes
   const hasUnsavedPreModerationChanges = preModerationEnabled !== savedPreModerationValue
+
+  // Check if there are unsaved auto-publish changes
+  const hasUnsavedAutoPublishChanges = autoPublishEnabled !== savedAutoPublishValue
+    || JSON.stringify(autoPublishPlatforms.sort()) !== JSON.stringify(savedAutoPublishPlatforms.sort())
+    || JSON.stringify(autoPublishLanguages.sort()) !== JSON.stringify(savedAutoPublishLanguages.sort())
 
   useEffect(() => {
     loadCronJobs()
@@ -53,6 +67,30 @@ export const CronScheduleSettings = () => {
         const isEnabled = preModerationSetting.key_value !== 'false'
         setPreModerationEnabled(isEnabled)
         setSavedPreModerationValue(isEnabled)
+      }
+
+      // Load auto-publish settings
+      const { data: autoPublishSettings } = await supabase
+        .from('api_settings')
+        .select('key_name, key_value')
+        .in('key_name', ['ENABLE_AUTO_PUBLISH', 'AUTO_PUBLISH_PLATFORMS', 'AUTO_PUBLISH_LANGUAGES'])
+
+      if (autoPublishSettings) {
+        for (const s of autoPublishSettings) {
+          if (s.key_name === 'ENABLE_AUTO_PUBLISH') {
+            const enabled = s.key_value === 'true'
+            setAutoPublishEnabled(enabled)
+            setSavedAutoPublishValue(enabled)
+          } else if (s.key_name === 'AUTO_PUBLISH_PLATFORMS') {
+            const platforms = s.key_value.split(',').map((p: string) => p.trim()).filter(Boolean)
+            setAutoPublishPlatforms(platforms)
+            setSavedAutoPublishPlatforms(platforms)
+          } else if (s.key_name === 'AUTO_PUBLISH_LANGUAGES') {
+            const langs = s.key_value.split(',').map((l: string) => l.trim()).filter(Boolean)
+            setAutoPublishLanguages(langs)
+            setSavedAutoPublishLanguages(langs)
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to load cron jobs:', error)
@@ -124,6 +162,79 @@ export const CronScheduleSettings = () => {
       })
     } finally {
       setPreModerationLoading(false)
+    }
+  }
+
+  // Toggle auto-publish (local state only)
+  const toggleAutoPublish = () => {
+    setAutoPublishEnabled(!autoPublishEnabled)
+    setSaveResult(null)
+  }
+
+  // Toggle platform in auto-publish
+  const togglePlatform = (platform: string) => {
+    setAutoPublishPlatforms(prev =>
+      prev.includes(platform) ? prev.filter(p => p !== platform) : [...prev, platform]
+    )
+    setSaveResult(null)
+  }
+
+  // Toggle language in auto-publish
+  const toggleLanguage = (lang: string) => {
+    setAutoPublishLanguages(prev =>
+      prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]
+    )
+    setSaveResult(null)
+  }
+
+  // Save auto-publish settings to database
+  const saveAutoPublish = async () => {
+    try {
+      setAutoPublishLoading(true)
+      setSaveResult(null)
+
+      const settings = [
+        { key_name: 'ENABLE_AUTO_PUBLISH', key_value: autoPublishEnabled.toString(), description: 'Global toggle for fully automated news publishing' },
+        { key_name: 'AUTO_PUBLISH_PLATFORMS', key_value: autoPublishPlatforms.join(','), description: 'Platforms for auto-publishing' },
+        { key_name: 'AUTO_PUBLISH_LANGUAGES', key_value: autoPublishLanguages.join(','), description: 'Languages for auto-publishing' }
+      ]
+
+      for (const setting of settings) {
+        const { data, error } = await supabase
+          .from('api_settings')
+          .update({ key_value: setting.key_value })
+          .eq('key_name', setting.key_name)
+          .select()
+
+        if (error) throw error
+
+        if (!data || data.length === 0) {
+          const { error: insertError } = await supabase
+            .from('api_settings')
+            .insert({ ...setting, is_active: true })
+            .select()
+
+          if (insertError) throw insertError
+        }
+      }
+
+      setSavedAutoPublishValue(autoPublishEnabled)
+      setSavedAutoPublishPlatforms([...autoPublishPlatforms])
+      setSavedAutoPublishLanguages([...autoPublishLanguages])
+      setSaveResult({
+        success: true,
+        message: autoPublishEnabled
+          ? `Auto-publish enabled: ${autoPublishPlatforms.join(', ')} × ${autoPublishLanguages.join(', ')}`
+          : 'Auto-publish disabled. News will go through manual Telegram bot moderation.'
+      })
+    } catch (error: any) {
+      console.error('Failed to save auto-publish:', error)
+      setSaveResult({
+        success: false,
+        message: `Failed to update auto-publish setting: ${error.message || 'Unknown error'}`
+      })
+    } finally {
+      setAutoPublishLoading(false)
     }
   }
 
@@ -299,6 +410,149 @@ $$);`
                 <>
                   <Save className="h-5 w-5" />
                   Save Pre-moderation Setting
+                </>
+              )}
+            </motion.button>
+            <p className="text-xs text-yellow-400 mt-2 text-center">
+              Click to save your changes. Current setting is not saved yet.
+            </p>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Auto-Publish Toggle */}
+      <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-lg ${autoPublishEnabled ? 'bg-orange-500/20' : 'bg-gray-500/20'}`}>
+              {autoPublishEnabled ? (
+                <Zap className="h-6 w-6 text-orange-400" />
+              ) : (
+                <ZapOff className="h-6 w-6 text-gray-400" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Auto-Publish News</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {autoPublishEnabled
+                  ? 'News is published automatically with AI-generated images and social posts'
+                  : 'News goes through manual Telegram bot moderation'}
+              </p>
+            </div>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleAutoPublish}
+            className={`relative w-16 h-8 rounded-full transition-colors duration-300 cursor-pointer ${
+              autoPublishEnabled ? 'bg-orange-500' : 'bg-gray-600'
+            } ${hasUnsavedAutoPublishChanges ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-900' : ''}`}
+          >
+            <motion.div
+              className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
+              animate={{ left: autoPublishEnabled ? '2rem' : '0.25rem' }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+          </motion.button>
+        </div>
+
+        <div className={`mt-4 p-3 rounded-lg ${autoPublishEnabled ? 'bg-orange-500/10 border border-orange-500/30' : 'bg-gray-500/10 border border-gray-500/30'}`}>
+          <p className={`text-sm ${autoPublishEnabled ? 'text-orange-300' : 'text-gray-300'}`}>
+            {autoPublishEnabled
+              ? '⚠️ No human review! AI selects image variants, generates images in all languages, rewrites content, and posts to social media automatically.'
+              : 'Standard workflow: scraped posts are sent to Telegram bot where a moderator reviews and publishes them manually.'}
+          </p>
+        </div>
+
+        {/* Expanded config section (when enabled) */}
+        {autoPublishEnabled && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="mt-4 space-y-4"
+          >
+            {/* Platform checkboxes */}
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Social Media Platforms:</label>
+              <div className="flex gap-3">
+                {[
+                  { id: 'linkedin', label: '🔗 LinkedIn' },
+                  { id: 'facebook', label: '📘 Facebook' },
+                  { id: 'instagram', label: '📸 Instagram' }
+                ].map(platform => (
+                  <button
+                    key={platform.id}
+                    onClick={() => togglePlatform(platform.id)}
+                    className={`px-4 py-2 rounded-lg border transition-all text-sm ${
+                      autoPublishPlatforms.includes(platform.id)
+                        ? 'bg-orange-600 border-orange-500 text-white'
+                        : 'bg-white/5 border-white/20 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    {platform.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Language checkboxes */}
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Languages (images + social posts):</label>
+              <div className="flex gap-3">
+                {[
+                  { id: 'en', label: '🇬🇧 English' },
+                  { id: 'no', label: '🇳🇴 Norwegian' },
+                  { id: 'ua', label: '🇺🇦 Ukrainian' }
+                ].map(lang => (
+                  <button
+                    key={lang.id}
+                    onClick={() => toggleLanguage(lang.id)}
+                    className={`px-4 py-2 rounded-lg border transition-all text-sm ${
+                      autoPublishLanguages.includes(lang.id)
+                        ? 'bg-orange-600 border-orange-500 text-white'
+                        : 'bg-white/5 border-white/20 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-white/5 rounded-lg p-3 text-sm text-gray-300">
+              <p>
+                Each article will generate: <strong className="text-orange-300">{autoPublishLanguages.length}</strong> image(s)
+                {' + '}
+                <strong className="text-orange-300">{autoPublishPlatforms.length * autoPublishLanguages.length}</strong> social post(s)
+                {' '}({autoPublishPlatforms.length} platforms × {autoPublishLanguages.length} languages)
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Save button */}
+        {hasUnsavedAutoPublishChanges && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={saveAutoPublish}
+              disabled={autoPublishLoading || (autoPublishEnabled && (autoPublishPlatforms.length === 0 || autoPublishLanguages.length === 0))}
+              className="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {autoPublishLoading ? (
+                <>
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  Save Auto-Publish Settings
                 </>
               )}
             </motion.button>

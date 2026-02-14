@@ -1,4 +1,4 @@
-// Version: 2025-01-01-v10-dedup - Cross-source duplicate detection
+// Version: 2025-01-01-v11-auto-publish - Auto-publish pipeline support
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import {
@@ -274,6 +274,16 @@ serve(async (req) => {
 
     const isPreModerationEnabled = preModerationSetting?.key_value !== 'false'
     log(`🤖 Pre-moderation enabled: ${isPreModerationEnabled}`)
+
+    // Check if auto-publish is enabled (global toggle)
+    const { data: autoPublishSetting } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', 'ENABLE_AUTO_PUBLISH')
+      .single()
+
+    const isAutoPublishEnabled = autoPublishSetting?.key_value === 'true'
+    log(`🤖 Auto-publish enabled: ${isAutoPublishEnabled}`)
 
     // Get active Telegram sources from database
     let sourcesQuery = supabase
@@ -760,6 +770,46 @@ serve(async (req) => {
             if (moderationResult.approved) {
               approvedCount++
               totalApproved++
+
+              // 🤖 Auto-publish: fire-and-forget if enabled
+              if (isAutoPublishEnabled) {
+                console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for post ${post.messageId}`)
+                try {
+                  // Fire-and-forget: don't await the response
+                  fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      newsId: newsEntry.id,
+                      source: 'telegram'
+                    })
+                  }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
+
+                  // Send lightweight info to Telegram
+                  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                    const infoText = `🤖 <b>Auto-publishing in progress...</b>\n\n📰 ${escapeHtml(post.text.substring(0, 150))}\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`
+                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        chat_id: TELEGRAM_CHAT_ID,
+                        text: infoText,
+                        parse_mode: 'HTML'
+                      })
+                    })
+                  }
+
+                  sentToBotCount++
+                  totalSentToBot++
+                  continue // Skip the normal Telegram bot flow
+                } catch (autoPublishError) {
+                  console.error('❌ Auto-publish trigger failed, falling back to manual:', autoPublishError)
+                  // Fall through to normal Telegram bot flow
+                }
+              }
 
               // 🎨 Generate image concept variants (moderator will choose before image generation)
               console.log(`🎨 Generating image concept variants for post ${post.messageId}...`)

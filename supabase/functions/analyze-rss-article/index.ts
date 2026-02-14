@@ -314,6 +314,59 @@ serve(async (req) => {
       console.warn('⚠️ Image variants generation error:', promptError)
     }
 
+    // 🤖 Auto-publish: fire-and-forget if enabled (score >= 5)
+    if (analysis.relevance_score >= 5 && !requestData.skipTelegram) {
+      const { data: autoPublishSetting } = await supabase
+        .from('api_settings')
+        .select('key_value')
+        .eq('key_name', 'ENABLE_AUTO_PUBLISH')
+        .single()
+
+      const isAutoPublishEnabled = autoPublishSetting?.key_value === 'true'
+
+      if (isAutoPublishEnabled) {
+        console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for RSS article`)
+        try {
+          fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId: newsRecord.id,
+              source: 'rss'
+            })
+          }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
+
+          if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: `🤖 <b>Auto-publishing RSS article...</b>\n\n📰 ${title?.substring(0, 150) || 'Untitled'}\n📊 Score: ${analysis.relevance_score}/10\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`,
+                parse_mode: 'HTML'
+              })
+            })
+          }
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              newsId: newsRecord.id,
+              analysis: analysis,
+              autoPublish: true
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        } catch (autoPublishError) {
+          console.error('❌ Auto-publish trigger failed, falling back to manual:', autoPublishError)
+          // Fall through to normal Telegram bot flow
+        }
+      }
+    }
+
     // Send to Telegram Bot for moderation (score >= 5, unless skipTelegram is set)
     if (analysis.relevance_score >= 5 && !requestData.skipTelegram && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
       const telegramMessageId = await sendTelegramNotification(
