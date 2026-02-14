@@ -818,6 +818,9 @@ serve(async (req) => {
       } else if (callbackData.startsWith('back_to_variants_')) {
         action = 'back_to_variants'
         newsId = callbackData.replace('back_to_variants_', '')
+      } else if (callbackData.startsWith('skip_dup_')) {
+        action = 'skip_dup'
+        newsId = callbackData.replace('skip_dup_', '')
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
@@ -6048,6 +6051,49 @@ serve(async (req) => {
             reply_markup: hubKeyboard
           })
         })
+
+      } else if (action === 'skip_dup') {
+        // Skip as duplicate - reject with reason
+        console.log('News skipped as duplicate, ID:', newsId)
+
+        const { error: updateError } = await supabase
+          .from('news')
+          .update({
+            pre_moderation_status: 'rejected',
+            rejection_reason: 'Duplicate (moderator confirmed)'
+          })
+          .eq('id', newsId)
+
+        if (updateError) {
+          console.error('Failed to update news as duplicate:', updateError)
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '🔁 Skipped as duplicate',
+              show_alert: false
+            })
+          }
+        )
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: messageText + '\n\n🔁 <b>SKIPPED (Duplicate)</b>',
+              parse_mode: 'HTML'
+            })
+          }
+        )
 
       } else if (action === 'reject') {
         console.log('News rejected by user, ID:', newsId)

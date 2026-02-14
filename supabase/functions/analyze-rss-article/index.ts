@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import {
+  checkDuplicateByTitle,
+  checkDuplicateByAI,
+  fetchRecentTitles,
+  formatDuplicateWarning,
+  type DuplicateResult
+} from '../_shared/duplicate-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -97,6 +104,41 @@ serve(async (req) => {
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // ============================================
+    // Title-based duplicate check (cross-source)
+    // ============================================
+    const articleTitle = requestData.title || ''
+    let duplicateResults: DuplicateResult[] = []
+
+    if (articleTitle.length >= 10) {
+      console.log('🔍 Checking title similarity...')
+      duplicateResults = await checkDuplicateByTitle(supabase, articleTitle)
+
+      if (duplicateResults.length > 0) {
+        console.log(`⚠️ Found ${duplicateResults.length} similar article(s) by title:`,
+          duplicateResults.map(d => `${d.existingTitle?.substring(0, 50)} (${(d.score! * 100).toFixed(0)}%)`))
+      }
+
+      // If no trigram match, try AI-based cross-language check
+      if (duplicateResults.length === 0 && AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY) {
+        console.log('🤖 No trigram match, checking via AI...')
+        const recentTitles = await fetchRecentTitles(supabase)
+        if (recentTitles.length > 0) {
+          const aiResult = await checkDuplicateByAI(
+            AZURE_OPENAI_ENDPOINT,
+            AZURE_OPENAI_API_KEY,
+            articleTitle,
+            requestData.description || '',
+            recentTitles
+          )
+          if (aiResult) {
+            duplicateResults = [aiResult]
+            console.log(`⚠️ AI detected duplicate: ${aiResult.existingTitle?.substring(0, 50)} (confidence: ${(aiResult.score! * 100).toFixed(0)}%)`)
+          }
+        }
+      }
     }
 
     // Fetch article content
@@ -203,6 +245,7 @@ serve(async (req) => {
       .eq('id', analysisPrompt.id)
 
     // Create news record with RSS data (including images with metadata for copyright)
+    const topDuplicate = duplicateResults.length > 0 ? duplicateResults[0] : null
     const { data: newsRecord, error: insertError } = await supabase
       .from('news')
       .insert({
@@ -217,7 +260,11 @@ serve(async (req) => {
         images_with_meta: requestData.imagesWithMeta || null,
         pre_moderation_status: analysis.recommended_action === 'skip' ? 'rejected' : 'pending',
         is_published: false,
-        is_rewritten: false
+        is_rewritten: false,
+        ...(topDuplicate?.existingNewsId && {
+          duplicate_of_id: topDuplicate.existingNewsId,
+          duplicate_score: topDuplicate.score
+        })
       })
       .select()
       .single()
@@ -277,7 +324,8 @@ serve(async (req) => {
         requestData.sourceName || 'RSS Feed',
         requestData.imageUrl || articleContent.imageUrl,
         imagePrompt,
-        imageVariants
+        imageVariants,
+        duplicateResults
       )
 
       // Save telegram_message_id to prevent duplicate sends
@@ -476,7 +524,8 @@ async function sendTelegramNotification(
   sourceName: string,
   imageUrl: string | null = null,
   imagePrompt: string | null = null,
-  variants: Array<{label: string, description: string}> | null = null
+  variants: Array<{label: string, description: string}> | null = null,
+  duplicates: DuplicateResult[] = []
 ): Promise<number | null> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.warn('⚠️ Telegram credentials not configured')
@@ -523,8 +572,10 @@ ${escapeHtml(imageUrl)}`
 ⚠️ <b>Зображення:</b> Не знайдено`
   }
 
-  const messageText = `📰 <b>RSS Article Analysis</b>
+  const duplicateWarning = formatDuplicateWarning(duplicates)
 
+  const messageText = `📰 <b>RSS Article Analysis</b>
+${duplicateWarning}
 📌 <b>Source:</b> ${sourceName}
 🔗 <a href="${url}">${escapeHtml(title.substring(0, 100))}</a>
 
@@ -545,6 +596,11 @@ newsId:${newsId}`
   // Build keyboard
   let keyboard: { inline_keyboard: any[] }
 
+  const hasDuplicates = duplicates.length > 0
+  const skipDupButton = hasDuplicates
+    ? [{ text: '🔁 Skip (дубль)', callback_data: `skip_dup_${newsId}` }]
+    : []
+
   if (hasVariants) {
     // Has variants → Show variant selection buttons + Creative Builder
     keyboard = {
@@ -562,7 +618,8 @@ newsId:${newsId}`
         [
           { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` },
           { text: '❌ Skip', callback_data: `reject_${newsId}` }
-        ]
+        ],
+        ...(hasDuplicates ? [skipDupButton] : [])
       ]
     }
   } else if (imageUrl) {
@@ -577,7 +634,8 @@ newsId:${newsId}`
           { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
         ],
         [
-          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+          { text: '❌ Skip', callback_data: `reject_${newsId}` },
+          ...skipDupButton
         ]
       ]
     }
@@ -593,7 +651,8 @@ newsId:${newsId}`
           { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
         ],
         [
-          { text: '❌ Skip', callback_data: `reject_${newsId}` }
+          { text: '❌ Skip', callback_data: `reject_${newsId}` },
+          ...skipDupButton
         ]
       ]
     }

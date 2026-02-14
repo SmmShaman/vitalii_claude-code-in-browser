@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts"
+import {
+  checkDuplicateByTitle,
+  formatDuplicateWarning,
+  type DuplicateResult
+} from '../_shared/duplicate-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -209,6 +214,16 @@ serve(async (req) => {
               continue
             }
 
+            // Title-based duplicate check (cross-source)
+            let duplicateResults: DuplicateResult[] = []
+            if (article.title.length >= 10) {
+              duplicateResults = await checkDuplicateByTitle(supabase, article.title)
+              if (duplicateResults.length > 0) {
+                console.log(`⚠️ Title duplicate found: ${duplicateResults[0].existingTitle?.substring(0, 50)} (${(duplicateResults[0].score! * 100).toFixed(0)}%)`)
+              }
+            }
+            const topDuplicate = duplicateResults.length > 0 ? duplicateResults[0] : null
+
             // Save to database with pending status (waiting for moderation)
             const { data: newsEntry, error: insertError } = await supabase
               .from('news')
@@ -222,7 +237,11 @@ serve(async (req) => {
                 source_id: source.id,
                 is_published: false,
                 is_rewritten: false,
-                pre_moderation_status: 'pending'
+                pre_moderation_status: 'pending',
+                ...(topDuplicate?.existingNewsId && {
+                  duplicate_of_id: topDuplicate.existingNewsId,
+                  duplicate_score: topDuplicate.score
+                })
               })
               .select('id')
               .single()
@@ -271,7 +290,7 @@ serve(async (req) => {
               totalApproved++
 
               if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                const telegramMessageId = await sendToTelegramBot(newsEntry.id, article, source.name)
+                const telegramMessageId = await sendToTelegramBot(newsEntry.id, article, source.name, duplicateResults)
                 if (telegramMessageId) {
                   // Save telegram_message_id to prevent duplicate sends
                   await supabase
@@ -493,7 +512,8 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
 async function sendToTelegramBot(
   newsId: string,
   article: RSSArticle,
-  sourceName: string
+  sourceName: string,
+  duplicates: DuplicateResult[] = []
 ): Promise<number | null> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
@@ -501,8 +521,11 @@ async function sendToTelegramBot(
   }
 
   try {
-    const message = `🆕 <b>New Article from RSS Feed</b>
+    const duplicateWarning = formatDuplicateWarning(duplicates)
+    const hasDuplicates = duplicates.length > 0
 
+    const message = `🆕 <b>New Article from RSS Feed</b>
+${duplicateWarning}
 <b>Source:</b> ${sourceName}
 <b>Title:</b> ${article.title}
 
@@ -515,11 +538,18 @@ ${article.description.substring(0, 500)}${article.description.length > 500 ? '..
 
 ⏳ <i>Waiting for moderation...</i>`
 
+    const skipDupButton = hasDuplicates
+      ? [{ text: '🔁 Skip (дубль)', callback_data: `skip_dup_${newsId}` }]
+      : []
+
     const keyboard = {
-      inline_keyboard: [[
-        { text: '✅ Publish', callback_data: `publish_${newsId}` },
-        { text: '❌ Reject', callback_data: `reject_${newsId}` }
-      ]]
+      inline_keyboard: [
+        [
+          { text: '✅ Publish', callback_data: `publish_${newsId}` },
+          { text: '❌ Reject', callback_data: `reject_${newsId}` }
+        ],
+        ...(hasDuplicates ? [skipDupButton] : [])
+      ]
     }
 
     const response = await fetch(

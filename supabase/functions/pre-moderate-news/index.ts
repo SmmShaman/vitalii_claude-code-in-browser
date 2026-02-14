@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { fetchRecentTitles } from '../_shared/duplicate-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,13 +64,20 @@ serve(async (req) => {
       )
     }
 
+    // Fetch recent titles for duplicate context
+    const recentTitles = await fetchRecentTitles(supabase, 7, 20)
+    const recentTitlesContext = recentTitles.length > 0
+      ? `\n\nRECENT ARTICLES (last 7 days) for duplicate comparison:\n${recentTitles.map((a, i) => `${i + 1}. ${a.title}`).join('\n')}\n\nIf the article above covers the SAME event/story as any recent article, set is_duplicate to true.`
+      : ''
+
     // Prepare AI prompt
     const prompt = prompts[0].prompt_text
       .replace('{title}', title || '')
       .replace('{content}', content || '')
       .replace('{url}', url || '')
+      + recentTitlesContext
 
-    console.log('Using pre-moderation prompt:', prompts[0].name)
+    console.log('Using pre-moderation prompt:', prompts[0].name, `(+${recentTitles.length} recent titles for dedup)`)
 
     // Call Azure OpenAI
     if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {

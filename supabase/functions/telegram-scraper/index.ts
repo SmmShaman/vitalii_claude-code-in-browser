@@ -1,6 +1,11 @@
-// Version: 2025-01-01-v9-mtcute - Use mtcute for Telegram MTProto (supports bot tokens!)
+// Version: 2025-01-01-v10-dedup - Cross-source duplicate detection
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import {
+  checkDuplicateByTitle,
+  formatDuplicateWarning,
+  type DuplicateResult
+} from '../_shared/duplicate-helpers.ts'
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts'
 import {
   getYouTubeAccessToken,
@@ -676,6 +681,17 @@ serve(async (req) => {
               console.log(`📎 Source link: ${post.sourceLink}`)
             }
 
+            // Title-based duplicate check (cross-source)
+            let duplicateResults: DuplicateResult[] = []
+            const postTitle = post.text.substring(0, 200)
+            if (postTitle.length >= 10) {
+              duplicateResults = await checkDuplicateByTitle(supabase, postTitle)
+              if (duplicateResults.length > 0) {
+                console.log(`⚠️ Title duplicate found: ${duplicateResults[0].existingTitle?.substring(0, 50)} (${(duplicateResults[0].score! * 100).toFixed(0)}%)`)
+              }
+            }
+            const topDuplicate = duplicateResults.length > 0 ? duplicateResults[0] : null
+
             // Save to database with pending status (waiting for moderation)
             const { data: newsEntry, error: insertError} = await supabase
               .from('news')
@@ -693,7 +709,11 @@ serve(async (req) => {
                 source_id: source.id,
                 is_published: false,
                 is_rewritten: false,
-                pre_moderation_status: 'pending'
+                pre_moderation_status: 'pending',
+                ...(topDuplicate?.existingNewsId && {
+                  duplicate_of_id: topDuplicate.existingNewsId,
+                  duplicate_score: topDuplicate.score
+                })
               })
               .select('id')
               .single()
@@ -784,7 +804,8 @@ serve(async (req) => {
                   post.videoUrl || null,
                   post.videoType || null,
                   photoUrl || null, // Pass updated photoUrl from Supabase Storage
-                  imageVariants     // Pass image concept variants
+                  imageVariants,    // Pass image concept variants
+                  duplicateResults  // Pass duplicate detection results
                 )
                 if (result.success) {
                   sentToBotCount++
@@ -1228,7 +1249,8 @@ async function sendToTelegramBot(
   videoUrl: string | null = null,
   videoType: string | null = null,
   uploadedPhotoUrl: string | null = null, // Updated photoUrl from Supabase Storage
-  variants: Array<{label: string, description: string}> | null = null
+  variants: Array<{label: string, description: string}> | null = null,
+  duplicates: DuplicateResult[] = []
 ): Promise<TelegramMessageInfo> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('❌ Telegram bot credentials not configured')
@@ -1236,8 +1258,10 @@ async function sendToTelegramBot(
   }
 
   try {
-    let message = `🆕 <b>New Post from Telegram Channel</b>
+    const duplicateWarning = formatDuplicateWarning(duplicates)
 
+    let message = `🆕 <b>New Post from Telegram Channel</b>
+${duplicateWarning}
 <b>Channel:</b> @${channelUsername}
 <b>Message ID:</b> ${post.messageId}
 
@@ -1287,6 +1311,10 @@ ${escapeHtml(uploadedPhotoUrl)}`
 ⏳ <i>Waiting for moderation...</i>`
 
     let keyboard: { inline_keyboard: any[] }
+    const hasDuplicates = duplicates.length > 0
+    const skipDupButton = hasDuplicates
+      ? [{ text: '🔁 Skip (дубль)', callback_data: `skip_dup_${newsId}` }]
+      : []
 
     if (hasVideo) {
       // 🎥 Video exists → Skip image workflow, go straight to publish
@@ -1297,7 +1325,8 @@ ${escapeHtml(uploadedPhotoUrl)}`
             { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
           ],
           [
-            { text: '❌ Reject', callback_data: `reject_${newsId}` }
+            { text: '❌ Reject', callback_data: `reject_${newsId}` },
+            ...skipDupButton
           ]
         ]
       }
@@ -1318,7 +1347,8 @@ ${escapeHtml(uploadedPhotoUrl)}`
           [
             { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` },
             { text: '❌ Reject', callback_data: `reject_${newsId}` }
-          ]
+          ],
+          ...(hasDuplicates ? [skipDupButton] : [])
         ]
       }
     } else {
@@ -1333,7 +1363,8 @@ ${escapeHtml(uploadedPhotoUrl)}`
             { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
           ],
           [
-            { text: '❌ Reject', callback_data: `reject_${newsId}` }
+            { text: '❌ Reject', callback_data: `reject_${newsId}` },
+            ...skipDupButton
           ]
         ]
       }
