@@ -88,12 +88,20 @@ export const DashboardOverview = ({ onNavigateToSources }: DashboardOverviewProp
   const collapseAll = () => setExpandedSources(new Set())
   const expandAll = () => setExpandedSources(new Set(rssSources.map(s => s.id)))
   const toggleSource = (id: string) => {
+    const isCurrentlyExpanded = expandedSources.has(id)
     setExpandedSources(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
+    // Auto-fetch articles when expanding a source with no articles loaded
+    if (!isCurrentlyExpanded) {
+      const state = sourceStates.get(id)
+      if (!state?.articles?.length && !state?.loading) {
+        fetchSource(id)
+      }
+    }
   }
   const isAllExpanded = rssSources.length > 0 && expandedSources.size === rssSources.length
 

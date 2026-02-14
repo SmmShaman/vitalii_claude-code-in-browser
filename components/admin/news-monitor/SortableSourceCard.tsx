@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -81,6 +82,13 @@ export function SortableSourceCard({
   const hasArticles = state?.articles && state.articles.length > 0
   const isLoading = state?.loading
   const hasError = state?.error
+
+  // Auto-fetch articles when expanded with no articles loaded yet
+  useEffect(() => {
+    if (isExpanded && source.isActive && !hasArticles && !isLoading) {
+      onRefresh(source.id)
+    }
+  }, [isExpanded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <motion.div
