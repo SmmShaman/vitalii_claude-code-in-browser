@@ -153,9 +153,12 @@ export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* RSS URL */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 RSS Feed URL *
               </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Direct link to RSS/Atom XML feed, e.g.: /feed, /rss, /feed.xml, /atom.xml
+              </p>
               <div className="flex gap-2">
                 <input
                   type="url"
@@ -170,7 +173,7 @@ export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier
                     }
                     setValidationError(null)
                   }}
-                  placeholder="https://example.com/feed.xml"
+                  placeholder="https://techcrunch.com/feed/"
                   required
                   className="flex-1 px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />

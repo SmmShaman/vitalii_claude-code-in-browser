@@ -614,7 +614,7 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
       }
 
       if (!data.articles || data.articles.length === 0) {
-        return { valid: false, error: 'No articles found in feed' }
+        return { valid: false, error: 'No articles found. Make sure this is an RSS/Atom feed URL (usually ends with /feed, /rss, or /feed.xml), not a regular website page.' }
       }
 
       return { valid: true, articles: data.articles }
