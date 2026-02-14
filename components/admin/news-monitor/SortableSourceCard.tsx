@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, AlertCircle, Loader2, ExternalLink, GripVertical, Shield, ShieldOff } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2, ToggleLeft, ToggleRight, RefreshCw, AlertCircle, Loader2, ExternalLink, GripVertical, Shield, ShieldOff, Pencil } from 'lucide-react'
 import { RSSSource, SourceState } from './types'
 import { ArticleItem } from './ArticleItem'
 
@@ -46,6 +46,7 @@ interface SortableSourceCardProps {
   stats?: SourceStats
   isExpanded: boolean
   onToggleExpand: () => void
+  onEdit?: (source: RSSSource) => void
   onDelete?: (id: string) => void
   onToggleActive: (id: string) => void
   onTogglePreModeration?: (id: string) => void
@@ -59,6 +60,7 @@ export function SortableSourceCard({
   stats,
   isExpanded,
   onToggleExpand,
+  onEdit,
   onDelete,
   onToggleActive,
   onTogglePreModeration,
@@ -194,6 +196,18 @@ export function SortableSourceCard({
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </motion.button>
+
+          {onEdit && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => onEdit(source)}
+              className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+              title="Edit"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </motion.button>
+          )}
 
           {onTogglePreModeration && (
             <motion.button

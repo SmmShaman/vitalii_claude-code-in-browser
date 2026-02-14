@@ -44,6 +44,7 @@ interface UseNewsMonitorReturn {
   analyzeArticle: (article: RSSArticle, sourceName: string, skipTelegram?: boolean) => Promise<{ success: boolean; newsId?: string; score?: number }>
   clearAnalyzedUrls: () => void
   toggleSkipPreModeration: (sourceId: string) => Promise<boolean>
+  updateSource: (sourceId: string, updates: { name?: string; url?: string | null; rssUrl?: string; tier?: 1 | 2 | 3 | 4 }) => Promise<boolean>
   updateSourceOrder: (sourceId: string, newOrder: number) => Promise<boolean>
   reorderSources: (tier: number, orderedIds: string[]) => Promise<boolean>
 }
@@ -809,6 +810,64 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
     }
   }, [sources, ensureAuth])
 
+  // Update source fields (name, url, rssUrl, tier)
+  const updateSource = useCallback(async (
+    sourceId: string,
+    updates: { name?: string; url?: string | null; rssUrl?: string; tier?: 1 | 2 | 3 | 4 }
+  ): Promise<boolean> => {
+    if (!(await ensureAuth())) return false
+    const source = sources.find(s => s.id === sourceId)
+    if (!source) return false
+
+    try {
+      // Map camelCase to snake_case for DB
+      const dbUpdates: Record<string, unknown> = {}
+      if (updates.name !== undefined) dbUpdates.name = updates.name
+      if (updates.url !== undefined) dbUpdates.url = updates.url
+      if (updates.rssUrl !== undefined) dbUpdates.rss_url = updates.rssUrl
+      if (updates.tier !== undefined) dbUpdates.tier = updates.tier
+
+      const { data, error } = await supabase
+        .from('news_monitor_sources')
+        .update(dbUpdates)
+        .eq('id', sourceId)
+        .select()
+
+      if (error || !data || data.length === 0) {
+        console.error('Failed to update source:', error || 'no rows affected (check auth session)')
+        return false
+      }
+
+      // If tier changed, recalculate sort order (append to end of new tier)
+      if (updates.tier !== undefined && updates.tier !== source.tier) {
+        const newTierSources = sources.filter(s => s.tier === updates.tier && s.id !== sourceId)
+        const maxSortOrder = newTierSources.length > 0
+          ? Math.max(...newTierSources.map(s => s.sortOrder))
+          : 0
+        await supabase
+          .from('news_monitor_sources')
+          .update({ sort_order: maxSortOrder + 1 })
+          .eq('id', sourceId)
+
+        setSources(prev =>
+          prev.map(s => s.id === sourceId
+            ? { ...s, ...updates, sortOrder: maxSortOrder + 1 }
+            : s
+          )
+        )
+      } else {
+        setSources(prev =>
+          prev.map(s => s.id === sourceId ? { ...s, ...updates } : s)
+        )
+      }
+
+      return true
+    } catch (err) {
+      console.error('Error updating source:', err)
+      return false
+    }
+  }, [sources, ensureAuth])
+
   // Reload sources
   const reloadSources = useCallback(async () => {
     await loadSources()
@@ -936,6 +995,7 @@ export function useNewsMonitor(options: UseNewsMonitorOptions = {}): UseNewsMoni
     analyzeArticle,
     clearAnalyzedUrls,
     toggleSkipPreModeration,
+    updateSource,
     updateSourceOrder,
     reorderSources,
   }

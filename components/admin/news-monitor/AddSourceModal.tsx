@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
-import { RSSArticle } from './types'
+import { RSSArticle, RSSSource } from './types'
 import { TIER_CONFIGS } from './constants'
 
 interface AddSourceModalProps {
@@ -23,9 +23,12 @@ interface AddSourceModalProps {
     error?: string
   }>
   initialTier?: number
+  editSource?: RSSSource | null
+  onUpdate?: (sourceId: string, updates: { name?: string; url?: string | null; rssUrl?: string; tier?: 1 | 2 | 3 | 4 }) => Promise<boolean>
 }
 
-export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier = 3 }: AddSourceModalProps) {
+export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier = 3, editSource, onUpdate }: AddSourceModalProps) {
+  const isEditMode = !!editSource
   const [name, setName] = useState('')
   const [rssUrl, setRssUrl] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
@@ -35,6 +38,19 @@ export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier
   const [validationError, setValidationError] = useState<string | null>(null)
   const [previewArticles, setPreviewArticles] = useState<RSSArticle[]>([])
   const [saving, setSaving] = useState(false)
+  const [originalRssUrl, setOriginalRssUrl] = useState('')
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (editSource) {
+      setName(editSource.name)
+      setRssUrl(editSource.rssUrl)
+      setOriginalRssUrl(editSource.rssUrl)
+      setWebsiteUrl(editSource.url || '')
+      setTier(editSource.tier)
+      setValidated(true) // Already validated since it's an existing source
+    }
+  }, [editSource])
 
   const handleValidate = async () => {
     if (!rssUrl) return
@@ -73,14 +89,25 @@ export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier
     if (!validated || !name || !rssUrl) return
 
     setSaving(true)
-    const success = await onAdd({
-      name,
-      url: websiteUrl || null,
-      rssUrl,
-      tier,
-      isActive: true,
-      isDefault: false,
-    })
+    let success: boolean
+
+    if (isEditMode && editSource && onUpdate) {
+      success = await onUpdate(editSource.id, {
+        name,
+        url: websiteUrl || null,
+        rssUrl,
+        tier,
+      })
+    } else {
+      success = await onAdd({
+        name,
+        url: websiteUrl || null,
+        rssUrl,
+        tier,
+        isActive: true,
+        isDefault: false,
+      })
+    }
     setSaving(false)
 
     if (success) {
@@ -113,7 +140,7 @@ export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier
         >
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-white">
-              Add RSS Source to Tier {tier}
+              {isEditMode ? 'Edit RSS Source' : `Add RSS Source to Tier ${tier}`}
             </h3>
             <button
               onClick={handleClose}
@@ -135,7 +162,12 @@ export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier
                   value={rssUrl}
                   onChange={(e) => {
                     setRssUrl(e.target.value)
-                    setValidated(false)
+                    // In edit mode, keep validated if URL hasn't changed from original
+                    if (isEditMode && e.target.value === originalRssUrl) {
+                      setValidated(true)
+                    } else {
+                      setValidated(false)
+                    }
                     setValidationError(null)
                   }}
                   placeholder="https://example.com/feed.xml"
@@ -269,10 +301,10 @@ export function AddSourceModal({ isOpen, onClose, onAdd, onValidate, initialTier
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Adding...</span>
+                    <span>{isEditMode ? 'Saving...' : 'Adding...'}</span>
                   </>
                 ) : (
-                  <span>Add Source</span>
+                  <span>{isEditMode ? 'Save Changes' : 'Add Source'}</span>
                 )}
               </motion.button>
             </div>

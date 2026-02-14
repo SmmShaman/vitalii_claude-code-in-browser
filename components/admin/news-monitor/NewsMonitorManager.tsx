@@ -8,6 +8,7 @@ import { TIER_CONFIGS } from './constants'
 import { TierColumn } from './TierColumn'
 import { AddSourceModal } from './AddSourceModal'
 import { MonitorSettings } from './MonitorSettings'
+import { RSSSource } from './types'
 
 function formatTimeAgo(date: Date | null): string {
   if (!date) return 'Never'
@@ -38,10 +39,12 @@ export function NewsMonitorManager() {
     validateRssUrl,
     analysisStatus,
     reorderSources,
+    updateSource,
   } = useNewsMonitor()
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [addModalTier, setAddModalTier] = useState<number>(3)
+  const [editingSource, setEditingSource] = useState<RSSSource | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -125,6 +128,15 @@ export function NewsMonitorManager() {
     if (!success) {
       alert('Failed to delete source. Your session may have expired — please re-login.')
     }
+  }
+
+  const handleEditSource = (source: RSSSource) => {
+    setEditingSource(source)
+  }
+
+  const handleModalClose = () => {
+    setShowAddModal(false)
+    setEditingSource(null)
   }
 
   const activeSources = sources.filter(s => s.isActive).length
@@ -285,6 +297,7 @@ export function NewsMonitorManager() {
             expandedSources={expandedSources}
             onToggleSource={toggleSource}
             onAddSource={handleAddSource}
+            onEditSource={handleEditSource}
             onDeleteSource={handleDeleteSource}
             onToggleActive={toggleSourceActive}
             onRefreshSource={fetchSource}
@@ -293,13 +306,15 @@ export function NewsMonitorManager() {
         ))}
       </div>
 
-      {/* Add Source Modal */}
+      {/* Add/Edit Source Modal */}
       <AddSourceModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        isOpen={showAddModal || !!editingSource}
+        onClose={handleModalClose}
         onAdd={addSource}
         onValidate={validateRssUrl}
         initialTier={addModalTier}
+        editSource={editingSource}
+        onUpdate={updateSource}
       />
 
       {/* Settings Modal */}
