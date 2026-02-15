@@ -14,7 +14,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-15-v2-auto-publish'
+const VERSION = '2026-02-15-v3-auto-publish'
 
 interface AutoPublishRequest {
   newsId: string
@@ -248,7 +248,7 @@ serve(async (req) => {
     console.log(`📤 Posting to ${socialTasks.length} social targets in parallel...`)
     const socialResponses = await Promise.allSettled(socialTasks.map(t => t.promise))
 
-    const socialResults: Array<{ platform: string; lang: string; success: boolean; error?: string }> = []
+    const socialResults: Array<{ platform: string; lang: string; success: boolean; error?: string; postUrl?: string }> = []
     for (let i = 0; i < socialTasks.length; i++) {
       const task = socialTasks[i]
       const result = socialResponses[i]
@@ -256,8 +256,8 @@ serve(async (req) => {
         try {
           const postResult = await result.value.json()
           if (result.value.ok && postResult.success) {
-            socialResults.push({ platform: task.platform, lang: task.lang, success: true })
-            console.log(`  ✅ ${task.platform} (${task.lang}) posted`)
+            socialResults.push({ platform: task.platform, lang: task.lang, success: true, postUrl: postResult.postUrl })
+            console.log(`  ✅ ${task.platform} (${task.lang}) posted: ${postResult.postUrl || 'no url'}`)
           } else {
             socialResults.push({ platform: task.platform, lang: task.lang, success: false, error: postResult.error || 'Unknown' })
             console.warn(`  ⚠️ ${task.platform} (${task.lang}) failed:`, postResult.error)
@@ -288,8 +288,15 @@ serve(async (req) => {
     // Build summary message
     const title = news.original_title?.substring(0, 80) || 'Untitled'
     const imageStatus = isVideoPost ? '🎬 Video' : (freshNews?.processed_image_url ? '✅ Image generated' : '⚠️ No image')
+    const platformEmoji: Record<string, string> = { linkedin: '🔗', facebook: '📘', instagram: '📸' }
     const socialSummary = socialResults
-      .map(r => `${r.success ? '✅' : '❌'} ${r.platform} (${r.lang.toUpperCase()})${r.error ? ': ' + r.error.substring(0, 30) : ''}`)
+      .map(r => {
+        const emoji = r.success ? '✅' : '❌'
+        const icon = platformEmoji[r.platform] || '📱'
+        const link = r.success && r.postUrl ? ` <a href="${r.postUrl}">→ open</a>` : ''
+        const err = r.error ? ': ' + r.error.substring(0, 30) : ''
+        return `${emoji} ${icon} ${r.platform} (${r.lang.toUpperCase()})${link}${err}`
+      })
       .join('\n')
 
     const summaryMessage = `🤖 <b>Auto-Published</b>\n\n📰 ${escapeHtml(title)}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
