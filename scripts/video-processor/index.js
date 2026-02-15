@@ -256,13 +256,24 @@ async function processNewsItem(client, news) {
   } catch (error) {
     console.error(`❌ Failed to process news ${news.id}: ${error.message}`);
 
-    // Log error to database (optional)
+    // If message has no video (false positive from scraper), clear video fields
+    const isNotVideo = error.message?.includes('No video in message');
+
+    const updateFields = {
+      video_processing_error: error.message,
+      video_processing_attempted_at: new Date().toISOString(),
+    };
+
+    if (isNotVideo) {
+      updateFields.video_url = null;
+      updateFields.video_type = null;
+      updateFields.original_video_url = null;
+      console.log(`🧹 Clearing false video fields — message has no video`);
+    }
+
     await supabase
       .from('news')
-      .update({
-        video_processing_error: error.message,
-        video_processing_attempted_at: new Date().toISOString(),
-      })
+      .update(updateFields)
       .eq('id', news.id);
 
     return { success: false, error: error.message };

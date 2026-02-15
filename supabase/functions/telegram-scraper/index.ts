@@ -1048,8 +1048,9 @@ async function parseChannelPosts(
         // Updated selectors to match current Telegram HTML structure
         // - tgme_widget_message_video: main video class
         // - tgme_widget_message_roundvideo: round video messages
-        // - message_media_not_supported: placeholder when video can't load in browser
-        const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player, .tgme_widget_message_video, .tgme_widget_message_roundvideo, .message_media_not_supported')
+        // NOTE: .message_media_not_supported removed — it fires for ANY unsupported media (photos, GIFs, stickers)
+        // which causes false video detection. Real video posts always have video-specific classes.
+        const videoWrap = message.querySelector('.tgme_widget_message_video_wrap, .tgme_widget_message_video_player, .tgme_widget_message_video, .tgme_widget_message_roundvideo')
 
         if (videoElement || videoWrap) {
           // 🎬 ALWAYS save original Telegram URL for LinkedIn native video upload
