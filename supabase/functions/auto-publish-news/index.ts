@@ -14,7 +14,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-15-v1-auto-publish'
+const VERSION = '2026-02-15-v2-auto-publish'
 
 interface AutoPublishRequest {
   newsId: string
@@ -94,7 +94,7 @@ serve(async (req) => {
         }
       }
 
-      // AI selects best variant
+      // AI selects best variant (fallback to article-based variant if none)
       let selectedVariant = variants?.[0] || null
       if (variants && variants.length > 1) {
         const aiChoice = await aiSelectBestVariant(
@@ -110,74 +110,67 @@ serve(async (req) => {
         }
       }
 
+      // Fallback: create basic variant from article title if none available
+      if (!selectedVariant) {
+        console.log('⚠️ No variants available, creating fallback from article title')
+        selectedVariant = {
+          label: 'Article Visual',
+          description: `Professional infographic for: ${(news.original_title || 'Tech News').substring(0, 100)}`
+        }
+      }
+
       // ═══════════════════════════════════════════════════
       // STEP 2: Generate full image prompt
       // ═══════════════════════════════════════════════════
       await updateStatus(supabase, newsId, 'image_generation')
 
-      if (selectedVariant) {
-        console.log('📝 Generating full image prompt...')
-        try {
-          const fullPromptResponse = await callFunction('generate-image-prompt', {
-            newsId,
-            title: news.original_title || '',
-            content: news.original_content || '',
-            mode: 'full',
-            selectedVariant
-          })
-          if (fullPromptResponse.ok) {
-            console.log('✅ Full image prompt generated')
-          } else {
-            console.warn('⚠️ Full prompt generation failed:', await fullPromptResponse.text())
-          }
-        } catch (e) {
-          console.warn('⚠️ Full prompt generation error:', e)
+      console.log('📝 Generating full image prompt...')
+      try {
+        const fullPromptResponse = await callFunction('generate-image-prompt', {
+          newsId,
+          title: news.original_title || '',
+          content: news.original_content || '',
+          mode: 'full',
+          selectedVariant
+        })
+        if (fullPromptResponse.ok) {
+          console.log('✅ Full image prompt generated')
+        } else {
+          console.warn('⚠️ Full prompt generation failed:', await fullPromptResponse.text())
         }
+      } catch (e) {
+        console.warn('⚠️ Full prompt generation error:', e)
       }
 
       // ═══════════════════════════════════════════════════
       // STEP 3: Generate images for all languages
       // ═══════════════════════════════════════════════════
-      console.log(`🖼️ Generating images for ${languages.length} languages...`)
-      const imageResults: Array<{ lang: string; success: boolean }> = []
+      // Generate ONE image (1:1) — reused across all social platforms
+      // Only one language image stored in processed_image_url (last wins)
+      console.log(`🖼️ Generating image for primary language...`)
+      let imageGenSuccess = false
 
-      for (const lang of languages) {
-        try {
-          console.log(`  🖼️ Generating image (${lang})...`)
-          // Generate 1:1 for Instagram
-          const squareResponse = await callFunction('process-image', {
-            newsId,
-            generateFromPrompt: true,
-            language: lang,
-            aspectRatio: '1:1'
-          })
-          const squareOk = squareResponse.ok
-          if (!squareOk) {
-            console.warn(`  ⚠️ 1:1 image failed for ${lang}:`, await squareResponse.text())
-          }
-
-          // Generate 16:9 for LinkedIn/Facebook
-          const wideResponse = await callFunction('process-image', {
-            newsId,
-            generateFromPrompt: true,
-            language: lang,
-            aspectRatio: '16:9'
-          })
-          const wideOk = wideResponse.ok
-          if (!wideOk) {
-            console.warn(`  ⚠️ 16:9 image failed for ${lang}:`, await wideResponse.text())
-          }
-
-          imageResults.push({ lang, success: squareOk || wideOk })
-          console.log(`  ${squareOk || wideOk ? '✅' : '❌'} Image ${lang}: 1:1=${squareOk}, 16:9=${wideOk}`)
-        } catch (e) {
-          console.warn(`  ❌ Image generation error (${lang}):`, e)
-          imageResults.push({ lang, success: false })
+      // Generate single image using first available language
+      const primaryLang = languages[0] || 'en'
+      try {
+        console.log(`  🖼️ Generating 1:1 image (${primaryLang})...`)
+        const imageResponse = await callFunction('process-image', {
+          newsId,
+          generateFromPrompt: true,
+          language: primaryLang,
+          aspectRatio: '1:1'
+        })
+        if (imageResponse.ok) {
+          imageGenSuccess = true
+          console.log(`  ✅ Image generated (${primaryLang})`)
+        } else {
+          console.warn(`  ⚠️ Image generation failed:`, await imageResponse.text())
         }
+      } catch (e) {
+        console.warn(`  ❌ Image generation error:`, e)
       }
 
-      const successfulImages = imageResults.filter(r => r.success).length
-      console.log(`🖼️ Images: ${successfulImages}/${languages.length} successful`)
+      console.log(`🖼️ Image: ${imageGenSuccess ? '✅ success' : '❌ failed'}`)
     } else {
       console.log('🎬 Video post — skipping image generation')
     }
@@ -188,6 +181,16 @@ serve(async (req) => {
     await updateStatus(supabase, newsId, 'content_rewrite')
     console.log('📝 Rewriting content...')
 
+    // Reload news to get latest image URLs after Step 3
+    const { data: freshNews } = await supabase
+      .from('news')
+      .select('processed_image_url, processed_image_url_wide, image_url')
+      .eq('id', newsId)
+      .single()
+
+    const latestImageUrl = freshNews?.processed_image_url || freshNews?.image_url || news.image_url || null
+    console.log(`🖼️ Image URL for rewrite: ${latestImageUrl ? 'found' : 'none'}`)
+
     const processingEndpoint = source === 'rss' ? 'process-rss-news' : 'process-news'
 
     const rewriteBody: Record<string, any> = {
@@ -195,7 +198,7 @@ serve(async (req) => {
       title: news.original_title || '',
       content: news.original_content || '',
       url: news.original_url || '',
-      imageUrl: news.processed_image_url || news.image_url || null,
+      imageUrl: latestImageUrl,
       videoUrl: news.video_url || null,
       videoType: news.video_type || null
     }
@@ -228,32 +231,43 @@ serve(async (req) => {
     // ═══════════════════════════════════════════════════
     await updateStatus(supabase, newsId, 'social_posting')
 
-    const socialResults: Array<{ platform: string; lang: string; success: boolean; error?: string }> = []
-
+    // Build all social post tasks, then execute in parallel
+    const socialTasks: Array<{ platform: string; lang: string; promise: Promise<Response> }> = []
     for (const platform of platforms) {
       for (const lang of languages) {
+        console.log(`📤 Queuing ${platform} (${lang})...`)
+        socialTasks.push({
+          platform,
+          lang,
+          promise: callFunction(`post-to-${platform}`, { newsId, language: lang, contentType: 'news' })
+        })
+      }
+    }
+
+    // Execute all social posts in parallel
+    console.log(`📤 Posting to ${socialTasks.length} social targets in parallel...`)
+    const socialResponses = await Promise.allSettled(socialTasks.map(t => t.promise))
+
+    const socialResults: Array<{ platform: string; lang: string; success: boolean; error?: string }> = []
+    for (let i = 0; i < socialTasks.length; i++) {
+      const task = socialTasks[i]
+      const result = socialResponses[i]
+      if (result.status === 'fulfilled') {
         try {
-          console.log(`📤 Posting to ${platform} (${lang})...`)
-          const postBody: Record<string, any> = {
-            newsId,
-            language: lang,
-            contentType: 'news'
-          }
-
-          const postResponse = await callFunction(`post-to-${platform}`, postBody)
-          const postResult = await postResponse.json()
-
-          if (postResponse.ok && postResult.success) {
-            socialResults.push({ platform, lang, success: true })
-            console.log(`  ✅ ${platform} (${lang}) posted`)
+          const postResult = await result.value.json()
+          if (result.value.ok && postResult.success) {
+            socialResults.push({ platform: task.platform, lang: task.lang, success: true })
+            console.log(`  ✅ ${task.platform} (${task.lang}) posted`)
           } else {
-            socialResults.push({ platform, lang, success: false, error: postResult.error || 'Unknown' })
-            console.warn(`  ⚠️ ${platform} (${lang}) failed:`, postResult.error)
+            socialResults.push({ platform: task.platform, lang: task.lang, success: false, error: postResult.error || 'Unknown' })
+            console.warn(`  ⚠️ ${task.platform} (${task.lang}) failed:`, postResult.error)
           }
         } catch (e: any) {
-          socialResults.push({ platform, lang, success: false, error: e.message })
-          console.warn(`  ❌ ${platform} (${lang}) error:`, e.message)
+          socialResults.push({ platform: task.platform, lang: task.lang, success: false, error: 'Parse error' })
         }
+      } else {
+        socialResults.push({ platform: task.platform, lang: task.lang, success: false, error: result.reason?.message || 'Network error' })
+        console.warn(`  ❌ ${task.platform} (${task.lang}) error:`, result.reason?.message)
       }
     }
 
@@ -273,11 +287,12 @@ serve(async (req) => {
 
     // Build summary message
     const title = news.original_title?.substring(0, 80) || 'Untitled'
+    const imageStatus = isVideoPost ? '🎬 Video' : (freshNews?.processed_image_url ? '✅ Image generated' : '⚠️ No image')
     const socialSummary = socialResults
       .map(r => `${r.success ? '✅' : '❌'} ${r.platform} (${r.lang.toUpperCase()})${r.error ? ': ' + r.error.substring(0, 30) : ''}`)
       .join('\n')
 
-    const summaryMessage = `🤖 <b>Auto-Published</b>\n\n📰 ${escapeHtml(title)}\n\n📱 <b>Social Media:</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
+    const summaryMessage = `🤖 <b>Auto-Published</b>\n\n📰 ${escapeHtml(title)}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
 
     await sendTelegramMessage(summaryMessage)
 
@@ -359,7 +374,7 @@ async function callFunction(name: string, body: any): Promise<Response> {
   return fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(body)
