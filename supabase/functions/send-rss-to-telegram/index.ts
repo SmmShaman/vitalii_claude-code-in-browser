@@ -29,7 +29,7 @@ interface AIAnalysisResult {
  * Used in batch mode after all articles are analyzed
  */
 serve(async (req) => {
-  console.log('📤 Send RSS to Telegram v2026-01-29-01')
+  console.log('📤 Send RSS to Telegram v2026-02-15-01-autopublish')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -75,6 +75,48 @@ serve(async (req) => {
     const analysis = news.rss_analysis as AIAnalysisResult | null
     if (!analysis) {
       throw new Error('No RSS analysis found for this news record')
+    }
+
+    // Check if auto-publish is enabled — skip Telegram bot and fire auto-publish pipeline
+    const { data: autoPublishSetting } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', 'ENABLE_AUTO_PUBLISH')
+      .single()
+
+    const isAutoPublishEnabled = autoPublishSetting?.key_value === 'true'
+
+    if (isAutoPublishEnabled) {
+      console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for RSS article ${news.id}`)
+
+      fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          newsId: news.id,
+          source: 'rss'
+        })
+      }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
+
+      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: `🤖 <b>Auto-publishing RSS article...</b>\n\n📰 ${escapeHtml((news.original_title || 'Untitled').substring(0, 150))}\n📊 Score: ${analysis.relevance_score}/10\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`,
+            parse_mode: 'HTML'
+          })
+        })
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, newsId: news.id, autoPublish: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     const title = news.original_title || 'No title'
