@@ -404,16 +404,17 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                   <div className="news-content prose prose-lg dark:prose-invert max-w-none mb-6">
                     <ReactMarkdown
                       components={{
-                        a: ({ href, children }) => (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-primary/80 underline"
-                          >
-                            {children}
-                          </a>
-                        ),
+                        a: ({ href, children }) => {
+                          const isInternal = href?.startsWith('/news/') || href?.startsWith('/blog/')
+                          if (isInternal && href) {
+                            return <Link href={href} className="text-primary hover:text-primary/80 underline">{children}</Link>
+                          }
+                          return (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 underline">
+                              {children}
+                            </a>
+                          )
+                        },
                         p: ({ children }) => (
                           <p className="leading-relaxed mb-4">{children}</p>
                         ),

@@ -321,16 +321,17 @@ export function BlogArticle({ slug, initialLanguage }: BlogArticleProps) {
               <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
                 <ReactMarkdown
                   components={{
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 underline"
-                      >
-                        {children}
-                      </a>
-                    ),
+                    a: ({ href, children }) => {
+                      const isInternal = href?.startsWith('/news/') || href?.startsWith('/blog/')
+                      if (isInternal && href) {
+                        return <Link href={href} className="text-blue-600 hover:text-blue-800 underline">{children}</Link>
+                      }
+                      return (
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+                          {children}
+                        </a>
+                      )
+                    },
                     p: ({ children }) => (
                       <p className="text-gray-700 leading-relaxed text-lg mb-4">{children}</p>
                     ),

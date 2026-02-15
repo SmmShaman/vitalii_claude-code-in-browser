@@ -268,6 +268,22 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
 
   console.log('✅ RSS News published:', newsId)
 
+  // Cross-link enrichment (non-blocking, best-effort)
+  try {
+    console.log('🔗 Triggering cross-link enrichment...')
+    await fetch(`${SUPABASE_URL}/functions/v1/enrich-article-links`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ articleId: newsId, type: 'news' })
+    })
+    console.log('✅ Cross-link enrichment completed')
+  } catch (e) {
+    console.error('⚠️ Cross-link enrichment failed (non-critical):', e)
+  }
+
   // Update AI prompt usage count
   await supabase
     .from('ai_prompts')
