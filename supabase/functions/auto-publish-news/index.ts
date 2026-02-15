@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { triggerVideoProcessing, isGitHubActionsEnabled } from '../_shared/github-actions.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +15,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-15-v3-auto-publish'
+const VERSION = '2026-02-15-v4-auto-publish-video-fix'
 
 interface AutoPublishRequest {
   newsId: string
@@ -173,6 +174,20 @@ serve(async (req) => {
       console.log(`🖼️ Image: ${imageGenSuccess ? '✅ success' : '❌ failed'}`)
     } else {
       console.log('🎬 Video post — skipping image generation')
+
+      // Trigger YouTube upload via GitHub Actions (same as telegram-webhook line 992-1005)
+      if (news.video_type === 'telegram_embed' && news.video_url && isGitHubActionsEnabled()) {
+        console.log('🎬 Triggering GitHub Action for YouTube upload...')
+        const triggerResult = await triggerVideoProcessing({
+          newsId,
+          mode: 'single'
+        })
+        if (triggerResult.success) {
+          console.log('✅ GitHub Action triggered — video will be uploaded to YouTube in background')
+        } else {
+          console.log(`⚠️ GitHub Action trigger failed: ${triggerResult.error} — video will remain as Telegram embed until cron picks it up`)
+        }
+      }
     }
 
     // ═══════════════════════════════════════════════════
