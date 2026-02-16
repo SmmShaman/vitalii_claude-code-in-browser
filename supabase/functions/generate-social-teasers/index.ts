@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -196,10 +197,14 @@ async function generateTeaser(
   platform: Platform
 ): Promise<string> {
   // Build the prompt
+  const openingStyle = getRandomOpeningStyle('social')
   const prompt = promptTemplate
     .replace(/{title}/g, title)
     .replace(/{content}/g, content.substring(0, 3000)) // Limit content for context
     .replace(/{language}/g, LANGUAGE_NAMES[language] || language)
+    + `\n\nOPENING STYLE DIRECTIVE (ОБОВ'ЯЗКОВО ДОТРИМУЙСЯ): ${openingStyle}`
+
+  console.log(`🎲 Opening style for ${platform}: ${openingStyle}`)
 
   const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 

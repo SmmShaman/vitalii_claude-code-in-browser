@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
+import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -152,12 +153,15 @@ serve(async (req) => {
     const sourceUrl = requestData.sourceLink || requestData.url || ''
     console.log(`📎 Source URL for AI prompt: ${sourceUrl}`)
 
+    const openingStyle = getRandomOpeningStyle('blog')
     const systemPrompt = blogPrompt.prompt_text
       .replace('{title}', requestData.title)
       .replace('{content}', requestData.content)
       .replace('{url}', sourceUrl)
+      + `\n\nOPENING STYLE DIRECTIVE (ОБОВ'ЯЗКОВО ДОТРИМУЙСЯ): ${openingStyle}`
 
     console.log('📝 Rewriting blog post with AI...')
+    console.log(`🎲 Opening style: ${openingStyle}`)
 
     // Call Azure OpenAI - ONE REQUEST for all languages
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
