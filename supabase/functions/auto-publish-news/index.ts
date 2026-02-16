@@ -20,6 +20,7 @@ const VERSION = '2026-02-16-v6-norway-language-detection'
 interface AutoPublishRequest {
   newsId: string
   source: 'telegram' | 'rss'
+  telegramMessageId?: number | null
 }
 
 /**
@@ -40,10 +41,12 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   let newsId = ''
+  let reqMsgId: number | null = null
 
   try {
-    const { newsId: reqNewsId, source }: AutoPublishRequest = await req.json()
+    const { newsId: reqNewsId, source, telegramMessageId }: AutoPublishRequest = await req.json()
     newsId = reqNewsId
+    reqMsgId = telegramMessageId || null
     console.log(`📰 Auto-publishing news: ${newsId} (source: ${source})`)
 
     // Update status: pipeline started
@@ -59,6 +62,22 @@ serve(async (req) => {
     if (newsError || !news) {
       throw new Error(`News not found: ${newsId}`)
     }
+
+    // Resolve telegram message ID for editing (prefer request param, fallback to DB)
+    const telegramMessageId = reqMsgId || news.telegram_message_id || null
+
+    // Lookup source name
+    let sourceName = 'RSS'
+    if (news.rss_source_url) {
+      const { data: srcData } = await supabase
+        .from('news_sources')
+        .select('name')
+        .eq('rss_url', news.rss_source_url)
+        .single()
+      if (srcData?.name) sourceName = srcData.name
+    }
+
+    const summary = (news.rss_analysis as any)?.summary || ''
 
     // Load settings
     const settings = await loadAutoPublishSettings(supabase)
@@ -338,9 +357,10 @@ serve(async (req) => {
       .join('\n')
 
     const norwayLabel = isNorwayRelated ? '\n🇳🇴 <b>Norway article → Norwegian only</b>' : ''
-    const summaryMessage = `🤖 <b>Auto-Published</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
+    const summaryLine = summary ? `\n💬 <i>${escapeHtml(summary.substring(0, 200))}</i>` : ''
+    const summaryMessage = `🤖 <b>Auto-Published</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)}\n📊 Score: ${(news.rss_analysis as any)?.relevance_score || '?'}/10${summaryLine}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
 
-    await sendTelegramMessage(summaryMessage)
+    await editOrSendTelegramMessage(telegramMessageId, summaryMessage)
 
     console.log('🎉 Auto-publish pipeline completed successfully!')
 
@@ -368,9 +388,41 @@ serve(async (req) => {
         .eq('id', newsId)
     }
 
-    // Send failure notification to Telegram with manual review buttons
+    // Edit original message with failure (or send new if no message to edit)
     const errorTitle = newsId ? `News ID: ${newsId.substring(0, 8)}...` : 'Unknown'
-    await sendTelegramMessage(
+    // Try to get telegramMessageId from DB if not available from request
+    let failMsgId = reqMsgId || null
+    if (!failMsgId && newsId) {
+      const { data: failNews } = await supabase
+        .from('news')
+        .select('telegram_message_id, original_title, rss_source_url')
+        .eq('id', newsId)
+        .single()
+      failMsgId = failNews?.telegram_message_id || null
+      // Try to show article title instead of just ID
+      if (failNews?.original_title) {
+        const failTitle = escapeHtml(failNews.original_title.substring(0, 80))
+        let failSourceName = ''
+        if (failNews?.rss_source_url) {
+          const { data: fSrc } = await supabase
+            .from('news_sources')
+            .select('name')
+            .eq('rss_url', failNews.rss_source_url)
+            .single()
+          if (fSrc?.name) failSourceName = `\n📌 ${escapeHtml(fSrc.name)}`
+        }
+        await editOrSendTelegramMessage(
+          failMsgId,
+          `❌ <b>Auto-Publish Failed</b>\n\n📰 ${failTitle}${failSourceName}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
+        )
+        return new Response(
+          JSON.stringify({ success: false, newsId, error: error.message || 'Unknown error' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+    await editOrSendTelegramMessage(
+      failMsgId,
       `❌ <b>Auto-Publish Failed</b>\n\n📰 ${escapeHtml(errorTitle)}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
     )
 
@@ -526,6 +578,39 @@ async function sendTelegramMessage(text: string) {
   } catch (e) {
     console.warn('⚠️ Failed to send Telegram message:', e)
   }
+}
+
+/**
+ * Edit existing Telegram message, fallback to sending new message if edit fails
+ */
+async function editOrSendTelegramMessage(messageId: number | null, text: string) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return
+
+  if (messageId) {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          message_id: messageId,
+          text,
+          parse_mode: 'HTML'
+        })
+      })
+      const result = await response.json()
+      if (result.ok) {
+        console.log(`✏️ Edited Telegram message ${messageId}`)
+        return
+      }
+      console.warn(`⚠️ Edit failed (${result.description}), sending new message`)
+    } catch (e) {
+      console.warn('⚠️ Edit failed, sending new message:', e)
+    }
+  }
+
+  // Fallback: send new message
+  await sendTelegramMessage(text)
 }
 
 function escapeHtml(text: string): string {

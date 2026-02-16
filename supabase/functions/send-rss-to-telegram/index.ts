@@ -89,6 +89,47 @@ serve(async (req) => {
     if (isAutoPublishEnabled) {
       console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for RSS article ${news.id}`)
 
+      // Lookup source name
+      let autoSourceName = 'RSS'
+      if (news.rss_source_url) {
+        const { data: srcData } = await supabase
+          .from('news_sources')
+          .select('name')
+          .eq('rss_url', news.rss_source_url)
+          .single()
+        if (srcData?.name) autoSourceName = srcData.name
+      }
+
+      // Send initial status message and capture message_id
+      let telegramMessageId: number | null = null
+      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+        const title = escapeHtml((news.original_title || 'Untitled').substring(0, 150))
+        const summary = analysis.summary ? `\n💬 <i>${escapeHtml(analysis.summary.substring(0, 200))}</i>` : ''
+        const msgResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: `🤖 <b>Auto-publishing...</b>\n\n📰 ${title}\n📌 ${escapeHtml(autoSourceName)}\n📊 Score: ${analysis.relevance_score}/10${summary}\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`,
+            parse_mode: 'HTML'
+          })
+        })
+        try {
+          const msgData = await msgResponse.json()
+          if (msgData.ok && msgData.result?.message_id) {
+            telegramMessageId = msgData.result.message_id
+            // Store message_id for later editing
+            await supabase
+              .from('news')
+              .update({ telegram_message_id: telegramMessageId })
+              .eq('id', news.id)
+          }
+        } catch (e) {
+          console.warn('⚠️ Failed to parse sendMessage response:', e)
+        }
+      }
+
+      // Fire auto-publish pipeline (pass telegramMessageId for message editing)
       fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
         method: 'POST',
         headers: {
@@ -97,21 +138,10 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           newsId: news.id,
-          source: 'rss'
+          source: 'rss',
+          telegramMessageId
         })
       }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
-
-      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: TELEGRAM_CHAT_ID,
-            text: `🤖 <b>Auto-publishing RSS article...</b>\n\n📰 ${escapeHtml((news.original_title || 'Untitled').substring(0, 150))}\n📊 Score: ${analysis.relevance_score}/10\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`,
-            parse_mode: 'HTML'
-          })
-        })
-      }
 
       return new Response(
         JSON.stringify({ success: true, newsId: news.id, autoPublish: true }),
