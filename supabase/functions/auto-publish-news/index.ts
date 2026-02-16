@@ -15,7 +15,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-16-v5-always-generate-images'
+const VERSION = '2026-02-16-v6-norway-language-detection'
 
 interface AutoPublishRequest {
   newsId: string
@@ -65,6 +65,25 @@ serve(async (req) => {
     const languages = settings.languages as Array<'en' | 'no' | 'ua'>
     const platforms = settings.platforms
     console.log(`⚙️ Settings: platforms=[${platforms}], languages=[${languages}]`)
+
+    // ═══════════════════════════════════════════════════
+    // Norway Detection: Override language to Norwegian if article is Norway-related
+    // ═══════════════════════════════════════════════════
+    const isNorwayRelated = detectNorwayArticle(news)
+    if (isNorwayRelated) {
+      console.log('🇳🇴 Norway-related article detected — publishing in Norwegian only')
+      languages.length = 0
+      languages.push('no')
+
+      // Persist flag if not already set
+      if (!news.is_norway_related) {
+        await supabase
+          .from('news')
+          .update({ is_norway_related: true })
+          .eq('id', newsId)
+      }
+    }
+    console.log(`⚙️ Final languages: [${languages}]`)
 
     const isVideoPost = !!news.video_url || !!news.original_video_url
 
@@ -318,7 +337,8 @@ serve(async (req) => {
       })
       .join('\n')
 
-    const summaryMessage = `🤖 <b>Auto-Published</b>\n\n📰 ${escapeHtml(title)}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
+    const norwayLabel = isNorwayRelated ? '\n🇳🇴 <b>Norway article → Norwegian only</b>' : ''
+    const summaryMessage = `🤖 <b>Auto-Published</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
 
     await sendTelegramMessage(summaryMessage)
 
@@ -514,4 +534,64 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/**
+ * Detect if article is Norway-related using 3 signals:
+ * 1. AI flag (from rss_analysis or persisted is_norway_related)
+ * 2. Source domain (.no TLD or known Norwegian domains)
+ * 3. Content keyword scan (for Telegram sources without rss_analysis)
+ */
+function detectNorwayArticle(news: any): boolean {
+  // Signal 1: AI-detected flag
+  if (news.is_norway_related === true) {
+    console.log('🇳🇴 Norway signal: is_norway_related flag in DB')
+    return true
+  }
+  if (news.rss_analysis?.is_norway_related === true) {
+    console.log('🇳🇴 Norway signal: rss_analysis.is_norway_related')
+    return true
+  }
+
+  // Signal 2: Source domain check
+  const urls = [
+    news.original_url,
+    news.rss_source_url,
+    news.source_link,
+    ...(Array.isArray(news.source_links) ? news.source_links : [])
+  ].filter(Boolean)
+
+  for (const url of urls) {
+    const urlLower = url.toLowerCase()
+    // Check .no TLD (matches domain.no, domain.no/, domain.no?query, etc.)
+    if (/\.no(?:[/?#]|$)/.test(urlLower)) {
+      console.log(`🇳🇴 Norway signal: .no domain in ${url}`)
+      return true
+    }
+    // Known Norwegian domains on non-.no TLDs
+    if (urlLower.includes('lifeinnorway.net')) {
+      console.log(`🇳🇴 Norway signal: known Norwegian domain in ${url}`)
+      return true
+    }
+  }
+
+  // Signal 3: Content keyword scan
+  const text = `${news.original_title || ''} ${news.original_content || ''}`.toLowerCase()
+  const norwayKeywords = [
+    'norway', 'norwegian', 'norge', 'norsk',
+    'oslo', 'bergen', 'trondheim', 'stavanger', 'tromsø', 'tromsoe', 'tromso',
+    'skatteetaten', 'finanstilsynet', 'altinn', 'brønnøysund',
+    'equinor', 'telenor', 'dnb bank', 'kongsberg', 'yara',
+    'stortinget', 'regjeringen', 'statsbudsjettet',
+    'innovasjon norge', 'forskningsrådet', 'norges bank',
+  ]
+
+  for (const kw of norwayKeywords) {
+    if (text.includes(kw)) {
+      console.log(`🇳🇴 Norway signal: keyword "${kw}" found in content`)
+      return true
+    }
+  }
+
+  return false
 }

@@ -48,6 +48,7 @@ interface AIAnalysisResult {
   key_points: string[]
   recommended_action: 'publish' | 'skip' | 'needs_review'
   skip_reason?: string
+  is_norway_related?: boolean
 }
 
 /**
@@ -246,6 +247,10 @@ serve(async (req) => {
 
     // Create news record with RSS data (including images with metadata for copyright)
     const topDuplicate = duplicateResults.length > 0 ? duplicateResults[0] : null
+    const isNorwayRelated = analysis.is_norway_related === true
+    if (isNorwayRelated) {
+      console.log('🇳🇴 AI detected Norway-related article')
+    }
     const { data: newsRecord, error: insertError } = await supabase
       .from('news')
       .insert({
@@ -255,6 +260,7 @@ serve(async (req) => {
         rss_source_url: requestData.url,
         source_type: 'rss',
         rss_analysis: analysis,
+        is_norway_related: isNorwayRelated,
         image_url: requestData.imageUrl || articleContent.imageUrl,
         images: requestData.images || null,
         images_with_meta: requestData.imagesWithMeta || null,
