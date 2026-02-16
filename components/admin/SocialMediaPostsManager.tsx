@@ -98,6 +98,8 @@ export function SocialMediaPostsManager() {
   const [showDailyStats, setShowDailyStats] = useState(false)
   const [dailyStats, setDailyStats] = useState<DailyStatRow[]>([])
   const [loadingStats, setLoadingStats] = useState(false)
+  const [statsPeriod, setStatsPeriod] = useState<'week' | 'month' | 'all'>('month')
+  const [showStatsTable, setShowStatsTable] = useState(false)
 
   const loadPosts = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -193,15 +195,20 @@ export function SocialMediaPostsManager() {
 
     try {
       setLoadingStats(true)
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('social_media_posts')
         .select('platform, posted_at')
         .eq('status', 'posted')
-        .gte('posted_at', thirtyDaysAgo.toISOString())
         .order('posted_at', { ascending: false })
+
+      if (statsPeriod !== 'all') {
+        const cutoff = new Date()
+        cutoff.setDate(cutoff.getDate() - (statsPeriod === 'week' ? 7 : 30))
+        query = query.gte('posted_at', cutoff.toISOString())
+      }
+
+      const { data, error: fetchError } = await query
 
       if (fetchError || !data) {
         setLoadingStats(false)
@@ -229,17 +236,17 @@ export function SocialMediaPostsManager() {
     } finally {
       setLoadingStats(false)
     }
-  }, [])
+  }, [statsPeriod])
 
   useEffect(() => {
     loadPosts()
   }, [loadPosts])
 
   useEffect(() => {
-    if (showDailyStats && dailyStats.length === 0) {
+    if (showDailyStats) {
       loadDailyStats()
     }
-  }, [showDailyStats, dailyStats.length, loadDailyStats])
+  }, [showDailyStats, loadDailyStats])
 
   const handleDeletePost = async (id: string) => {
     if (!confirm('Delete this social media post record?')) return
@@ -552,95 +559,207 @@ export function SocialMediaPostsManager() {
       >
         <Calendar className="h-5 w-5 text-purple-400" />
         <span className="text-white font-medium">Daily Publication Stats</span>
-        <span className="text-gray-500 text-sm ml-2">Last 30 days</span>
         <ChevronDown className={`h-4 w-4 text-gray-400 ml-auto transition-transform ${showDailyStats ? 'rotate-180' : ''}`} />
       </motion.button>
 
-      {/* Daily Stats Table */}
+      {/* Daily Stats Chart + Table */}
       <AnimatePresence>
         {showDailyStats && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+            className="overflow-hidden space-y-4"
           >
+            {/* Period Filter */}
+            <div className="flex items-center gap-2">
+              {([
+                { id: 'week' as const, label: 'Week' },
+                { id: 'month' as const, label: 'Month' },
+                { id: 'all' as const, label: 'All time' },
+              ]).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setStatsPeriod(p.id)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    statsPeriod === p.id
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white/10 text-gray-400 hover:bg-white/15 hover:text-gray-200'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+              <span className="text-gray-500 text-xs ml-2">
+                {dailyStats.reduce((s, r) => s + r.total, 0)} posts in {dailyStats.length} days
+              </span>
+            </div>
+
             {loadingStats ? (
               <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 flex items-center justify-center">
                 <RefreshCw className="h-6 w-6 text-purple-400 animate-spin" />
               </div>
             ) : dailyStats.length === 0 ? (
               <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 text-center">
-                <p className="text-gray-400">No published posts in the last 30 days.</p>
+                <p className="text-gray-400">No published posts in this period.</p>
               </div>
-            ) : (
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Date</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Total</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-blue-400">
-                          <div className="flex items-center justify-center gap-1">
-                            <Linkedin className="h-3.5 w-3.5" />
-                            LI
+            ) : (() => {
+              const chartData = [...dailyStats].reverse()
+              const maxVal = Math.max(...chartData.map(r => r.total), 1)
+              const barH = 140
+
+              return (
+                <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 p-4">
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 mb-3 text-xs">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#0A66C2] inline-block" /> LinkedIn</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#1877F2] inline-block" /> Facebook</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#E4405F] inline-block" /> Instagram</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#6B7280] inline-block" /> TikTok</span>
+                  </div>
+
+                  {/* Chart */}
+                  <div className="overflow-x-auto">
+                    <div className="flex items-end gap-1 min-w-0" style={{ minHeight: barH + 28 }}>
+                      {chartData.map(row => {
+                        const platforms = [
+                          { key: 'linkedin', val: row.linkedin, color: '#0A66C2' },
+                          { key: 'facebook', val: row.facebook, color: '#1877F2' },
+                          { key: 'instagram', val: row.instagram, color: '#E4405F' },
+                          { key: 'tiktok', val: row.tiktok, color: '#6B7280' },
+                        ].filter(p => p.val > 0)
+
+                        return (
+                          <div key={row.date} className="flex flex-col items-center flex-1 min-w-[32px] max-w-[64px] group relative">
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
+                              <div className="bg-gray-900 border border-white/20 rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-xl">
+                                <div className="font-bold text-white mb-1">{getDayLabel(row.date)} — {row.total}</div>
+                                {row.linkedin > 0 && <div className="text-[#0A66C2]">LinkedIn: {row.linkedin}</div>}
+                                {row.facebook > 0 && <div className="text-[#1877F2]">Facebook: {row.facebook}</div>}
+                                {row.instagram > 0 && <div className="text-[#E4405F]">Instagram: {row.instagram}</div>}
+                                {row.tiktok > 0 && <div className="text-[#6B7280]">TikTok: {row.tiktok}</div>}
+                              </div>
+                            </div>
+                            {/* Stacked bar */}
+                            <div className="w-full flex flex-col-reverse items-stretch">
+                              {platforms.map(p => (
+                                <div
+                                  key={p.key}
+                                  className="w-full rounded-sm first:rounded-b-md last:rounded-t-md transition-all duration-300 group-hover:brightness-125"
+                                  style={{
+                                    height: Math.max((p.val / maxVal) * barH, 4),
+                                    backgroundColor: p.color,
+                                  }}
+                                />
+                              ))}
+                              {platforms.length === 0 && (
+                                <div className="w-full rounded-md bg-white/5" style={{ height: 2 }} />
+                              )}
+                            </div>
+                            {/* Total on top */}
+                            {row.total > 0 && (
+                              <span className="text-[10px] text-gray-400 mt-0.5 font-medium">{row.total}</span>
+                            )}
+                            {/* Day label */}
+                            <span className="text-[9px] text-gray-500 mt-0.5 truncate w-full text-center">
+                              {getDayLabel(row.date)}
+                            </span>
                           </div>
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-blue-500">
-                          <div className="flex items-center justify-center gap-1">
-                            <Facebook className="h-3.5 w-3.5" />
-                            FB
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-pink-400">
-                          <div className="flex items-center justify-center gap-1">
-                            <Instagram className="h-3.5 w-3.5" />
-                            IG
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">
-                          <div className="flex items-center justify-center gap-1">
-                            <TikTok className="h-3.5 w-3.5" />
-                            TT
-                          </div>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dailyStats.map((row) => (
-                        <tr key={row.date} className="border-b border-white/5 hover:bg-white/5">
-                          <td className="px-4 py-2.5 text-sm text-white font-medium">{getDayLabel(row.date)}</td>
-                          <td className="px-4 py-2.5 text-center text-sm font-bold text-white">{row.total}</td>
-                          <td className="px-4 py-2.5 text-center text-sm text-blue-400">{row.linkedin || '—'}</td>
-                          <td className="px-4 py-2.5 text-center text-sm text-blue-500">{row.facebook || '—'}</td>
-                          <td className="px-4 py-2.5 text-center text-sm text-pink-400">{row.instagram || '—'}</td>
-                          <td className="px-4 py-2.5 text-center text-sm text-gray-400">{row.tiktok || '—'}</td>
-                        </tr>
-                      ))}
-                      {/* Totals row */}
-                      <tr className="border-t border-white/20 bg-white/5">
-                        <td className="px-4 py-2.5 text-sm font-bold text-purple-400">Total (30d)</td>
-                        <td className="px-4 py-2.5 text-center text-sm font-bold text-white">
-                          {dailyStats.reduce((s, r) => s + r.total, 0)}
-                        </td>
-                        <td className="px-4 py-2.5 text-center text-sm font-bold text-blue-400">
-                          {dailyStats.reduce((s, r) => s + r.linkedin, 0)}
-                        </td>
-                        <td className="px-4 py-2.5 text-center text-sm font-bold text-blue-500">
-                          {dailyStats.reduce((s, r) => s + r.facebook, 0)}
-                        </td>
-                        <td className="px-4 py-2.5 text-center text-sm font-bold text-pink-400">
-                          {dailyStats.reduce((s, r) => s + r.instagram, 0)}
-                        </td>
-                        <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-400">
-                          {dailyStats.reduce((s, r) => s + r.tiktok, 0)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Summary bar */}
+                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/10 text-xs text-gray-400">
+                    <span className="font-medium text-white">Total: {dailyStats.reduce((s, r) => s + r.total, 0)}</span>
+                    <span className="text-[#0A66C2]">LI: {dailyStats.reduce((s, r) => s + r.linkedin, 0)}</span>
+                    <span className="text-[#1877F2]">FB: {dailyStats.reduce((s, r) => s + r.facebook, 0)}</span>
+                    <span className="text-[#E4405F]">IG: {dailyStats.reduce((s, r) => s + r.instagram, 0)}</span>
+                    <span className="text-[#6B7280]">TT: {dailyStats.reduce((s, r) => s + r.tiktok, 0)}</span>
+                  </div>
                 </div>
-              </div>
+              )
+            })()}
+
+            {/* Table toggle button */}
+            {dailyStats.length > 0 && (
+              <>
+                <button
+                  onClick={() => setShowStatsTable(!showStatsTable)}
+                  className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showStatsTable ? 'rotate-180' : ''}`} />
+                  {showStatsTable ? 'Hide table' : 'Show table'}
+                </button>
+
+                <AnimatePresence>
+                  {showStatsTable && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-white/10">
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Date</th>
+                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Total</th>
+                                <th className="px-4 py-3 text-center text-sm font-medium text-[#0A66C2]">
+                                  <div className="flex items-center justify-center gap-1"><Linkedin className="h-3.5 w-3.5" /> LI</div>
+                                </th>
+                                <th className="px-4 py-3 text-center text-sm font-medium text-[#1877F2]">
+                                  <div className="flex items-center justify-center gap-1"><Facebook className="h-3.5 w-3.5" /> FB</div>
+                                </th>
+                                <th className="px-4 py-3 text-center text-sm font-medium text-[#E4405F]">
+                                  <div className="flex items-center justify-center gap-1"><Instagram className="h-3.5 w-3.5" /> IG</div>
+                                </th>
+                                <th className="px-4 py-3 text-center text-sm font-medium text-[#6B7280]">
+                                  <div className="flex items-center justify-center gap-1"><TikTok className="h-3.5 w-3.5" /> TT</div>
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dailyStats.map((row) => (
+                                <tr key={row.date} className="border-b border-white/5 hover:bg-white/5">
+                                  <td className="px-4 py-2.5 text-sm text-white font-medium">{getDayLabel(row.date)}</td>
+                                  <td className="px-4 py-2.5 text-center text-sm font-bold text-white">{row.total}</td>
+                                  <td className="px-4 py-2.5 text-center text-sm text-[#0A66C2]">{row.linkedin || '—'}</td>
+                                  <td className="px-4 py-2.5 text-center text-sm text-[#1877F2]">{row.facebook || '—'}</td>
+                                  <td className="px-4 py-2.5 text-center text-sm text-[#E4405F]">{row.instagram || '—'}</td>
+                                  <td className="px-4 py-2.5 text-center text-sm text-[#6B7280]">{row.tiktok || '—'}</td>
+                                </tr>
+                              ))}
+                              <tr className="border-t border-white/20 bg-white/5">
+                                <td className="px-4 py-2.5 text-sm font-bold text-purple-400">Total</td>
+                                <td className="px-4 py-2.5 text-center text-sm font-bold text-white">
+                                  {dailyStats.reduce((s, r) => s + r.total, 0)}
+                                </td>
+                                <td className="px-4 py-2.5 text-center text-sm font-bold text-[#0A66C2]">
+                                  {dailyStats.reduce((s, r) => s + r.linkedin, 0)}
+                                </td>
+                                <td className="px-4 py-2.5 text-center text-sm font-bold text-[#1877F2]">
+                                  {dailyStats.reduce((s, r) => s + r.facebook, 0)}
+                                </td>
+                                <td className="px-4 py-2.5 text-center text-sm font-bold text-[#E4405F]">
+                                  {dailyStats.reduce((s, r) => s + r.instagram, 0)}
+                                </td>
+                                <td className="px-4 py-2.5 text-center text-sm font-bold text-[#6B7280]">
+                                  {dailyStats.reduce((s, r) => s + r.tiktok, 0)}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
             )}
           </motion.div>
         )}
