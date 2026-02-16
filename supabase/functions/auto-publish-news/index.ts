@@ -15,7 +15,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-15-v4-auto-publish-video-fix'
+const VERSION = '2026-02-16-v5-always-generate-images'
 
 interface AutoPublishRequest {
   newsId: string
@@ -69,115 +69,118 @@ serve(async (req) => {
     const isVideoPost = !!news.video_url || !!news.original_video_url
 
     // ═══════════════════════════════════════════════════
-    // STEP 1: AI Variant Selection (skip for video posts)
+    // STEP 1: AI Variant Selection + Image Generation
+    // Always generate images — serves as fallback if video processing fails
+    // (video posts used to skip this, but false positives left articles with nothing)
     // ═══════════════════════════════════════════════════
-    if (!isVideoPost) {
-      await updateStatus(supabase, newsId, 'variant_selection')
+    await updateStatus(supabase, newsId, 'variant_selection')
 
-      // Check if variants already exist
-      let variants = news.image_prompt_variants
-      if (!variants || !Array.isArray(variants) || variants.length === 0) {
-        console.log('🎨 No variants found, generating...')
-        try {
-          const variantResponse = await callFunction('generate-image-prompt', {
-            newsId,
-            title: news.original_title || '',
-            content: news.original_content || '',
-            mode: 'variants'
-          })
-          if (variantResponse.ok) {
-            const result = await variantResponse.json()
-            variants = result.variants || []
-            console.log(`✅ Generated ${variants.length} variants`)
-          }
-        } catch (e) {
-          console.warn('⚠️ Variant generation failed, will use default')
-        }
-      }
-
-      // AI selects best variant (fallback to article-based variant if none)
-      let selectedVariant = variants?.[0] || null
-      if (variants && variants.length > 1) {
-        const aiChoice = await aiSelectBestVariant(
-          news.original_title || '',
-          news.original_content || '',
-          variants
-        )
-        if (aiChoice >= 0 && aiChoice < variants.length) {
-          selectedVariant = variants[aiChoice]
-          console.log(`🎯 AI selected variant #${aiChoice + 1}: ${selectedVariant.label}`)
-        } else {
-          console.log('⚠️ AI selection failed, using variant #1')
-        }
-      }
-
-      // Fallback: create basic variant from article title if none available
-      if (!selectedVariant) {
-        console.log('⚠️ No variants available, creating fallback from article title')
-        selectedVariant = {
-          label: 'Article Visual',
-          description: `Professional infographic for: ${(news.original_title || 'Tech News').substring(0, 100)}`
-        }
-      }
-
-      // ═══════════════════════════════════════════════════
-      // STEP 2: Generate full image prompt
-      // ═══════════════════════════════════════════════════
-      await updateStatus(supabase, newsId, 'image_generation')
-
-      console.log('📝 Generating full image prompt...')
+    // Check if variants already exist
+    let variants = news.image_prompt_variants
+    if (!variants || !Array.isArray(variants) || variants.length === 0) {
+      console.log('🎨 No variants found, generating...')
       try {
-        const fullPromptResponse = await callFunction('generate-image-prompt', {
+        const variantResponse = await callFunction('generate-image-prompt', {
           newsId,
           title: news.original_title || '',
           content: news.original_content || '',
-          mode: 'full',
-          selectedVariant
+          mode: 'variants'
         })
-        if (fullPromptResponse.ok) {
-          console.log('✅ Full image prompt generated')
-        } else {
-          console.warn('⚠️ Full prompt generation failed:', await fullPromptResponse.text())
+        if (variantResponse.ok) {
+          const result = await variantResponse.json()
+          variants = result.variants || []
+          console.log(`✅ Generated ${variants.length} variants`)
         }
       } catch (e) {
-        console.warn('⚠️ Full prompt generation error:', e)
+        console.warn('⚠️ Variant generation failed, will use default')
       }
+    }
 
-      // ═══════════════════════════════════════════════════
-      // STEP 3: Generate images for all languages
-      // ═══════════════════════════════════════════════════
-      // Generate ONE image (1:1) — reused across all social platforms
-      // Only one language image stored in processed_image_url (last wins)
-      console.log(`🖼️ Generating image for primary language...`)
-      let imageGenSuccess = false
-
-      // Generate single image using first available language
-      const primaryLang = languages[0] || 'en'
-      try {
-        console.log(`  🖼️ Generating 1:1 image (${primaryLang})...`)
-        const imageResponse = await callFunction('process-image', {
-          newsId,
-          generateFromPrompt: true,
-          language: primaryLang,
-          aspectRatio: '1:1'
-        })
-        if (imageResponse.ok) {
-          imageGenSuccess = true
-          console.log(`  ✅ Image generated (${primaryLang})`)
-        } else {
-          console.warn(`  ⚠️ Image generation failed:`, await imageResponse.text())
-        }
-      } catch (e) {
-        console.warn(`  ❌ Image generation error:`, e)
+    // AI selects best variant (fallback to article-based variant if none)
+    let selectedVariant = variants?.[0] || null
+    if (variants && variants.length > 1) {
+      const aiChoice = await aiSelectBestVariant(
+        news.original_title || '',
+        news.original_content || '',
+        variants
+      )
+      if (aiChoice >= 0 && aiChoice < variants.length) {
+        selectedVariant = variants[aiChoice]
+        console.log(`🎯 AI selected variant #${aiChoice + 1}: ${selectedVariant.label}`)
+      } else {
+        console.log('⚠️ AI selection failed, using variant #1')
       }
+    }
 
-      console.log(`🖼️ Image: ${imageGenSuccess ? '✅ success' : '❌ failed'}`)
-    } else {
-      console.log('🎬 Video post — skipping image generation')
+    // Fallback: create basic variant from article title if none available
+    if (!selectedVariant) {
+      console.log('⚠️ No variants available, creating fallback from article title')
+      selectedVariant = {
+        label: 'Article Visual',
+        description: `Professional infographic for: ${(news.original_title || 'Tech News').substring(0, 100)}`
+      }
+    }
 
-      // Trigger YouTube upload via GitHub Actions (same as telegram-webhook line 992-1005)
+    // ═══════════════════════════════════════════════════
+    // STEP 2: Generate full image prompt
+    // ═══════════════════════════════════════════════════
+    await updateStatus(supabase, newsId, 'image_generation')
+
+    console.log('📝 Generating full image prompt...')
+    try {
+      const fullPromptResponse = await callFunction('generate-image-prompt', {
+        newsId,
+        title: news.original_title || '',
+        content: news.original_content || '',
+        mode: 'full',
+        selectedVariant
+      })
+      if (fullPromptResponse.ok) {
+        console.log('✅ Full image prompt generated')
+      } else {
+        console.warn('⚠️ Full prompt generation failed:', await fullPromptResponse.text())
+      }
+    } catch (e) {
+      console.warn('⚠️ Full prompt generation error:', e)
+    }
+
+    // ═══════════════════════════════════════════════════
+    // STEP 3: Generate images
+    // ═══════════════════════════════════════════════════
+    // Generate ONE image (1:1) — reused across all social platforms
+    // Only one language image stored in processed_image_url (last wins)
+    console.log(`🖼️ Generating image for primary language...`)
+    let imageGenSuccess = false
+
+    // Generate single image using first available language
+    const primaryLang = languages[0] || 'en'
+    try {
+      console.log(`  🖼️ Generating 1:1 image (${primaryLang})...`)
+      const imageResponse = await callFunction('process-image', {
+        newsId,
+        generateFromPrompt: true,
+        language: primaryLang,
+        aspectRatio: '1:1'
+      })
+      if (imageResponse.ok) {
+        imageGenSuccess = true
+        console.log(`  ✅ Image generated (${primaryLang})`)
+      } else {
+        console.warn(`  ⚠️ Image generation failed:`, await imageResponse.text())
+      }
+    } catch (e) {
+      console.warn(`  ❌ Image generation error:`, e)
+    }
+
+    console.log(`🖼️ Image: ${imageGenSuccess ? '✅ success' : '❌ failed'}`)
+
+    // ═══════════════════════════════════════════════════
+    // STEP 3b: Trigger YouTube upload for video posts
+    // Image is already generated as fallback above
+    // ═══════════════════════════════════════════════════
+    if (isVideoPost) {
+      console.log('🎬 Video post — image generated as fallback, triggering YouTube upload...')
       if (news.video_type === 'telegram_embed' && news.video_url && isGitHubActionsEnabled()) {
-        console.log('🎬 Triggering GitHub Action for YouTube upload...')
         const triggerResult = await triggerVideoProcessing({
           newsId,
           mode: 'single'
@@ -302,7 +305,8 @@ serve(async (req) => {
 
     // Build summary message
     const title = news.original_title?.substring(0, 80) || 'Untitled'
-    const imageStatus = isVideoPost ? '🎬 Video' : (freshNews?.processed_image_url ? '✅ Image generated' : '⚠️ No image')
+    const videoLabel = isVideoPost ? ' + 🎬 Video' : ''
+    const imageStatus = (freshNews?.processed_image_url ? '✅ Image generated' : '⚠️ No image') + videoLabel
     const platformEmoji: Record<string, string> = { linkedin: '🔗', facebook: '📘', instagram: '📸' }
     const socialSummary = socialResults
       .map(r => {
