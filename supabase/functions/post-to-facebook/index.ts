@@ -46,6 +46,8 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let socialPostId: string | null = null
+
   try {
     const requestData: FacebookPostRequest = await req.json()
     console.log('📘 Facebook posting request:', requestData)
@@ -131,6 +133,8 @@ serve(async (req) => {
         mediaUrls: content.videoUrl ? [content.videoUrl] : undefined
       })
 
+      if (socialPost) socialPostId = socialPost.id
+
       // 🛡️ RACE CONDITION PROTECTION
       if (raceCondition) {
         console.log('🛡️ Race condition detected - aborting video upload to prevent duplicate')
@@ -185,6 +189,8 @@ serve(async (req) => {
       mediaUrls: content.imageUrl ? [content.imageUrl] : undefined
     })
 
+    if (socialPost) socialPostId = socialPost.id
+
     // 🛡️ RACE CONDITION PROTECTION
     if (raceCondition) {
       console.log('🛡️ Race condition detected - aborting to prevent duplicate post')
@@ -238,6 +244,12 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('❌ Error posting to Facebook:', error)
+
+    // Clean up stuck pending record
+    if (socialPostId) {
+      await updateSocialPostFailed(socialPostId, error.message || 'Unknown error')
+    }
+
     return new Response(
       JSON.stringify({
         success: false,

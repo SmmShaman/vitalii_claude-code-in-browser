@@ -15,10 +15,13 @@ import {
   Linkedin,
   Instagram,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  Calendar,
+  XCircle
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client'
-import type { SocialMediaPost, SocialPlatform } from '@/integrations/supabase/types'
+import type { SocialMediaPost, SocialPlatform, PostStatus } from '@/integrations/supabase/types'
 
 // Facebook icon component
 const Facebook = ({ className }: { className?: string }) => (
@@ -53,12 +56,28 @@ interface SocialPostWithContent extends SocialMediaPost {
   } | null
 }
 
+interface DailyStatRow {
+  date: string
+  total: number
+  linkedin: number
+  facebook: number
+  instagram: number
+  tiktok: number
+}
+
 const PLATFORMS: { id: SocialPlatform | 'all'; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
   { id: 'all', label: 'All', icon: Share2, color: 'purple' },
   { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, color: 'blue' },
   { id: 'facebook', label: 'Facebook', icon: Facebook, color: 'blue' },
   { id: 'instagram', label: 'Instagram', icon: Instagram, color: 'pink' },
   { id: 'tiktok', label: 'TikTok', icon: TikTok, color: 'gray' },
+]
+
+const STATUSES: { id: PostStatus | 'all'; label: string; color: string }[] = [
+  { id: 'all', label: 'All', color: 'bg-white/10 text-gray-300' },
+  { id: 'posted', label: 'Posted', color: 'bg-green-500/20 text-green-400' },
+  { id: 'pending', label: 'Pending', color: 'bg-yellow-500/20 text-yellow-400' },
+  { id: 'failed', label: 'Failed', color: 'bg-red-500/20 text-red-400' },
 ]
 
 const STATUS_COLORS: Record<string, string> = {
@@ -73,8 +92,12 @@ export function SocialMediaPostsManager() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [platformFilter, setPlatformFilter] = useState<SocialPlatform | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all')
   const [showFilters, setShowFilters] = useState(false)
   const [tablesExist, setTablesExist] = useState(true)
+  const [showDailyStats, setShowDailyStats] = useState(false)
+  const [dailyStats, setDailyStats] = useState<DailyStatRow[]>([])
+  const [loadingStats, setLoadingStats] = useState(false)
 
   const loadPosts = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -109,40 +132,52 @@ export function SocialMediaPostsManager() {
       let query = supabase
         .from('social_media_posts')
         .select('*')
-        .order('posted_at', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (platformFilter !== 'all') {
         query = query.eq('platform', platformFilter)
       }
 
-      const { data, error: fetchError } = await query.limit(100)
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter)
+      }
+
+      const { data, error: fetchError } = await query.limit(300)
 
       if (fetchError) throw fetchError
 
-      // Separate queries to get related content based on content_type
-      const postsWithContent: SocialPostWithContent[] = []
+      // Batch fetch related content to avoid N+1 queries
+      const newsIds = [...new Set((data || []).filter(p => p.content_type === 'news' && p.content_id).map(p => p.content_id))]
+      const blogIds = [...new Set((data || []).filter(p => p.content_type === 'blog' && p.content_id).map(p => p.content_id))]
 
-      for (const post of (data || [])) {
-        let enrichedPost: SocialPostWithContent = { ...post, news: null, blog_posts: null }
+      const newsMap = new Map<string, any>()
+      const blogMap = new Map<string, any>()
 
-        if (post.content_type === 'news' && post.content_id) {
-          const { data: newsData } = await supabase
-            .from('news')
-            .select('title_en, title_no, title_ua, slug_en, slug_no, slug_ua')
-            .eq('id', post.content_id)
-            .single()
-          enrichedPost.news = newsData
-        } else if (post.content_type === 'blog' && post.content_id) {
-          const { data: blogData } = await supabase
-            .from('blog_posts')
-            .select('title_en, title_no, title_ua, slug_en, slug_no, slug_ua')
-            .eq('id', post.content_id)
-            .single()
-          enrichedPost.blog_posts = blogData
+      if (newsIds.length > 0) {
+        const { data: newsData } = await supabase
+          .from('news')
+          .select('id, title_en, title_no, title_ua, slug_en, slug_no, slug_ua')
+          .in('id', newsIds)
+        for (const n of (newsData || [])) {
+          newsMap.set(n.id, n)
         }
-
-        postsWithContent.push(enrichedPost)
       }
+
+      if (blogIds.length > 0) {
+        const { data: blogData } = await supabase
+          .from('blog_posts')
+          .select('id, title_en, title_no, title_ua, slug_en, slug_no, slug_ua')
+          .in('id', blogIds)
+        for (const b of (blogData || [])) {
+          blogMap.set(b.id, b)
+        }
+      }
+
+      const postsWithContent: SocialPostWithContent[] = (data || []).map(post => ({
+        ...post,
+        news: post.content_type === 'news' && post.content_id ? newsMap.get(post.content_id) || null : null,
+        blog_posts: post.content_type === 'blog' && post.content_id ? blogMap.get(post.content_id) || null : null,
+      }))
 
       setPosts(postsWithContent)
     } catch (err) {
@@ -151,11 +186,77 @@ export function SocialMediaPostsManager() {
     } finally {
       setLoading(false)
     }
-  }, [platformFilter])
+  }, [platformFilter, statusFilter])
+
+  const loadDailyStats = useCallback(async () => {
+    if (!isSupabaseConfigured()) return
+
+    try {
+      setLoadingStats(true)
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+      const { data, error: fetchError } = await supabase
+        .from('social_media_posts')
+        .select('platform, posted_at')
+        .eq('status', 'posted')
+        .gte('posted_at', thirtyDaysAgo.toISOString())
+        .order('posted_at', { ascending: false })
+
+      if (fetchError || !data) {
+        setLoadingStats(false)
+        return
+      }
+
+      // Group by date
+      const grouped: Record<string, DailyStatRow> = {}
+      for (const post of data) {
+        if (!post.posted_at) continue
+        const date = new Date(post.posted_at).toISOString().split('T')[0]
+        if (!grouped[date]) {
+          grouped[date] = { date, total: 0, linkedin: 0, facebook: 0, instagram: 0, tiktok: 0 }
+        }
+        grouped[date].total++
+        const platform = post.platform as keyof Pick<DailyStatRow, 'linkedin' | 'facebook' | 'instagram' | 'tiktok'>
+        if (platform in grouped[date]) {
+          grouped[date][platform]++
+        }
+      }
+
+      setDailyStats(Object.values(grouped).sort((a, b) => b.date.localeCompare(a.date)))
+    } catch (err) {
+      console.error('Error loading daily stats:', err)
+    } finally {
+      setLoadingStats(false)
+    }
+  }, [])
 
   useEffect(() => {
     loadPosts()
   }, [loadPosts])
+
+  useEffect(() => {
+    if (showDailyStats && dailyStats.length === 0) {
+      loadDailyStats()
+    }
+  }, [showDailyStats, dailyStats.length, loadDailyStats])
+
+  const handleDeletePost = async (id: string) => {
+    if (!confirm('Delete this social media post record?')) return
+    const { error } = await supabase.from('social_media_posts').delete().eq('id', id)
+    if (!error) loadPosts()
+  }
+
+  const cleanStuckPending = async () => {
+    if (!confirm('Delete all pending posts older than 24 hours?')) return
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { error } = await supabase
+      .from('social_media_posts')
+      .delete()
+      .eq('status', 'pending')
+      .lt('created_at', cutoff)
+    if (!error) loadPosts()
+  }
 
   const getTitle = (post: SocialPostWithContent): string => {
     const content = post.content_type === 'news' ? post.news : post.blog_posts
@@ -195,6 +296,14 @@ export function SocialMediaPostsManager() {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const getDayLabel = (dateStr: string): string => {
+    const today = new Date().toISOString().split('T')[0]
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    if (dateStr === today) return 'Today'
+    if (dateStr === yesterday) return 'Yesterday'
+    return new Date(dateStr).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })
   }
 
   // Statistics
@@ -279,6 +388,16 @@ export function SocialMediaPostsManager() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={cleanStuckPending}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors"
+              title="Delete all pending posts older than 24 hours"
+            >
+              <XCircle className="h-4 w-4" />
+              Clean stuck
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
             >
@@ -309,27 +428,52 @@ export function SocialMediaPostsManager() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
-              <div className="flex flex-wrap gap-2">
-                {PLATFORMS.map((platform) => {
-                  const Icon = platform.icon
-                  return (
+            <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 space-y-3">
+              {/* Platform filters */}
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Platform</span>
+                <div className="flex flex-wrap gap-2">
+                  {PLATFORMS.map((platform) => {
+                    const Icon = platform.icon
+                    return (
+                      <motion.button
+                        key={platform.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setPlatformFilter(platform.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                          platformFilter === platform.id
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {platform.label}
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
+              {/* Status filters */}
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Status</span>
+                <div className="flex flex-wrap gap-2">
+                  {STATUSES.map((status) => (
                     <motion.button
-                      key={platform.id}
+                      key={status.id}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => setPlatformFilter(platform.id)}
+                      onClick={() => setStatusFilter(status.id)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        platformFilter === platform.id
+                        statusFilter === status.id
                           ? 'bg-purple-600 text-white'
-                          : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                          : status.color
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
-                      {platform.label}
+                      {status.label}
                     </motion.button>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -398,6 +542,109 @@ export function SocialMediaPostsManager() {
           <p className="text-2xl font-bold text-red-400">{totalEngagement}</p>
         </div>
       </div>
+
+      {/* Daily Stats Toggle */}
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => setShowDailyStats(!showDailyStats)}
+        className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors w-full text-left"
+      >
+        <Calendar className="h-5 w-5 text-purple-400" />
+        <span className="text-white font-medium">Daily Publication Stats</span>
+        <span className="text-gray-500 text-sm ml-2">Last 30 days</span>
+        <ChevronDown className={`h-4 w-4 text-gray-400 ml-auto transition-transform ${showDailyStats ? 'rotate-180' : ''}`} />
+      </motion.button>
+
+      {/* Daily Stats Table */}
+      <AnimatePresence>
+        {showDailyStats && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            {loadingStats ? (
+              <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 flex items-center justify-center">
+                <RefreshCw className="h-6 w-6 text-purple-400 animate-spin" />
+              </div>
+            ) : dailyStats.length === 0 ? (
+              <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 text-center">
+                <p className="text-gray-400">No published posts in the last 30 days.</p>
+              </div>
+            ) : (
+              <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Date</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Total</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-blue-400">
+                          <div className="flex items-center justify-center gap-1">
+                            <Linkedin className="h-3.5 w-3.5" />
+                            LI
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-blue-500">
+                          <div className="flex items-center justify-center gap-1">
+                            <Facebook className="h-3.5 w-3.5" />
+                            FB
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-pink-400">
+                          <div className="flex items-center justify-center gap-1">
+                            <Instagram className="h-3.5 w-3.5" />
+                            IG
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">
+                          <div className="flex items-center justify-center gap-1">
+                            <TikTok className="h-3.5 w-3.5" />
+                            TT
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailyStats.map((row) => (
+                        <tr key={row.date} className="border-b border-white/5 hover:bg-white/5">
+                          <td className="px-4 py-2.5 text-sm text-white font-medium">{getDayLabel(row.date)}</td>
+                          <td className="px-4 py-2.5 text-center text-sm font-bold text-white">{row.total}</td>
+                          <td className="px-4 py-2.5 text-center text-sm text-blue-400">{row.linkedin || '—'}</td>
+                          <td className="px-4 py-2.5 text-center text-sm text-blue-500">{row.facebook || '—'}</td>
+                          <td className="px-4 py-2.5 text-center text-sm text-pink-400">{row.instagram || '—'}</td>
+                          <td className="px-4 py-2.5 text-center text-sm text-gray-400">{row.tiktok || '—'}</td>
+                        </tr>
+                      ))}
+                      {/* Totals row */}
+                      <tr className="border-t border-white/20 bg-white/5">
+                        <td className="px-4 py-2.5 text-sm font-bold text-purple-400">Total (30d)</td>
+                        <td className="px-4 py-2.5 text-center text-sm font-bold text-white">
+                          {dailyStats.reduce((s, r) => s + r.total, 0)}
+                        </td>
+                        <td className="px-4 py-2.5 text-center text-sm font-bold text-blue-400">
+                          {dailyStats.reduce((s, r) => s + r.linkedin, 0)}
+                        </td>
+                        <td className="px-4 py-2.5 text-center text-sm font-bold text-blue-500">
+                          {dailyStats.reduce((s, r) => s + r.facebook, 0)}
+                        </td>
+                        <td className="px-4 py-2.5 text-center text-sm font-bold text-pink-400">
+                          {dailyStats.reduce((s, r) => s + r.instagram, 0)}
+                        </td>
+                        <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-400">
+                          {dailyStats.reduce((s, r) => s + r.tiktok, 0)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Posts Table */}
       {loading ? (
@@ -526,6 +773,15 @@ export function SocialMediaPostsManager() {
                               >
                                 <Eye className="h-4 w-4" />
                               </a>
+                            )}
+                            {(post.status === 'pending' || post.status === 'failed') && (
+                              <button
+                                onClick={() => handleDeletePost(post.id)}
+                                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-gray-500 hover:text-red-400"
+                                title="Delete record"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             )}
                           </div>
                         </td>

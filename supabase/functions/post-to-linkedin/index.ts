@@ -121,6 +121,8 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let socialPostId: string | null = null
+
   try {
     const requestData: LinkedInPostRequest = await req.json()
     console.log('🔗 LinkedIn posting request:', requestData)
@@ -197,6 +199,8 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    if (socialPost) socialPostId = socialPost.id
 
     if (!socialPost) {
       console.error('❌ Failed to create social post record')
@@ -327,6 +331,12 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('❌ Error posting to LinkedIn:', error)
+
+    // Clean up stuck pending record
+    if (socialPostId) {
+      await updateSocialPostFailed(socialPostId, error.message || 'Unknown error')
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
