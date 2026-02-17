@@ -44,9 +44,10 @@ serve(async (req) => {
   let reqMsgId: number | null = null
 
   try {
-    const { newsId: reqNewsId, source, telegramMessageId }: AutoPublishRequest = await req.json()
-    newsId = reqNewsId
-    reqMsgId = telegramMessageId || null
+    const requestBody: AutoPublishRequest = await req.json()
+    newsId = requestBody.newsId
+    reqMsgId = requestBody.telegramMessageId || null
+    const source = requestBody.source
     console.log(`📰 Auto-publishing news: ${newsId} (source: ${source})`)
 
     // Update status: pipeline started
@@ -64,7 +65,7 @@ serve(async (req) => {
     }
 
     // Resolve telegram message ID for editing (prefer request param, fallback to DB)
-    const telegramMessageId = reqMsgId || news.telegram_message_id || null
+    const tgMessageId = reqMsgId || news.telegram_message_id || null
 
     // Lookup source name
     let sourceName = 'RSS'
@@ -360,7 +361,7 @@ serve(async (req) => {
     const summaryLine = summary ? `\n💬 <i>${escapeHtml(summary.substring(0, 200))}</i>` : ''
     const summaryMessage = `🤖 <b>Auto-Published</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)}\n📊 Score: ${(news.rss_analysis as any)?.relevance_score || '?'}/10${summaryLine}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
 
-    await editOrSendTelegramMessage(telegramMessageId, summaryMessage)
+    await editOrSendTelegramMessage(tgMessageId, summaryMessage)
 
     console.log('🎉 Auto-publish pipeline completed successfully!')
 
