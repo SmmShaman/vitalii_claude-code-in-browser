@@ -2,7 +2,7 @@ name: RSS Monitor v2
 
 on:
   schedule:
-    # Run every 30 minutes — scans ALL sources across 3 batches
+    # Run every 30 minutes — scans ALL sources across 4 batches of 8
     - cron: '*/30 * * * *'
   workflow_dispatch:
 
@@ -11,88 +11,80 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Monitor RSS sources (batch 0 — sources 0-9)
+      - name: Batch 0 (sources 0-7)
         id: batch0
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          echo "📰 RSS Monitor v2 — Batch 0"
-          echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')"
-
+          echo "📰 RSS Monitor v2 — Batch 0 ($(date -u '+%H:%M UTC'))"
           RESULT=$(curl -s -X POST "$SUPABASE_URL/functions/v1/monitor-rss-sources" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/json" \
-            -d '{"source": "scheduled", "batchIndex": 0, "batchSize": 10}' \
+            -d '{"source": "scheduled", "batchIndex": 0, "batchSize": 8}' \
             --max-time 300)
-
           echo "Result: $RESULT"
-          OK=$(echo "$RESULT" | jq -r '.ok // false')
-          SENT=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')
-          ANALYZED=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')
-          echo "analyzed_0=$ANALYZED" >> $GITHUB_OUTPUT
-          echo "sent_0=$SENT" >> $GITHUB_OUTPUT
+          echo "analyzed_0=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')" >> $GITHUB_OUTPUT
+          echo "sent_0=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')" >> $GITHUB_OUTPUT
+          [ "$(echo "$RESULT" | jq -r '.ok // false')" = "true" ] || echo "⚠️ Batch 0 issues"
 
-          if [ "$OK" != "true" ]; then
-            echo "⚠️ Batch 0 had issues but continuing..."
-          fi
-
-      - name: Monitor RSS sources (batch 1 — sources 10-19)
+      - name: Batch 1 (sources 8-15)
         id: batch1
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "📰 RSS Monitor v2 — Batch 1"
-
           RESULT=$(curl -s -X POST "$SUPABASE_URL/functions/v1/monitor-rss-sources" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/json" \
-            -d '{"source": "scheduled", "batchIndex": 1, "batchSize": 10}' \
+            -d '{"source": "scheduled", "batchIndex": 1, "batchSize": 8}' \
             --max-time 300)
-
           echo "Result: $RESULT"
-          OK=$(echo "$RESULT" | jq -r '.ok // false')
-          SENT=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')
-          ANALYZED=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')
-          echo "analyzed_1=$ANALYZED" >> $GITHUB_OUTPUT
-          echo "sent_1=$SENT" >> $GITHUB_OUTPUT
+          echo "analyzed_1=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')" >> $GITHUB_OUTPUT
+          echo "sent_1=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')" >> $GITHUB_OUTPUT
+          [ "$(echo "$RESULT" | jq -r '.ok // false')" = "true" ] || echo "⚠️ Batch 1 issues"
 
-          if [ "$OK" != "true" ]; then
-            echo "⚠️ Batch 1 had issues but continuing..."
-          fi
-
-      - name: Monitor RSS sources (batch 2 — sources 20-29)
+      - name: Batch 2 (sources 16-23)
         id: batch2
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "📰 RSS Monitor v2 — Batch 2"
-
           RESULT=$(curl -s -X POST "$SUPABASE_URL/functions/v1/monitor-rss-sources" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/json" \
-            -d '{"source": "scheduled", "batchIndex": 2, "batchSize": 10}' \
+            -d '{"source": "scheduled", "batchIndex": 2, "batchSize": 8}' \
             --max-time 300)
-
           echo "Result: $RESULT"
-          OK=$(echo "$RESULT" | jq -r '.ok // false')
-          SENT=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')
-          ANALYZED=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')
-          echo "analyzed_2=$ANALYZED" >> $GITHUB_OUTPUT
-          echo "sent_2=$SENT" >> $GITHUB_OUTPUT
+          echo "analyzed_2=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')" >> $GITHUB_OUTPUT
+          echo "sent_2=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')" >> $GITHUB_OUTPUT
+          [ "$(echo "$RESULT" | jq -r '.ok // false')" = "true" ] || echo "⚠️ Batch 2 issues"
 
-          if [ "$OK" != "true" ]; then
-            echo "⚠️ Batch 2 had issues but continuing..."
-          fi
+      - name: Batch 3 (sources 24-31)
+        id: batch3
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📰 RSS Monitor v2 — Batch 3"
+          RESULT=$(curl -s -X POST "$SUPABASE_URL/functions/v1/monitor-rss-sources" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"source": "scheduled", "batchIndex": 3, "batchSize": 8}' \
+            --max-time 300)
+          echo "Result: $RESULT"
+          echo "analyzed_3=$(echo "$RESULT" | jq -r '.articlesAnalyzed // 0')" >> $GITHUB_OUTPUT
+          echo "sent_3=$(echo "$RESULT" | jq -r '.sentToTelegram // 0')" >> $GITHUB_OUTPUT
+          [ "$(echo "$RESULT" | jq -r '.ok // false')" = "true" ] || echo "⚠️ Batch 3 issues"
 
       - name: Summary
         if: always()
         run: |
           echo "## RSS Monitor v2 Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "- **Batch 0:** analyzed=${{ steps.batch0.outputs.analyzed_0 || 'N/A' }}, sent=${{ steps.batch0.outputs.sent_0 || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Batch 1:** analyzed=${{ steps.batch1.outputs.analyzed_1 || 'N/A' }}, sent=${{ steps.batch1.outputs.sent_1 || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Batch 2:** analyzed=${{ steps.batch2.outputs.analyzed_2 || 'N/A' }}, sent=${{ steps.batch2.outputs.sent_2 || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Batch 0:** analyzed=${{ steps.batch0.outputs.analyzed_0 || '?' }}, sent=${{ steps.batch0.outputs.sent_0 || '?' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Batch 1:** analyzed=${{ steps.batch1.outputs.analyzed_1 || '?' }}, sent=${{ steps.batch1.outputs.sent_1 || '?' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Batch 2:** analyzed=${{ steps.batch2.outputs.analyzed_2 || '?' }}, sent=${{ steps.batch2.outputs.sent_2 || '?' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Batch 3:** analyzed=${{ steps.batch3.outputs.analyzed_3 || '?' }}, sent=${{ steps.batch3.outputs.sent_3 || '?' }}" >> $GITHUB_STEP_SUMMARY
