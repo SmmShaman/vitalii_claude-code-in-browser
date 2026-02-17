@@ -347,10 +347,10 @@ serve(async (req) => {
       .update({ auto_publish_completed_at: new Date().toISOString() })
       .eq('id', newsId)
 
-    // Reload news to get slugs after rewrite
+    // Reload news to get slugs and final image URL after all processing
     const { data: publishedNews } = await supabase
       .from('news')
-      .select('slug_en, slug_no, slug_ua')
+      .select('slug_en, slug_no, slug_ua, processed_image_url, image_url')
       .eq('id', newsId)
       .single()
 
@@ -362,7 +362,7 @@ serve(async (req) => {
     // Build summary
     const title = news.original_title?.substring(0, 80) || 'Untitled'
     const videoLabel = isVideoPost ? ' + 🎬' : ''
-    const finalImageUrl = freshNews?.processed_image_url || null
+    const finalImageUrl = publishedNews?.processed_image_url || publishedNews?.image_url || freshNews?.processed_image_url || null
     const imageStatus = (finalImageUrl ? '✅' : '⚠️ No image') + videoLabel
     const platformEmoji: Record<string, string> = { linkedin: '🔗', facebook: '📘', instagram: '📸' }
     const socialSummary = socialResults
