@@ -29,7 +29,7 @@ interface AIAnalysisResult {
  * Used in batch mode after all articles are analyzed
  */
 serve(async (req) => {
-  console.log('📤 Send RSS to Telegram v2026-02-15-01-autopublish')
+  console.log('📤 Send RSS to Telegram v2026-02-17-01-sequential-queue')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -133,22 +133,44 @@ serve(async (req) => {
         }
       }
 
-      // Fire auto-publish pipeline (pass telegramMessageId for message editing)
-      fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          newsId: news.id,
-          source: 'rss',
-          telegramMessageId
+      // Mark as queued (sequential queue — not fire-and-forget)
+      await supabase
+        .from('news')
+        .update({
+          auto_publish_status: 'queued',
+          auto_publish_queued_at: new Date().toISOString(),
+          telegram_message_id: telegramMessageId
         })
-      }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
+        .eq('id', news.id)
+
+      // Check if any article is currently being published
+      const { count: inFlightCount } = await supabase
+        .from('news')
+        .select('id', { count: 'exact', head: true })
+        .in('auto_publish_status', ['pending', 'variant_selection', 'image_generation', 'content_rewrite', 'social_posting'])
+        .neq('id', news.id)
+
+      if (!inFlightCount || inFlightCount === 0) {
+        // No in-flight articles — start publishing this one now
+        console.log('🚀 No queue ahead, firing auto-publish now')
+        fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            newsId: news.id,
+            source: 'rss',
+            telegramMessageId
+          })
+        }).catch(e => console.warn('⚠️ Auto-publish fire error:', e))
+      } else {
+        console.log(`⏳ Queue position: ${inFlightCount} article(s) ahead — will be picked up automatically`)
+      }
 
       return new Response(
-        JSON.stringify({ success: true, newsId: news.id, autoPublish: true }),
+        JSON.stringify({ success: true, newsId: news.id, autoPublish: true, queued: true, inFlightCount: inFlightCount || 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

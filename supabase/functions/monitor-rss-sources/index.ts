@@ -56,8 +56,8 @@ interface AnalysisResult {
  * Over multiple runs, all sources get covered
  */
 serve(async (req) => {
-  // Version: 2026-02-17-01 - Process ALL sources every run
-  console.log('📡 Monitor RSS Sources v2026-02-17-01 started')
+  // Version: 2026-02-17-02 - Sequential publish queue with safety net
+  console.log('📡 Monitor RSS Sources v2026-02-17-02 started')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -252,6 +252,38 @@ serve(async (req) => {
       } catch (sendError: any) {
         console.error(`❌ Error sending to Telegram: ${sendError.message}`)
       }
+    }
+
+    // Safety net: if articles are queued but nothing is in-flight, kickstart the queue
+    const { data: stuckQueued } = await supabase
+      .from('news')
+      .select('id, telegram_message_id')
+      .eq('auto_publish_status', 'queued')
+      .order('auto_publish_queued_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    const { count: inFlight } = await supabase
+      .from('news')
+      .select('id', { count: 'exact', head: true })
+      .in('auto_publish_status', ['pending', 'variant_selection', 'image_generation', 'content_rewrite', 'social_posting'])
+
+    if (stuckQueued && (!inFlight || inFlight === 0)) {
+      console.log(`\n🔄 Safety net: kickstarting queue with ${stuckQueued.id}`)
+      fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          newsId: stuckQueued.id,
+          source: 'rss',
+          telegramMessageId: stuckQueued.telegram_message_id
+        })
+      }).catch(e => console.warn('⚠️ Queue kickstart error:', e))
+    } else if (stuckQueued) {
+      console.log(`\n📋 Queue: ${stuckQueued.id} waiting, ${inFlight} article(s) in-flight`)
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1)

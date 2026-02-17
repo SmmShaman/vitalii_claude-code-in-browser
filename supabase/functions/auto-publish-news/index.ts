@@ -15,7 +15,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-16-v6-norway-language-detection'
+const VERSION = '2026-02-17-v7-sequential-queue'
 
 interface AutoPublishRequest {
   newsId: string
@@ -49,6 +49,28 @@ serve(async (req) => {
     reqMsgId = requestBody.telegramMessageId || null
     const source = requestBody.source
     console.log(`📰 Auto-publishing news: ${newsId} (source: ${source})`)
+
+    // Entry guard: prevent duplicate/concurrent processing
+    const { data: statusCheck } = await supabase
+      .from('news')
+      .select('auto_publish_status')
+      .eq('id', newsId)
+      .single()
+
+    if (statusCheck?.auto_publish_status === 'completed') {
+      console.log('⏭️ Already completed, skipping')
+      return new Response(
+        JSON.stringify({ success: true, newsId, skipped: true, reason: 'already_completed' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (['pending', 'variant_selection', 'image_generation', 'content_rewrite', 'social_posting'].includes(statusCheck?.auto_publish_status)) {
+      console.log(`⏭️ Already in progress (${statusCheck.auto_publish_status}), skipping duplicate invocation`)
+      return new Response(
+        JSON.stringify({ success: true, newsId, skipped: true, reason: 'already_in_progress' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Update status: pipeline started
     await updateStatus(supabase, newsId, 'pending')
@@ -393,6 +415,9 @@ serve(async (req) => {
 
     console.log('🎉 Auto-publish pipeline completed successfully!')
 
+    // Chain: trigger next queued article (with 60s gap)
+    await triggerNextInQueue(supabase)
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -446,6 +471,8 @@ serve(async (req) => {
           failMsgId,
           `❌ <b>Auto-Publish Failed</b>\n\n📰 ${failTitle}${failSourceName}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
         )
+        // Chain: trigger next queued article even on failure
+        await triggerNextInQueue(supabase)
         return new Response(
           JSON.stringify({ success: false, newsId, error: error.message || 'Unknown error' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -456,6 +483,9 @@ serve(async (req) => {
       failMsgId,
       `❌ <b>Auto-Publish Failed</b>\n\n📰 ${escapeHtml(errorTitle)}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
     )
+
+    // Chain: trigger next queued article even on failure
+    await triggerNextInQueue(supabase)
 
     return new Response(
       JSON.stringify({
@@ -482,6 +512,47 @@ async function updateStatus(supabase: any, newsId: string, status: string) {
   }
   await supabase.from('news').update(update).eq('id', newsId)
   console.log(`📊 Status: ${status}`)
+}
+
+/**
+ * Chain trigger: find next queued article and fire auto-publish after 60s gap
+ */
+async function triggerNextInQueue(supabase: any) {
+  try {
+    const { data: nextArticle } = await supabase
+      .from('news')
+      .select('id, telegram_message_id')
+      .eq('auto_publish_status', 'queued')
+      .order('auto_publish_queued_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (!nextArticle) {
+      console.log('📭 No more articles in queue')
+      return
+    }
+
+    console.log(`⏭️ Next in queue: ${nextArticle.id} — waiting 60s before starting...`)
+
+    // Wait 60 seconds before starting next article
+    await new Promise(resolve => setTimeout(resolve, 60_000))
+
+    console.log(`🚀 Firing auto-publish for next queued article: ${nextArticle.id}`)
+    fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        newsId: nextArticle.id,
+        source: 'rss',
+        telegramMessageId: nextArticle.telegram_message_id
+      })
+    }).catch(e => console.warn('⚠️ Next queue item fire error:', e))
+  } catch (e) {
+    console.warn('⚠️ triggerNextInQueue error:', e)
+  }
 }
 
 async function loadAutoPublishSettings(supabase: any) {
