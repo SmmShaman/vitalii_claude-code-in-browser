@@ -166,6 +166,13 @@ serve(async (req) => {
       )
     }
 
+    // Enforce: is_advertisement=true → always reject
+    if (moderationResult.is_advertisement && moderationResult.approved) {
+      console.log('⚠️ AI marked as advertisement but approved — overriding to REJECT')
+      moderationResult.approved = false
+      moderationResult.reason = `[Auto-rejected: advertisement] ${moderationResult.reason}`
+    }
+
     console.log(moderationResult.approved ? '✅ Approved' : '❌ Rejected:', moderationResult.reason)
 
     // Update AI prompt usage count
