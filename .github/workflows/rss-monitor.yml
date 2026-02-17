@@ -1,9 +1,7 @@
 name: Scheduled RSS Monitor
 
 on:
-  schedule:
-    # Run every 30 minutes (RSS updates slower than Telegram)
-    - cron: '*/30 * * * *'
+  # Schedule removed — rss-monitor-v2.yml handles all RSS monitoring via monitor-rss-sources
   workflow_dispatch:
 
 jobs:

@@ -56,8 +56,8 @@ interface AnalysisResult {
  * Over multiple runs, all sources get covered
  */
 serve(async (req) => {
-  // Version: 2026-01-29-03 - Round-robin: 2 sources per run
-  console.log('📡 Monitor RSS Sources v2026-01-29-03 started')
+  // Version: 2026-02-17-01 - Process ALL sources every run
+  console.log('📡 Monitor RSS Sources v2026-02-17-01 started')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -101,19 +101,15 @@ serve(async (req) => {
 
     console.log(`📰 Total active sources: ${sources.length}`)
 
-    // 2. Round-robin: pick 2 sources based on current hour
-    const currentHour = new Date().getUTCHours()
-    const sourcesPerRun = 2
-    const startIdx = (currentHour * sourcesPerRun) % sources.length
+    // 2. Select sources to process
+    // Accept batch parameters: batchIndex and batchSize for splitting across multiple calls
+    const batchSize = body.batchSize || sources.length // Default: all sources
+    const batchIndex = body.batchIndex || 0
+    const startIdx = batchIndex * batchSize
+    const endIdx = Math.min(startIdx + batchSize, sources.length)
 
-    // Get 2 sources starting from startIdx (wrap around if needed)
-    const selectedSources: NewsMonitorSource[] = []
-    for (let i = 0; i < sourcesPerRun; i++) {
-      const idx = (startIdx + i) % sources.length
-      selectedSources.push(sources[idx] as NewsMonitorSource)
-    }
-
-    console.log(`🎯 Selected sources (hour ${currentHour}): ${selectedSources.map(s => s.name).join(', ')}`)
+    const selectedSources: NewsMonitorSource[] = (sources as NewsMonitorSource[]).slice(startIdx, endIdx)
+    console.log(`🎯 Processing batch ${batchIndex} (sources ${startIdx}-${endIdx - 1} of ${sources.length}): ${selectedSources.map(s => s.name).join(', ')}`)
 
     // Statistics
     let sourcesProcessed = 0
