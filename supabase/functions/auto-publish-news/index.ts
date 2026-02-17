@@ -363,6 +363,12 @@ serve(async (req) => {
 
     await editOrSendTelegramMessage(tgMessageId, summaryMessage)
 
+    // Send generated image as a separate photo message
+    const finalImageUrl = freshNews?.processed_image_url || null
+    if (finalImageUrl) {
+      await sendTelegramPhoto(finalImageUrl, `🖼️ ${escapeHtml(title)}`, tgMessageId)
+    }
+
     console.log('🎉 Auto-publish pipeline completed successfully!')
 
     return new Response(
@@ -612,6 +618,39 @@ async function editOrSendTelegramMessage(messageId: number | null, text: string)
 
   // Fallback: send new message
   await sendTelegramMessage(text)
+}
+
+/**
+ * Send a photo to Telegram chat, optionally as a reply
+ */
+async function sendTelegramPhoto(photoUrl: string, caption: string, replyToMessageId?: number | null) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return
+
+  try {
+    const body: Record<string, any> = {
+      chat_id: TELEGRAM_CHAT_ID,
+      photo: photoUrl,
+      caption,
+      parse_mode: 'HTML'
+    }
+    if (replyToMessageId) {
+      body.reply_to_message_id = replyToMessageId
+    }
+
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    const result = await response.json()
+    if (result.ok) {
+      console.log('📸 Sent image to Telegram')
+    } else {
+      console.warn('⚠️ sendPhoto failed:', result.description)
+    }
+  } catch (e) {
+    console.warn('⚠️ Failed to send Telegram photo:', e)
+  }
 }
 
 function escapeHtml(text: string): string {
