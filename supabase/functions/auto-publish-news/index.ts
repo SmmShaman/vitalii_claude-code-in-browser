@@ -67,15 +67,20 @@ serve(async (req) => {
     // Resolve telegram message ID for editing (prefer request param, fallback to DB)
     const tgMessageId = reqMsgId || news.telegram_message_id || null
 
-    // Lookup source name
-    let sourceName = 'RSS'
-    if (news.rss_source_url) {
+    // Lookup source name (source_id FK → news_sources, fallback to domain)
+    let sourceName = ''
+    if (news.source_id) {
       const { data: srcData } = await supabase
         .from('news_sources')
         .select('name')
-        .eq('rss_url', news.rss_source_url)
+        .eq('id', news.source_id)
         .single()
       if (srcData?.name) sourceName = srcData.name
+    }
+    if (!sourceName) {
+      // Fallback: extract domain from original URL
+      const fallbackUrl = news.original_url || news.rss_source_url || ''
+      try { sourceName = new URL(fallbackUrl).hostname.replace('www.', '') } catch { sourceName = news.source_type || 'RSS' }
     }
 
     const summary = (news.rss_analysis as any)?.summary || ''
@@ -342,10 +347,23 @@ serve(async (req) => {
       .update({ auto_publish_completed_at: new Date().toISOString() })
       .eq('id', newsId)
 
-    // Build summary message
+    // Reload news to get slugs after rewrite
+    const { data: publishedNews } = await supabase
+      .from('news')
+      .select('slug_en, slug_no, slug_ua')
+      .eq('id', newsId)
+      .single()
+
+    // Build article URL
+    const primarySlugKey = `slug_${languages[0] || 'en'}` as string
+    const articleSlug = (publishedNews as any)?.[primarySlugKey] || publishedNews?.slug_en || null
+    const articleUrl = articleSlug ? `https://vitalii.no/news/${articleSlug}` : null
+
+    // Build summary
     const title = news.original_title?.substring(0, 80) || 'Untitled'
-    const videoLabel = isVideoPost ? ' + 🎬 Video' : ''
-    const imageStatus = (freshNews?.processed_image_url ? '✅ Image generated' : '⚠️ No image') + videoLabel
+    const videoLabel = isVideoPost ? ' + 🎬' : ''
+    const finalImageUrl = freshNews?.processed_image_url || null
+    const imageStatus = (finalImageUrl ? '✅' : '⚠️ No image') + videoLabel
     const platformEmoji: Record<string, string> = { linkedin: '🔗', facebook: '📘', instagram: '📸' }
     const socialSummary = socialResults
       .map(r => {
@@ -357,16 +375,20 @@ serve(async (req) => {
       })
       .join('\n')
 
-    const norwayLabel = isNorwayRelated ? '\n🇳🇴 <b>Norway article → Norwegian only</b>' : ''
-    const summaryLine = summary ? `\n💬 <i>${escapeHtml(summary.substring(0, 200))}</i>` : ''
-    const summaryMessage = `🤖 <b>Auto-Published</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)}\n📊 Score: ${(news.rss_analysis as any)?.relevance_score || '?'}/10${summaryLine}\n🖼️ ${imageStatus}\n\n📱 <b>Social Media (${successfulPosts}/${totalPosts}):</b>\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts} succeeded`}`
+    const norwayLabel = isNorwayRelated ? '\n🇳🇴 <b>Norwegian only</b>' : ''
+    const articleLink = articleUrl ? `\n🔗 <a href="${articleUrl}">vitalii.no</a>` : ''
+    const score = (news.rss_analysis as any)?.relevance_score || '?'
 
-    await editOrSendTelegramMessage(tgMessageId, summaryMessage)
+    // Caption for photo (max 1024 chars) — concise format
+    const caption = `🤖 <b>Auto-Published</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)} · ${score}/10 ${imageStatus}${articleLink}\n\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts}`}`
 
-    // Send generated image as a separate photo message
-    const finalImageUrl = freshNews?.processed_image_url || null
     if (finalImageUrl) {
-      await sendTelegramPhoto(finalImageUrl, `🖼️ ${escapeHtml(title)}`, tgMessageId)
+      // Delete old text message, send photo with caption (one message)
+      await deleteTelegramMessage(tgMessageId)
+      await sendTelegramPhoto(finalImageUrl, caption, null)
+    } else {
+      // No image — just edit text
+      await editOrSendTelegramMessage(tgMessageId, caption)
     }
 
     console.log('🎉 Auto-publish pipeline completed successfully!')
@@ -402,7 +424,7 @@ serve(async (req) => {
     if (!failMsgId && newsId) {
       const { data: failNews } = await supabase
         .from('news')
-        .select('telegram_message_id, original_title, rss_source_url')
+        .select('telegram_message_id, original_title, source_id, original_url, source_type')
         .eq('id', newsId)
         .single()
       failMsgId = failNews?.telegram_message_id || null
@@ -410,13 +432,15 @@ serve(async (req) => {
       if (failNews?.original_title) {
         const failTitle = escapeHtml(failNews.original_title.substring(0, 80))
         let failSourceName = ''
-        if (failNews?.rss_source_url) {
+        if (failNews?.source_id) {
           const { data: fSrc } = await supabase
             .from('news_sources')
             .select('name')
-            .eq('rss_url', failNews.rss_source_url)
+            .eq('id', failNews.source_id)
             .single()
           if (fSrc?.name) failSourceName = `\n📌 ${escapeHtml(fSrc.name)}`
+        } else if (failNews?.original_url) {
+          try { failSourceName = `\n📌 ${new URL(failNews.original_url).hostname.replace('www.', '')}` } catch {}
         }
         await editOrSendTelegramMessage(
           failMsgId,
@@ -618,6 +642,23 @@ async function editOrSendTelegramMessage(messageId: number | null, text: string)
 
   // Fallback: send new message
   await sendTelegramMessage(text)
+}
+
+/**
+ * Delete a Telegram message
+ */
+async function deleteTelegramMessage(messageId: number | null) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !messageId) return
+
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, message_id: messageId })
+    })
+  } catch (e) {
+    console.warn('⚠️ Failed to delete Telegram message:', e)
+  }
 }
 
 /**

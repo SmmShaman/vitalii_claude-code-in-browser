@@ -89,15 +89,19 @@ serve(async (req) => {
     if (isAutoPublishEnabled) {
       console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for RSS article ${news.id}`)
 
-      // Lookup source name
-      let autoSourceName = 'RSS'
-      if (news.rss_source_url) {
+      // Lookup source name (source_id FK, fallback to domain)
+      let autoSourceName = ''
+      if (news.source_id) {
         const { data: srcData } = await supabase
           .from('news_sources')
           .select('name')
-          .eq('rss_url', news.rss_source_url)
+          .eq('id', news.source_id)
           .single()
         if (srcData?.name) autoSourceName = srcData.name
+      }
+      if (!autoSourceName) {
+        const fallbackUrl = news.original_url || news.rss_source_url || ''
+        try { autoSourceName = new URL(fallbackUrl).hostname.replace('www.', '') } catch { autoSourceName = 'RSS' }
       }
 
       // Send initial status message and capture message_id
