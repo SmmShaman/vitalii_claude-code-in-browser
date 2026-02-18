@@ -1,0 +1,68 @@
+name: Publish Queue Watchdog
+
+on:
+  schedule:
+    # Run every 10 minutes — cleans zombie articles and kickstarts stuck queue
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Zombie cleanup & queue kickstart
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🧟 Queue Watchdog — $(date -u '+%H:%M UTC')"
+
+          # 1. Find and clean zombie articles (stuck >10 min in active status)
+          ZOMBIES=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/news?auto_publish_status=in.(pending,variant_selection,image_generation,content_rewrite,social_posting)&auto_publish_started_at=lt.$(date -u -d '10 minutes ago' '+%Y-%m-%dT%H:%M:%S+00:00')" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -d '{"auto_publish_status": "failed", "auto_publish_error": "Zombie: watchdog auto-cleaned after 10min timeout"}' \
+            2>/dev/null)
+
+          ZOMBIE_COUNT=$(echo "$ZOMBIES" | jq -r 'length // 0' 2>/dev/null || echo "0")
+          echo "🧟 Cleaned $ZOMBIE_COUNT zombie(s)"
+
+          # 2. Check if queue needs kickstart (queued articles + no in-flight)
+          IN_FLIGHT=$(curl -s "$SUPABASE_URL/rest/v1/news?auto_publish_status=in.(pending,variant_selection,image_generation,content_rewrite,social_posting)&select=id" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Prefer: count=exact" \
+            -H "Range: 0-0" \
+            -o /dev/null -w '%{http_code}' 2>/dev/null)
+
+          NEXT=$(curl -s "$SUPABASE_URL/rest/v1/news?auto_publish_status=eq.queued&order=auto_publish_queued_at.asc&limit=1&select=id,telegram_message_id" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            2>/dev/null)
+
+          NEXT_ID=$(echo "$NEXT" | jq -r '.[0].id // empty' 2>/dev/null)
+          NEXT_MSG_ID=$(echo "$NEXT" | jq -r '.[0].telegram_message_id // empty' 2>/dev/null)
+
+          # Check actual in-flight count
+          IN_FLIGHT_LIST=$(curl -s "$SUPABASE_URL/rest/v1/news?auto_publish_status=in.(pending,variant_selection,image_generation,content_rewrite,social_posting)&select=id" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            2>/dev/null)
+          IN_FLIGHT_COUNT=$(echo "$IN_FLIGHT_LIST" | jq -r 'length // 0' 2>/dev/null || echo "0")
+
+          if [ -n "$NEXT_ID" ] && [ "$IN_FLIGHT_COUNT" = "0" ]; then
+            echo "🚀 Kickstarting queue: $NEXT_ID"
+            curl -s -X POST "$SUPABASE_URL/functions/v1/auto-publish-news" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"newsId\": \"$NEXT_ID\", \"source\": \"rss\", \"telegramMessageId\": $NEXT_MSG_ID}" \
+              --max-time 10 > /dev/null 2>&1 || true
+            echo "✅ Queue kickstarted"
+          elif [ -n "$NEXT_ID" ]; then
+            echo "📋 Queue has items but $IN_FLIGHT_COUNT article(s) in-flight"
+          else
+            echo "📭 Queue empty, nothing to do"
+          fi
