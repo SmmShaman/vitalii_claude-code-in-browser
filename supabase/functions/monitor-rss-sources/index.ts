@@ -56,8 +56,8 @@ interface AnalysisResult {
  * Over multiple runs, all sources get covered
  */
 serve(async (req) => {
-  // Version: 2026-02-17-02 - Sequential publish queue with safety net
-  console.log('📡 Monitor RSS Sources v2026-02-17-02 started')
+  // Version: 2026-02-18-01 - Zombie cleanup + sequential queue
+  console.log('📡 Monitor RSS Sources v2026-02-18-01 started')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -251,6 +251,27 @@ serve(async (req) => {
 
       } catch (sendError: any) {
         console.error(`❌ Error sending to Telegram: ${sendError.message}`)
+      }
+    }
+
+    // Zombie cleanup: mark articles stuck in active status for >10 min as failed
+    const { data: zombies } = await supabase
+      .from('news')
+      .select('id, auto_publish_status')
+      .in('auto_publish_status', ['pending', 'variant_selection', 'image_generation', 'content_rewrite', 'social_posting'])
+      .lt('auto_publish_started_at', new Date(Date.now() - 10 * 60 * 1000).toISOString())
+
+    if (zombies && zombies.length > 0) {
+      console.log(`\n🧟 Zombie cleanup: ${zombies.length} stuck article(s) found`)
+      for (const z of zombies) {
+        await supabase
+          .from('news')
+          .update({
+            auto_publish_status: 'failed',
+            auto_publish_error: `Zombie: stuck in ${z.auto_publish_status} for >10min, auto-cleaned`
+          })
+          .eq('id', z.id)
+        console.log(`  🧟 Cleaned: ${z.id} (was ${z.auto_publish_status})`)
       }
     }
 
