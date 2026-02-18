@@ -532,12 +532,7 @@ async function triggerNextInQueue(supabase: any) {
       return
     }
 
-    console.log(`⏭️ Next in queue: ${nextArticle.id} — waiting 60s before starting...`)
-
-    // Wait 60 seconds before starting next article
-    await new Promise(resolve => setTimeout(resolve, 60_000))
-
-    console.log(`🚀 Firing auto-publish for next queued article: ${nextArticle.id}`)
+    console.log(`⏭️ Firing next queued article: ${nextArticle.id}`)
     fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
       method: 'POST',
       headers: {
