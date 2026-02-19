@@ -16,7 +16,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-19-v8-fix-timeout'
+const VERSION = '2026-02-19-v9-pregenerate-teasers'
 
 interface AutoPublishRequest {
   newsId: string
@@ -312,11 +312,63 @@ serve(async (req) => {
     console.log('✅ Content rewritten and published')
 
     // ═══════════════════════════════════════════════════
+    // STEP 4b: Pre-generate social teasers (cache warm-up)
+    // Prevents 9 parallel Azure OpenAI calls during posting
+    // ═══════════════════════════════════════════════════
+    const teaserPlatforms = platforms.filter(p => ['linkedin', 'facebook', 'instagram'].includes(p))
+    if (teaserPlatforms.length > 0) {
+      console.log(`📝 Pre-generating teasers: ${teaserPlatforms.length} platforms × ${languages.length} languages...`)
+
+      // Reload rewritten titles/content for teaser generation
+      const { data: rewrittenNews } = await supabase
+        .from('news')
+        .select('title_en, title_no, title_ua, content_en, content_no, content_ua')
+        .eq('id', newsId)
+        .single()
+
+      if (rewrittenNews) {
+        // Generate by language batch (max 3 concurrent OpenAI calls per round)
+        for (const lang of languages) {
+          const titleKey = `title_${lang}` as string
+          const contentKey = `content_${lang}` as string
+          const title = (rewrittenNews as any)[titleKey] || news.original_title || ''
+          const contentText = (rewrittenNews as any)[contentKey] || news.original_content || ''
+
+          const batchPromises = teaserPlatforms.map(platform =>
+            callFunction('generate-social-teasers', {
+              newsId,
+              title,
+              content: contentText,
+              contentType: 'news',
+              platform,
+              language: lang
+            }, 30000)
+              .then(async (r) => {
+                if (r.ok) {
+                  const res = await r.json()
+                  console.log(`  ✅ ${platform} (${lang}): ${res.cached ? 'cached' : 'generated'}`)
+                } else {
+                  console.warn(`  ⚠️ ${platform} (${lang}) teaser failed, will retry during posting`)
+                }
+              })
+              .catch((e: any) => console.warn(`  ⚠️ ${platform} (${lang}) teaser error: ${e.message}`))
+          )
+
+          await Promise.allSettled(batchPromises)
+        }
+        console.log('📝 Teaser pre-generation complete')
+      } else {
+        console.warn('⚠️ Could not reload rewritten news, teasers will generate during posting')
+      }
+    }
+
+    // ═══════════════════════════════════════════════════
     // STEP 5: Post to social media
     // ═══════════════════════════════════════════════════
     await updateStatus(supabase, newsId, 'social_posting')
 
     // Build all social post tasks, then execute in parallel
+    // Timeout: 90s (teasers pre-cached, but image upload + API calls still need time)
     const socialTasks: Array<{ platform: string; lang: string; promise: Promise<Response> }> = []
     for (const platform of platforms) {
       for (const lang of languages) {
@@ -324,7 +376,7 @@ serve(async (req) => {
         socialTasks.push({
           platform,
           lang,
-          promise: callFunction(`post-to-${platform}`, { newsId, language: lang, contentType: 'news' })
+          promise: callFunction(`post-to-${platform}`, { newsId, language: lang, contentType: 'news' }, 90000)
         })
       }
     }
