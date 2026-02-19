@@ -17,20 +17,11 @@ import {
   MTKrutoClient,             // Now TelegramClient type
   YOUTUBE_HELPERS_VERSION
 } from '../_shared/youtube-helpers.ts'
+import { escapeHtml } from '../_shared/social-media-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-/**
- * Escape HTML special characters to prevent Telegram HTML parsing errors
- */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
 }
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!

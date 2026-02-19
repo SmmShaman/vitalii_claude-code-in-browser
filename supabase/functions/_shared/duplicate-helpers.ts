@@ -5,6 +5,7 @@
  */
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { escapeHtml } from './social-media-helpers.ts';
 
 export const DUPLICATE_HELPERS_VERSION = "2026-02-15-v1";
 
@@ -261,14 +262,3 @@ export function formatDuplicateWarning(duplicates: DuplicateResult[]): string {
   return warning;
 }
 
-// ============================================================
-// Utility
-// ============================================================
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}

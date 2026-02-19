@@ -7,6 +7,7 @@ import {
   formatDuplicateWarning,
   type DuplicateResult
 } from '../_shared/duplicate-helpers.ts'
+import { escapeHtml } from '../_shared/social-media-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -749,12 +750,3 @@ newsId:${newsId}`
   }
 }
 
-/**
- * Escape HTML special characters for Telegram
- */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-}

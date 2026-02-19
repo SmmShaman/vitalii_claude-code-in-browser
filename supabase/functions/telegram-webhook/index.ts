@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
+import { escapeHtml } from '../_shared/social-media-helpers.ts'
 
 /**
  * Extract external source links from text content
@@ -33,18 +34,18 @@ function extractSourceLink(text: string): string | null {
   return null
 }
 
-/**
- * Escape HTML special characters to prevent Telegram HTML parsing errors
- */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-}
-
 serve(async (req) => {
   try {
+    // Verify Telegram webhook secret token to prevent unauthorized requests
+    const WEBHOOK_SECRET = Deno.env.get('TELEGRAM_WEBHOOK_SECRET')
+    if (WEBHOOK_SECRET) {
+      const secretHeader = req.headers.get('X-Telegram-Bot-Api-Secret-Token')
+      if (secretHeader !== WEBHOOK_SECRET) {
+        console.warn('⚠️ Unauthorized webhook request - invalid secret token')
+        return new Response('Unauthorized', { status: 401 })
+      }
+    }
+
     const update = await req.json()
     console.log('Telegram webhook received:', JSON.stringify(update, null, 2))
 

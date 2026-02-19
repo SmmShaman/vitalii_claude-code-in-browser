@@ -194,14 +194,16 @@ export function generateAlternates(
 ) {
   const basePath = type === 'blog' ? 'blog' : 'news'
 
+  const languages: Record<string, string> = {
+    'x-default': slugs.en ? `${BASE_URL}/${basePath}/${slugs.en}` : `${BASE_URL}/${basePath}/${currentSlug}`,
+  }
+  if (slugs.en) languages['en'] = `${BASE_URL}/${basePath}/${slugs.en}`
+  if (slugs.no) languages['no'] = `${BASE_URL}/${basePath}/${slugs.no}`
+  if (slugs.ua) languages['uk'] = `${BASE_URL}/${basePath}/${slugs.ua}`
+
   return {
     canonical: `${BASE_URL}/${basePath}/${currentSlug}`,
-    languages: {
-      'en': slugs.en ? `${BASE_URL}/${basePath}/${slugs.en}` : undefined,
-      'no': slugs.no ? `${BASE_URL}/${basePath}/${slugs.no}` : undefined,
-      'uk': slugs.ua ? `${BASE_URL}/${basePath}/${slugs.ua}` : undefined,
-      'x-default': slugs.en ? `${BASE_URL}/${basePath}/${slugs.en}` : `${BASE_URL}/${basePath}/${currentSlug}`,
-    },
+    languages,
   }
 }
 
