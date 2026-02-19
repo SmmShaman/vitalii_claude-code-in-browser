@@ -25,6 +25,61 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+// Localized CTA for Instagram captions (used with AI teaser)
+const INSTAGRAM_TEASER_CTA: Record<string, string> = {
+  en: '🔗 Read on vitalii.no',
+  no: '🔗 Les på vitalii.no',
+  ua: '🔗 Читати на vitalii.no'
+}
+
+/**
+ * Generate or fetch cached Instagram teaser
+ */
+async function getInstagramTeaser(
+  recordId: string,
+  contentType: 'news' | 'blog',
+  language: 'en' | 'no' | 'ua',
+  title: string,
+  content: string
+): Promise<string | null> {
+  try {
+    console.log(`🎯 Fetching/generating Instagram teaser (${language})...`)
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        newsId: contentType === 'news' ? recordId : undefined,
+        blogPostId: contentType === 'blog' ? recordId : undefined,
+        title,
+        content,
+        contentType,
+        platform: 'instagram',
+        language
+      })
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ Instagram teaser generation failed:', await response.text())
+      return null
+    }
+
+    const result = await response.json()
+    if (result.success && result.teaser) {
+      console.log(`✅ Got Instagram teaser (cached: ${result.cached})`)
+      return result.teaser
+    }
+
+    return null
+  } catch (error: any) {
+    console.warn('⚠️ Error getting Instagram teaser:', error.message)
+    return null
+  }
+}
+
 interface InstagramPostRequest {
   newsId?: string
   blogPostId?: string
@@ -188,14 +243,32 @@ serve(async (req) => {
     // Build article URL
     const articleUrl = buildArticleUrl(requestData.contentType, content.slug)
 
-    // Format Instagram caption (2200 char limit)
-    const caption = formatInstagramCaption(
+    // Generate or fetch cached Instagram teaser
+    const teaser = await getInstagramTeaser(
+      contentId,
+      requestData.contentType,
+      requestData.language,
       content.title,
-      content.description,
-      articleUrl,
-      content.tags || [],
-      requestData.language
+      content.content || content.description
     )
+
+    // Use AI teaser if available, otherwise fallback to basic format
+    let caption: string
+    if (teaser) {
+      const cta = INSTAGRAM_TEASER_CTA[requestData.language] || INSTAGRAM_TEASER_CTA.en
+      // Instagram: teaser already includes emojis and hashtags from AI prompt
+      caption = `${teaser}\n\n${cta}`.substring(0, 2200)
+      console.log('📝 Using AI-generated teaser for Instagram caption')
+    } else {
+      caption = formatInstagramCaption(
+        content.title,
+        content.description,
+        articleUrl,
+        content.tags || [],
+        requestData.language
+      )
+      console.log('📝 No teaser available, using formatInstagramCaption fallback')
+    }
 
     // Determine which media URL to use (prefer video for Reels)
     const mediaUrl = hasVideo ? videoUrlForInstagram! : content.imageUrl!

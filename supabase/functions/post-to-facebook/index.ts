@@ -28,6 +28,61 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+// Localized CTA for Facebook posts (fallback when no AI teaser)
+const FACEBOOK_CTA: Record<string, string> = {
+  en: '🔗 Read more',
+  no: '🔗 Les mer',
+  ua: '🔗 Читати далі'
+}
+
+/**
+ * Generate or fetch cached Facebook teaser
+ */
+async function getFacebookTeaser(
+  recordId: string,
+  contentType: 'news' | 'blog',
+  language: 'en' | 'no' | 'ua',
+  title: string,
+  content: string
+): Promise<string | null> {
+  try {
+    console.log(`🎯 Fetching/generating Facebook teaser (${language})...`)
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        newsId: contentType === 'news' ? recordId : undefined,
+        blogPostId: contentType === 'blog' ? recordId : undefined,
+        title,
+        content,
+        contentType,
+        platform: 'facebook',
+        language
+      })
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ Facebook teaser generation failed:', await response.text())
+      return null
+    }
+
+    const result = await response.json()
+    if (result.success && result.teaser) {
+      console.log(`✅ Got Facebook teaser (cached: ${result.cached})`)
+      return result.teaser
+    }
+
+    return null
+  } catch (error: any) {
+    console.warn('⚠️ Error getting Facebook teaser:', error.message)
+    return null
+  }
+}
+
 interface FacebookPostRequest {
   newsId?: string
   blogPostId?: string
@@ -172,12 +227,29 @@ serve(async (req) => {
     // Build article URL
     const articleUrl = buildArticleUrl(requestData.contentType, content.slug)
 
-    // Format post content
-    const message = formatFacebookPost(
+    // Generate or fetch cached Facebook teaser
+    const teaser = await getFacebookTeaser(
+      contentId,
+      requestData.contentType,
+      requestData.language,
       content.title,
-      content.description,
-      content.tags || []
+      content.content || content.description
     )
+
+    // Use AI teaser if available, otherwise fallback to basic format
+    let message: string
+    if (teaser) {
+      const cta = FACEBOOK_CTA[requestData.language] || FACEBOOK_CTA.en
+      message = `${teaser}\n\n${cta}: ${articleUrl}`
+      console.log('📝 Using AI-generated teaser for Facebook post')
+    } else {
+      message = formatFacebookPost(
+        content.title,
+        content.description,
+        content.tags || []
+      )
+      console.log('📝 No teaser available, using formatFacebookPost fallback')
+    }
 
     // Create tracking record (with race condition protection)
     const { post: socialPost, raceCondition } = await createSocialPost({

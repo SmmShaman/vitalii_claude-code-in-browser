@@ -810,7 +810,10 @@ export function formatFacebookPost(
   description: string,
   hashtags: string[] = []
 ): string {
-  const hashtagText = hashtags.length > 0 ? `\n\n${hashtags.map(t => `#${t}`).join(' ')}` : '';
+  // Remove spaces and special chars from hashtags (e.g. "Data Intelligence" → "DataIntelligence")
+  const hashtagText = hashtags.length > 0
+    ? `\n\n${hashtags.map(t => `#${t.replace(/[^a-zA-Z0-9а-яА-ЯіІїЇєЄæøåÆØÅ]/g, '')}`).join(' ')}`
+    : '';
 
   // Trim description for better engagement (Facebook recommends ~500 chars)
   const maxDescLength = 400;
