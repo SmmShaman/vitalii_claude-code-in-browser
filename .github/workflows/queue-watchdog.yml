@@ -19,7 +19,9 @@ jobs:
           echo "🧟 Queue Watchdog — $(date -u '+%H:%M UTC')"
 
           # 1. Find and clean zombie articles (stuck >10 min in active status)
-          ZOMBIES=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/news?auto_publish_status=in.(pending,variant_selection,image_generation,content_rewrite,social_posting)&auto_publish_started_at=lt.$(date -u -d '10 minutes ago' '+%Y-%m-%dT%H:%M:%S+00:00')" \
+          CUTOFF=$(date -u -d '10 minutes ago' '+%Y-%m-%dT%H:%M:%SZ')
+          echo "🕐 Cutoff: $CUTOFF"
+          ZOMBIES=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/news?auto_publish_status=in.(pending,variant_selection,image_generation,content_rewrite,social_posting)&auto_publish_started_at=lt.$CUTOFF" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/json" \
