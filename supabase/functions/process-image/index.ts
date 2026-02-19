@@ -8,7 +8,18 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-03-v7-fix-category-column'
+const VERSION = '2026-02-19-v8-model-fallback'
+
+// Image generation models in priority order (all use generateContent API)
+const IMAGE_GENERATION_MODELS = [
+  'gemini-3-pro-image-preview',
+  'gemini-2.5-flash-image',
+]
+
+// Max time to wait for a single model API call (40 seconds)
+const MODEL_TIMEOUT_MS = 40_000
+// Delay between retries for transient errors
+const RETRY_DELAY_MS = 2_000
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -600,6 +611,91 @@ const FALLBACK_ABSTRACT_PROMPTS: Record<string, string> = {
   'general': 'Professional abstract business illustration with geometric shapes, modern gradients, corporate aesthetics, interconnected nodes and flowing lines representing innovation and progress'
 }
 
+/**
+ * Helper: call a single model with timeout and return parsed result or null
+ * Returns: { imageUrl: string } on success, { contentPolicy: true } for IMAGE_OTHER, null on failure
+ */
+async function callImageModel(
+  modelName: string,
+  requestBody: Record<string, unknown>,
+  apiKey: string
+): Promise<{ imageUrl?: string; contentPolicy?: boolean } | null> {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`
+
+  // AbortController for timeout — prevents hanging on overloaded models
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
+
+  try {
+    console.log(`📤 Calling ${modelName}...`)
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      let errorMessage = errorText.substring(0, 200)
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.error?.message || JSON.stringify(errorJson).substring(0, 200)
+      } catch { /* use raw text */ }
+
+      console.error(`❌ ${modelName} error: ${response.status} - ${errorMessage}`)
+      lastApiError = `${modelName}: Status ${response.status}: ${errorMessage}`
+
+      // Return null to signal retry/fallback for transient errors
+      return null
+    }
+
+    const result = await response.json()
+
+    // Check for content policy block
+    const candidate = result.candidates?.[0]
+    if (candidate?.finishReason === 'IMAGE_OTHER') {
+      const finishMsg = candidate.finishMessage || 'Content policy violation'
+      console.warn(`⚠️ ${modelName} content policy blocked: ${finishMsg}`)
+      return { contentPolicy: true }
+    }
+
+    // Extract image from response
+    if (result.candidates && result.candidates[0]?.content?.parts) {
+      for (const part of result.candidates[0].content.parts) {
+        const imageData = part.inline_data || part.inlineData
+        if (imageData && imageData.data) {
+          console.log(`✅ ${modelName} generated image successfully`)
+          const processedImageUrl = await uploadProcessedImage(imageData.data)
+          return { imageUrl: processedImageUrl }
+        }
+        if (part.text) {
+          console.log(`📝 ${modelName} text part: ${part.text.substring(0, 100)}`)
+        }
+      }
+    }
+
+    lastApiError = `${modelName}: No image in response`
+    console.log(`⚠️ ${modelName}: No image found in response parts`)
+    return null
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error(`⏱️ ${modelName} timed out after ${MODEL_TIMEOUT_MS / 1000}s`)
+      lastApiError = `${modelName}: Timeout after ${MODEL_TIMEOUT_MS / 1000}s`
+    } else {
+      console.error(`❌ ${modelName} error:`, error.message || error)
+      lastApiError = `${modelName}: ${error.message || String(error)}`
+    }
+    return null
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 async function generateImageFromText(
   prompt: string,
   apiKey: string,
@@ -616,7 +712,7 @@ async function generateImageFromText(
       ? (FALLBACK_ABSTRACT_PROMPTS[category || 'general'] || FALLBACK_ABSTRACT_PROMPTS['general'])
       : prompt
 
-    console.log('📤 Generating image with Gemini 3 Pro Image (text-to-image)...')
+    console.log('📤 Generating image (text-to-image) with model fallback chain...')
     if (useAbstractFallback) {
       console.log('🔄 Using ABSTRACT FALLBACK prompt due to content policy')
       console.log('📂 Category:', category || 'general')
@@ -663,9 +759,6 @@ Date and watermark should be subtle, small, and not distract from the main image
       ? `\n\n${languageInstructions[language]}`
       : `\n\nNo text on the image except "vitalii.no" at the bottom.`
 
-    // Gemini 3 Pro Image endpoint for text-to-image generation
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
-
     // Quality boost instructions for better image generation
     const qualityBoost = `CRITICAL QUALITY REQUIREMENTS:
 - Generate in highest possible resolution (8K quality)
@@ -701,92 +794,50 @@ IMPORTANT: The image MUST be in ${aspectRatio} aspect ratio.`
       }
     }
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify(requestBody)
-    })
+    // Try each model in the fallback chain
+    for (let i = 0; i < IMAGE_GENERATION_MODELS.length; i++) {
+      const modelName = IMAGE_GENERATION_MODELS[i]
+      console.log(`🔄 Trying model ${i + 1}/${IMAGE_GENERATION_MODELS.length}: ${modelName}`)
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Gemini 3 Pro Image API error:', response.status)
+      // First attempt
+      const result = await callImageModel(modelName, requestBody, apiKey)
 
-      try {
-        const errorJson = JSON.parse(errorText)
-        const errorMessage = errorJson.error?.message || JSON.stringify(errorJson)
-        console.error('Error details:', errorMessage)
-        lastApiError = `Status ${response.status}: ${errorMessage}`
-
-        // Log specific error hints
-        if (response.status === 400) {
-          console.error('💡 Hint: Check if API key has Gemini API enabled in Google Cloud Console')
-        } else if (response.status === 403) {
-          console.error('💡 Hint: API key may not have permission for image generation')
-        } else if (response.status === 429) {
-          console.error('💡 Hint: Rate limit exceeded, try again later')
-        }
-      } catch {
-        console.error('Raw error:', errorText.substring(0, 500))
-        lastApiError = `Status ${response.status}: ${errorText.substring(0, 200)}`
+      if (result?.imageUrl) {
+        return result.imageUrl
       }
-      return null
-    }
 
-    const result = await response.json()
-    console.log('📥 Gemini response received, checking for image...')
-
-    // Check for content policy block (IMAGE_OTHER) FIRST before looking for image
-    const candidate = result.candidates?.[0]
-    if (candidate?.finishReason === 'IMAGE_OTHER') {
-      const finishMsg = candidate.finishMessage || 'Content policy violation - unable to generate image'
-      console.warn('⚠️ Content policy blocked (IMAGE_OTHER):', finishMsg)
-
-      // If not already using abstract fallback, retry with safe abstract prompt
-      if (!useAbstractFallback) {
+      // Content policy block → try abstract fallback (same model)
+      if (result?.contentPolicy && !useAbstractFallback) {
         console.log('🔄 Retrying with abstract fallback prompt to bypass content policy...')
-        console.log('📂 Using category:', category || 'general')
         return generateImageFromText(prompt, apiKey, language, category, true, aspectRatio)
       }
+      if (result?.contentPolicy && useAbstractFallback) {
+        lastApiError = `Content policy blocked even abstract prompt on ${modelName}`
+        console.error('❌ Content policy blocked even with abstract fallback')
+        return null
+      }
 
-      // Already tried fallback and still blocked - give up gracefully
-      lastApiError = `Content policy blocked even abstract prompt: ${finishMsg}`
-      console.error('❌ Content policy blocked even with abstract fallback prompt')
-      return null
-    }
+      // Transient failure (503/timeout) → retry once with delay, then move to next model
+      if (!result) {
+        console.log(`⏳ Waiting ${RETRY_DELAY_MS}ms before retry...`)
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS))
 
-    // Extract image from Gemini response
-    if (result.candidates && result.candidates[0]?.content?.parts) {
-      console.log('📦 Found', result.candidates[0].content.parts.length, 'parts in response')
-      console.log('📋 Parts structure:', JSON.stringify(result.candidates[0].content.parts.map((p: any) => Object.keys(p)), null, 2))
-      for (const part of result.candidates[0].content.parts) {
-        // Check both snake_case (inline_data) and camelCase (inlineData) formats
-        const imageData = part.inline_data || part.inlineData
-        if (imageData && imageData.data) {
-          console.log('✅ Gemini 3 Pro Image generated image successfully')
-          console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
-          // Upload to Supabase Storage (logo/branding via Gemini prompt)
-          const processedImageUrl = await uploadProcessedImage(imageData.data)
-          return processedImageUrl
+        const retryResult = await callImageModel(modelName, requestBody, apiKey)
+        if (retryResult?.imageUrl) {
+          return retryResult.imageUrl
         }
-        if (part.text) {
-          console.log('📝 Text part found:', part.text.substring(0, 100))
-          lastApiError = `No image generated. Model returned text: ${part.text.substring(0, 200)}`
+        if (retryResult?.contentPolicy && !useAbstractFallback) {
+          return generateImageFromText(prompt, apiKey, language, category, true, aspectRatio)
+        }
+
+        // Move to next model
+        if (i < IMAGE_GENERATION_MODELS.length - 1) {
+          console.log(`⚠️ ${modelName} failed, falling back to next model...`)
         }
       }
-      // If we got here, no image was found in parts
-      if (!lastApiError) {
-        lastApiError = `No image found in ${result.candidates[0].content.parts.length} parts. Keys: ${JSON.stringify(result.candidates[0].content.parts.map((p: any) => Object.keys(p)))}`
-      }
-    } else {
-      // Log what we got instead
-      lastApiError = `Unexpected response structure: ${JSON.stringify(result).substring(0, 300)}`
-      console.log('⚠️ Unexpected response:', lastApiError)
     }
 
-    console.log('⚠️ No image in Gemini 3 Pro Image response')
+    console.log('❌ All image generation models failed')
     return null
 
   } catch (error: any) {
@@ -911,152 +962,41 @@ async function downloadImage(url: string): Promise<string> {
 }
 
 /**
- * Process image with Google Gemini 3 Pro Image
- * Native image generation model from Google with advanced text rendering
- * See: https://ai.google.dev/gemini-api/docs/image-generation
+ * Process image with AI (image-to-image mode)
+ * Uses model fallback chain with timeout protection
  */
 async function processImageWithAI(imageBase64: string, prompt: string, apiKey: string): Promise<string | null> {
-  try {
-    // Try Gemini 3 Pro Image - native image generation with advanced text rendering
-    console.log('📤 Generating image with Gemini 3 Pro Image...')
-
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent`
-
-    // Request body with image config (1:1 square)
-    const requestBody = {
-      contents: [{
-        parts: [
-          { text: prompt },
-          {
-            inline_data: {
-              mime_type: 'image/jpeg',
-              data: imageBase64
-            }
+  const requestBody = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        {
+          inline_data: {
+            mime_type: 'image/jpeg',
+            data: imageBase64
           }
-        ]
-      }],
-      generationConfig: {
-        responseModalities: ['TEXT', 'IMAGE']
-      }
-    }
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify(requestBody)
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Gemini API error:', response.status, errorText)
-
-      // Log detailed error for debugging
-      try {
-        const errorJson = JSON.parse(errorText)
-        console.error('Error details:', errorJson.error?.message || errorJson)
-      } catch {
-        console.error('Raw error:', errorText.substring(0, 500))
-      }
-      return null
-    }
-
-    const result = await response.json()
-    console.log('📥 Gemini API response received')
-    console.log('Response structure:', JSON.stringify(result, null, 2).substring(0, 1000))
-
-    // Extract processed image from response
-    // Gemini returns images in candidates[0].content.parts[].inline_data or inlineData
-    if (result.candidates && result.candidates[0]?.content?.parts) {
-      console.log('📦 Found', result.candidates[0].content.parts.length, 'parts in response')
-      console.log('📋 Parts structure:', JSON.stringify(result.candidates[0].content.parts.map((p: any) => Object.keys(p)), null, 2))
-      for (const part of result.candidates[0].content.parts) {
-        // Check both snake_case (inline_data) and camelCase (inlineData) formats
-        const imageData = part.inline_data || part.inlineData
-        if (imageData && imageData.data) {
-          console.log('✅ Found generated image in response')
-          console.log('📊 Image format:', part.inline_data ? 'snake_case' : 'camelCase')
-          // Upload processed image to Supabase Storage (logo/branding via Gemini prompt)
-          const processedImageUrl = await uploadProcessedImage(imageData.data)
-          return processedImageUrl
         }
-        if (part.text) {
-          console.log('📝 Text response from Gemini:', part.text.substring(0, 200))
-        }
-      }
+      ]
+    }],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE']
     }
-
-    console.log('⚠️ No image in Gemini 3 Pro Image response, trying fallback...')
-
-    // Fallback: Try Imagen 3 (requires Vertex AI access)
-    const imagenResult = await tryImagenGeneration(prompt, apiKey)
-    if (imagenResult) {
-      return imagenResult
-    }
-
-    console.log('❌ All image generation methods failed (Gemini 3 Pro Image + Imagen 3 fallback)')
-    return null
-
-  } catch (error: any) {
-    console.error('Error in image generation:', error)
-    return null
   }
-}
 
-/**
- * Fallback: Try to generate image using Google Imagen 3 API
- * Note: Imagen 3 requires Vertex AI access, may not work with standard Gemini API key
- */
-async function tryImagenGeneration(prompt: string, apiKey: string): Promise<string | null> {
-  try {
-    console.log('📤 Trying Imagen 3 as fallback (requires Vertex AI access)...')
+  // Try each model in the fallback chain
+  for (const modelName of IMAGE_GENERATION_MODELS) {
+    console.log(`📤 Processing image with ${modelName}...`)
+    const result = await callImageModel(modelName, requestBody, apiKey)
 
-    // Imagen 3 endpoint - note: may require Vertex AI, not standard Gemini API
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict`
-
-    const requestBody = {
-      instances: [{
-        prompt: prompt
-      }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: '1:1',
-        personGeneration: 'allow_adult',
-        safetySetting: 'block_few'
-      }
+    if (result?.imageUrl) {
+      return result.imageUrl
     }
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify(requestBody)
-    })
-
-    if (!response.ok) {
-      console.log('⚠️ Imagen 3 not available:', response.status, '(requires Vertex AI access)')
-      // Don't log as error - Imagen typically requires Vertex AI, not standard Gemini API key
-      return null
-    }
-
-    const result = await response.json()
-
-    if (result.predictions && result.predictions[0]?.bytesBase64Encoded) {
-      console.log('✅ Imagen 3 generated image successfully')
-      // Upload to Supabase Storage (logo/branding via Gemini prompt)
-      const processedImageUrl = await uploadProcessedImage(result.predictions[0].bytesBase64Encoded)
-      return processedImageUrl
-    }
-
-    return null
-  } catch (error) {
-    console.log('⚠️ Imagen 3 generation failed:', error)
-    return null
+    console.log(`⚠️ ${modelName} failed, trying next model...`)
   }
+
+  console.log('❌ All image generation models failed for image-to-image')
+  return null
 }
 
 /**
