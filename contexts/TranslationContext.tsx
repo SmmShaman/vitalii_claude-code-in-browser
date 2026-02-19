@@ -9,7 +9,7 @@ export type Language = "NO" | "EN" | "UA";
 interface TranslationContextType {
   currentLanguage: Language;
   setCurrentLanguage: (lang: Language) => void;
-  t: (key: TranslationKey) => any;
+  t: (key: TranslationKey) => any; // Returns string | array depending on key (e.g. projects_list)
   isLoading: boolean;
 }
 

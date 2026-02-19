@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // News pages with multilingual support
   let newsPages: MetadataRoute.Sitemap = []
   try {
-    const news = await getLatestNews(100)
+    const news = await getLatestNews(1000)
     newsPages = news.flatMap((item: any) => {
       const pages: MetadataRoute.Sitemap = []
       const lastModified = new Date(item.published_at || item.created_at)
@@ -92,7 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Blog pages with multilingual support
   let blogPages: MetadataRoute.Sitemap = []
   try {
-    const posts = await getLatestBlogPosts(100)
+    const posts = await getLatestBlogPosts(1000)
     blogPages = posts.flatMap((post: any) => {
       const pages: MetadataRoute.Sitemap = []
       const lastModified = new Date(post.published_at || post.created_at)

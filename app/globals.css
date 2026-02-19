@@ -66,69 +66,6 @@
   display: none;  /* Chrome, Safari and Opera */
 }
 
-/* Custom Animations */
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-}
-
-@keyframes expandCard {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes slide-right {
-  from {
-    opacity: 0;
-    transform: translateX(-100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes float {
-  0% {
-    transform: translateY(0) translateX(0);
-  }
-  50% {
-    transform: translateY(-100px) translateX(50px);
-  }
-  100% {
-    transform: translateY(0) translateX(0);
-  }
-}
-
-.animate-fadeOut {
-  animation: fadeOut 0.3s ease-out forwards;
-}
-
-.animate-expandCard {
-  animation: expandCard 0.6s ease-in-out;
-}
-
-.animate-slide-right {
-  animation: slide-right 0.5s ease-out forwards;
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
 /* Snake Animation for Card Expansion */
 .snake-animation {
   position: fixed;

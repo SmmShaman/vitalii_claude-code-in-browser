@@ -328,10 +328,12 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
                           className="block w-full my-4 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2 rounded-lg overflow-hidden"
                           aria-label={`View ${alt || 'image'} in fullscreen`}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <Image
                             src={imgSrc}
                             alt={alt || ''}
+                            width={1200}
+                            height={675}
+                            sizes="(max-width: 768px) 100vw, 720px"
                             className="w-full h-auto rounded-lg hover:scale-[1.02] transition-transform"
                           />
                         </button>

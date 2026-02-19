@@ -135,7 +135,11 @@ export function generatePersonSchema() {
     jobTitle: AUTHOR.jobTitle,
     description: AUTHOR.description,
     sameAs: [
-      // Add social media links here
+      'https://linkedin.com/in/smmshaman',
+      'https://github.com/SmmShaman',
+      'https://twitter.com/SmmShaman',
+      'https://instagram.com/smmshaman',
+      'https://facebook.com/smm.shaman',
     ],
   }
 }
