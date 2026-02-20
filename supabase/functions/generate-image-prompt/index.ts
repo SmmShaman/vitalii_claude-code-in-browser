@@ -630,21 +630,9 @@ RULES:
 
     if (!generatedPrompt) return null
 
-    // Add quality boost and branding to the creative prompt
-    const qualityBoost = `
-
-QUALITY REQUIREMENTS (MANDATORY):
-- Ultra high resolution, 8K quality
-- Vibrant colors with professional contrast
-- Sharp details, no blur or artifacts
-- Professional lighting with depth
-- 1:1 square aspect ratio for social media
-
-BRANDING (MANDATORY):
-- Add small "vitalii.no" watermark text in the bottom right corner
-- The watermark should be subtle but readable`
-
-    return generatedPrompt + qualityBoost
+    // NOTE: Quality and branding instructions are now added by process-image function
+    // to avoid duplication and conflicting language instructions
+    return generatedPrompt
 
   } catch (error: any) {
     console.error('❌ Error generating creative prompt:', error)

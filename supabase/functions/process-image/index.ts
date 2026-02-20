@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-19-v8-model-fallback'
+const VERSION = '2026-02-20-v9-fix-language-instructions'
 
 // Image generation models in priority order (all use generateContent API)
 const IMAGE_GENERATION_MODELS = [
@@ -732,25 +732,36 @@ async function generateImageFromText(
     }
 
     // Language instructions for Gemini with MANDATORY date and vitalii.no branding
+    // NOTE: Language instructions must be VERY explicit because Gemini tends to default to Norwegian
+    // (likely due to "vitalii.no" domain and Norwegian news context in prompts)
     const languageInstructions: Record<string, string> = {
-      'ua': `MANDATORY VISUAL REQUIREMENTS:
-1. All text MUST be in Ukrainian (Cyrillic script)
-2. Add small subtle "${dateFormats['ua']}" date text in the bottom left corner (same small size as watermark)
-3. Add small "vitalii.no" watermark text in the bottom right corner
+      'ua': `⚠️ CRITICAL TEXT LANGUAGE RULE — THIS IS THE #1 PRIORITY:
+ALL text, words, labels, titles, captions, and ANY written content on the image MUST be in UKRAINIAN language (Cyrillic script: А-Я, а-я).
+DO NOT use Norwegian, English, or any other language for text on the image.
+Examples of correct Ukrainian text: "Технології", "Новини", "Бізнес", "Інновації".
+DO NOT write "Teknologi", "Nyheter", "Bedrift" (that is Norwegian — FORBIDDEN).
+DO NOT write "Technology", "News", "Business" (that is English — FORBIDDEN).
 
-Date and watermark should be subtle, small, and not distract from the main image.`,
-      'no': `MANDATORY VISUAL REQUIREMENTS:
-1. All text MUST be in Norwegian (Latin script)
-2. Add small subtle "${dateFormats['no']}" date text in the bottom left corner (same small size as watermark)
-3. Add small "vitalii.no" watermark text in the bottom right corner
+BRANDING ELEMENTS (small, subtle, do not distract):
+- Bottom-left corner: small date text "${dateFormats['ua']}"
+- Bottom-right corner: small watermark "vitalii.no"`,
+      'no': `⚠️ CRITICAL TEXT LANGUAGE RULE — THIS IS THE #1 PRIORITY:
+ALL text, words, labels, titles, captions, and ANY written content on the image MUST be in NORWEGIAN language (Bokmål, Latin script).
+Examples of correct Norwegian text: "Teknologi", "Nyheter", "Bedrift", "Innovasjon".
 
-Date and watermark should be subtle, small, and not distract from the main image.`,
-      'en': `MANDATORY VISUAL REQUIREMENTS:
-1. All text MUST be in English
-2. Add small subtle "${dateFormats['en']}" date text in the bottom left corner (same small size as watermark)
-3. Add small "vitalii.no" watermark text in the bottom right corner
+BRANDING ELEMENTS (small, subtle, do not distract):
+- Bottom-left corner: small date text "${dateFormats['no']}"
+- Bottom-right corner: small watermark "vitalii.no"`,
+      'en': `⚠️ CRITICAL TEXT LANGUAGE RULE — THIS IS THE #1 PRIORITY:
+ALL text, words, labels, titles, captions, and ANY written content on the image MUST be in ENGLISH language.
+DO NOT use Norwegian, Ukrainian, or any other language for text on the image.
+Examples of correct English text: "Technology", "News", "Business", "Innovation".
+DO NOT write "Teknologi", "Nyheter", "Bedrift" (that is Norwegian — FORBIDDEN).
+DO NOT write "Технології", "Новини", "Бізнес" (that is Ukrainian — FORBIDDEN).
 
-Date and watermark should be subtle, small, and not distract from the main image.`
+BRANDING ELEMENTS (small, subtle, do not distract):
+- Bottom-left corner: small date text "${dateFormats['en']}"
+- Bottom-right corner: small watermark "vitalii.no"`
     }
 
     console.log('📅 Date being sent to AI:', dateFormats[language || 'en'])
@@ -776,17 +787,18 @@ Date and watermark should be subtle, small, and not distract from the main image
     const requestBody = {
       contents: [{
         parts: [{
-          text: `${qualityBoost}
+          text: `${langInstruction}
+
+${qualityBoost}
 
 Generate a professional news illustration for LinkedIn/Instagram.
-
-Date for subtle corner placement: ${dateFormats[language || 'en']}
-${langInstruction}
 
 Visual concept: ${effectivePrompt}
 
 Style: Modern, professional, ${aspectRatioDescription}.
-IMPORTANT: The image MUST be in ${aspectRatio} aspect ratio.`
+IMPORTANT: The image MUST be in ${aspectRatio} aspect ratio.
+
+REMINDER: ${language === 'ua' ? 'All text on the image must be in UKRAINIAN (Cyrillic). No Norwegian or English text!' : language === 'en' ? 'All text on the image must be in ENGLISH. No Norwegian or Ukrainian text!' : language === 'no' ? 'All text on the image must be in NORWEGIAN.' : 'No text on the image except vitalii.no watermark.'}`
         }]
       }],
       generationConfig: {
