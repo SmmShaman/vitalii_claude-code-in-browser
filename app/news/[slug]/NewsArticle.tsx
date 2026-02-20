@@ -26,19 +26,36 @@ function extractYouTubeId(url: string): string {
 interface NewsArticleProps {
   slug: string
   initialLanguage?: 'en' | 'no' | 'ua'
+  initialData?: any
 }
 
-export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
+export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleProps) {
   const { currentLanguage } = useTranslations()
   const tracking = useTrackingSafe()
-  const [news, setNews] = useState<any>(null)
+  const [news, setNews] = useState<any>(initialData || null)
   const [relatedNews, setRelatedNews] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialData)
   const hasTrackedView = useRef(false)
   const { isOpen, currentIndex, images, openWithImage, closeLightbox, setImages } = useLightbox()
 
   useEffect(() => {
     const fetchNews = async () => {
+      // Skip fetch if we already have data from server and slug hasn't changed
+      if (initialData && news?.id === initialData.id) {
+        // Still track view and fetch related
+        if (!hasTrackedView.current) {
+          const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
+          const title = initialData[`title_${lang}`] || initialData.title_en
+          tracking?.trackArticleView('news', initialData.id, title, currentLanguage)
+          hasTrackedView.current = true
+        }
+        if (initialData.tags?.length > 0 && relatedNews.length === 0) {
+          const related = await getRelatedNews(initialData.id, initialData.tags, 3)
+          setRelatedNews(related || [])
+        }
+        return
+      }
+
       const data = await getNewsBySlug(slug)
       setNews(data)
       setLoading(false)

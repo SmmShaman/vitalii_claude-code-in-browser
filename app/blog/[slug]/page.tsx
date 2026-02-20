@@ -75,7 +75,7 @@ export default async function BlogPage({ params }: Props) {
 
   return (
     <ArticleLayout>
-      <BlogArticle slug={slug} initialLanguage={lang} />
+      <BlogArticle slug={slug} initialLanguage={lang} initialData={post} />
     </ArticleLayout>
   )
 }

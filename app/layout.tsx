@@ -29,6 +29,14 @@ export const metadata: Metadata = {
     alternateLocale: ['nb_NO', 'uk_UA'],
     siteName: 'Vitalii Berbeha',
     url: siteUrl,
+    images: [
+      {
+        url: `${siteUrl}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: 'Vitalii Berbeha - E-commerce & Marketing Expert',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',

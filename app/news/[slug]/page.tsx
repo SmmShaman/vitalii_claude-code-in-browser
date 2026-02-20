@@ -75,7 +75,7 @@ export default async function NewsPage({ params }: Props) {
 
   return (
     <ArticleLayout>
-      <NewsArticle slug={slug} initialLanguage={lang} />
+      <NewsArticle slug={slug} initialLanguage={lang} initialData={news} />
     </ArticleLayout>
   )
 }

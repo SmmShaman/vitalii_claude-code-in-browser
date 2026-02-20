@@ -27,19 +27,36 @@ function extractYouTubeId(url: string): string {
 interface BlogArticleProps {
   slug: string
   initialLanguage?: 'en' | 'no' | 'ua'
+  initialData?: any
 }
 
-export function BlogArticle({ slug, initialLanguage }: BlogArticleProps) {
+export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleProps) {
   const { currentLanguage } = useTranslations()
   const tracking = useTrackingSafe()
-  const [post, setPost] = useState<any>(null)
+  const [post, setPost] = useState<any>(initialData || null)
   const [relatedPosts, setRelatedPosts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialData)
   const hasTrackedView = useRef(false)
   const { isOpen, currentIndex, images, openWithImage, closeLightbox, setImages } = useLightbox()
 
   useEffect(() => {
     const fetchPost = async () => {
+      // Skip fetch if we already have data from server and slug hasn't changed
+      if (initialData && post?.id === initialData.id) {
+        // Still track view and fetch related
+        if (!hasTrackedView.current) {
+          const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
+          const title = initialData[`title_${lang}`] || initialData.title_en
+          tracking?.trackArticleView('blog', initialData.id, title, currentLanguage)
+          hasTrackedView.current = true
+        }
+        if (initialData.tags?.length > 0 && relatedPosts.length === 0) {
+          const related = await getRelatedBlogPosts(initialData.id, initialData.tags, 3)
+          setRelatedPosts(related || [])
+        }
+        return
+      }
+
       const data = await getBlogPostBySlug(slug)
       setPost(data)
       setLoading(false)

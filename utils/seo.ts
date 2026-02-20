@@ -77,6 +77,10 @@ export function generateNewsArticleSchema(news: NewsItem, language: 'en' | 'no' 
   const slug = language === 'en' ? news.slug_en : language === 'no' ? news.slug_no : news.slug_ua
   const title = language === 'en' ? news.title_en : language === 'no' ? news.title_no : news.title_ua
   const description = language === 'en' ? news.description_en : language === 'no' ? news.description_no : news.description_ua
+  const content = language === 'en' ? (news as any).content_en : language === 'no' ? (news as any).content_no : (news as any).content_ua
+
+  const wordCount = content?.split(/\s+/).length || 0
+  const readingTimeMinutes = Math.ceil(wordCount / 200)
 
   return {
     '@context': 'https://schema.org',
@@ -100,7 +104,10 @@ export function generateNewsArticleSchema(news: NewsItem, language: 'en' | 'no' 
       '@type': 'WebPage',
       '@id': `${BASE_URL}/news/${slug || news.id}`,
     },
+    wordCount,
+    timeRequired: `PT${readingTimeMinutes}M`,
     keywords: news.tags?.join(', ') || '',
+    articleSection: 'News',
     inLanguage: language === 'ua' ? 'uk' : language,
   }
 }

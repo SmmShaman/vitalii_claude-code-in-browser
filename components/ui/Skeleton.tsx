@@ -21,20 +21,20 @@ export function Skeleton({ className }: SkeletonProps) {
 export function ArticleSkeleton() {
   return (
     <div className="animate-pulse" role="status" aria-label="Loading article">
-      {/* Hero skeleton */}
-      <div className="w-full h-[35vh] md:h-[45vh] lg:h-[50vh] bg-gray-200 dark:bg-gray-800" />
+      {/* Hero skeleton — matches aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] */}
+      <div className="w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-gray-200 dark:bg-gray-800" />
 
-      {/* Content container */}
-      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
-        {/* Meta info skeleton */}
-        <div className="flex gap-4 mb-4">
+      {/* Content container — matches max-w-2xl */}
+      <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
+        {/* Title skeleton FIRST (editorial order) */}
+        <Skeleton className="h-10 md:h-12 w-full mb-3" />
+        <Skeleton className="h-10 md:h-12 w-3/4 mb-4" />
+
+        {/* Meta info skeleton AFTER title */}
+        <div className="flex gap-4 mb-6">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-4 w-20" />
         </div>
-
-        {/* Title skeleton */}
-        <Skeleton className="h-10 md:h-12 w-full mb-3" />
-        <Skeleton className="h-10 md:h-12 w-3/4 mb-6" />
 
         {/* Tags skeleton */}
         <div className="flex gap-2 mb-8">
