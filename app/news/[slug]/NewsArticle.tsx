@@ -66,7 +66,9 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
   const description = news?.[`description_${lang}`] || news?.description_en || ''
   const content = news?.[`content_${lang}`] || news?.content_en || description
   const currentSlug = news?.[`slug_${lang}`] || news?.slug_en || slug
-  const heroImage = news?.processed_image_url || news?.images?.[0] || news?.image_url
+  const heroImage = news?.processed_image_url_wide || news?.processed_image_url || news?.images?.[0] || news?.image_url
+  const originalImage = news?.image_url // Original source image for attribution
+  const sourceName = news?.original_url ? (() => { try { return new URL(news.original_url).hostname.replace('www.', '') } catch { return '' } })() : (news?.rss_source_url ? (() => { try { return new URL(news.rss_source_url).hostname.replace('www.', '') } catch { return '' } })() : '')
 
   // Collect all images for lightbox (hero + images from content) - MUST be before conditional returns
   const allImages = useMemo(() => {
@@ -188,7 +190,7 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
           <button
             type="button"
             onClick={() => handleImageClick(heroImage)}
-            className="relative w-full h-[35vh] md:h-[45vh] lg:h-[50vh] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2"
+            className="relative w-full aspect-[16/9] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2"
             aria-label={`View ${title} image in fullscreen`}
           >
             <Image
@@ -257,6 +259,34 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
           </div>
         )}
 
+        {/* Extra images gallery for non-video articles (images beyond hero + original) */}
+        {!news.video_url && (() => {
+          const extraImages = allImages.filter(img => img.src && img.src !== heroImage && img.src !== originalImage)
+          if (extraImages.length === 0) return null
+          return (
+            <div className="max-w-5xl mx-auto px-4 py-4">
+              <div className={`grid gap-2 ${extraImages.length === 1 ? 'grid-cols-1 max-w-2xl mx-auto' : extraImages.length === 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
+                {extraImages.map((img, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleImageClick(img.src!)}
+                    className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  >
+                    <Image
+                      src={img.src!}
+                      alt={img.alt || ''}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Content Container */}
         <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
           {/* Meta info */}
@@ -298,6 +328,32 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
                   </Link>
                 ))}
               </div>
+            </ScrollReveal>
+          )}
+
+          {/* Original source image with attribution */}
+          {originalImage && originalImage !== heroImage && (
+            <ScrollReveal delay={0.35}>
+              <figure className="mb-8">
+                <button
+                  type="button"
+                  onClick={() => handleImageClick(originalImage)}
+                  className="relative w-full aspect-[4/3] md:aspect-[16/10] bg-gray-100 rounded-xl overflow-hidden cursor-zoom-in hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
+                >
+                  <Image
+                    src={originalImage}
+                    alt={title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 768px"
+                    className="object-cover"
+                  />
+                </button>
+                {sourceName && (
+                  <figcaption className="mt-2 text-sm text-gray-500 text-center">
+                    Фото: {sourceName}
+                  </figcaption>
+                )}
+              </figure>
             </ScrollReveal>
           )}
 

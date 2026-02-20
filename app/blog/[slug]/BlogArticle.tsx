@@ -67,7 +67,9 @@ export function BlogArticle({ slug, initialLanguage }: BlogArticleProps) {
   const content = post?.[`content_${lang}`] || post?.content_en || post?.[`description_${lang}`] || post?.description_en || ''
   const currentSlug = post?.[`slug_${lang}`] || post?.slug_en || slug
   const readingTime = post?.reading_time || calculateReadingTime(content)
-  const heroImage = post?.processed_image_url || post?.images?.[0] || post?.image_url || post?.cover_image_url
+  const heroImage = post?.processed_image_url_wide || post?.processed_image_url || post?.images?.[0] || post?.image_url || post?.cover_image_url
+  const originalImage = post?.image_url || post?.cover_image_url // Original source image for attribution
+  const sourceName = post?.source_news_id ? '' : '' // Blog posts usually don't need source attribution
 
   // Collect all images for lightbox (hero + images from content) - MUST be before conditional returns
   const allImages = useMemo(() => {
@@ -205,7 +207,7 @@ export function BlogArticle({ slug, initialLanguage }: BlogArticleProps) {
           <button
             type="button"
             onClick={() => handleImageClick(heroImage)}
-            className="relative w-full h-[35vh] md:h-[45vh] lg:h-[50vh] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="relative w-full aspect-[16/9] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             aria-label={`View ${title} image in fullscreen`}
           >
             <Image
@@ -283,6 +285,34 @@ export function BlogArticle({ slug, initialLanguage }: BlogArticleProps) {
           </div>
         )}
 
+        {/* Extra images gallery for non-video articles (images beyond hero + original) */}
+        {!post.video_url && (() => {
+          const extraImages = allImages.filter(img => img.src && img.src !== heroImage && img.src !== originalImage)
+          if (extraImages.length === 0) return null
+          return (
+            <div className="max-w-5xl mx-auto px-4 py-4">
+              <div className={`grid gap-2 ${extraImages.length === 1 ? 'grid-cols-1 max-w-2xl mx-auto' : extraImages.length === 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
+                {extraImages.map((img, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleImageClick(img.src!)}
+                    className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <Image
+                      src={img.src!}
+                      alt={img.alt || ''}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Content Container */}
         <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
           {/* Meta info */}
@@ -335,6 +365,27 @@ export function BlogArticle({ slug, initialLanguage }: BlogArticleProps) {
                   </Link>
                 ))}
               </div>
+            </ScrollReveal>
+          )}
+
+          {/* Original source image with attribution */}
+          {originalImage && originalImage !== heroImage && (
+            <ScrollReveal delay={0.35}>
+              <figure className="mb-8">
+                <button
+                  type="button"
+                  onClick={() => handleImageClick(originalImage)}
+                  className="relative w-full aspect-[4/3] md:aspect-[16/10] bg-gray-100 rounded-xl overflow-hidden cursor-zoom-in hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <Image
+                    src={originalImage}
+                    alt={title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 768px"
+                    className="object-cover"
+                  />
+                </button>
+              </figure>
             </ScrollReveal>
           )}
 
