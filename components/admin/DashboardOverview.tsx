@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Send, Rss, RefreshCw, Loader2, Settings, ChevronsUp, ChevronsDown } from 'lucide-react'
+import { Send, Rss, RefreshCw, Loader2, Settings, ChevronsUp, ChevronsDown, Shield, ShieldOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useNewsMonitor } from '@/hooks/useNewsMonitor'
 import { TIER_CONFIGS } from './news-monitor/constants'
@@ -16,6 +16,7 @@ interface TelegramSource {
   url: string | null
   source_type: string
   is_active: boolean
+  skip_pre_moderation: boolean
   last_fetched_at: string | null
 }
 
@@ -227,7 +228,7 @@ export const DashboardOverview = ({ onNavigateToSources }: DashboardOverviewProp
     try {
       const { data, error } = await supabase
         .from('news_sources')
-        .select('id, name, url, source_type, is_active, last_fetched_at')
+        .select('id, name, url, source_type, is_active, skip_pre_moderation, last_fetched_at')
         .eq('source_type', 'telegram')
         .order('name')
 
@@ -261,6 +262,37 @@ export const DashboardOverview = ({ onNavigateToSources }: DashboardOverviewProp
       console.error('Failed to refresh telegram sources:', error)
     } finally {
       setRefreshingTelegram(false)
+    }
+  }
+
+  const toggleTelegramPreModeration = async (sourceId: string) => {
+    const source = telegramSources.find(s => s.id === sourceId)
+    if (!source) return
+
+    const newValue = !source.skip_pre_moderation
+
+    // Optimistic UI update
+    setTelegramSources(prev =>
+      prev.map(s => s.id === sourceId ? { ...s, skip_pre_moderation: newValue } : s)
+    )
+
+    try {
+      const { error } = await supabase
+        .from('news_sources')
+        .update({ skip_pre_moderation: newValue })
+        .eq('id', sourceId)
+
+      if (error) {
+        console.error('Failed to toggle telegram pre-moderation:', error)
+        setTelegramSources(prev =>
+          prev.map(s => s.id === sourceId ? { ...s, skip_pre_moderation: !newValue } : s)
+        )
+      }
+    } catch (err) {
+      console.error('Error toggling telegram pre-moderation:', err)
+      setTelegramSources(prev =>
+        prev.map(s => s.id === sourceId ? { ...s, skip_pre_moderation: !newValue } : s)
+      )
     }
   }
 
@@ -334,6 +366,7 @@ export const DashboardOverview = ({ onNavigateToSources }: DashboardOverviewProp
                 key={source.id}
                 source={source}
                 stats={telegramStats.get(source.id)}
+                onTogglePreModeration={toggleTelegramPreModeration}
               />
             ))}
             {inactiveTelegramSources.length > 0 && (
@@ -433,7 +466,11 @@ export const DashboardOverview = ({ onNavigateToSources }: DashboardOverviewProp
 }
 
 // Compact Telegram card with stats
-function MiniTelegramCard({ source, stats }: { source: TelegramSource; stats?: SourceStats }) {
+function MiniTelegramCard({ source, stats, onTogglePreModeration }: {
+  source: TelegramSource
+  stats?: SourceStats
+  onTogglePreModeration: (id: string) => void
+}) {
   const isActive = source.is_active
 
   return (
@@ -448,6 +485,26 @@ function MiniTelegramCard({ source, stats }: { source: TelegramSource; stats?: S
     >
       <div className="flex items-center gap-1.5">
         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isActive ? 'bg-green-400' : 'bg-gray-500'}`} />
+        <motion.button
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onTogglePreModeration(source.id)
+          }}
+          className={`flex-shrink-0 transition-colors ${
+            source.skip_pre_moderation
+              ? 'text-yellow-400 hover:text-yellow-300'
+              : 'text-emerald-400 hover:text-emerald-300'
+          }`}
+          title={source.skip_pre_moderation ? 'Pre-moderation OFF (click to enable)' : 'Pre-moderation ON (click to disable)'}
+        >
+          {source.skip_pre_moderation ? (
+            <ShieldOff className="h-3 w-3" />
+          ) : (
+            <Shield className="h-3 w-3" />
+          )}
+        </motion.button>
         <span className="text-white truncate" title={source.name}>{source.name}</span>
       </div>
       {stats && (
