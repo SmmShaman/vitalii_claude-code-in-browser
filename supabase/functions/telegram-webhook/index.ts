@@ -3532,12 +3532,12 @@ serve(async (req) => {
           }
         }
 
-        // Build remaining buttons
+        // Build remaining buttons (exclude the current language)
         const remainingButtonsCombo = [
-          [
-            { text: `🌐 Все ${otherLang}`, callback_data: `all_${otherLangLower}_${newsId}` },
-            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
-          ],
+          remainingLangs.map(l => ({
+            text: `🌐 Все ${l.toUpperCase()}`,
+            callback_data: `all_${l}_${newsId}`
+          })),
           [
             { text: `🐦 Twitter ${langLabel}`, callback_data: `twitter_${socialLanguage}_${newsId}` }
           ],
