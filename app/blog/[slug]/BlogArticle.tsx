@@ -259,6 +259,30 @@ export function BlogArticle({ slug, initialLanguage }: BlogArticleProps) {
           </div>
         )}
 
+        {/* Image gallery below video (when both video and images exist) */}
+        {post.video_url && allImages.length > 0 && (
+          <div className="max-w-5xl mx-auto px-4 py-4">
+            <div className={`grid gap-2 ${allImages.length === 1 ? 'grid-cols-1 max-w-2xl mx-auto' : allImages.length === 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
+              {allImages.filter(img => img.src).map((img, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleImageClick(img.src!)}
+                  className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
+                >
+                  <Image
+                    src={img.src!}
+                    alt={img.alt || ''}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 33vw"
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Content Container */}
         <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
           {/* Meta info */}

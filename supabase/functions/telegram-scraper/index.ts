@@ -1358,14 +1358,20 @@ ${escapeHtml(uploadedPhotoUrl)}`
       ? [{ text: '🔁 Skip (дубль)', callback_data: `skip_dup_${newsId}` }]
       : []
 
+    const hasImages = hasImage || (uploadedImages && uploadedImages.length > 0)
+
     if (hasVideo) {
-      // 🎥 Video exists → Skip image workflow, go straight to publish
+      // 🎥 Video exists → publish buttons + optional image buttons if images exist
       keyboard = {
         inline_keyboard: [
           [
             { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
             { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
           ],
+          ...(hasImages ? [[
+            { text: '🖼 + Оригінал фото', callback_data: `keep_orig_${newsId}` },
+            { text: '📸 + Своє фото', callback_data: `create_custom_${newsId}` }
+          ]] : []),
           [
             { text: '❌ Reject', callback_data: `reject_${newsId}` },
             ...skipDupButton
@@ -1387,14 +1393,17 @@ ${escapeHtml(uploadedPhotoUrl)}`
             { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
           ],
           [
-            { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` },
+            { text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` },
+            { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
+          ],
+          [
             { text: '❌ Reject', callback_data: `reject_${newsId}` }
           ],
           ...(hasDuplicates ? [skipDupButton] : [])
         ]
       }
     } else {
-      // No variants, no image → Show generate/upload options + Creative Builder
+      // No variants → Show generate/upload options + Creative Builder
       keyboard = {
         inline_keyboard: [
           [
@@ -1402,7 +1411,8 @@ ${escapeHtml(uploadedPhotoUrl)}`
             { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
           ],
           [
-            { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+            ...(hasImages ? [{ text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` }] : []),
+            { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
           ],
           [
             { text: '❌ Reject', callback_data: `reject_${newsId}` },

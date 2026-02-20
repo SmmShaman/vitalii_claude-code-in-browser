@@ -288,12 +288,17 @@ serve(async (req) => {
 
             const publicUrl = urlData.publicUrl
 
-            // Update news record with custom image
+            // Update news record with custom image and append to gallery
+            const { data: currentNewsForGal } = await supabase.from('news').select('images').eq('id', newsId).single()
+            const currentGalImages: string[] = currentNewsForGal?.images || []
+            const updatedGalImages = currentGalImages.includes(publicUrl) ? currentGalImages : [...currentGalImages, publicUrl]
+
             const { error: updateError } = await supabase
               .from('news')
               .update({
                 processed_image_url: publicUrl,
-                image_processed_at: new Date().toISOString()
+                image_processed_at: new Date().toISOString(),
+                images: updatedGalImages
               })
               .eq('id', newsId)
 
@@ -472,12 +477,17 @@ serve(async (req) => {
 
             const publicUrl = urlData.publicUrl
 
-            // Update news record with custom image
+            // Update news record with custom image and append to gallery
+            const { data: curNewsGal2 } = await supabase.from('news').select('images').eq('id', newsId).single()
+            const curGalImgs2: string[] = curNewsGal2?.images || []
+            const updGalImgs2 = curGalImgs2.includes(publicUrl) ? curGalImgs2 : [...curGalImgs2, publicUrl]
+
             const { error: updateError } = await supabase
               .from('news')
               .update({
                 processed_image_url: publicUrl,
-                image_processed_at: new Date().toISOString()
+                image_processed_at: new Date().toISOString(),
+                images: updGalImgs2
               })
               .eq('id', newsId)
 
@@ -487,13 +497,17 @@ serve(async (req) => {
 
             // Check if this is RSS workflow (use RSS-specific publish buttons)
             const isRssWorkflow = replyText.includes('rss_workflow:true')
+            const uploadGalCount = updGalImgs2.length
 
-            // Update original message with success status and STEP 2 buttons (NO separate message!)
+            // Update original message with success status and gallery buttons
             const publishKeyboard = isRssWorkflow ? {
               inline_keyboard: [
                 [
-                  { text: '📰 В новини', callback_data: `publish_rss_news_${newsId}` },
-                  { text: '📝 В блог', callback_data: `publish_rss_blog_${newsId}` }
+                  { text: `✅ Готово (${uploadGalCount} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
+                ],
+                [
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }
                 ],
                 [
                   { text: '❌ Skip', callback_data: `reject_${newsId}` }
@@ -502,8 +516,11 @@ serve(async (req) => {
             } : {
               inline_keyboard: [
                 [
-                  { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
-                  { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
+                  { text: `✅ Готово (${uploadGalCount} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
+                ],
+                [
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }
                 ],
                 [
                   { text: '❌ Reject', callback_data: `reject_${newsId}` }
@@ -896,6 +913,16 @@ serve(async (req) => {
         const lang = remainder.substring(0, 2)
         newsId = remainder.substring(3) // skip "LL_"
         imageLanguage = lang
+      // ═══ Gallery & Keep Original callbacks ═══
+      } else if (callbackData.startsWith('keep_orig_')) {
+        action = 'keep_orig'
+        newsId = callbackData.replace('keep_orig_', '')
+      } else if (callbackData.startsWith('add_more_')) {
+        action = 'add_more'
+        newsId = callbackData.replace('add_more_', '')
+      } else if (callbackData.startsWith('gal_done_')) {
+        action = 'gal_done'
+        newsId = callbackData.replace('gal_done_', '')
       } else {
         // Backward compatibility with old format "publish_<id>"
         const parts = callbackData.split('_')
@@ -3909,12 +3936,286 @@ serve(async (req) => {
         )
 
       // =================================================================
+      // 🖼 KEEP ORIGINAL & GALLERY MANAGEMENT
+      // =================================================================
+
+      } else if (action === 'keep_orig') {
+        // 🖼 Keep original image(s) from RSS/Telegram source
+        console.log('🖼 Keep original images for news:', newsId)
+
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('id, image_url, images, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const isRssSource = !!(newsRecord?.rss_analysis)
+        const originalImages: string[] = newsRecord?.images || []
+        const imageUrl = newsRecord?.image_url
+        const primaryImage = imageUrl || (originalImages.length > 0 ? originalImages[0] : null)
+
+        if (!primaryImage) {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callbackId,
+                text: '⚠️ Оригінальне зображення не знайдено',
+                show_alert: true
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: true }))
+        }
+
+        // Set processed_image_url and ensure images[] is populated
+        const updateData: Record<string, any> = {
+          processed_image_url: primaryImage,
+          image_processed_at: new Date().toISOString()
+        }
+        if (!originalImages.length && imageUrl) {
+          updateData.images = [imageUrl]
+        }
+        await supabase.from('news').update(updateData).eq('id', newsId)
+
+        const imageCount = originalImages.length || 1
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: `✅ Оригінал збережено (${imageCount} фото)`,
+              show_alert: false
+            })
+          }
+        )
+
+        const galleryKeyboard = {
+          inline_keyboard: [
+            [
+              { text: `✅ Готово (${imageCount} фото)`, callback_data: `gal_done_${newsId}` },
+              { text: '➕ + AI зображення', callback_data: `add_more_${newsId}` }
+            ],
+            [
+              { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+            ],
+            [
+              { text: '❌ Skip', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n🖼 <b>Оригінал збережено!</b> Галерея: ${imageCount} фото\n<i>Можете додати AI зображення або завантажити своє</i>`),
+              parse_mode: 'HTML',
+              reply_markup: galleryKeyboard
+            })
+          }
+        )
+
+      } else if (action === 'gal_done') {
+        // ✅ Gallery finalized → show publish buttons
+        console.log('✅ Gallery done for news:', newsId)
+
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('id, images, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const isRssSource = !!(newsRecord?.rss_analysis)
+        const imageCount = newsRecord?.images?.length || 0
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: `✅ Галерея готова (${imageCount} фото)`,
+              show_alert: false
+            })
+          }
+        )
+
+        const publishKeyboard = isRssSource ? {
+          inline_keyboard: [
+            [
+              { text: '📰 В новини', callback_data: `publish_rss_news_${newsId}` },
+              { text: '📝 В блог', callback_data: `publish_rss_blog_${newsId}` }
+            ],
+            [
+              { text: '❌ Skip', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        } : {
+          inline_keyboard: [
+            [
+              { text: '📰 Опублікувати', callback_data: `publish_news_${newsId}` },
+              { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
+            ],
+            [
+              { text: '❌ Reject', callback_data: `reject_${newsId}` }
+            ]
+          ]
+        }
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n✅ <b>Галерея готова!</b> ${imageCount} фото\n📝 <i>Оберіть де опублікувати...</i>`),
+              parse_mode: 'HTML',
+              reply_markup: publishKeyboard
+            })
+          }
+        )
+
+      } else if (action === 'add_more') {
+        // ➕ Add more images → redirect to variant selection (same as back_to_variants)
+        console.log('➕ Add more images for news:', newsId)
+
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('id, image_prompt_variants, images, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const isRssSource = !!(newsRecord?.rss_analysis)
+        const currentImages: string[] = newsRecord?.images || []
+        const existingVariants = newsRecord?.image_prompt_variants as Array<{label: string, description: string}> | null
+
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: `➕ Додати зображення (зараз: ${currentImages.length})`,
+              show_alert: false
+            })
+          }
+        )
+
+        if (existingVariants && existingVariants.length > 0) {
+          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+          let variantsText = `\n\n🎨 <b>Додайте зображення</b> (в галереї: ${currentImages.length} фото)\n`
+          existingVariants.forEach((v, i) => {
+            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+          })
+
+          const variantKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
+                { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
+                { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
+                { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
+              ],
+              [
+                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
+              ],
+              [
+                { text: `✅ Готово (${currentImages.length})`, callback_data: `gal_done_${newsId}` },
+                { text: '📸 Завантажити', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+              ],
+              [
+                { text: '❌ Skip', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: truncateForTelegram(messageText, variantsText),
+                parse_mode: 'HTML',
+                reply_markup: variantKeyboard
+              })
+            }
+          )
+        } else {
+          const genKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🎲 Згенерувати варіанти', callback_data: `new_variants_${newsId}` },
+                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
+              ],
+              [
+                { text: `✅ Готово (${currentImages.length})`, callback_data: `gal_done_${newsId}` },
+                { text: '📸 Завантажити', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+              ],
+              [
+                { text: '❌ Skip', callback_data: `reject_${newsId}` }
+              ]
+            ]
+          }
+
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: truncateForTelegram(messageText, `\n\n➕ <b>Додайте зображення</b> (в галереї: ${currentImages.length} фото)`),
+                parse_mode: 'HTML',
+                reply_markup: genKeyboard
+              })
+            }
+          )
+        }
+
+      // =================================================================
       // 🔄 RSS IMAGE WORKFLOW: confirm_rss_image, regenerate_rss_image, upload_rss_image
       // =================================================================
 
       } else if (action === 'confirm_rss_image') {
-        // ✅ RSS: Confirm existing image → Show publish buttons (RSS-specific)
+        // ✅ RSS: Confirm existing image → set processed_image_url → Show publish buttons
         console.log('User confirmed RSS image for news:', newsId)
+
+        // Set processed_image_url to original image for SEO/social media
+        const { data: newsRecord } = await supabase
+          .from('news')
+          .select('id, image_url, images')
+          .eq('id', newsId)
+          .single()
+
+        if (newsRecord?.image_url) {
+          const updateData: Record<string, any> = {
+            processed_image_url: newsRecord.image_url,
+            image_processed_at: new Date().toISOString()
+          }
+          if (!newsRecord.images?.length) {
+            updateData.images = [newsRecord.image_url]
+          }
+          await supabase.from('news').update(updateData).eq('id', newsId)
+        }
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -4245,15 +4546,24 @@ serve(async (req) => {
             // Success! Show both images with appropriate buttons based on source type
             const newImageUrl = imageGenResult.processedImageUrl
 
+            // Append generated image to gallery
+            const { data: galNews } = await supabase.from('news').select('images').eq('id', newsId).single()
+            const galImages: string[] = galNews?.images || []
+            if (!galImages.includes(newImageUrl)) {
+              await supabase.from('news').update({ images: [...galImages, newImageUrl] }).eq('id', newsId)
+            }
+            const galleryCount = galImages.includes(newImageUrl) ? galImages.length : galImages.length + 1
+
             // Use different callbacks for RSS vs Telegram sources
             const newKeyboard = isRssSource ? {
               inline_keyboard: [
                 [
-                  { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
-                  { text: '🔄 Перегенерувати', callback_data: `regenerate_rss_image_${newsId}` }
+                  { text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
                 ],
                 [
-                  { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
+                  { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }
                 ],
                 [
                   { text: '❌ Skip', callback_data: `reject_${newsId}` }
@@ -4262,11 +4572,12 @@ serve(async (req) => {
             } : {
               inline_keyboard: [
                 [
-                  { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
-                  { text: '🔄 Перегенерувати', callback_data: `regenerate_image_${newsId}` }
+                  { text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
                 ],
                 [
-                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
+                  { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
                 ],
                 [
                   { text: '❌ Reject', callback_data: `reject_${newsId}` }
@@ -4750,20 +5061,30 @@ serve(async (req) => {
             await wideImagePromise
 
             const newImageUrl = imageGenResult.processedImageUrl
+
+            // Append generated image to gallery
+            const { data: galNews2 } = await supabase.from('news').select('images').eq('id', newsId).single()
+            const galImages2: string[] = galNews2?.images || []
+            if (!galImages2.includes(newImageUrl)) {
+              await supabase.from('news').update({ images: [...galImages2, newImageUrl] }).eq('id', newsId)
+            }
+            const galleryCount2 = galImages2.includes(newImageUrl) ? galImages2.length : galImages2.length + 1
+
             const squareImageLink = `🖼️ <b>1:1</b> (Instagram): ${escapeHtml(newImageUrl)}`
             const wideImageLink = wideImageUrl
               ? `\n📐 <b>16:9</b> (LinkedIn/FB): ${escapeHtml(wideImageUrl)}`
               : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
 
-            // Show result with confirm/regenerate buttons
+            // Show result with gallery buttons
             const newKeyboard = isRssSource ? {
               inline_keyboard: [
                 [
-                  { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
-                  { text: '🔄 Інший варіант', callback_data: `back_to_variants_${newsId}` }
+                  { text: `✅ Готово (${galleryCount2} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
                 ],
                 [
-                  { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
+                  { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }
                 ],
                 [
                   { text: '❌ Skip', callback_data: `reject_${newsId}` }
@@ -4772,11 +5093,12 @@ serve(async (req) => {
             } : {
               inline_keyboard: [
                 [
-                  { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
-                  { text: '🔄 Інший варіант', callback_data: `back_to_variants_${newsId}` }
+                  { text: `✅ Готово (${galleryCount2} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
                 ],
                 [
-                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
+                  { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
                 ],
                 [
                   { text: '❌ Reject', callback_data: `reject_${newsId}` }
@@ -4792,7 +5114,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n${squareImageLink}${wideImageLink}`),
+                  text: truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount2} фото\n${squareImageLink}${wideImageLink}`),
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })
@@ -4923,7 +5245,10 @@ serve(async (req) => {
                 { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
-                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` },
+                { text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` },
+                { text: '📸 Завантажити', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+              ],
+              [
                 { text: '❌ Reject', callback_data: `reject_${newsId}` }
               ]
             ]
@@ -4956,7 +5281,8 @@ serve(async (req) => {
                 { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
               ],
               [
-                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
+                { text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` },
+                { text: '📸 Завантажити', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
               ],
               [
                 { text: '❌ Reject', callback_data: `reject_${newsId}` }
@@ -5878,6 +6204,15 @@ serve(async (req) => {
             await wideImagePromise
 
             const newImageUrl = imageGenResult.processedImageUrl
+
+            // Append generated image to gallery
+            const { data: galNews3 } = await supabase.from('news').select('images').eq('id', newsId).single()
+            const galImages3: string[] = galNews3?.images || []
+            if (!galImages3.includes(newImageUrl)) {
+              await supabase.from('news').update({ images: [...galImages3, newImageUrl] }).eq('id', newsId)
+            }
+            const galleryCount3 = galImages3.includes(newImageUrl) ? galImages3.length : galImages3.length + 1
+
             const squareImageLink = `🖼️ <b>1:1</b>: ${escapeHtml(newImageUrl)}`
             const wideImageLink = wideImageUrl
               ? `\n📐 <b>16:9</b>: ${escapeHtml(wideImageUrl)}`
@@ -5886,11 +6221,12 @@ serve(async (req) => {
             const resultKeyboard = isRssSource ? {
               inline_keyboard: [
                 [
-                  { text: '✅ Використати', callback_data: `confirm_rss_image_${newsId}` },
-                  { text: '🔄 Змінити елементи', callback_data: `cb_hub_${newsId}` }
+                  { text: `✅ Готово (${galleryCount3} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
                 ],
                 [
-                  { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
+                  { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }
                 ],
                 [
                   { text: '❌ Skip', callback_data: `reject_${newsId}` }
@@ -5899,11 +6235,12 @@ serve(async (req) => {
             } : {
               inline_keyboard: [
                 [
-                  { text: '✅ Використати', callback_data: `confirm_image_${newsId}` },
-                  { text: '🔄 Змінити елементи', callback_data: `cb_hub_${newsId}` }
+                  { text: `✅ Готово (${galleryCount3} фото)`, callback_data: `gal_done_${newsId}` },
+                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
                 ],
                 [
-                  { text: '📸 Завантажити своє', callback_data: `create_custom_${newsId}` }
+                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
+                  { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
                 ],
                 [
                   { text: '❌ Reject', callback_data: `reject_${newsId}` }
@@ -5916,7 +6253,7 @@ serve(async (req) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId, message_id: messageId,
-                text: truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n${squareImageLink}${wideImageLink}`),
+                text: truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n📸 Галерея: ${galleryCount3} фото\n${squareImageLink}${wideImageLink}`),
                 parse_mode: 'HTML',
                 reply_markup: resultKeyboard
               })

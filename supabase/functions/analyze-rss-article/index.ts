@@ -676,7 +676,10 @@ newsId:${newsId}`
           { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
         ],
         [
-          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` },
+          ...(imageUrl ? [{ text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` }] : []),
+          { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }
+        ],
+        [
           { text: '❌ Skip', callback_data: `reject_${newsId}` }
         ],
         ...(hasDuplicates ? [skipDupButton] : [])
@@ -687,7 +690,7 @@ newsId:${newsId}`
     keyboard = {
       inline_keyboard: [
         [
-          { text: '✅ Використати фото', callback_data: `confirm_rss_image_${newsId}` },
+          { text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` },
           { text: '🔄 Згенерувати AI', callback_data: `regenerate_rss_image_${newsId}` }
         ],
         [
