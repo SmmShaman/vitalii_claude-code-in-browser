@@ -190,7 +190,7 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
           <button
             type="button"
             onClick={() => handleImageClick(heroImage)}
-            className="relative w-full aspect-[16/9] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2"
+            className="relative w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2"
             aria-label={`View ${title} image in fullscreen`}
           >
             <Image
@@ -259,39 +259,18 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
           </div>
         )}
 
-        {/* Extra images gallery for non-video articles (images beyond hero + original) */}
-        {!news.video_url && (() => {
-          const extraImages = allImages.filter(img => img.src && img.src !== heroImage && img.src !== originalImage)
-          if (extraImages.length === 0) return null
-          return (
-            <div className="max-w-5xl mx-auto px-4 py-4">
-              <div className={`grid gap-2 ${extraImages.length === 1 ? 'grid-cols-1 max-w-2xl mx-auto' : extraImages.length === 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
-                {extraImages.map((img, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => handleImageClick(img.src!)}
-                    className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
-                  >
-                    <Image
-                      src={img.src!}
-                      alt={img.alt || ''}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 33vw"
-                      className="object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )
-        })()}
-
         {/* Content Container */}
-        <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
-          {/* Meta info */}
+        <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
+          {/* Title FIRST (editorial standard) */}
           <ScrollReveal delay={0.1}>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-4">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+              {title}
+            </h1>
+          </ScrollReveal>
+
+          {/* Meta info AFTER title */}
+          <ScrollReveal delay={0.15}>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-6">
               {news.published_at && (
                 <time dateTime={news.published_at} className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
@@ -305,13 +284,6 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
                 </span>
               )}
             </div>
-          </ScrollReveal>
-
-          {/* Title */}
-          <ScrollReveal delay={0.2}>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-              {title}
-            </h1>
           </ScrollReveal>
 
           {/* Tags */}
@@ -338,18 +310,20 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
                 <button
                   type="button"
                   onClick={() => handleImageClick(originalImage)}
-                  className="relative w-full aspect-[4/3] md:aspect-[16/10] bg-gray-100 rounded-xl overflow-hidden cursor-zoom-in hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  className="relative w-full overflow-hidden rounded-xl bg-gray-100 cursor-zoom-in
+                             hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
                 >
                   <Image
                     src={originalImage}
                     alt={title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 768px"
-                    className="object-cover"
+                    width={800}
+                    height={500}
+                    sizes="(max-width: 768px) 100vw, 672px"
+                    className="w-full h-auto object-contain"
                   />
                 </button>
                 {sourceName && (
-                  <figcaption className="mt-2 text-sm text-gray-500 text-center">
+                  <figcaption className="mt-2 text-sm text-gray-500 text-center italic">
                     Фото: {sourceName}
                   </figcaption>
                 )}
@@ -426,6 +400,36 @@ export function NewsArticle({ slug, initialLanguage }: NewsArticleProps) {
               </div>
             </section>
           </ScrollReveal>
+
+          {/* Extra images gallery (non-video articles, images beyond hero + original) */}
+          {!news.video_url && (() => {
+            const extraImages = allImages.filter(img => img.src && img.src !== heroImage && img.src !== originalImage)
+            if (extraImages.length === 0) return null
+            return (
+              <ScrollReveal delay={0.45}>
+                <div className="mb-8">
+                  <div className={`grid gap-3 ${extraImages.length === 1 ? 'grid-cols-1' : extraImages.length === 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
+                    {extraImages.map((img, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleImageClick(img.src!)}
+                        className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
+                      >
+                        <Image
+                          src={img.src!}
+                          alt={img.alt || ''}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 33vw"
+                          className="object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </ScrollReveal>
+            )
+          })()}
 
           {/* Source Links - Display all external links */}
           {(news.source_links?.length > 0 || news.source_link || news.original_url) && (
