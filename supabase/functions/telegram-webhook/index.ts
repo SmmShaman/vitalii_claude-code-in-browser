@@ -808,6 +808,10 @@ serve(async (req) => {
         action = 'combo_li_fb_ig'
         socialLanguage = 'no'
         newsId = callbackData.replace('combo_li_fb_ig_no_', '')
+      } else if (callbackData.startsWith('combo_li_fb_ig_ua_')) {
+        action = 'combo_li_fb_ig'
+        socialLanguage = 'ua'
+        newsId = callbackData.replace('combo_li_fb_ig_ua_', '')
       // Skip remaining social platforms
       } else if (callbackData.startsWith('skip_social_')) {
         action = 'skip_social'
@@ -1111,11 +1115,11 @@ serve(async (req) => {
               { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
               { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
             ],
-            // Quick combo (LinkedIn + Facebook only)
+            // Quick combo (LinkedIn + Facebook + Instagram)
             [
-              { text: '🔗+📘 LI+FB EN', callback_data: `combo_li_fb_en_${newsId}` },
               { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
-              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` }
+              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
+              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
             ],
             // LinkedIn individual
             [
@@ -1294,11 +1298,11 @@ serve(async (req) => {
               { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
               { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
             ],
-            // Quick combos
+            // Quick combos (LinkedIn + Facebook + Instagram)
             [
-              { text: '🔗+📘 LI+FB EN', callback_data: `combo_li_fb_en_${newsId}` },
               { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
-              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` }
+              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
+              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
             ],
             // LinkedIn individual
             [
@@ -3214,13 +3218,12 @@ serve(async (req) => {
         )
 
         // Processing buttons (exclude the current language)
-        const otherLang = socialLanguage === 'en' ? 'NO' : 'EN'
-        const otherLangLower = otherLang.toLowerCase()
+        const remainingLangs = ['en', 'no', 'ua'].filter(l => l !== socialLanguage)
         const processingButtonsCombo = [
-          [
-            { text: `🌐 Все ${otherLang}`, callback_data: `all_${otherLangLower}_${newsId}` },
-            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
-          ],
+          remainingLangs.map(l => ({
+            text: `🌐 Все ${l.toUpperCase()}`,
+            callback_data: `all_${l}_${newsId}`
+          })),
           [
             { text: `🐦 Twitter ${langLabel}`, callback_data: `twitter_${socialLanguage}_${newsId}` }
           ],
