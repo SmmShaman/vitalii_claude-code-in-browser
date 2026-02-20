@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { Metadata } from 'next'
 import { getBlogPostBySlug, getLatestBlogPosts } from '@/integrations/supabase/client'
 import { BlogArticle } from './BlogArticle'
@@ -12,13 +13,16 @@ import {
   truncateDescription,
 } from '@/utils/seo'
 
+// Deduplicate getBlogPostBySlug calls within the same request
+const getBlogPostCached = cache(getBlogPostBySlug)
+
 interface Props {
   params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const post = await getBlogPostBySlug(slug)
+  const post = await getBlogPostCached(slug)
 
   if (!post) {
     return {
@@ -70,7 +74,7 @@ export const dynamicParams = true
 
 export default async function BlogPage({ params }: Props) {
   const { slug } = await params
-  const post = await getBlogPostBySlug(slug)
+  const post = await getBlogPostCached(slug)
   const lang = post ? detectSlugLanguage({ slug_en: post.slug_en, slug_no: post.slug_no, slug_ua: post.slug_ua }, slug) : 'en'
 
   return (

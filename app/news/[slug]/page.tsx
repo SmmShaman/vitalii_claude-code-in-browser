@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { Metadata } from 'next'
 import { getNewsBySlug, getLatestNews } from '@/integrations/supabase/client'
 import { NewsArticle } from './NewsArticle'
@@ -12,13 +13,17 @@ import {
   truncateDescription,
 } from '@/utils/seo'
 
+// Deduplicate getNewsBySlug calls within the same request
+// (generateMetadata + page component share one request context)
+const getNewsCached = cache(getNewsBySlug)
+
 interface Props {
   params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const news = await getNewsBySlug(slug)
+  const news = await getNewsCached(slug)
 
   if (!news) {
     return {
@@ -70,7 +75,7 @@ export const dynamicParams = true
 
 export default async function NewsPage({ params }: Props) {
   const { slug } = await params
-  const news = await getNewsBySlug(slug)
+  const news = await getNewsCached(slug)
   const lang = news ? detectSlugLanguage({ slug_en: news.slug_en, slug_no: news.slug_no, slug_ua: news.slug_ua }, slug) : 'en'
 
   return (
