@@ -16,7 +16,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vitalii-berbeha.net
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Vitalii Berbeha - E-commerce & Marketing Expert',
+    default: 'Vitalii Berbeha - E-commerce, Marketing & AI Expert',
     template: '%s | Vitalii Berbeha',
   },
   description: 'Professional portfolio of Vitalii Berbeha - AI project leader and entrepreneur specializing in e-commerce, marketing, and EdTech solutions.',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    title: 'Vitalii Berbeha - E-commerce & Marketing Expert',
+    title: 'Vitalii Berbeha - E-commerce, Marketing & AI Expert',
     description: 'Professional portfolio of Vitalii Berbeha - AI project leader and entrepreneur',
     type: 'website',
     locale: 'en_US',
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vitalii Berbeha - E-commerce & Marketing Expert',
+    title: 'Vitalii Berbeha - E-commerce, Marketing & AI Expert',
     description: 'Professional portfolio of Vitalii Berbeha - AI project leader and entrepreneur',
     creator: '@vitalii_berbeha',
   },
@@ -82,6 +82,19 @@ export default function RootLayout({
       <head>
         {/* Google Tag Manager */}
         <GTMScript />
+        {/* Preload hero images for LCP — BentoGrid About & Services sections */}
+        <link
+          rel="preload"
+          as="image"
+          href="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80&fm=webp"
+          type="image/webp"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&q=80&fm=webp"
+          type="image/webp"
+        />
       </head>
       <body>
         {/* GTM NoScript fallback */}
