@@ -2,6 +2,7 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   images: {
+    // Wildcard needed: news/blog images are scraped from many external sources
     remotePatterns: [
       {
         protocol: 'https',

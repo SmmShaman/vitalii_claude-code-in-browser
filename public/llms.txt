@@ -1,0 +1,31 @@
+# Vitalii Berbeha — E-commerce & Marketing Expert
+
+> Professional portfolio, blog, and news platform by Vitalii Berbeha.
+
+## About
+
+Vitalii Berbeha is an AI project leader and entrepreneur specializing in e-commerce, marketing, and EdTech solutions based in Norway.
+
+## Site Structure
+
+- Homepage: https://vitalii.no/
+- News: https://vitalii.no/news — AI, tech, e-commerce news articles (EN/NO/UA)
+- Blog: https://vitalii.no/blog — In-depth blog posts on AI, marketing, e-commerce
+- Contact: Available via contact form on homepage
+
+## Content
+
+- Multilingual: English, Norwegian (Bokmål), Ukrainian
+- Topics: AI, e-commerce, digital marketing, EdTech, technology, startups
+- Published news and blog articles with structured data (JSON-LD)
+
+## Technical
+
+- Built with Next.js 15, React 19, TypeScript, Tailwind CSS
+- Backend: Supabase (PostgreSQL)
+- Deployed on Netlify
+
+## Contact
+
+- Website: https://vitalii.no
+- Email: berbeha@vitalii.no

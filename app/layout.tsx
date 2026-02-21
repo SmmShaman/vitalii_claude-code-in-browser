@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from 'next'
+import { Comfortaa } from 'next/font/google'
 import { Providers } from './providers'
 import { GTMScript, GTMNoScript } from '@/components/analytics/GTMScript'
 import './globals.css'
+
+const comfortaa = Comfortaa({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '700'],
+  display: 'swap',
+  variable: '--font-comfortaa',
+})
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vitalii-berbeha.netlify.app'
 
@@ -77,17 +85,10 @@ export default function RootLayout({
   modal: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={comfortaa.variable}>
       <head>
         {/* Google Tag Manager */}
         <GTMScript />
-        {/* Comfortaa font - rounded geometric with excellent Cyrillic support */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body>
         {/* GTM NoScript fallback */}

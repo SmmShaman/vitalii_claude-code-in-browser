@@ -70,7 +70,7 @@
 .snake-animation {
   position: fixed;
   z-index: 50;
-  transition: all 0.4s ease-in-out;
+  transition: transform 0.4s ease-in-out, border-radius 0.4s ease-in-out;
   will-change: transform;
 }
 
