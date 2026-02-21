@@ -1358,7 +1358,7 @@ ${escapeHtml(uploadedPhotoUrl)}`
       ? [{ text: '🔁 Skip (дубль)', callback_data: `skip_dup_${newsId}` }]
       : []
 
-    const hasImages = hasImage || (uploadedImages && uploadedImages.length > 0)
+    const hasImages = !!hasImage
 
     if (hasVideo) {
       // 🎥 Video exists → publish buttons + optional image buttons if images exist
