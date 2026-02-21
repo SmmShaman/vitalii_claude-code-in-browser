@@ -31,6 +31,7 @@ jobs:
         run: npm ci
 
       - name: Upload video to Facebook
+        continue-on-error: ${{ github.event_name == 'repository_dispatch' }}
         working-directory: scripts/facebook-video
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}

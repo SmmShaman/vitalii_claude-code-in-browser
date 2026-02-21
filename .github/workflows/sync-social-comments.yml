@@ -17,6 +17,7 @@ jobs:
 
     steps:
       - name: Sync Comments from Social Platforms
+        continue-on-error: ${{ github.event_name == 'schedule' }}
         run: |
           echo "🔄 Starting social media comment sync..."
           echo "Time: $(date -u)"

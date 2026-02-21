@@ -49,6 +49,7 @@ jobs:
         run: npm ci
 
       - name: Process video(s)
+        continue-on-error: ${{ github.event_name == 'schedule' || github.event_name == 'repository_dispatch' }}
         working-directory: ./scripts/video-processor
         env:
           # Telegram MTProto credentials
