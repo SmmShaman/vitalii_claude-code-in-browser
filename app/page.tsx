@@ -1,19 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { sectionNeonColors } from '@/components/sections/BentoGrid'
 import { sectionColors } from '@/components/sections/BentoGridMobile'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { generatePersonSchema, generateWebsiteSchema } from '@/utils/seo'
 
 const Header = dynamic(
   () => import('@/components/layout/Header').then(mod => mod.Header),
-  { ssr: false }
 )
 
 const Footer = dynamic(
   () => import('@/components/layout/Footer').then(mod => mod.Footer),
-  { ssr: false }
 )
 
 const BentoGrid = dynamic(
@@ -33,7 +32,18 @@ const ParticlesBackground = dynamic(
 
 export default function HomePage() {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null)
+  const [showParticles, setShowParticles] = useState(false)
   const isMobile = useIsMobile()
+
+  // Defer Three.js loading until after LCP
+  useEffect(() => {
+    if (isMobile) return
+    const id = requestIdleCallback?.(() => setShowParticles(true)) ??
+      setTimeout(() => setShowParticles(true), 2000) as unknown as number
+    return () => {
+      cancelIdleCallback?.(id) ?? clearTimeout(id)
+    }
+  }, [isMobile])
 
   // Update hovered section for background color changes
   const handleSectionChange = (sectionId: string | null) => {
@@ -53,6 +63,16 @@ export default function HomePage() {
 
   return (
     <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'overflow-hidden bg-gray-50' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
+      {/* Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(generatePersonSchema()) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateWebsiteSchema()) }}
+      />
+
       {/* Dynamic Background Color Overlay */}
       <div
         className="fixed inset-0 -z-5 transition-all duration-700 ease-in-out pointer-events-none"
@@ -62,8 +82,8 @@ export default function HomePage() {
         }}
       />
 
-      {/* Animated Background - Hidden on mobile for performance */}
-      {!isMobile && <ParticlesBackground />}
+      {/* Animated Background - Deferred load, hidden on mobile */}
+      {showParticles && <ParticlesBackground />}
 
       {/* Header - Smaller on mobile */}
       <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'p-3 pb-2' : 'mb-3 sm:mb-5'}`}>

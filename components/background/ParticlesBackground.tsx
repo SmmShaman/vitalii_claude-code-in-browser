@@ -36,12 +36,12 @@ export const ParticlesBackground = () => {
         powerPreference: 'low-power',
       });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       containerRef.current.appendChild(renderer.domElement);
 
       // Create particles
       const particlesGeometry = new THREE.BufferGeometry();
-      const particlesCount = 500; // Reduced from 1000 for better performance
+      const particlesCount = 200; // Reduced for better performance
       const posArray = new Float32Array(particlesCount * 3);
 
       for (let i = 0; i < particlesCount * 3; i++) {
@@ -117,8 +117,7 @@ export const ParticlesBackground = () => {
         }
       };
     } catch (error) {
-      console.warn('WebGL not supported, using CSS fallback', error);
-      // CSS fallback is rendered by default
+      console.warn('WebGL not supported, falling back to gradient', error);
     }
   }, []);
 
@@ -129,24 +128,6 @@ export const ParticlesBackground = () => {
       style={{
         background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
       }}
-    >
-      {/* CSS Fallback particles */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 50 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-purple-500/30"
-            style={{
-              width: `${Math.random() * 4 + 1}px`,
-              height: `${Math.random() * 4 + 1}px`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `float ${Math.random() * 10 + 5}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 5}s`,
-            }}
-          />
-        ))}
-      </div>
-    </div>
+    />
   );
 };
