@@ -104,7 +104,12 @@ ${(post.original_content || post.original_title || '').substring(0, 500)}...
       return false
     }
 
-    console.log(`✅ Sent to bot: ${post.id}`)
+    const tgMsgId = result.result?.message_id
+    if (tgMsgId) {
+      await supabase.from('news').update({ telegram_message_id: tgMsgId }).eq('id', post.id)
+    }
+
+    console.log(`✅ Sent to bot: ${post.id} (msg_id: ${tgMsgId})`)
     return true
 
   } catch (error) {

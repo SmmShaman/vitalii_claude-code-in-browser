@@ -114,9 +114,14 @@ ${post.original_content?.substring(0, 500)}${(post.original_content?.length || 0
         )
 
         if (response.ok) {
+          const resultData = await response.json()
+          const tgMsgId = resultData.result?.message_id
+          if (tgMsgId) {
+            await supabase.from('news').update({ telegram_message_id: tgMsgId }).eq('id', post.id)
+          }
           sentCount++
           results.push({ id: post.id, title: post.original_title?.substring(0, 50) || '', sent: true })
-          console.log(`✅ Sent: ${post.original_title?.substring(0, 50)}`)
+          console.log(`✅ Sent: ${post.original_title?.substring(0, 50)} (msg_id: ${tgMsgId})`)
         } else {
           const errorText = await response.text()
           results.push({ id: post.id, title: post.original_title?.substring(0, 50) || '', sent: false, error: errorText })

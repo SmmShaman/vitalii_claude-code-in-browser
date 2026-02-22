@@ -316,7 +316,7 @@ serve(async (req) => {
                   }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
 
                   if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    const tgResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -325,6 +325,12 @@ serve(async (req) => {
                         parse_mode: 'HTML'
                       })
                     })
+                    try {
+                      const tgData = await tgResponse.json()
+                      if (tgData.ok && tgData.result?.message_id) {
+                        await supabase.from('news').update({ telegram_message_id: tgData.result.message_id }).eq('id', newsEntry.id)
+                      }
+                    } catch (_e) { /* ignore parse errors */ }
                   }
 
                   sentToBotCount++
