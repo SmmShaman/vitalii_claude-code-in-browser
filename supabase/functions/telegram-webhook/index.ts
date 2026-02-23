@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
+import { dispatchToWorker } from '../_shared/webhook-dispatch.ts'
 
 /**
  * Extract external source links from text content
@@ -276,6 +277,7 @@ serve(async (req) => {
               .upload(fileName, photoBuffer, {
                 contentType: 'image/jpeg',
                 upsert: true,
+                cacheControl: '31536000'
               })
 
             if (uploadError) {
@@ -465,6 +467,7 @@ serve(async (req) => {
               .upload(fileName, photoBuffer, {
                 contentType: 'image/jpeg',
                 upsert: true,
+                cacheControl: '31536000'
               })
 
             if (uploadError) {
@@ -709,7 +712,7 @@ serve(async (req) => {
         action = 'publish'
         publicationType = 'blog'
         newsId = callbackData.replace('publish_blog_', '')
-      // RSS Article callbacks - use process-rss-news for summary-style rewrite
+        // RSS Article callbacks - use process-rss-news for summary-style rewrite
       } else if (callbackData.startsWith('publish_rss_news_')) {
         action = 'publish_rss'
         publicationType = 'news'
@@ -730,7 +733,7 @@ serve(async (req) => {
         action = 'linkedin'
         linkedinLanguage = 'ua'
         newsId = callbackData.replace('linkedin_ua_', '')
-      // Facebook callbacks
+        // Facebook callbacks
       } else if (callbackData.startsWith('facebook_en_')) {
         action = 'social_post'
         socialPlatform = 'facebook'
@@ -746,7 +749,7 @@ serve(async (req) => {
         socialPlatform = 'facebook'
         socialLanguage = 'ua'
         newsId = callbackData.replace('facebook_ua_', '')
-      // Instagram callbacks
+        // Instagram callbacks
       } else if (callbackData.startsWith('instagram_en_')) {
         action = 'social_post'
         socialPlatform = 'instagram'
@@ -762,11 +765,11 @@ serve(async (req) => {
         socialPlatform = 'instagram'
         socialLanguage = 'ua'
         newsId = callbackData.replace('instagram_ua_', '')
-      // TikTok callback (manual workflow)
+        // TikTok callback (manual workflow)
       } else if (callbackData.startsWith('tiktok_')) {
         action = 'tiktok'
         newsId = callbackData.replace('tiktok_', '')
-      // Twitter Share Intent callbacks
+        // Twitter Share Intent callbacks
       } else if (callbackData.startsWith('twitter_en_')) {
         action = 'twitter'
         socialPlatform = 'twitter'
@@ -782,7 +785,7 @@ serve(async (req) => {
         socialPlatform = 'twitter'
         socialLanguage = 'ua'
         newsId = callbackData.replace('twitter_ua_', '')
-      // Batch posting: All socials in one language
+        // Batch posting: All socials in one language
       } else if (callbackData.startsWith('all_en_')) {
         action = 'post_all'
         socialLanguage = 'en'
@@ -795,11 +798,11 @@ serve(async (req) => {
         action = 'post_all'
         socialLanguage = 'ua'
         newsId = callbackData.replace('all_ua_', '')
-      // Combo: LinkedIn EN + Facebook EN
+        // Combo: LinkedIn EN + Facebook EN
       } else if (callbackData.startsWith('combo_li_fb_en_')) {
         action = 'combo_li_fb_en'
         newsId = callbackData.replace('combo_li_fb_en_', '')
-      // Combo: LinkedIn + Facebook + Instagram (one language)
+        // Combo: LinkedIn + Facebook + Instagram (one language)
       } else if (callbackData.startsWith('combo_li_fb_ig_en_')) {
         action = 'combo_li_fb_ig'
         socialLanguage = 'en'
@@ -812,11 +815,11 @@ serve(async (req) => {
         action = 'combo_li_fb_ig'
         socialLanguage = 'ua'
         newsId = callbackData.replace('combo_li_fb_ig_ua_', '')
-      // Skip remaining social platforms
+        // Skip remaining social platforms
       } else if (callbackData.startsWith('skip_social_')) {
         action = 'skip_social'
         newsId = callbackData.replace('skip_social_', '')
-      // Image variant selection callbacks (select_variant_1_<uuid>, select_variant_2_<uuid>, etc.)
+        // Image variant selection callbacks (select_variant_1_<uuid>, select_variant_2_<uuid>, etc.)
       } else if (callbackData.startsWith('select_variant_')) {
         action = 'select_variant'
         // Format: select_variant_N_<newsId>
@@ -825,7 +828,7 @@ serve(async (req) => {
         const firstUnderscore = remainder.indexOf('_')
         imageLanguage = remainder.substring(0, firstUnderscore) // variant index as string ("1"-"4")
         newsId = remainder.substring(firstUnderscore + 1)
-      // Variant + language selection: vl_N_LL_<uuid> (N=1-4, LL=ua/no/en)
+        // Variant + language selection: vl_N_LL_<uuid> (N=1-4, LL=ua/no/en)
       } else if (callbackData.startsWith('vl_')) {
         action = 'variant_with_lang'
         // Format: vl_N_LL_<uuid>
@@ -846,7 +849,7 @@ serve(async (req) => {
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
-      // RSS Image workflow callbacks
+        // RSS Image workflow callbacks
       } else if (callbackData.startsWith('confirm_rss_image_')) {
         action = 'confirm_rss_image'
         newsId = callbackData.replace('confirm_rss_image_', '')
@@ -874,7 +877,7 @@ serve(async (req) => {
       } else if (callbackData.startsWith('upload_rss_image_')) {
         action = 'upload_rss_image'
         newsId = callbackData.replace('upload_rss_image_', '')
-      // ═══ Creative Builder callbacks ═══
+        // ═══ Creative Builder callbacks ═══
       } else if (callbackData.startsWith('cb_hub_')) {
         action = 'cb_hub'
         newsId = callbackData.replace('cb_hub_', '')
@@ -917,7 +920,7 @@ serve(async (req) => {
         const lang = remainder.substring(0, 2)
         newsId = remainder.substring(3) // skip "LL_"
         imageLanguage = lang
-      // ═══ Gallery & Keep Original callbacks ═══
+        // ═══ Gallery & Keep Original callbacks ═══
       } else if (callbackData.startsWith('keep_orig_')) {
         action = 'keep_orig'
         newsId = callbackData.replace('keep_orig_', '')
@@ -947,9 +950,10 @@ serve(async (req) => {
       if (action === 'publish') {
         console.log(`Publishing as ${publicationType} with ID:`, newsId)
 
+        // Lightweight validation
         const { data: news, error: fetchError } = await supabase
           .from('news')
-          .select('*')
+          .select('id, is_published, is_rewritten, title_en, title_no, title_ua')
           .eq('id', newsId)
           .single()
 
@@ -1021,77 +1025,7 @@ serve(async (req) => {
           })
         }
 
-        // 🎬 TRIGGER VIDEO PROCESSING VIA GITHUB ACTIONS
-        // If news has telegram_embed video, trigger background processing to YouTube
-        if (news.video_type === 'telegram_embed' && news.video_url && isGitHubActionsEnabled()) {
-          console.log(`🎬 Triggering GitHub Action for video processing: ${newsId}`)
-          const triggerResult = await triggerVideoProcessing({
-            newsId: newsId,
-            mode: 'single'
-          })
-          if (triggerResult.success) {
-            console.log(`✅ GitHub Action triggered - video will be processed in background`)
-          } else {
-            console.log(`⚠️ GitHub Action trigger failed: ${triggerResult.error} - video will remain as Telegram embed`)
-          }
-        }
-
-        // Choose appropriate processing function based on publication type
-        const processingEndpoint = publicationType === 'blog'
-          ? 'process-blog-post'
-          : 'process-news'
-
-        console.log(`Calling ${processingEndpoint} for AI rewriting...`)
-
-        const processResponse = await fetch(
-          `${SUPABASE_URL}/functions/v1/${processingEndpoint}`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              newsId: newsId,
-              title: news.original_title || '',
-              content: news.original_content || '',
-              url: news.original_url || '',
-              imageUrl: news.processed_image_url || news.image_url || null, // Prioritize custom uploaded image
-              videoUrl: news.video_url || null,
-              videoType: news.video_type || null,
-              sourceLink: news.source_link || null, // First external source link (backwards compatibility)
-              sourceLinks: news.source_links || [] // ALL external source links
-            })
-          }
-        )
-
-        if (!processResponse.ok) {
-          const errorText = await processResponse.text()
-          console.error('Failed to process:', errorText)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: `❌ AI processing error`,
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        const successMessage = publicationType === 'blog'
-          ? '✅ Published to blog!'
-          : '✅ Published to news!'
-
-        console.log(`✅ ${publicationType} processed successfully with AI`)
-
-        // Success
+        // ✅ Answer callback IMMEDIATELY
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -1099,59 +1033,13 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: successMessage,
+              text: '⏳ Обробляю...',
               show_alert: false
             })
           }
         )
 
-        // Edit message with social media buttons
-        const statusLabel = publicationType === 'blog' ? 'BLOG' : 'NEWS'
-        const socialKeyboard = {
-          inline_keyboard: [
-            // Batch posting - all socials in one language
-            [
-              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
-              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
-              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
-            ],
-            // Quick combo (LinkedIn + Facebook + Instagram)
-            [
-              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
-              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
-              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
-            ],
-            // LinkedIn individual
-            [
-              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
-              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
-              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
-            ],
-            // Facebook individual
-            [
-              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
-              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
-              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
-            ],
-            // Instagram individual
-            [
-              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
-              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
-              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
-            ],
-            // Twitter individual
-            [
-              { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
-              { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
-              { text: '🐦 Twitter UA', callback_data: `twitter_ua_${newsId}` }
-            ],
-            // TikTok and Skip
-            [
-              { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
-              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-            ]
-          ]
-        }
+        // Show processing state
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -1160,22 +1048,29 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`,
-              parse_mode: 'HTML',
-              reply_markup: socialKeyboard
+              text: messageText + `\n\n⏳ <b>Обробляю ${publicationType === 'blog' ? 'блог' : 'новину'} (AI рерайт EN/NO/UA)...</b>`,
+              parse_mode: 'HTML'
             })
           }
         )
 
+        // 🚀 Dispatch to background worker (fire-and-forget)
+        dispatchToWorker({
+          action: 'publish',
+          params: { newsId, publicationType },
+          telegram: { chatId, messageId, messageText }
+        })
+
       } else if (action === 'publish_rss') {
         // =================================================================
-        // 📰 RSS Article Publishing Handler (Summary-style)
+        // 📰 RSS Article Publishing Handler (Summary-style) - ASYNC
         // =================================================================
         console.log(`Publishing RSS article as ${publicationType} with ID:`, newsId)
 
+        // Lightweight validation
         const { data: news, error: fetchError } = await supabase
           .from('news')
-          .select('*')
+          .select('id, is_published, is_rewritten')
           .eq('id', newsId)
           .single()
 
@@ -1220,61 +1115,7 @@ serve(async (req) => {
           })
         }
 
-        // Choose appropriate processing function
-        // For RSS articles, we use process-rss-news (summary style) or process-blog-post
-        const processingEndpoint = publicationType === 'blog'
-          ? 'process-blog-post'
-          : 'process-rss-news'
-
-        console.log(`Calling ${processingEndpoint} for RSS AI rewriting...`)
-
-        const processResponse = await fetch(
-          `${SUPABASE_URL}/functions/v1/${processingEndpoint}`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              newsId: newsId,
-              title: news.original_title || '',
-              content: news.original_content || '',
-              url: news.rss_source_url || news.original_url || '',
-              imageUrl: news.processed_image_url || news.image_url || null,
-              images: news.images || [],
-              imagesWithMeta: news.images_with_meta || []
-            })
-          }
-        )
-
-        if (!processResponse.ok) {
-          const errorText = await processResponse.text()
-          console.error('Failed to process RSS:', errorText)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: `❌ AI processing error`,
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        const successMessage = publicationType === 'blog'
-          ? '✅ Published RSS to blog!'
-          : '✅ Published RSS to news!'
-
-        console.log(`✅ RSS ${publicationType} processed successfully with AI`)
-
-        // Success callback
+        // ✅ Answer callback IMMEDIATELY
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
           {
@@ -1282,53 +1123,13 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: successMessage,
+              text: '⏳ Обробляю RSS...',
               show_alert: false
             })
           }
         )
 
-        // Edit message with social media buttons
-        const statusLabel = publicationType === 'blog' ? 'BLOG (RSS)' : 'NEWS (RSS)'
-        const socialKeyboardRss = {
-          inline_keyboard: [
-            // Batch posting
-            [
-              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
-              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
-              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
-            ],
-            // Quick combos (LinkedIn + Facebook + Instagram)
-            [
-              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
-              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
-              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
-            ],
-            // LinkedIn individual
-            [
-              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
-              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
-              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
-            ],
-            // Facebook individual
-            [
-              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
-              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
-              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
-            ],
-            // Instagram individual
-            [
-              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
-              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
-              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
-            ],
-            // Skip
-            [
-              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-            ]
-          ]
-        }
-
+        // Show processing state
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -1337,947 +1138,114 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`,
-              parse_mode: 'HTML',
-              reply_markup: socialKeyboardRss
-            })
-          }
-        )
-
-      } else if (action === 'linkedin' && linkedinLanguage) {
-        // =================================================================
-        // 🔗 LinkedIn Posting Handler
-        // =================================================================
-        console.log(`Posting to LinkedIn (${linkedinLanguage}) with ID:`, newsId)
-
-        // First check if news is already published (has rewritten content)
-        const { data: news, error: fetchError } = await supabase
-          .from('news')
-          .select('*')
-          .eq('id', newsId)
-          .single()
-
-        if (fetchError || !news) {
-          console.error('Failed to fetch news:', fetchError)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Error: News not found',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Check if there's a blog post created from this news item
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        // Determine content type and ID to use
-        let contentType: 'news' | 'blog' = 'news'
-        let contentId = newsId
-        let titleField = `title_${linkedinLanguage}`
-        let checkRecord = news
-
-        if (blogPost) {
-          console.log('📝 Found blog post for this news, using blog content for LinkedIn')
-          contentType = 'blog'
-          contentId = blogPost.id
-          checkRecord = blogPost
-        }
-
-        // Check if content has translations
-        if (!checkRecord[titleField]) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: `❌ Content not published yet. Publish to News/Blog first!`,
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // 🎬 Check if news has video FIRST - video posts bypass duplicate check
-        // This allows re-uploading with native video even if image post was made before
-        const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
-
-        if (hasVideo && isGitHubActionsEnabled()) {
-          console.log(`🎬 News has video - triggering LinkedIn video GitHub Action`)
-          console.log(`   Original video URL: ${news.original_video_url}`)
-
-          const triggerResult = await triggerLinkedInVideo({
-            newsId: newsId,
-            language: linkedinLanguage as 'en' | 'no' | 'ua'
-          })
-
-          if (triggerResult.success) {
-            // Answer callback with processing message
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  callback_query_id: callbackId,
-                  text: '🎬 Відео завантажується в LinkedIn... Зачекайте 1-2 хв',
-                  show_alert: true
-                })
-              }
-            )
-
-            // Update message to show processing status
-            const langLabel = linkedinLanguage.toUpperCase()
-            const processingTextLinkedIn = messageText + `\n\n⏳ <b>Відео завантажується в LinkedIn (${langLabel})...</b>\n🎬 Це може зайняти 1-2 хвилини`
-
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  message_id: messageId,
-                  text: processingTextLinkedIn,
-                  parse_mode: 'HTML'
-                })
-              }
-            )
-
-            // Save message context for editing after GitHub Actions completes
-            await supabaseAdmin
-              .from('news')
-              .update({
-                telegram_chat_id: chatId,
-                telegram_message_id: messageId,
-                telegram_message_text: processingTextLinkedIn
-              })
-              .eq('id', newsId)
-
-            return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
-              headers: { 'Content-Type': 'application/json' }
-            })
-          } else {
-            console.error('❌ Failed to trigger LinkedIn video Action:', triggerResult.error)
-            // Fall through to regular text+image posting
-          }
-        }
-
-        // 🛡️ DUPLICATE CHECK: Prevent republishing to LinkedIn (only for non-video posts)
-        // Video posts bypass this check above
-        if (checkRecord.linkedin_post_id) {
-          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
-          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), preventing duplicate`)
-
-          // Answer callback silently (required by Telegram API)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId
-              })
-            }
-          )
-
-          // Build LinkedIn post URL
-          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
-
-          // Update original message to show duplicate status (NO separate message!)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + `\n\n⚠️ <b>Вже опубліковано в LinkedIn (${existingLang})!</b>\n🔗 <a href="${linkedinPostUrl}">Переглянути пост</a>`,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-
-          return new Response(JSON.stringify({ ok: true, duplicate: true }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Post to LinkedIn with correct content type and ID (text + image only)
-        console.log(`Calling post-to-linkedin for ${contentType} ${contentId}...`)
-
-        const linkedinRequestBody: any = {
-          language: linkedinLanguage,
-          contentType: contentType
-        }
-
-        // Use the correct ID field based on content type
-        if (contentType === 'blog') {
-          linkedinRequestBody.blogPostId = contentId
-        } else {
-          linkedinRequestBody.newsId = contentId
-        }
-
-        const linkedinResponse = await fetch(
-          `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(linkedinRequestBody)
-          }
-        )
-
-        const linkedinResult = await linkedinResponse.json()
-
-        if (!linkedinResponse.ok || !linkedinResult.success) {
-          console.error('Failed to post to LinkedIn:', linkedinResult)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: `❌ LinkedIn error: ${linkedinResult.error || 'Unknown error'}`,
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        console.log('✅ Posted to LinkedIn successfully')
-
-        // Get the title in the appropriate language for the success message
-        // Note: titleField is already declared above on line 496
-        const newsTitle = news[titleField] || news.title_en || news.original_title || 'Untitled'
-        const shortTitle = newsTitle.length > 50 ? newsTitle.substring(0, 47) + '...' : newsTitle
-
-        // Build LinkedIn post URL (use postUrl from response, or construct from postId as fallback)
-        const linkedinPostUrl = linkedinResult.postUrl || (linkedinResult.postId
-          ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-          : null)
-
-        // Answer callback silently (required by Telegram API)
-        const langLabel = linkedinLanguage.toUpperCase()
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId
-            })
-          }
-        )
-
-        // Build article URL on website
-        const slugField = `slug_${linkedinLanguage}`
-        const articleSlug = checkRecord[slugField] || checkRecord.slug_en || newsId.substring(0, 8)
-        const articlePath = contentType === 'blog' ? 'blog' : 'news'
-        const articleUrl = `https://vitalii.no/${articlePath}/${articleSlug}`
-
-        // Update original message to show LinkedIn status (one-line format)
-        const linkedinStatusText = linkedinPostUrl
-          ? `\n\n🔗 LinkedIn ${langLabel}: <a href="${linkedinPostUrl}">Переглянути пост</a>`
-          : `\n\n✅ LinkedIn ${langLabel}: Опубліковано`
-
-        // Build remaining social media buttons
-        const allLanguages = ['en', 'no', 'ua']
-        const remainingLanguages = allLanguages.filter(lang => lang !== linkedinLanguage)
-
-        // Build button rows
-        const buttonRows = []
-
-        // Remaining LinkedIn languages
-        if (remainingLanguages.length > 0) {
-          buttonRows.push(remainingLanguages.map(lang => ({
-            text: `🔗 LinkedIn ${lang.toUpperCase()}`,
-            callback_data: `linkedin_${lang}_${newsId}`
-          })))
-        }
-
-        // Facebook buttons
-        buttonRows.push([
-          { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
-          { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
-          { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
-        ])
-
-        // Instagram buttons
-        buttonRows.push([
-          { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
-          { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
-          { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
-        ])
-
-        // Twitter buttons
-        buttonRows.push([
-          { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
-          { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
-          { text: '🐦 Twitter UA', callback_data: `twitter_ua_${newsId}` }
-        ])
-
-        // TikTok and Skip buttons
-        buttonRows.push([
-          { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
-          { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-        ])
-
-        const editPayload: any = {
-          chat_id: chatId,
-          message_id: messageId,
-          text: messageText + linkedinStatusText,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-          reply_markup: {
-            inline_keyboard: buttonRows
-          }
-        }
-
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editPayload)
-          }
-        )
-
-      } else if (action === 'social_post' && socialPlatform && socialLanguage) {
-        // =================================================================
-        // 📱 Facebook/Instagram Posting Handler
-        // =================================================================
-        console.log(`Posting to ${socialPlatform} (${socialLanguage}) with ID:`, newsId)
-
-        // Fetch news data
-        const { data: news, error: fetchError } = await supabase
-          .from('news')
-          .select('*')
-          .eq('id', newsId)
-          .single()
-
-        if (fetchError || !news) {
-          console.error('Failed to fetch news:', fetchError)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Error: News not found',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // =================================================================
-        // 📸 Instagram Media Validation - Check BEFORE posting
-        // =================================================================
-        if (socialPlatform === 'instagram') {
-          // Check if news has valid media for Instagram
-          const hasImage = !!(news.processed_image_url || news.image_url)
-
-          // Check if video URL is a valid direct file (not Telegram post URL)
-          const isValidVideoUrl = (url: string | null | undefined): boolean => {
-            if (!url) return false
-            // Telegram post URLs are NOT valid video files
-            if (url.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/)) return false
-            // Check for valid video file extensions or Telegram file API
-            const validExtensions = ['.mp4', '.mov', '.avi', '.webm', '.m4v']
-            const hasVideoExtension = validExtensions.some(ext => url.toLowerCase().includes(ext))
-            const isTelegramFileApi = url.includes('api.telegram.org/file/')
-            return hasVideoExtension || isTelegramFileApi
-          }
-
-          const hasValidVideo = isValidVideoUrl(news.original_video_url) ||
-            (news.video_type !== 'youtube' && news.video_type !== 'telegram_embed' && isValidVideoUrl(news.video_url))
-
-          console.log(`📸 Instagram media check: hasImage=${hasImage}, hasValidVideo=${hasValidVideo}`)
-
-          // Check if we have a Telegram video URL that can be processed via GitHub Actions
-          const hasTelegramVideo = !!(
-            news.original_video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/) ||
-            (news.video_type === 'telegram_embed' && news.video_url?.match(/^https?:\/\/t\.me\/[^\/]+\/\d+/))
-          )
-          console.log(`📸 Instagram: hasTelegramVideo=${hasTelegramVideo}, hasImage=${hasImage}`)
-
-          // If no valid direct video but has Telegram video, try GitHub Actions
-          if (!hasValidVideo && hasTelegramVideo && isGitHubActionsEnabled()) {
-            console.log(`🎬 Instagram: Triggering GitHub Actions for video upload...`)
-
-            try {
-              const result = await triggerInstagramVideo({
-                newsId: newsId,
-                language: socialLanguage as 'en' | 'no' | 'ua'
-              })
-
-              if (result.success) {
-                // Answer callback with processing message
-                await fetch(
-                  `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-                  {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      callback_query_id: callbackId,
-                      text: '🎬 Відео завантажується в Instagram... Зачекайте 2-5 хв',
-                      show_alert: true
-                    })
-                  }
-                )
-
-                // Update message to show processing status
-                const processingTextInstagram = messageText +
-                  `\n\n⏳ <b>Instagram Reel (${socialLanguage.toUpperCase()}) обробляється...</b>\n` +
-                  `<i>Відео завантажується з Telegram → Instagram. Це займе 2-5 хвилин.</i>`
-
-                await fetch(
-                  `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-                  {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      chat_id: chatId,
-                      message_id: messageId,
-                      text: processingTextInstagram,
-                      parse_mode: 'HTML',
-                      disable_web_page_preview: true
-                    })
-                  }
-                )
-
-                // Save message context for editing after GitHub Actions completes
-                await supabaseAdmin
-                  .from('news')
-                  .update({
-                    telegram_chat_id: chatId,
-                    telegram_message_id: messageId,
-                    telegram_message_text: processingTextInstagram
-                  })
-                  .eq('id', newsId)
-
-                return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
-                  headers: { 'Content-Type': 'application/json' }
-                })
-              } else {
-                console.warn(`⚠️ Instagram video trigger failed: ${result.error}`)
-                // Fall through to image upload prompt
-              }
-            } catch (err: any) {
-              console.error(`❌ Instagram video trigger error: ${err.message}`)
-              // Fall through to image upload prompt
-            }
-          }
-
-          if (!hasImage && !hasValidVideo) {
-            console.log(`⚠️ No valid media for Instagram. Trying auto-generation...`)
-
-            // 🎨 TRY AUTO-GENERATION: Generate image from stored prompt if available
-            let autoGeneratedImageUrl: string | null = null
-
-            if (news.image_generation_prompt) {
-              console.log(`🎨 Instagram fallback: Found stored prompt, attempting auto-generation...`)
-
-              // Show "generating" message
-              await fetch(
-                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    callback_query_id: callbackId,
-                    text: '🎨 Генерую зображення для Instagram...',
-                    show_alert: false
-                  })
-                }
-              )
-
-              try {
-                const imageGenResponse = await fetch(
-                  `${SUPABASE_URL}/functions/v1/process-image`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      newsId: newsId,
-                      generateFromPrompt: true
-                    })
-                  }
-                )
-
-                if (imageGenResponse.ok) {
-                  const imageGenResult = await imageGenResponse.json()
-                  if (imageGenResult.success && imageGenResult.processedImageUrl) {
-                    autoGeneratedImageUrl = imageGenResult.processedImageUrl
-                    console.log(`✅ Instagram fallback: Image auto-generated: ${autoGeneratedImageUrl}`)
-
-                    // Refresh news data with new image
-                    const { data: refreshedNews } = await supabase
-                      .from('news')
-                      .select('processed_image_url')
-                      .eq('id', newsId)
-                      .single()
-
-                    if (refreshedNews?.processed_image_url) {
-                      // Update local reference - now we have an image!
-                      // Continue with Instagram posting (fall through to normal flow)
-                      console.log(`✅ Instagram: Continuing with auto-generated image`)
-
-                      // Notify user that AI generated the image (APPEND to message)
-                      await fetch(
-                        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-                        {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            chat_id: chatId,
-                            message_id: messageId,
-                            text: messageText + `\n\n🤖 <b>AI згенерував зображення!</b>\n🖼️ <a href="${autoGeneratedImageUrl}">Переглянути</a>\n⏳ <i>Публікую в Instagram (${socialLanguage.toUpperCase()})...</i>`,
-                            parse_mode: 'HTML',
-                            disable_web_page_preview: true
-                          })
-                        }
-                      )
-                    }
-                  }
-                }
-              } catch (genError: any) {
-                console.error(`❌ Instagram fallback auto-generation failed: ${genError.message}`)
-              }
-            }
-
-            // If auto-generation failed, prompt for manual upload
-            if (!autoGeneratedImageUrl) {
-              console.log(`⚠️ Auto-generation failed or no prompt. Prompting for image upload...`)
-
-              // Answer callback first
-              await fetch(
-                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    callback_query_id: callbackId,
-                    text: '📸 Instagram потребує зображення! Завантажте фото.',
-                    show_alert: true
-                  })
-                }
-              )
-
-              // Update message to request image upload with Instagram info
-              const uploadPromptText = messageText +
-                `\n\n📸 <b>Instagram потребує зображення!</b>\n` +
-                `<i>Відповідь на це повідомлення з фото для публікації в Instagram (${socialLanguage.toUpperCase()})</i>\n` +
-                `<code>instagram_${socialLanguage}:${newsId}</code>`
-
-              await fetch(
-                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    chat_id: chatId,
-                    message_id: messageId,
-                    text: uploadPromptText,
-                    parse_mode: 'HTML',
-                    disable_web_page_preview: true
-                  })
-                }
-              )
-
-              return new Response(JSON.stringify({ ok: true, needsImage: true }), {
-                headers: { 'Content-Type': 'application/json' }
-              })
-            }
-
-            // Auto-generated image successful - update news reference for Instagram posting
-            news.processed_image_url = autoGeneratedImageUrl
-          }
-        }
-
-        // Check if has blog post FIRST (before validation)
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
-        const checkRecord = blogPost || news
-
-        // Check if content has translations
-        const titleField = `title_${socialLanguage}`
-        if (!checkRecord[titleField]) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Content not published yet. Publish to News/Blog first!',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Determine which endpoint to call
-        const endpoint = socialPlatform === 'facebook' ? 'post-to-facebook' : 'post-to-instagram'
-
-        const requestBody: any = {
-          language: socialLanguage,
-          contentType: contentType
-        }
-
-        if (contentType === 'blog') {
-          requestBody.blogPostId = contentId
-        } else {
-          requestBody.newsId = contentId
-        }
-
-        // Call the posting function
-        const postResponse = await fetch(
-          `${SUPABASE_URL}/functions/v1/${endpoint}`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-          }
-        )
-
-        const postResult = await postResponse.json()
-
-        // Handle video processing response (for Facebook native video upload)
-        if (postResult.videoProcessing && socialPlatform === 'facebook') {
-          console.log(`🎬 Facebook video processing triggered for news: ${newsId}`)
-
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '🎬 Відео завантажується в Facebook... Зачекайте 1-2 хв',
-                show_alert: true
-              })
-            }
-          )
-
-          // Update message to show video processing status
-          const processingTextFacebook = messageText + `\n\n📘 <b>Facebook (${socialLanguage.toUpperCase()}): 🎬 Відео обробляється...</b>\n⏳ Це може зайняти 1-2 хвилини`
-
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: processingTextFacebook,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-
-          // Save message context for editing after GitHub Actions completes
-          await supabaseAdmin
-            .from('news')
-            .update({
-              telegram_chat_id: chatId,
-              telegram_message_id: messageId,
-              telegram_message_text: processingTextFacebook
-            })
-            .eq('id', newsId)
-
-          return new Response(JSON.stringify({ ok: true, videoProcessing: true }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        if (!postResponse.ok || !postResult.success) {
-          // Check if already posted
-          if (postResult.alreadyPosted) {
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  callback_query_id: callbackId,
-                  text: `⚠️ Already posted to ${socialPlatform}!`,
-                  show_alert: true
-                })
-              }
-            )
-          } else {
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  callback_query_id: callbackId,
-                  text: `❌ ${socialPlatform} error: ${postResult.error || 'Unknown error'}`,
-                  show_alert: true
-                })
-              }
-            )
-          }
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        console.log(`✅ Posted to ${socialPlatform} successfully`)
-
-        // Answer callback
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId
-            })
-          }
-        )
-
-        // Get emoji for platform
-        const platformEmoji = socialPlatform === 'facebook' ? '📘' : '📸'
-        const platformName = socialPlatform.charAt(0).toUpperCase() + socialPlatform.slice(1)
-        const langLabel = socialLanguage.toUpperCase()
-
-        // Build status text (one-line format)
-        const statusText = postResult.postUrl
-          ? `\n\n${platformEmoji} ${platformName} ${langLabel}: <a href="${postResult.postUrl}">Переглянути пост</a>`
-          : `\n\n✅ ${platformName} ${langLabel}: Опубліковано`
-
-        // Build remaining social buttons (for other platforms/languages)
-        const remainingButtons = []
-
-        // Add remaining language buttons for current platform
-        const allLanguages = ['en', 'no', 'ua']
-        const remainingLangs = allLanguages.filter(l => l !== socialLanguage)
-        for (const lang of remainingLangs) {
-          remainingButtons.push({
-            text: `${platformEmoji} ${platformName} ${lang.toUpperCase()}`,
-            callback_data: `${socialPlatform}_${lang}_${newsId}`
-          })
-        }
-
-        // Add other platform buttons
-        if (socialPlatform === 'facebook') {
-          remainingButtons.push({
-            text: '📸 Instagram EN',
-            callback_data: `instagram_en_${newsId}`
-          })
-        } else {
-          remainingButtons.push({
-            text: '📘 Facebook EN',
-            callback_data: `facebook_en_${newsId}`
-          })
-        }
-
-        remainingButtons.push({
-          text: '🎵 TikTok',
-          callback_data: `tiktok_${newsId}`
-        })
-
-        remainingButtons.push({
-          text: '⏭️ Skip',
-          callback_data: `skip_social_${newsId}`
-        })
-
-        // Build keyboard with 2 buttons per row
-        const rows = []
-        for (let i = 0; i < remainingButtons.length; i += 2) {
-          rows.push(remainingButtons.slice(i, i + 2))
-        }
-
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + statusText,
-              parse_mode: 'HTML',
-              disable_web_page_preview: true,
-              reply_markup: rows.length > 0 ? { inline_keyboard: rows } : undefined
-            })
-          }
-        )
-
-      } else if (action === 'tiktok') {
-        // =================================================================
-        // 🎵 TikTok Content Generation (Manual Workflow)
-        // =================================================================
-        console.log('Generating TikTok content for news:', newsId)
-
-        // Fetch news data
-        const { data: news, error: fetchError } = await supabase
-          .from('news')
-          .select('*')
-          .eq('id', newsId)
-          .single()
-
-        if (fetchError || !news) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Error: News not found',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Check if has blog post FIRST (before validation)
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
-        const checkRecord = blogPost || news
-
-        // Check if content is published
-        if (!checkRecord.title_en) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Content not published yet. Publish to News/Blog first!',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId,
-              text: '🎵 Generating TikTok content...',
-              show_alert: false
-            })
-          }
-        )
-
-        // Call TikTok content generator
-        const tiktokResponse = await fetch(
-          `${SUPABASE_URL}/functions/v1/generate-tiktok-content`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              newsId: contentType === 'news' ? contentId : undefined,
-              blogPostId: contentType === 'blog' ? contentId : undefined,
-              language: 'en',
-              contentType: contentType,
-              chatId: chatId.toString()
-            })
-          }
-        )
-
-        const tiktokResult = await tiktokResponse.json()
-
-        if (!tiktokResponse.ok || !tiktokResult.success) {
-          console.error('TikTok content generation failed:', tiktokResult)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: `❌ TikTok content generation failed: ${tiktokResult.error || 'Unknown error'}`
-              })
-            }
-          )
-        }
-
-        // Update original message
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + '\n\n🎵 <b>TikTok content sent below!</b>',
+              text: messageText + `\n\n⏳ <b>Обробляю RSS ${publicationType === 'blog' ? 'блог' : 'новину'} (AI рерайт EN/NO/UA)...</b>`,
               parse_mode: 'HTML'
             })
           }
         )
+
+        // 🚀 Dispatch to background worker
+        dispatchToWorker({
+          action: 'publish_rss',
+          params: { newsId, publicationType },
+          telegram: { chatId, messageId, messageText }
+        })
+
+      } else if (action === 'linkedin' && linkedinLanguage) {
+        // =================================================================
+        // 🔗 LinkedIn Posting Handler → DISPATCH TO WORKER
+        // =================================================================
+        console.log(`[async] Dispatching LinkedIn (${linkedinLanguage}) to worker for news:`, newsId)
+
+        // Answer callback immediately
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '⏳ Публікуємо в LinkedIn...', show_alert: false })
+        })
+
+        // Show processing state
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: messageText + `\n\n⏳ <b>Публікуємо в LinkedIn (${linkedinLanguage.toUpperCase()})...</b>`,
+            parse_mode: 'HTML', disable_web_page_preview: true
+          })
+        })
+
+        // Dispatch to worker
+        dispatchToWorker({
+          action: 'linkedin',
+          params: { newsId, linkedinLanguage },
+          telegram: { chatId, messageId, messageText }
+        })
+
+      } else if (action === 'social_post' && socialPlatform && socialLanguage) {
+        // =================================================================
+        // 📱 Facebook/Instagram Posting Handler → DISPATCH TO WORKER
+        // =================================================================
+        console.log(`[async] Dispatching ${socialPlatform} (${socialLanguage}) to worker for news:`, newsId)
+
+        const platformEmoji = socialPlatform === 'facebook' ? '📘' : '📸'
+        const platformName = socialPlatform.charAt(0).toUpperCase() + socialPlatform.slice(1)
+
+        // Answer callback immediately
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: `⏳ Публікуємо в ${platformName}...`, show_alert: false })
+        })
+
+        // Show processing state
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: messageText + `\n\n⏳ <b>${platformEmoji} Публікуємо в ${platformName} (${socialLanguage.toUpperCase()})...</b>`,
+            parse_mode: 'HTML', disable_web_page_preview: true
+          })
+        })
+
+        // Dispatch to worker
+        dispatchToWorker({
+          action: 'social_post',
+          params: { newsId, socialPlatform, socialLanguage },
+          telegram: { chatId, messageId, messageText }
+        })
+
+      } else if (action === 'tiktok') {
+        // =================================================================
+        // 🎵 TikTok Content Generation → DISPATCH TO WORKER
+        // =================================================================
+        console.log(`[async] Dispatching TikTok to worker for news:`, newsId)
+
+        // Answer callback immediately
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '🎵 Generating TikTok content...', show_alert: false })
+        })
+
+        // Show processing state
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: messageText + '\n\n⏳ <b>🎵 Генерація TikTok контенту...</b>',
+            parse_mode: 'HTML'
+          })
+        })
+
+        // Dispatch to worker
+        dispatchToWorker({
+          action: 'tiktok',
+          params: { newsId, chatId: chatId.toString() },
+          telegram: { chatId, messageId, messageText }
+        })
 
       } else if (action === 'twitter' && socialPlatform === 'twitter' && socialLanguage) {
         // =================================================================
@@ -2430,9 +1398,9 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               text: `🐦 <b>Twitter Share Ready (${langLabel})!</b>\n\n` +
-                    `📝 «${shortTitle}»\n\n` +
-                    `👉 <a href="${twitterIntentUrl}">Натисніть щоб опублікувати в Twitter</a>\n\n` +
-                    `<i>Відкриється Twitter з готовим текстом. Натисніть "Post" для публікації.</i>`,
+                `📝 «${shortTitle}»\n\n` +
+                `👉 <a href="${twitterIntentUrl}">Натисніть щоб опублікувати в Twitter</a>\n\n` +
+                `<i>Відкриється Twitter з готовим текстом. Натисніть "Post" для публікації.</i>`,
               parse_mode: 'HTML',
               disable_web_page_preview: true
             })
@@ -2478,1164 +1446,132 @@ serve(async (req) => {
 
       } else if (action === 'post_all' && socialLanguage) {
         // =================================================================
-        // 🌐 Post to ALL socials in one language
+        // 🌐 Post to ALL socials → DISPATCH TO WORKER (parallel)
         // =================================================================
-        console.log(`Posting to ALL socials (${socialLanguage}) for news:`, newsId)
-
         const langLabel = socialLanguage.toUpperCase()
+        console.log(`[async] Dispatching post_all (${langLabel}) to worker for news:`, newsId)
 
         // Answer callback immediately
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId,
-              text: `🌐 Публікуємо у всі соцмережі (${langLabel})...`,
-              show_alert: false
-            })
-          }
-        )
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: `🌐 Публікуємо у всі соцмережі (${langLabel})...`, show_alert: false })
+        })
 
-        // Fetch news data
-        const { data: news, error: fetchError } = await supabase
-          .from('news')
-          .select('*')
-          .eq('id', newsId)
-          .single()
-
-        if (fetchError || !news) {
-          console.error('Failed to fetch news:', fetchError)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: '❌ Error: News not found'
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
+        // Show processing state
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: messageText + `\n\n⏳ <b>🌐 Публікуємо у всі соцмережі (${langLabel})...</b>\n<i>LinkedIn + Facebook + Instagram + Twitter</i>`,
+            parse_mode: 'HTML', disable_web_page_preview: true
           })
-        }
+        })
 
-        // Check if has blog post FIRST (before validation)
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
-        const checkRecord = blogPost || news
-
-        // Check if content has translations
-        const titleField = `title_${socialLanguage}`
-        if (!checkRecord[titleField]) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: `❌ Content not published yet (no ${langLabel} translation). Publish to News/Blog first!`
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Track results
-        const results: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
-
-        // 🎬 Check if news has video for LinkedIn native video upload
-        const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
-        let linkedinVideoTriggered = false
-
-        // 1. Post to LinkedIn
-        console.log(`📤 Posting to LinkedIn (${socialLanguage})...`)
-
-        // 🛡️ DUPLICATE CHECK: Skip LinkedIn if already posted
-        const linkedinAlreadyPostedAll = !!checkRecord.linkedin_post_id
-        if (linkedinAlreadyPostedAll) {
-          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
-          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), skipping`)
-          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
-          results.push({
-            platform: 'LinkedIn',
-            success: true,
-            url: linkedinPostUrl,
-            error: `Вже опубліковано (${existingLang})`
-          })
-        } else if (hasVideo && isGitHubActionsEnabled()) {
-          console.log(`🎬 Batch post: News has video - triggering LinkedIn video GitHub Action`)
-          console.log(`   Original video URL: ${news.original_video_url}`)
-
-          try {
-            const triggerResult = await triggerLinkedInVideo({
-              newsId: newsId,
-              language: socialLanguage as 'en' | 'no' | 'ua'
-            })
-
-            if (triggerResult.success) {
-              linkedinVideoTriggered = true
-              results.push({
-                platform: 'LinkedIn',
-                success: true,
-                processing: true,
-                error: '⏳ Відео обробляється... (1-2 хв)'
-              })
-            } else {
-              console.error('❌ Failed to trigger LinkedIn video Action:', triggerResult.error)
-              // Fall through to regular posting below
-            }
-          } catch (e) {
-            console.error('❌ Error triggering LinkedIn video Action:', e)
-            // Fall through to regular posting below
-          }
-        }
-
-        // Regular LinkedIn posting (no video or video trigger failed)
-        if (!linkedinAlreadyPostedAll && !linkedinVideoTriggered) {
-          try {
-            const linkedinRequestBody: any = {
-              language: socialLanguage,
-              contentType: contentType
-            }
-            if (contentType === 'blog') {
-              linkedinRequestBody.blogPostId = contentId
-            } else {
-              linkedinRequestBody.newsId = contentId
-            }
-
-            const linkedinResponse = await fetch(
-              `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(linkedinRequestBody)
-              }
-            )
-            const linkedinResult = await linkedinResponse.json()
-
-            if (linkedinResponse.ok && linkedinResult.success) {
-              // Use postUrl directly from response (or construct from postId as fallback)
-              const postUrl = linkedinResult.postUrl || (linkedinResult.postId
-                ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-                : undefined)
-              results.push({ platform: 'LinkedIn', success: true, url: postUrl })
-            } else {
-              results.push({ platform: 'LinkedIn', success: false, error: linkedinResult.error || 'Unknown error' })
-            }
-          } catch (e) {
-            results.push({ platform: 'LinkedIn', success: false, error: 'Request failed' })
-          }
-        }
-
-        // 2. Post to Facebook
-        console.log(`📤 Posting to Facebook (${socialLanguage})...`)
-        try {
-          const fbRequestBody: any = {
-            language: socialLanguage,
-            contentType: contentType
-          }
-          if (contentType === 'blog') {
-            fbRequestBody.blogPostId = contentId
-          } else {
-            fbRequestBody.newsId = contentId
-          }
-
-          const fbResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/post-to-facebook`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(fbRequestBody)
-            }
-          )
-          const fbResult = await fbResponse.json()
-
-          if (fbResponse.ok && fbResult.success) {
-            results.push({ platform: 'Facebook', success: true, url: fbResult.postUrl })
-          } else {
-            results.push({ platform: 'Facebook', success: false, error: fbResult.error || 'Unknown error' })
-          }
-        } catch (e) {
-          results.push({ platform: 'Facebook', success: false, error: 'Request failed' })
-        }
-
-        // 3. Post to Instagram
-        console.log(`📤 Posting to Instagram (${socialLanguage})...`)
-        try {
-          const igRequestBody: any = {
-            language: socialLanguage,
-            contentType: contentType
-          }
-          if (contentType === 'blog') {
-            igRequestBody.blogPostId = contentId
-          } else {
-            igRequestBody.newsId = contentId
-          }
-
-          const igResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/post-to-instagram`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(igRequestBody)
-            }
-          )
-          const igResult = await igResponse.json()
-
-          if (igResponse.ok && igResult.success) {
-            results.push({ platform: 'Instagram', success: true, url: igResult.postUrl })
-          } else {
-            results.push({ platform: 'Instagram', success: false, error: igResult.error || 'Unknown error' })
-          }
-        } catch (e) {
-          results.push({ platform: 'Instagram', success: false, error: 'Request failed' })
-        }
-
-        // 4. Generate Twitter Share Intent (with AI teaser)
-        console.log(`📤 Generating Twitter link (${socialLanguage})...`)
-        const slugField = `slug_${socialLanguage}`
-        const contentField = `content_${socialLanguage}`
-        const teaserField = `social_teaser_twitter_${socialLanguage}`
-        const title = news[titleField] as string
-        const content = (news[contentField] || '') as string
-        const slug = news[slugField] || news.slug_en || newsId.substring(0, 8)
-        const articleUrl = `https://vitalii.no/news/${slug}`
-        const maxTextLength = 255
-
-        // Check for cached teaser or generate new one
-        let tweetText = news[teaserField] as string | null
-
-        if (!tweetText) {
-          console.log('🎯 Generating Twitter teaser for batch post...')
-          try {
-            const teaserResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                newsId,
-                title,
-                content,
-                contentType: 'news',
-                platform: 'twitter',
-                language: socialLanguage
-              })
-            })
-
-            if (teaserResponse.ok) {
-              const teaserResult = await teaserResponse.json()
-              if (teaserResult.success && teaserResult.teaser) {
-                tweetText = teaserResult.teaser
-              }
-            }
-          } catch (e) {
-            console.warn('⚠️ Teaser generation failed, using title')
-          }
-        }
-
-        // Fallback to title
-        if (!tweetText) {
-          tweetText = title
-        }
-
-        // Truncate if needed
-        if (tweetText.length > maxTextLength) {
-          tweetText = tweetText.substring(0, maxTextLength - 3) + '...'
-        }
-
-        const twitterIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(articleUrl)}`
-        results.push({ platform: 'Twitter', success: true, url: twitterIntentUrl })
-
-        // Build results message with article link
-        const shortTitle = title.length > 50 ? title.substring(0, 47) + '...' : title
-        let resultsText = `\n\n🌐 <b>Результати публікації (${langLabel}):</b>\n\n`
-        resultsText += `📰 «${shortTitle}»\n`
-        resultsText += `📝 <a href="${articleUrl}">Читати на сайті</a>\n\n`
-
-        for (const r of results) {
-          if (r.success) {
-            if ((r as any).processing) {
-              // Video processing in progress via GitHub Action
-              resultsText += `⏳ ${r.platform}: ${r.error || 'Відео обробляється...'}\n`
-            } else if (r.platform === 'Twitter') {
-              resultsText += `🐦 ${r.platform}: <a href="${r.url}">Натисніть для публікації</a>\n`
-            } else if (r.url) {
-              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути пост</a>\n`
-            } else {
-              resultsText += `✅ ${r.platform}: Опубліковано\n`
-            }
-          } else {
-            resultsText += `❌ ${r.platform}: ${r.error}\n`
-          }
-        }
-
-        // Update message with results
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: messageText + resultsText,
-              parse_mode: 'HTML',
-              disable_web_page_preview: true
-            })
-          }
-        )
+        // Dispatch to worker (will use Promise.allSettled for parallel posting)
+        dispatchToWorker({
+          action: 'post_all',
+          params: { newsId, socialLanguage },
+          telegram: { chatId, messageId, messageText }
+        })
 
       } else if (action === 'combo_li_fb_en') {
         // =================================================================
-        // 🔗📘 Combo: LinkedIn EN + Facebook EN
+        // 🔗📘 Combo: LinkedIn EN + Facebook EN → DISPATCH TO WORKER
         // =================================================================
-        console.log('Posting combo LinkedIn EN + Facebook EN for news:', newsId)
+        console.log(`[async] Dispatching combo_li_fb_en to worker for news:`, newsId)
 
         // Answer callback immediately
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId,
-              text: '🔗📘 Публікуємо LinkedIn + Facebook EN...',
-              show_alert: false
-            })
-          }
-        )
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '🔗📘 Публікуємо LinkedIn + Facebook EN...', show_alert: false })
+        })
 
-        // Immediately update message to show processing and remove combo button
-        const processingButtons = [
-          [
-            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` },
-            { text: '🌐 Все NO', callback_data: `all_no_${newsId}` }
-          ],
-          [
-            { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
-            { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` }
-          ],
-          [
-            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
-            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-          ]
-        ]
-
-        // Show processing status in the SAME message
-        try {
-          const editProcessingResponse = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + '\n\n⏳ <b>Публікуємо LinkedIn + Facebook EN...</b>',
-                parse_mode: 'HTML',
-                disable_web_page_preview: true,
-                reply_markup: {
-                  inline_keyboard: processingButtons
-                }
-              })
+        // Show processing state with remaining buttons
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: messageText + '\n\n⏳ <b>Публікуємо LinkedIn + Facebook EN...</b>',
+            parse_mode: 'HTML', disable_web_page_preview: true,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` },
+                  { text: '🌐 Все NO', callback_data: `all_no_${newsId}` }
+                ],
+                [
+                  { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
+                  { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` }
+                ],
+                [
+                  { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+                  { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+                ]
+              ]
             }
-          )
-
-          if (!editProcessingResponse.ok) {
-            const errText = await editProcessingResponse.text()
-            console.error('⚠️ Failed to edit message (processing):', errText)
-          }
-        } catch (editError) {
-          console.error('⚠️ Error editing message (processing):', editError)
-        }
-
-        // Fetch news data
-        const { data: news, error: fetchError } = await supabase
-          .from('news')
-          .select('*')
-          .eq('id', newsId)
-          .single()
-
-        if (fetchError || !news) {
-          console.error('Failed to fetch news:', fetchError)
-          // Update the SAME message with error (not sendMessage!)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + '\n\n❌ <b>Error:</b> News not found',
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
           })
-        }
+        })
 
-        // Check if has blog post FIRST (before validation)
-        const { data: blogPost } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentType = blogPost ? 'blog' : 'news'
-        const contentId = blogPost ? blogPost.id : newsId
-        const checkRecord = blogPost || news
-
-        // Check if content has English translation
-        if (!checkRecord.title_en) {
-          // Update the SAME message with error (not sendMessage!)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + '\n\n❌ <b>Error:</b> Content not published yet (no EN translation). Publish to News/Blog first!',
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Track results
-        const results: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
-
-        // 🎬 Check if news has video for LinkedIn native video upload
-        const hasVideo = news.original_video_url && news.original_video_url.includes('t.me')
-        let linkedinVideoTriggered = false
-
-        // 1. Post to LinkedIn EN
-        console.log('📤 Posting to LinkedIn EN...')
-
-        // 🛡️ DUPLICATE CHECK: Skip LinkedIn if already posted
-        const linkedinAlreadyPostedEN = !!checkRecord.linkedin_post_id
-        if (linkedinAlreadyPostedEN) {
-          const existingLang = (checkRecord.linkedin_language || 'unknown').toUpperCase()
-          console.log(`⚠️ ${contentType} ${contentId} already posted to LinkedIn (${existingLang}), skipping`)
-          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecord.linkedin_post_id}`
-          results.push({
-            platform: 'LinkedIn EN',
-            success: true,
-            url: linkedinPostUrl,
-            error: `Вже опубліковано (${existingLang})`
-          })
-        } else if (hasVideo && isGitHubActionsEnabled()) {
-          console.log(`🎬 Combo post: News has video - triggering LinkedIn video GitHub Action`)
-          console.log(`   Original video URL: ${news.original_video_url}`)
-
-          try {
-            const triggerResult = await triggerLinkedInVideo({
-              newsId: newsId,
-              language: 'en'
-            })
-
-            if (triggerResult.success) {
-              linkedinVideoTriggered = true
-              results.push({
-                platform: 'LinkedIn EN',
-                success: true,
-                processing: true,
-                error: '⏳ Відео обробляється... (1-2 хв)'
-              })
-            } else {
-              console.error('❌ Failed to trigger LinkedIn video Action:', triggerResult.error)
-              // Fall through to regular posting below
-            }
-          } catch (e) {
-            console.error('❌ Error triggering LinkedIn video Action:', e)
-            // Fall through to regular posting below
-          }
-        }
-
-        // Regular LinkedIn posting (no video or video trigger failed)
-        if (!linkedinAlreadyPostedEN && !linkedinVideoTriggered) {
-          try {
-            const linkedinRequestBody: any = {
-              language: 'en',
-              contentType: contentType
-            }
-            if (contentType === 'blog') {
-              linkedinRequestBody.blogPostId = contentId
-            } else {
-              linkedinRequestBody.newsId = contentId
-            }
-
-            const linkedinResponse = await fetch(
-              `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(linkedinRequestBody)
-              }
-            )
-            const linkedinResult = await linkedinResponse.json()
-
-            if (linkedinResponse.ok && linkedinResult.success) {
-              // Use postUrl directly from response (or construct from postId as fallback)
-              const postUrl = linkedinResult.postUrl || (linkedinResult.postId
-                ? `https://www.linkedin.com/feed/update/${linkedinResult.postId}`
-                : undefined)
-              results.push({ platform: 'LinkedIn EN', success: true, url: postUrl })
-            } else {
-              results.push({ platform: 'LinkedIn EN', success: false, error: linkedinResult.error || 'Unknown error' })
-            }
-          } catch (e) {
-            results.push({ platform: 'LinkedIn EN', success: false, error: 'Request failed' })
-          }
-        }
-
-        // 2. Post to Facebook EN
-        console.log('📤 Posting to Facebook EN...')
-        try {
-          const fbRequestBody: any = {
-            language: 'en',
-            contentType: contentType
-          }
-          if (contentType === 'blog') {
-            fbRequestBody.blogPostId = contentId
-          } else {
-            fbRequestBody.newsId = contentId
-          }
-
-          const fbResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/post-to-facebook`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(fbRequestBody)
-            }
-          )
-          const fbResult = await fbResponse.json()
-
-          if (fbResponse.ok && fbResult.success) {
-            results.push({ platform: 'Facebook EN', success: true, url: fbResult.postUrl })
-          } else {
-            results.push({ platform: 'Facebook EN', success: false, error: fbResult.error || 'Unknown error' })
-          }
-        } catch (e) {
-          results.push({ platform: 'Facebook EN', success: false, error: 'Request failed' })
-        }
-
-        // Build results message with article link
-        const title = news.title_en as string
-        const shortTitleRaw = title.length > 50 ? title.substring(0, 47) + '...' : title
-        // Escape HTML special characters in title
-        const shortTitle = shortTitleRaw
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-        const slug = news.slug_en || newsId.substring(0, 8)
-        const articleUrl = `https://vitalii.no/news/${slug}`
-
-        let resultsText = '\n\n✅ <b>Опубліковано LinkedIn + Facebook EN:</b>\n\n'
-        resultsText += `📰 «${shortTitle}»\n`
-        resultsText += `📝 <a href="${articleUrl}">Читати на сайті</a>\n\n`
-
-        for (const r of results) {
-          if (r.success) {
-            if ((r as any).processing) {
-              // Video processing in progress via GitHub Action
-              resultsText += `⏳ ${r.platform}: Відео обробляється... (1-2 хв)\n`
-            } else if (r.url) {
-              resultsText += `✅ ${r.platform}: <a href="${r.url}">Переглянути пост</a>\n`
-            } else {
-              resultsText += `✅ ${r.platform}: Опубліковано\n`
-            }
-          } else {
-            resultsText += `❌ ${r.platform}: ${r.error}\n`
-          }
-        }
-
-        // Build remaining buttons
-        const remainingButtons = [
-          [
-            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` },
-            { text: '🌐 Все NO', callback_data: `all_no_${newsId}` }
-          ],
-          [
-            { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
-            { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` }
-          ],
-          [
-            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
-            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-          ]
-        ]
-
-        // Update message with results in the SAME message
-        // ALWAYS edit original message - truncate content if needed, but PRESERVE results
-        let finalText = messageText + resultsText
-        if (finalText.length > 4000) {
-          console.log(`⚠️ Message too long (${finalText.length}), truncating original content to fit results`)
-          // Truncate ORIGINAL text, but preserve ALL results
-          const maxOriginalLength = 4000 - resultsText.length - 50
-          const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-          finalText = truncatedOriginal + resultsText
-        }
-
-        // Detailed logging before editMessageText
-        console.log(`📊 [combo_li_fb_en] Results array:`, JSON.stringify(results, null, 2))
-        console.log(`📝 [combo_li_fb_en] Final text length: ${finalText.length}`)
-        console.log(`📍 [combo_li_fb_en] Chat ID: ${chatId}, Message ID: ${messageId}`)
-
-        try {
-          const editResultsResponse = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: finalText,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true,
-                reply_markup: {
-                  inline_keyboard: remainingButtons
-                }
-              })
-            }
-          )
-
-          if (!editResultsResponse.ok) {
-            const errText = await editResultsResponse.text()
-            console.error('⚠️ Failed to edit message (results):', errText)
-            console.error('   Message length:', finalText.length)
-            console.error('   Chat ID:', chatId)
-            console.error('   Message ID:', messageId)
-
-            // FALLBACK: Try sending a new message if edit fails
-            try {
-              console.log('📤 [combo_li_fb_en] Attempting fallback: sending new message with results')
-              await fetch(
-                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    chat_id: chatId,
-                    text: resultsText,
-                    parse_mode: 'HTML',
-                    disable_web_page_preview: true
-                  })
-                }
-              )
-              console.log('✅ [combo_li_fb_en] Sent fallback message with results')
-            } catch (fallbackErr) {
-              console.error('❌ [combo_li_fb_en] Fallback message also failed:', fallbackErr)
-            }
-          } else {
-            console.log('✅ Successfully updated message with results (combo_li_fb_en)')
-          }
-        } catch (editError) {
-          console.error('⚠️ Error editing message (results):', editError)
-
-          // FALLBACK: Try sending a new message if edit throws exception
-          try {
-            console.log('📤 [combo_li_fb_en] Attempting fallback after exception: sending new message with results')
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  text: resultsText,
-                  parse_mode: 'HTML',
-                  disable_web_page_preview: true
-                })
-              }
-            )
-            console.log('✅ [combo_li_fb_en] Sent fallback message with results')
-          } catch (fallbackErr) {
-            console.error('❌ [combo_li_fb_en] Fallback message also failed:', fallbackErr)
-          }
-        }
+        // Dispatch to worker (will use Promise.allSettled for parallel posting)
+        dispatchToWorker({
+          action: 'combo_li_fb_en',
+          params: { newsId },
+          telegram: { chatId, messageId, messageText }
+        })
 
       } else if (action === 'combo_li_fb_ig' && socialLanguage) {
         // =================================================================
-        // 🔗📘📸 Combo: LinkedIn + Facebook + Instagram (one language)
+        // 🔗📘📸 Combo: LinkedIn + Facebook + Instagram → DISPATCH TO WORKER
         // =================================================================
         const langLabel = socialLanguage.toUpperCase()
-        console.log(`Posting combo LinkedIn + Facebook + Instagram ${langLabel} for news:`, newsId)
+        console.log(`[async] Dispatching combo_li_fb_ig (${langLabel}) to worker for news:`, newsId)
 
         // Answer callback immediately
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId,
-              text: `🔗📘📸 Публікуємо LI+FB+IG ${langLabel}...`,
-              show_alert: false
-            })
-          }
-        )
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: `🔗📘📸 Публікуємо LI+FB+IG ${langLabel}...`, show_alert: false })
+        })
 
         // Processing buttons (exclude the current language)
         const remainingLangs = ['en', 'no', 'ua'].filter(l => l !== socialLanguage)
-        const processingButtonsCombo = [
-          remainingLangs.map(l => ({
-            text: `🌐 Все ${l.toUpperCase()}`,
-            callback_data: `all_${l}_${newsId}`
-          })),
-          [
-            { text: `🐦 Twitter ${langLabel}`, callback_data: `twitter_${socialLanguage}_${newsId}` }
-          ],
-          [
-            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
-            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-          ]
-        ]
 
-        // Show processing status
-        try {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + `\n\n⏳ <b>Публікуємо LinkedIn + Facebook + Instagram ${langLabel}...</b>`,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true,
-                reply_markup: {
-                  inline_keyboard: processingButtonsCombo
-                }
-              })
+        // Show processing state with remaining buttons
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: messageText + `\n\n⏳ <b>Публікуємо LinkedIn + Facebook + Instagram ${langLabel}...</b>`,
+            parse_mode: 'HTML', disable_web_page_preview: true,
+            reply_markup: {
+              inline_keyboard: [
+                remainingLangs.map(l => ({
+                  text: `🌐 Все ${l.toUpperCase()}`,
+                  callback_data: `all_${l}_${newsId}`
+                })),
+                [
+                  { text: `🐦 Twitter ${langLabel}`, callback_data: `twitter_${socialLanguage}_${newsId}` }
+                ],
+                [
+                  { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+                  { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+                ]
+              ]
             }
-          )
-        } catch (editError) {
-          console.error('⚠️ Error editing message (processing):', editError)
-        }
-
-        // Fetch news data
-        const { data: newsCombo, error: fetchErrorCombo } = await supabase
-          .from('news')
-          .select('*')
-          .eq('id', newsId)
-          .single()
-
-        if (fetchErrorCombo || !newsCombo) {
-          console.error('Failed to fetch news:', fetchErrorCombo)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + '\n\n❌ <b>Error:</b> News not found',
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
           })
-        }
+        })
 
-        // Check if has blog post FIRST (before validation)
-        const { data: blogPostCombo } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('source_news_id', newsId)
-          .single()
-
-        const contentTypeCombo = blogPostCombo ? 'blog' : 'news'
-        const contentIdCombo = blogPostCombo ? blogPostCombo.id : newsId
-        const checkRecordCombo = blogPostCombo || newsCombo
-
-        // Check if content has translation for the selected language
-        const titleField = `title_${socialLanguage}` as keyof typeof checkRecordCombo
-        if (!checkRecordCombo[titleField]) {
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: messageText + `\n\n❌ <b>Error:</b> Content not published yet (no ${langLabel} translation). Publish to News/Blog first!`,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: false }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-
-        // Track results
-        const resultsCombo: { platform: string; success: boolean; error?: string; url?: string; processing?: boolean }[] = []
-
-        // Check if news has video for native video upload
-        const hasVideoCombo = newsCombo.original_video_url && newsCombo.original_video_url.includes('t.me')
-        let linkedinVideoTriggeredCombo = false
-        let instagramVideoTriggeredCombo = false
-
-        // 1. Post to LinkedIn
-        console.log(`📤 Posting to LinkedIn ${langLabel}...`)
-
-        // 🛡️ DUPLICATE CHECK: Skip LinkedIn if already posted
-        const linkedinAlreadyPosted = !!checkRecordCombo.linkedin_post_id
-        if (linkedinAlreadyPosted) {
-          const existingLang = (checkRecordCombo.linkedin_language || 'unknown').toUpperCase()
-          console.log(`⚠️ ${contentTypeCombo} ${contentIdCombo} already posted to LinkedIn (${existingLang}), skipping`)
-          const linkedinPostUrl = `https://www.linkedin.com/feed/update/${checkRecordCombo.linkedin_post_id}`
-          resultsCombo.push({
-            platform: `LinkedIn ${langLabel}`,
-            success: true,
-            url: linkedinPostUrl,
-            error: `Вже опубліковано (${existingLang})`
-          })
-        } else if (hasVideoCombo && isGitHubActionsEnabled()) {
-          console.log(`🎬 Combo post: News has video - triggering LinkedIn video GitHub Action`)
-          try {
-            const triggerResult = await triggerLinkedInVideo({
-              newsId: newsId,
-              language: socialLanguage
-            })
-
-            if (triggerResult.success) {
-              linkedinVideoTriggeredCombo = true
-              resultsCombo.push({
-                platform: `LinkedIn ${langLabel}`,
-                success: true,
-                processing: true,
-                error: '⏳ Відео обробляється... (1-2 хв)'
-              })
-            }
-          } catch (e) {
-            console.error('❌ Error triggering LinkedIn video Action:', e)
-          }
-        }
-
-        if (!linkedinAlreadyPosted && !linkedinVideoTriggeredCombo) {
-          try {
-            const linkedinRequestBodyCombo: any = {
-              language: socialLanguage,
-              contentType: contentTypeCombo
-            }
-            if (contentTypeCombo === 'blog') {
-              linkedinRequestBodyCombo.blogPostId = contentIdCombo
-            } else {
-              linkedinRequestBodyCombo.newsId = contentIdCombo
-            }
-
-            const linkedinResponseCombo = await fetch(
-              `${SUPABASE_URL}/functions/v1/post-to-linkedin`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(linkedinRequestBodyCombo)
-              }
-            )
-            const linkedinResultCombo = await linkedinResponseCombo.json()
-
-            if (linkedinResponseCombo.ok && linkedinResultCombo.success) {
-              // Use postUrl directly from response (or construct from postId as fallback)
-              const postUrlLi = linkedinResultCombo.postUrl || (linkedinResultCombo.postId
-                ? `https://www.linkedin.com/feed/update/${linkedinResultCombo.postId}`
-                : undefined)
-              resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: true, url: postUrlLi })
-            } else {
-              resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: false, error: linkedinResultCombo.error || 'Unknown error' })
-            }
-          } catch (e) {
-            resultsCombo.push({ platform: `LinkedIn ${langLabel}`, success: false, error: 'Request failed' })
-          }
-        }
-
-        // 2. Post to Facebook
-        console.log(`📤 Posting to Facebook ${langLabel}...`)
-        try {
-          const fbRequestBodyCombo: any = {
-            language: socialLanguage,
-            contentType: contentTypeCombo
-          }
-          if (contentTypeCombo === 'blog') {
-            fbRequestBodyCombo.blogPostId = contentIdCombo
-          } else {
-            fbRequestBodyCombo.newsId = contentIdCombo
-          }
-
-          const fbResponseCombo = await fetch(
-            `${SUPABASE_URL}/functions/v1/post-to-facebook`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(fbRequestBodyCombo)
-            }
-          )
-          const fbResultCombo = await fbResponseCombo.json()
-
-          if (fbResponseCombo.ok && fbResultCombo.success) {
-            resultsCombo.push({ platform: `Facebook ${langLabel}`, success: true, url: fbResultCombo.postUrl })
-          } else {
-            resultsCombo.push({ platform: `Facebook ${langLabel}`, success: false, error: fbResultCombo.error || 'Unknown error' })
-          }
-        } catch (e) {
-          resultsCombo.push({ platform: `Facebook ${langLabel}`, success: false, error: 'Request failed' })
-        }
-
-        // 3. Post to Instagram
-        console.log(`📤 Posting to Instagram ${langLabel}...`)
-
-        // Check if has valid media for Instagram
-        const hasValidImage = newsCombo.processed_image_url || newsCombo.image_url
-        const hasValidVideoForIg = newsCombo.original_video_url && newsCombo.original_video_url.includes('t.me')
-
-        if (hasValidVideoForIg && isGitHubActionsEnabled()) {
-          console.log(`🎬 Combo post: News has video - triggering Instagram video GitHub Action`)
-          try {
-            const triggerResultIg = await triggerInstagramVideo({
-              newsId: newsId,
-              language: socialLanguage
-            })
-
-            if (triggerResultIg.success) {
-              instagramVideoTriggeredCombo = true
-              resultsCombo.push({
-                platform: `Instagram ${langLabel}`,
-                success: true,
-                processing: true,
-                error: '⏳ Reel обробляється... (2-5 хв)'
-              })
-            }
-          } catch (e) {
-            console.error('❌ Error triggering Instagram video Action:', e)
-          }
-        }
-
-        if (!instagramVideoTriggeredCombo && hasValidImage) {
-          try {
-            const igRequestBody: any = {
-              language: socialLanguage,
-              contentType: contentTypeCombo
-            }
-            if (contentTypeCombo === 'blog') {
-              igRequestBody.blogPostId = contentIdCombo
-            } else {
-              igRequestBody.newsId = contentIdCombo
-            }
-
-            const igResponse = await fetch(
-              `${SUPABASE_URL}/functions/v1/post-to-instagram`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(igRequestBody)
-              }
-            )
-            const igResult = await igResponse.json()
-
-            if (igResponse.ok && igResult.success) {
-              resultsCombo.push({ platform: `Instagram ${langLabel}`, success: true, url: igResult.postUrl })
-            } else {
-              resultsCombo.push({ platform: `Instagram ${langLabel}`, success: false, error: igResult.error || 'Unknown error' })
-            }
-          } catch (e) {
-            resultsCombo.push({ platform: `Instagram ${langLabel}`, success: false, error: 'Request failed' })
-          }
-        } else if (!instagramVideoTriggeredCombo && !hasValidImage) {
-          resultsCombo.push({ platform: `Instagram ${langLabel}`, success: false, error: 'Немає зображення' })
-        }
-
-        // Build results message
-        const titleCombo = newsCombo[titleField] as string
-        const shortTitleComboRaw = titleCombo.length > 50 ? titleCombo.substring(0, 47) + '...' : titleCombo
-        // Escape HTML special characters in title
-        const shortTitleCombo = shortTitleComboRaw
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-        const slugField = `slug_${socialLanguage}` as keyof typeof newsCombo
-        const slugCombo = newsCombo[slugField] || newsId.substring(0, 8)
-        const articleUrlCombo = `https://vitalii.no/news/${slugCombo}`
-
-        let resultsTextCombo = `\n\n✅ <b>Опубліковано LI+FB+IG ${langLabel}:</b>\n\n`
-        resultsTextCombo += `📰 «${shortTitleCombo}»\n`
-        resultsTextCombo += `📝 <a href="${articleUrlCombo}">Читати на сайті</a>\n\n`
-
-        for (const r of resultsCombo) {
-          if (r.success) {
-            if ((r as any).processing) {
-              resultsTextCombo += `⏳ ${r.platform}: ${r.error}\n`
-            } else if (r.url) {
-              resultsTextCombo += `✅ ${r.platform}: <a href="${r.url}">Переглянути пост</a>\n`
-            } else {
-              resultsTextCombo += `✅ ${r.platform}: Опубліковано\n`
-            }
-          } else {
-            resultsTextCombo += `❌ ${r.platform}: ${r.error}\n`
-          }
-        }
-
-        // Build remaining buttons (exclude the current language)
-        const remainingButtonsCombo = [
-          remainingLangs.map(l => ({
-            text: `🌐 Все ${l.toUpperCase()}`,
-            callback_data: `all_${l}_${newsId}`
-          })),
-          [
-            { text: `🐦 Twitter ${langLabel}`, callback_data: `twitter_${socialLanguage}_${newsId}` }
-          ],
-          [
-            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
-            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-          ]
-        ]
-
-        // Update message with results
-        // ALWAYS edit original message - truncate content if needed, but PRESERVE results
-        let finalTextCombo = messageText + resultsTextCombo
-        if (finalTextCombo.length > 4000) {
-          console.log(`⚠️ Message too long (${finalTextCombo.length}), truncating original content to fit results`)
-          // Truncate ORIGINAL text, but preserve ALL results
-          const maxOriginalLength = 4000 - resultsTextCombo.length - 50
-          const truncatedOriginal = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>'
-          finalTextCombo = truncatedOriginal + resultsTextCombo
-        }
-
-        // Detailed logging before editMessageText
-        console.log(`📊 [combo_li_fb_ig_${socialLanguage}] Results array:`, JSON.stringify(resultsCombo, null, 2))
-        console.log(`📝 [combo_li_fb_ig_${socialLanguage}] Final text length: ${finalTextCombo.length}`)
-        console.log(`📍 [combo_li_fb_ig_${socialLanguage}] Chat ID: ${chatId}, Message ID: ${messageId}`)
-
-        try {
-          const editResultsResponseCombo = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: finalTextCombo,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true,
-                reply_markup: {
-                  inline_keyboard: remainingButtonsCombo
-                }
-              })
-            }
-          )
-
-          if (!editResultsResponseCombo.ok) {
-            const errText = await editResultsResponseCombo.text()
-            console.error('⚠️ Failed to edit message (results):', errText)
-            console.error(`   [combo_li_fb_ig_${socialLanguage}] Text length:`, finalTextCombo.length)
-            console.error(`   [combo_li_fb_ig_${socialLanguage}] Chat ID:`, chatId)
-            console.error(`   [combo_li_fb_ig_${socialLanguage}] Message ID:`, messageId)
-
-            // FALLBACK: Try sending a new message if edit fails
-            try {
-              console.log(`📤 [combo_li_fb_ig_${socialLanguage}] Attempting fallback: sending new message with results`)
-              await fetch(
-                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    chat_id: chatId,
-                    text: resultsTextCombo,
-                    parse_mode: 'HTML',
-                    disable_web_page_preview: true
-                  })
-                }
-              )
-              console.log(`✅ [combo_li_fb_ig_${socialLanguage}] Sent fallback message with results`)
-            } catch (fallbackErr) {
-              console.error(`❌ [combo_li_fb_ig_${socialLanguage}] Fallback message also failed:`, fallbackErr)
-            }
-          } else {
-            console.log(`✅ Successfully updated message with results (combo_li_fb_ig_${socialLanguage})`)
-          }
-        } catch (editError) {
-          console.error('⚠️ Error editing message (results):', editError)
-
-          // FALLBACK: Try sending a new message if edit throws exception
-          try {
-            console.log(`📤 [combo_li_fb_ig_${socialLanguage}] Attempting fallback after exception: sending new message with results`)
-            await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  text: resultsTextCombo,
-                  parse_mode: 'HTML',
-                  disable_web_page_preview: true
-                })
-              }
-            )
-            console.log(`✅ [combo_li_fb_ig_${socialLanguage}] Sent fallback message with results`)
-          } catch (fallbackErr) {
-            console.error(`❌ [combo_li_fb_ig_${socialLanguage}] Fallback message also failed:`, fallbackErr)
-          }
-        }
+        // Dispatch to worker (will use Promise.allSettled for parallel posting)
+        dispatchToWorker({
+          action: 'combo_li_fb_ig',
+          params: { newsId, socialLanguage },
+          telegram: { chatId, messageId, messageText }
+        })
 
       } else if (action === 'skip_social') {
         // =================================================================
@@ -3782,7 +1718,7 @@ serve(async (req) => {
           .eq('id', newsId)
           .single()
 
-        const existingVariants = newsCheck?.image_prompt_variants as Array<{label: string, description: string}> | null
+        const existingVariants = newsCheck?.image_prompt_variants as Array<{ label: string, description: string }> | null
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -3802,7 +1738,7 @@ serve(async (req) => {
           const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
           let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
           existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
           })
 
           const variantKeyboard = {
@@ -3938,9 +1874,9 @@ serve(async (req) => {
           }
         )
 
-      // =================================================================
-      // 🖼 KEEP ORIGINAL & GALLERY MANAGEMENT
-      // =================================================================
+        // =================================================================
+        // 🖼 KEEP ORIGINAL & GALLERY MANAGEMENT
+        // =================================================================
 
       } else if (action === 'keep_orig') {
         // 🖼 Keep original image(s) from RSS/Telegram source
@@ -4103,7 +2039,7 @@ serve(async (req) => {
 
         const isRssSource = !!(newsRecord?.rss_analysis)
         const currentImages: string[] = newsRecord?.images || []
-        const existingVariants = newsRecord?.image_prompt_variants as Array<{label: string, description: string}> | null
+        const existingVariants = newsRecord?.image_prompt_variants as Array<{ label: string, description: string }> | null
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -4122,7 +2058,7 @@ serve(async (req) => {
           const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
           let variantsText = `\n\n🎨 <b>Додайте зображення</b> (в галереї: ${currentImages.length} фото)\n`
           existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
           })
 
           const variantKeyboard = {
@@ -4194,9 +2130,9 @@ serve(async (req) => {
           )
         }
 
-      // =================================================================
-      // 🔄 RSS IMAGE WORKFLOW: confirm_rss_image, regenerate_rss_image, upload_rss_image
-      // =================================================================
+        // =================================================================
+        // 🔄 RSS IMAGE WORKFLOW: confirm_rss_image, regenerate_rss_image, upload_rss_image
+        // =================================================================
 
       } else if (action === 'confirm_rss_image') {
         // ✅ RSS: Confirm existing image → set processed_image_url → Show publish buttons
@@ -4312,7 +2248,7 @@ serve(async (req) => {
 
         console.log('✅ News record verified for regeneration:', newsCheck.id)
 
-        const existingVariants = newsCheck.image_prompt_variants as Array<{label: string, description: string}> | null
+        const existingVariants = newsCheck.image_prompt_variants as Array<{ label: string, description: string }> | null
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -4331,7 +2267,7 @@ serve(async (req) => {
           const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
           let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
           existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
           })
 
           const variantKeyboard = {
@@ -4793,9 +2729,9 @@ serve(async (req) => {
           }
         )
 
-      // =================================================================
-      // 🎨 IMAGE VARIANT WORKFLOW: select_variant, new_variants
-      // =================================================================
+        // =================================================================
+        // 🎨 IMAGE VARIANT WORKFLOW: select_variant, new_variants
+        // =================================================================
 
       } else if (action === 'select_variant') {
         // Moderator selected a visual concept variant → show language selection
@@ -4826,7 +2762,7 @@ serve(async (req) => {
           return new Response(JSON.stringify({ ok: true }))
         }
 
-        const variants = newsRecord.image_prompt_variants as Array<{label: string, description: string}> | null
+        const variants = newsRecord.image_prompt_variants as Array<{ label: string, description: string }> | null
 
         if (!variants || variants.length < variantIndex) {
           console.error('❌ Variant not found:', variantIndex, 'available:', variants?.length)
@@ -4895,311 +2831,38 @@ serve(async (req) => {
         }
 
       } else if (action === 'variant_with_lang') {
-        // Moderator selected variant + language → generate full prompt → generate image
+        // =================================================================
+        // 🎨 Variant + Language → DISPATCH TO WORKER
+        // =================================================================
         const variantIndex = parseInt(socialLanguage || '1')
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
-        console.log(`🎨 Generating variant ${variantIndex} in ${selectedLang} for news:`, newsId)
+        console.log(`[async] Dispatching variant_with_lang (variant ${variantIndex}, ${selectedLang}) to worker for news:`, newsId)
 
-        // 1. Read variants from DB
-        const { data: newsRecord, error: newsError } = await supabase
-          .from('news')
-          .select('id, original_title, original_content, image_prompt_variants, rss_analysis')
-          .eq('id', newsId)
-          .single()
+        // Answer callback immediately
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: `🎨 Генерація варіанту ${variantIndex} (${langNames[selectedLang] || selectedLang})...`, show_alert: false })
+        })
 
-        if (newsError || !newsRecord) {
-          console.error('❌ News not found for variant generation:', newsId)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Новина не знайдена',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: true }))
-        }
-
-        const isRssSource = !!(newsRecord.rss_analysis)
-        const variants = newsRecord.image_prompt_variants as Array<{label: string, description: string}> | null
-
-        if (!variants || variants.length < variantIndex) {
-          console.error('❌ Variant not found:', variantIndex, 'available:', variants?.length)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Варіант не знайдено',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: true }))
-        }
-
-        const selectedVariant = variants[variantIndex - 1]
-        console.log(`✅ Selected variant: "${selectedVariant.label}", language: ${selectedLang}`)
-
-        // 2. Show progress
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId,
-              text: `🎨 Генерація "${selectedVariant.label}" (${langNames[selectedLang] || selectedLang})...`,
-              show_alert: false
-            })
-          }
-        )
-
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n⏳ <b>Обрано: "${escapeHtml(selectedVariant.label)}" (${langNames[selectedLang] || selectedLang})</b>\n<i>Генерація промпта та зображення...</i>`),
-              parse_mode: 'HTML'
-            })
-          }
-        )
-
-        // 3. Generate full prompt with selected variant
-        try {
-          const title = newsRecord.original_title || ''
-          const content = newsRecord.original_content || title
-
-          const promptResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                newsId: newsId,
-                title: title.substring(0, 200),
-                content: content.substring(0, 2000),
-                mode: 'full',
-                selectedVariant: selectedVariant
-              })
-            }
-          )
-
-          if (!promptResponse.ok) {
-            throw new Error(`Prompt generation failed: ${promptResponse.status}`)
-          }
-
-          const promptResult = await promptResponse.json()
-          console.log(`✅ Full prompt generated from variant`)
-
-          // 4. Clear existing images and generate new ones (1:1 and 16:9) with language
-          await supabase
-            .from('news')
-            .update({ processed_image_url: null, processed_image_url_wide: null })
-            .eq('id', newsId)
-
-          // Generate 1:1 image with language
-          const imageGenResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/process-image`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                newsId: newsId,
-                generateFromPrompt: true,
-                language: selectedLang,
-                aspectRatio: '1:1'
-              })
-            }
-          )
-
-          const imageGenResult = await imageGenResponse.json()
-
-          // Generate 16:9 image in parallel with language
-          let wideImageUrl: string | null = null
-          const wideImagePromise = fetch(
-            `${SUPABASE_URL}/functions/v1/process-image`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                newsId: newsId,
-                generateFromPrompt: true,
-                language: selectedLang,
-                aspectRatio: '16:9'
-              })
-            }
-          ).then(res => res.json()).then(result => {
-            if (result.success && result.processedImageUrl) {
-              wideImageUrl = result.processedImageUrl
-              console.log(`✅ Wide image (16:9) generated: ${wideImageUrl}`)
-            }
-            return result
-          }).catch(err => {
-            console.error(`❌ Wide image error:`, err)
-            return null
+        // Show processing state
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація промпта та зображення (варіант ${variantIndex}, ${langNames[selectedLang] || selectedLang})...</b>`),
+            parse_mode: 'HTML'
           })
+        })
 
-          if (imageGenResult.success && imageGenResult.processedImageUrl) {
-            await wideImagePromise
-
-            const newImageUrl = imageGenResult.processedImageUrl
-
-            // Append generated image to gallery
-            const { data: galNews2 } = await supabase.from('news').select('images').eq('id', newsId).single()
-            const galImages2: string[] = galNews2?.images || []
-            if (!galImages2.includes(newImageUrl)) {
-              await supabase.from('news').update({ images: [...galImages2, newImageUrl] }).eq('id', newsId)
-            }
-            const galleryCount2 = galImages2.includes(newImageUrl) ? galImages2.length : galImages2.length + 1
-
-            const squareImageLink = `🖼️ <b>1:1</b> (Instagram): ${escapeHtml(newImageUrl)}`
-            const wideImageLink = wideImageUrl
-              ? `\n📐 <b>16:9</b> (LinkedIn/FB): ${escapeHtml(wideImageUrl)}`
-              : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
-
-            // Show result with gallery buttons
-            const newKeyboard = isRssSource ? {
-              inline_keyboard: [
-                [
-                  { text: `✅ Готово (${galleryCount2} фото)`, callback_data: `gal_done_${newsId}` },
-                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
-                ],
-                [
-                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
-                  { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }
-                ],
-                [
-                  { text: '❌ Skip', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            } : {
-              inline_keyboard: [
-                [
-                  { text: `✅ Готово (${galleryCount2} фото)`, callback_data: `gal_done_${newsId}` },
-                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
-                ],
-                [
-                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
-                  { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
-                ],
-                [
-                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            }
-
-            const editResponse = await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  message_id: messageId,
-                  text: truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount2} фото\n${squareImageLink}${wideImageLink}`),
-                  parse_mode: 'HTML',
-                  reply_markup: newKeyboard
-                })
-              }
-            )
-            if (!editResponse.ok) {
-              const editError = await editResponse.text()
-              console.error('❌ editMessageText failed (success path):', editError)
-            }
-          } else {
-            // Image generation failed
-            const errorMsg = imageGenResult.error || 'Невідома помилка'
-            const retryKeyboard = {
-              inline_keyboard: [
-                [
-                  { text: '🔄 Спробувати ще', callback_data: `vl_${variantIndex}_${selectedLang}_${newsId}` },
-                  { text: '← Інший варіант', callback_data: `back_to_variants_${newsId}` }
-                ],
-                [
-                  { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
-                ],
-                [
-                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            }
-
-            const editErrorResponse = await fetch(
-              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  message_id: messageId,
-                  text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`),
-                  parse_mode: 'HTML',
-                  reply_markup: retryKeyboard
-                })
-              }
-            )
-            if (!editErrorResponse.ok) {
-              const editErr = await editErrorResponse.text()
-              console.error('❌ editMessageText failed (error path):', editErr)
-            }
-          }
-        } catch (genError: any) {
-          console.error('❌ Error in variant image generation:', genError)
-          const retryKeyboard = {
-            inline_keyboard: [
-              [
-                { text: '🔄 Спробувати ще', callback_data: `vl_${variantIndex}_${selectedLang}_${newsId}` },
-                { text: '← Інший варіант', callback_data: `back_to_variants_${newsId}` }
-              ],
-              [
-                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
-              ],
-              [
-                { text: '❌ Reject', callback_data: `reject_${newsId}` }
-              ]
-            ]
-          }
-
-          const editCatchResponse = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка:</b> ${genError.message}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`),
-                parse_mode: 'HTML',
-                reply_markup: retryKeyboard
-              })
-            }
-          )
-          if (!editCatchResponse.ok) {
-            const editErr = await editCatchResponse.text()
-            console.error('❌ editMessageText failed (catch path):', editErr)
-          }
-        }
+        // Dispatch to worker
+        dispatchToWorker({
+          action: 'variant_with_lang',
+          params: { newsId, variantIndex, selectedLang },
+          telegram: { chatId, messageId, messageText }
+        })
 
       } else if (action === 'back_to_variants') {
         // ← Back to variant selection: show existing variants from DB
@@ -5212,7 +2875,7 @@ serve(async (req) => {
           .single()
 
         const isRssSource = !!(newsRecord?.rss_analysis)
-        const existingVariants = newsRecord?.image_prompt_variants as Array<{label: string, description: string}> | null
+        const existingVariants = newsRecord?.image_prompt_variants as Array<{ label: string, description: string }> | null
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -5232,7 +2895,7 @@ serve(async (req) => {
           const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
           let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
           existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
           })
 
           const variantKeyboard = {
@@ -5310,179 +2973,39 @@ serve(async (req) => {
         }
 
       } else if (action === 'new_variants') {
-        // 🔄 Generate new set of 4 visual concept variants
-        console.log('🔄 Generating new variants for news:', newsId)
+        // =================================================================
+        // 🔄 Generate new variants → DISPATCH TO WORKER
+        // =================================================================
+        console.log(`[async] Dispatching new_variants to worker for news:`, newsId)
 
-        // Fetch news record
-        const { data: newsRecord, error: newsError } = await supabase
-          .from('news')
-          .select('id, original_title, original_content, rss_analysis')
-          .eq('id', newsId)
-          .single()
+        // Answer callback immediately
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '🔄 Генерація нових варіантів...', show_alert: false })
+        })
 
-        if (newsError || !newsRecord) {
-          console.error('❌ News not found for new variants:', newsId)
-          await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callback_query_id: callbackId,
-                text: '❌ Новина не знайдена',
-                show_alert: true
-              })
-            }
-          )
-          return new Response(JSON.stringify({ ok: true }))
-        }
-
-        const isRssSource = !!(newsRecord.rss_analysis)
-
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              callback_query_id: callbackId,
-              text: '🔄 Генерація нових варіантів...',
-              show_alert: false
-            })
-          }
-        )
-
-        await fetch(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_id: messageId,
-              text: truncateForTelegram(messageText, '\n\n⏳ <b>Генерація нових візуальних концепцій...</b>'),
-              parse_mode: 'HTML'
-            })
-          }
-        )
-
-        try {
-          const title = newsRecord.original_title || ''
-          const content = newsRecord.original_content || title
-
-          const promptResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                newsId: newsId,
-                title: title.substring(0, 200),
-                content: content.substring(0, 2000),
-                mode: 'variants'
-              })
-            }
-          )
-
-          if (!promptResponse.ok) {
-            throw new Error(`Variants generation failed: ${promptResponse.status}`)
-          }
-
-          const promptResult = await promptResponse.json()
-          const newVariants = promptResult.variants as Array<{label: string, description: string}> | null
-
-          if (!newVariants || newVariants.length === 0) {
-            throw new Error('No variants generated')
-          }
-
-          // Show new variants
-          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
-          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
-          newVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
+        // Show processing state
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: truncateForTelegram(messageText, '\n\n⏳ <b>Генерація нових візуальних концепцій...</b>'),
+            parse_mode: 'HTML'
           })
+        })
 
-          const variantKeyboard = {
-            inline_keyboard: [
-              [
-                { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
-                { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
-                { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
-                { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
-              ],
-              [
-                { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
-                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
-              ],
-              [
-                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` },
-                { text: '❌ Reject', callback_data: `reject_${newsId}` }
-              ]
-            ]
-          }
+        // Dispatch to worker
+        dispatchToWorker({
+          action: 'new_variants',
+          params: { newsId },
+          telegram: { chatId, messageId, messageText }
+        })
 
-          const editNewVarResponse = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: truncateForTelegram(messageText, variantsText),
-                parse_mode: 'HTML',
-                reply_markup: variantKeyboard
-              })
-            }
-          )
-          if (!editNewVarResponse.ok) {
-            const editErr = await editNewVarResponse.text()
-            console.error('❌ editMessageText failed (new_variants):', editErr)
-          }
-        } catch (variantError: any) {
-          console.error('❌ Error generating new variants:', variantError)
-
-          const errorKeyboard = {
-            inline_keyboard: [
-              [
-                { text: '🔄 Спробувати ще', callback_data: `new_variants_${newsId}` },
-                { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
-              ],
-              [
-                { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
-              ],
-              [
-                { text: '❌ Reject', callback_data: `reject_${newsId}` }
-              ]
-            ]
-          }
-
-          const editVarErrResponse = await fetch(
-            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації варіантів:</b> ${variantError.message}`),
-                parse_mode: 'HTML',
-                reply_markup: errorKeyboard
-              })
-            }
-          )
-          if (!editVarErrResponse.ok) {
-            const editErr = await editVarErrResponse.text()
-            console.error('❌ editMessageText failed (new_variants error):', editErr)
-          }
-        }
-
-      // ═══════════════════════════════════════════════════════════════════
-      // CREATIVE BUILDER HANDLERS
-      // ═══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
+        // CREATIVE BUILDER HANDLERS
+        // ═══════════════════════════════════════════════════════════════════
       } else if (action === 'cb_hub') {
         // Show/return to Creative Builder hub screen
         console.log('🎨 Creative Builder hub for news:', newsId)
@@ -5980,34 +3503,21 @@ serve(async (req) => {
         })
 
       } else if (action === 'cb_lang') {
-        // Language selected → generate PROMPT ONLY, show for review before image generation
+        // =================================================================
+        // 🎨 Creative Builder Language → DISPATCH TO WORKER
+        // =================================================================
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
-        console.log(`🎨 Creative Builder: generating prompt in ${selectedLang} for news:`, newsId)
+        console.log(`[async] Dispatching cb_lang (${selectedLang}) to worker for news:`, newsId)
 
-        const { data: newsRecord } = await supabase
-          .from('news')
-          .select('id, original_title, original_content, creative_builder_state, rss_analysis')
-          .eq('id', newsId)
-          .single()
-
-        if (!newsRecord) {
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Новина не знайдена', show_alert: true })
-          })
-          return new Response(JSON.stringify({ ok: true }))
-        }
-
-        const state = (newsRecord.creative_builder_state || {}) as Record<string, any>
-
+        // Answer callback immediately
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ callback_query_id: callbackId, text: `🎨 Створюю промпт...`, show_alert: false })
         })
 
+        // Show processing state
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6018,130 +3528,29 @@ serve(async (req) => {
           })
         })
 
-        try {
-          const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-          const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-          const title = newsRecord.original_title || ''
-          const content = newsRecord.original_content || title
-
-          // Build creativeParameters from state
-          const creativeParameters: Record<string, any> = {}
-          for (const key of ['style', 'color', 'object', 'action', 'background', 'effects', 'text']) {
-            if (state[key] && state[key].prompt_fragment) {
-              creativeParameters[key] = state[key]
-            }
-          }
-
-          // Generate prompt ONLY (no image yet)
-          const promptResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-image-prompt`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              newsId,
-              title: title.substring(0, 200),
-              content: content.substring(0, 2000),
-              mode: 'custom',
-              creativeParameters
-            })
-          })
-
-          if (!promptResponse.ok) {
-            throw new Error(`Prompt generation failed: ${promptResponse.status}`)
-          }
-
-          const promptResult = await promptResponse.json()
-          const generatedPrompt = promptResult.prompt || ''
-          console.log('✅ Creative Builder prompt generated, showing for review')
-
-          // Show prompt for review with confirm/edit buttons
-          // Truncate prompt for display (Telegram limit)
-          const promptPreview = generatedPrompt
-            .replace(/\n\nQUALITY REQUIREMENTS[\s\S]*$/, '') // Remove quality boost suffix for cleaner display
-            .substring(0, 1500)
-
-          const reviewKeyboard = {
-            inline_keyboard: [
-              [
-                { text: '✅ Генерувати зображення', callback_data: `cb_go_${selectedLang}_${newsId}` }
-              ],
-              [
-                { text: '🔄 Новий промпт', callback_data: `cb_lg_${selectedLang}_${newsId}` },
-                { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
-              ],
-              [
-                { text: '❌ Відхилити', callback_data: `reject_${newsId}` }
-              ]
-            ]
-          }
-
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId, message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n📝 <b>Промпт (${langNames[selectedLang] || selectedLang}):</b>\n\n<code>${escapeHtml(promptPreview)}</code>\n\n<i>Натисніть "Генерувати зображення" для створення або "Новий промпт" для перегенерації</i>`),
-              parse_mode: 'HTML',
-              reply_markup: reviewKeyboard
-            })
-          })
-        } catch (genError: any) {
-          console.error('❌ Creative Builder prompt error:', genError)
-          const retryKeyboard = {
-            inline_keyboard: [
-              [
-                { text: '🔄 Спробувати ще', callback_data: `cb_lg_${selectedLang}_${newsId}` },
-                { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
-              ],
-              [
-                { text: '❌ Reject', callback_data: `reject_${newsId}` }
-              ]
-            ]
-          }
-
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId, message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка:</b> ${genError.message}`),
-              parse_mode: 'HTML',
-              reply_markup: retryKeyboard
-            })
-          })
-        }
+        // Dispatch to worker
+        dispatchToWorker({
+          action: 'cb_lang',
+          params: { newsId, selectedLang },
+          telegram: { chatId, messageId, messageText }
+        })
 
       } else if (action === 'cb_go') {
-        // Prompt confirmed → now generate image from saved prompt
+        // =================================================================
+        // 🖼️ Creative Builder Go → DISPATCH TO WORKER
+        // =================================================================
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
-        console.log(`🖼️ Creative Builder: generating IMAGE in ${selectedLang} for news:`, newsId)
+        console.log(`[async] Dispatching cb_go (${selectedLang}) to worker for news:`, newsId)
 
-        const { data: newsRecord } = await supabase
-          .from('news')
-          .select('id, rss_analysis')
-          .eq('id', newsId)
-          .single()
-
-        if (!newsRecord) {
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Новина не знайдена', show_alert: true })
-          })
-          return new Response(JSON.stringify({ ok: true }))
-        }
-
-        const isRssSource = !!(newsRecord.rss_analysis)
-
+        // Answer callback immediately
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ callback_query_id: callbackId, text: `🖼️ Генерація зображення...`, show_alert: false })
         })
 
+        // Show processing state
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -6152,168 +3561,12 @@ serve(async (req) => {
           })
         })
 
-        try {
-          const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-          const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-          // Clear existing images
-          await supabase
-            .from('news')
-            .update({ processed_image_url: null, processed_image_url_wide: null })
-            .eq('id', newsId)
-
-          // Generate 1:1 image
-          const imageGenResponse = await fetch(`${SUPABASE_URL}/functions/v1/process-image`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              newsId,
-              generateFromPrompt: true,
-              language: selectedLang,
-              aspectRatio: '1:1'
-            })
-          })
-
-          const imageGenResult = await imageGenResponse.json()
-
-          // Generate 16:9 image in parallel
-          let wideImageUrl: string | null = null
-          const wideImagePromise = fetch(`${SUPABASE_URL}/functions/v1/process-image`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              newsId,
-              generateFromPrompt: true,
-              language: selectedLang,
-              aspectRatio: '16:9'
-            })
-          }).then(res => res.json()).then(result => {
-            if (result.success && result.processedImageUrl) {
-              wideImageUrl = result.processedImageUrl
-            }
-            return result
-          }).catch(err => {
-            console.error('❌ Wide image error:', err)
-            return null
-          })
-
-          if (imageGenResult.success && imageGenResult.processedImageUrl) {
-            await wideImagePromise
-
-            const newImageUrl = imageGenResult.processedImageUrl
-
-            // Append generated image to gallery
-            const { data: galNews3 } = await supabase.from('news').select('images').eq('id', newsId).single()
-            const galImages3: string[] = galNews3?.images || []
-            if (!galImages3.includes(newImageUrl)) {
-              await supabase.from('news').update({ images: [...galImages3, newImageUrl] }).eq('id', newsId)
-            }
-            const galleryCount3 = galImages3.includes(newImageUrl) ? galImages3.length : galImages3.length + 1
-
-            const squareImageLink = `🖼️ <b>1:1</b>: ${escapeHtml(newImageUrl)}`
-            const wideImageLink = wideImageUrl
-              ? `\n📐 <b>16:9</b>: ${escapeHtml(wideImageUrl)}`
-              : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
-
-            const resultKeyboard = isRssSource ? {
-              inline_keyboard: [
-                [
-                  { text: `✅ Готово (${galleryCount3} фото)`, callback_data: `gal_done_${newsId}` },
-                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
-                ],
-                [
-                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
-                  { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }
-                ],
-                [
-                  { text: '❌ Skip', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            } : {
-              inline_keyboard: [
-                [
-                  { text: `✅ Готово (${galleryCount3} фото)`, callback_data: `gal_done_${newsId}` },
-                  { text: '➕ Ще', callback_data: `add_more_${newsId}` }
-                ],
-                [
-                  { text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` },
-                  { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
-                ],
-                [
-                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            }
-
-            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId, message_id: messageId,
-                text: truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n📸 Галерея: ${galleryCount3} фото\n${squareImageLink}${wideImageLink}`),
-                parse_mode: 'HTML',
-                reply_markup: resultKeyboard
-              })
-            })
-          } else {
-            const errorMsg = imageGenResult.error || 'Невідома помилка'
-            const retryKeyboard = {
-              inline_keyboard: [
-                [
-                  { text: '🔄 Спробувати ще', callback_data: `cb_go_${selectedLang}_${newsId}` },
-                  { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
-                ],
-                [
-                  { text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }
-                ],
-                [
-                  { text: '❌ Reject', callback_data: `reject_${newsId}` }
-                ]
-              ]
-            }
-
-            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId, message_id: messageId,
-                text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}`),
-                parse_mode: 'HTML',
-                reply_markup: retryKeyboard
-              })
-            })
-          }
-        } catch (genError: any) {
-          console.error('❌ Creative Builder image generation error:', genError)
-          const retryKeyboard = {
-            inline_keyboard: [
-              [
-                { text: '🔄 Спробувати ще', callback_data: `cb_go_${selectedLang}_${newsId}` },
-                { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }
-              ],
-              [
-                { text: '❌ Reject', callback_data: `reject_${newsId}` }
-              ]
-            ]
-          }
-
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId, message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n❌ <b>Помилка:</b> ${genError.message}`),
-              parse_mode: 'HTML',
-              reply_markup: retryKeyboard
-            })
-          })
-        }
+        // Dispatch to worker
+        dispatchToWorker({
+          action: 'cb_go',
+          params: { newsId, selectedLang },
+          telegram: { chatId, messageId, messageText }
+        })
 
       } else if (action === 'cb_reset') {
         // Reset all Creative Builder selections
