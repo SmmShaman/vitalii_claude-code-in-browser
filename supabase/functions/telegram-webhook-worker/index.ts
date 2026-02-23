@@ -119,15 +119,6 @@ async function editOrSend(
   }
 }
 
-// Helper: send a notification as a NEW message (won't interfere with user's current message)
-async function sendNotification(
-  botToken: string,
-  chatId: number,
-  text: string
-): Promise<void> {
-  await sendMessage(botToken, chatId, text, undefined, true)
-}
-
 // Helper: poll DB until is_rewritten flag is set (for optimistic pipeline)
 async function waitForRewrite(
   supabase: any,
@@ -349,15 +340,17 @@ serve(async (req) => {
       if (!processResponse.ok) {
         const errorText = await processResponse.text()
         console.error('❌ Process failed:', errorText)
-        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-          `❌ <b>AI processing error</b> (${publicationType})`)
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          truncateForTelegram(messageText, `\n\n❌ <b>AI processing error</b> (${publicationType})`),
+          buildSocialKeyboard(newsId))
         return new Response(JSON.stringify({ ok: false }))
       }
 
-      // Send notification as NEW message (social buttons already shown by dispatcher)
+      // Update SAME message with result + keep social buttons
       const statusLabel = publicationType === 'blog' ? 'BLOG' : 'NEWS'
-      await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-        `✅ <b>PUBLISHED TO ${statusLabel}</b>\n<i>AI рерайт EN/NO/UA завершено. Соцмережі готові до публікації!</i>`)
+      await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+        truncateForTelegram(messageText, `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`),
+        buildSocialKeyboard(newsId))
 
       console.log(`✅ Worker: ${publicationType} published in ${Date.now() - startTime}ms`)
 
@@ -400,15 +393,17 @@ serve(async (req) => {
       })
 
       if (!processResponse.ok) {
-        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-          `❌ <b>AI processing error</b> (RSS ${publicationType})`)
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          truncateForTelegram(messageText, `\n\n❌ <b>AI processing error</b> (RSS ${publicationType})`),
+          buildSocialKeyboardRss(newsId))
         return new Response(JSON.stringify({ ok: false }))
       }
 
-      // Send notification as NEW message (social buttons already shown by dispatcher)
+      // Update SAME message with result + keep RSS social buttons
       const statusLabel = publicationType === 'blog' ? 'BLOG (RSS)' : 'NEWS (RSS)'
-      await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-        `✅ <b>PUBLISHED TO ${statusLabel}</b>\n<i>AI рерайт EN/NO/UA завершено. Соцмережі готові до публікації!</i>`)
+      await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+        truncateForTelegram(messageText, `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`),
+        buildSocialKeyboardRss(newsId))
 
       console.log(`✅ Worker: RSS ${publicationType} published in ${Date.now() - startTime}ms`)
 
@@ -1309,13 +1304,36 @@ serve(async (req) => {
           ? `\n📐 <b>16:9</b> (LinkedIn/FB): ${escapeHtml(wideImageUrl)}`
           : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
 
-        // Send as NEW message (gallery buttons already shown by dispatcher)
-        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-          `✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`)
+        // Update SAME message with result + gallery buttons (updated count)
+        const galleryKeyboard = isRssSource ? {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }],
+            [{ text: '❌ Skip', callback_data: `reject_${newsId}` }]
+          ]
+        } : {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }],
+            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
+          ]
+        }
+
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
+          galleryKeyboard)
       } else {
         const errorMsg = imageGenResult?.error || 'Невідома помилка'
-        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-          `❌ <b>Помилка генерації:</b> ${errorMsg}\n<i>Натисніть "Ще" для повторної спроби</i>`)
+        const retryKeyboard = {
+          inline_keyboard: [
+            [{ text: '🔄 Спробувати ще', callback_data: `vl_${variantIndex}_${selectedLang}_${newsId}` }, { text: '← Інший варіант', callback_data: `back_to_variants_${newsId}` }],
+            [{ text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }],
+            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
+          ]
+        }
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`),
+          retryKeyboard)
       }
 
       console.log(`✅ Worker: variant_with_lang completed in ${Date.now() - startTime}ms`)
@@ -1450,13 +1468,41 @@ serve(async (req) => {
           ? `\n📐 <b>16:9</b>: ${escapeHtml(wideImageUrl)}`
           : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
 
-        // Send as NEW message (gallery buttons already shown by dispatcher)
-        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-          `✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`)
+        // Edit SAME message with updated gallery keyboard
+        const cbGalleryKeyboard = isRssSource ? {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }],
+            [{ text: '❌ Skip', callback_data: `reject_${newsId}` }]
+          ]
+        } : {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }],
+            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
+          ]
+        }
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
+          cbGalleryKeyboard)
       } else {
         const errorMsg = imageGenResult?.error || 'Невідома помилка'
-        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
-          `❌ <b>Помилка генерації:</b> ${errorMsg}\n<i>Натисніть "Ще" для повторної спроби</i>`)
+        const cbRetryKeyboard = isRssSource ? {
+          inline_keyboard: [
+            [{ text: '🔄 Спробувати ще', callback_data: `cb_hub_${newsId}` }, { text: '← Варіанти', callback_data: `new_variants_${newsId}` }],
+            [{ text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }],
+            [{ text: '❌ Skip', callback_data: `reject_${newsId}` }]
+          ]
+        } : {
+          inline_keyboard: [
+            [{ text: '🔄 Спробувати ще', callback_data: `cb_hub_${newsId}` }, { text: '← Варіанти', callback_data: `new_variants_${newsId}` }],
+            [{ text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }],
+            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
+          ]
+        }
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n<i>Натисніть "🔄 Спробувати ще" для повторної спроби</i>`),
+          cbRetryKeyboard)
       }
 
       console.log(`✅ Worker: cb_go completed in ${Date.now() - startTime}ms`)
