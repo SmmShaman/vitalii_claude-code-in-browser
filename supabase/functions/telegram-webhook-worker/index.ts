@@ -102,23 +102,6 @@ async function sendMessage(
   }
 }
 
-// Helper: edit message with fallback to new message
-async function editOrSend(
-  botToken: string,
-  chatId: number,
-  messageId: number,
-  text: string,
-  replyMarkup?: any,
-  disableWebPagePreview = false
-): Promise<void> {
-  const success = await editMessage(botToken, chatId, messageId, text, replyMarkup, disableWebPagePreview)
-  if (!success) {
-    // Fallback: send a new message with just the results part
-    console.log('📤 Fallback: sending new message')
-    await sendMessage(botToken, chatId, text, replyMarkup, disableWebPagePreview)
-  }
-}
-
 // Helper: poll DB until is_rewritten flag is set (for optimistic pipeline)
 async function waitForRewrite(
   supabase: any,
@@ -237,12 +220,21 @@ async function postToSocialPlatform(
       },
       body: JSON.stringify(requestBody)
     })
-    const result = await response.json()
+    const responseText = await response.text()
+    let result: any
+    try {
+      result = JSON.parse(responseText)
+    } catch {
+      console.error(`❌ ${endpoint}: Invalid JSON response (HTTP ${response.status}):`, responseText.substring(0, 500))
+      return { success: false, error: `HTTP ${response.status}: Invalid response from ${endpoint}` }
+    }
     if (!response.ok || !result.success) {
-      return { success: false, error: result.error || 'Unknown error', alreadyPosted: result.alreadyPosted, videoProcessing: result.videoProcessing }
+      console.error(`❌ ${endpoint}: Failed (HTTP ${response.status}):`, JSON.stringify(result).substring(0, 500))
+      return { success: false, error: result.error || result.message || `HTTP ${response.status} error`, alreadyPosted: result.alreadyPosted, videoProcessing: result.videoProcessing }
     }
     return { success: true, postUrl: result.postUrl, postId: result.postId, videoProcessing: result.videoProcessing }
   } catch (e: any) {
+    console.error(`❌ ${endpoint}: Request exception:`, e.message)
     return { success: false, error: e.message || 'Request failed' }
   }
 }
@@ -821,7 +813,7 @@ serve(async (req) => {
       }
 
       await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-        messageText + resultsText, undefined, true)
+        truncateForTelegram(messageText, resultsText), undefined, true)
 
       console.log(`✅ Worker: post_all ${langLabel} completed in ${Date.now() - startTime}ms`)
 
@@ -959,14 +951,8 @@ serve(async (req) => {
         ]
       ]
 
-      let finalText = messageText + resultsText
-      if (finalText.length > 4000) {
-        const maxOriginalLength = 4000 - resultsText.length - 50
-        finalText = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>' + resultsText
-      }
-
-      await editOrSend(TELEGRAM_BOT_TOKEN, chatId, messageId,
-        finalText,
+      await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+        truncateForTelegram(messageText, resultsText),
         { inline_keyboard: remainingButtons }, true)
 
       console.log(`✅ Worker: combo_li_fb_en completed in ${Date.now() - startTime}ms`)
@@ -1120,14 +1106,8 @@ serve(async (req) => {
         ]
       ]
 
-      let finalText = messageText + resultsText
-      if (finalText.length > 4000) {
-        const maxOriginalLength = 4000 - resultsText.length - 50
-        finalText = messageText.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>' + resultsText
-      }
-
-      await editOrSend(TELEGRAM_BOT_TOKEN, chatId, messageId,
-        finalText,
+      await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+        truncateForTelegram(messageText, resultsText),
         { inline_keyboard: remainingButtons }, true)
 
       console.log(`✅ Worker: combo_li_fb_ig ${langLabel} completed in ${Date.now() - startTime}ms`)

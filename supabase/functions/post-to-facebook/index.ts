@@ -120,6 +120,21 @@ serve(async (req) => {
       throw new Error('Invalid request: must provide either newsId or blogPostId')
     }
 
+    // Auto-expire stuck pending records (older than 10 minutes)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+    const { count: expiredCount } = await supabase
+      .from('social_media_posts')
+      .update({ status: 'failed', error_message: 'Auto-expired: stuck pending >10min' })
+      .eq('content_id', contentId)
+      .eq('platform', 'facebook')
+      .eq('language', requestData.language)
+      .eq('status', 'pending')
+      .lt('created_at', tenMinAgo)
+    if (expiredCount && expiredCount > 0) {
+      console.log(`🧹 Auto-expired ${expiredCount} stuck pending Facebook record(s)`)
+    }
+
     // Check if already posted or pending (prevents race condition duplicates)
     const { posted, pending, postUrl: existingUrl } = await wasAlreadyPosted(
       contentId,

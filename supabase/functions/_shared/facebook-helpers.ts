@@ -404,11 +404,16 @@ export async function postToInstagram(options: {
       } else if (errorCode === 24) {
         troubleshootingHint = "\n\n🔧 Error #24 Fix: You've reached the Instagram API rate limit. " +
           "Wait 24 hours before posting again.";
+      } else if (errorCode === 36003) {
+        troubleshootingHint = "\n\n🔧 Error #36003 Fix: Image aspect ratio not supported. " +
+          "Instagram requires ratio between 4:5 and 1.91:1. Use a processed (1:1) image.";
+      } else {
+        troubleshootingHint = `\n\n🔧 Unhandled error #${errorCode || 'unknown'} (type: ${errorType || 'N/A'}). Check function logs.`;
       }
 
       return {
         success: false,
-        error: `Error #${errorCode}: ${errorMessage}${troubleshootingHint}`,
+        error: `Error #${errorCode || 'unknown'}: ${errorMessage || 'No error message'}${troubleshootingHint}`,
       };
     }
 
