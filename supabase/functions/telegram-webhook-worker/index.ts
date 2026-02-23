@@ -119,6 +119,37 @@ async function editOrSend(
   }
 }
 
+// Helper: send a notification as a NEW message (won't interfere with user's current message)
+async function sendNotification(
+  botToken: string,
+  chatId: number,
+  text: string
+): Promise<void> {
+  await sendMessage(botToken, chatId, text, undefined, true)
+}
+
+// Helper: poll DB until is_rewritten flag is set (for optimistic pipeline)
+async function waitForRewrite(
+  supabase: any,
+  newsId: string,
+  maxWaitMs = 180000,
+  intervalMs = 5000
+): Promise<boolean> {
+  const startTime = Date.now()
+  while (Date.now() - startTime < maxWaitMs) {
+    const { data } = await supabase
+      .from('news')
+      .select('is_rewritten')
+      .eq('id', newsId)
+      .single()
+    if (data?.is_rewritten) return true
+    console.log(`⏳ waitForRewrite: ${newsId} not ready, waiting ${intervalMs}ms...`)
+    await new Promise(r => setTimeout(r, intervalMs))
+  }
+  console.error(`❌ waitForRewrite: timeout after ${maxWaitMs}ms for ${newsId}`)
+  return false
+}
+
 // =================================================================
 // Social media keyboard builders (reused across handlers)
 // =================================================================
@@ -318,17 +349,15 @@ serve(async (req) => {
       if (!processResponse.ok) {
         const errorText = await processResponse.text()
         console.error('❌ Process failed:', errorText)
-        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          messageText + `\n\n❌ <b>AI processing error</b>`)
+        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+          `❌ <b>AI processing error</b> (${publicationType})`)
         return new Response(JSON.stringify({ ok: false }))
       }
 
+      // Send notification as NEW message (social buttons already shown by dispatcher)
       const statusLabel = publicationType === 'blog' ? 'BLOG' : 'NEWS'
-      const socialKeyboard = buildSocialKeyboard(newsId)
-
-      await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-        messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`,
-        socialKeyboard)
+      await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+        `✅ <b>PUBLISHED TO ${statusLabel}</b>\n<i>AI рерайт EN/NO/UA завершено. Соцмережі готові до публікації!</i>`)
 
       console.log(`✅ Worker: ${publicationType} published in ${Date.now() - startTime}ms`)
 
@@ -371,17 +400,15 @@ serve(async (req) => {
       })
 
       if (!processResponse.ok) {
-        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          messageText + `\n\n❌ <b>AI processing error</b>`)
+        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+          `❌ <b>AI processing error</b> (RSS ${publicationType})`)
         return new Response(JSON.stringify({ ok: false }))
       }
 
+      // Send notification as NEW message (social buttons already shown by dispatcher)
       const statusLabel = publicationType === 'blog' ? 'BLOG (RSS)' : 'NEWS (RSS)'
-      const socialKeyboard = buildSocialKeyboardRss(newsId)
-
-      await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-        messageText + `\n\n✅ <b>PUBLISHED TO ${statusLabel}</b>\n📱 <i>Оберіть соцмережі для публікації:</i>`,
-        socialKeyboard)
+      await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+        `✅ <b>PUBLISHED TO ${statusLabel}</b>\n<i>AI рерайт EN/NO/UA завершено. Соцмережі готові до публікації!</i>`)
 
       console.log(`✅ Worker: RSS ${publicationType} published in ${Date.now() - startTime}ms`)
 
@@ -393,11 +420,28 @@ serve(async (req) => {
       const langLabel = linkedinLanguage.toUpperCase()
       console.log(`🔗 Worker: Posting to LinkedIn (${langLabel}) for ${newsId}`)
 
-      const { data: news } = await supabase.from('news').select('*').eq('id', newsId).single()
+      let news: any
+      const { data: newsData } = await supabase.from('news').select('*').eq('id', newsId).single()
+      news = newsData
       if (!news) {
         await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
           messageText + '\n\n❌ <b>Помилка:</b> Новина не знайдена')
         return new Response(JSON.stringify({ ok: false }))
+      }
+
+      // Wait for AI rewrite if not ready (optimistic pipeline)
+      if (!news.is_rewritten) {
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          messageText + `\n\n⏳ <b>Очікую завершення AI рерайту...</b>`)
+        const ready = await waitForRewrite(supabase, newsId)
+        if (!ready) {
+          await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+            messageText + `\n\n❌ <b>Таймаут:</b> AI рерайт не завершився за 3 хвилини`)
+          return new Response(JSON.stringify({ ok: false }))
+        }
+        // Refetch with translations
+        const { data: refreshed } = await supabase.from('news').select('*').eq('id', newsId).single()
+        if (refreshed) news = refreshed
       }
 
       // Check for blog post
@@ -485,11 +529,27 @@ serve(async (req) => {
       const platformName = socialPlatform.charAt(0).toUpperCase() + socialPlatform.slice(1)
       console.log(`${platformEmoji} Worker: Posting to ${platformName} (${langLabel}) for ${newsId}`)
 
-      const { data: news } = await supabase.from('news').select('*').eq('id', newsId).single()
+      let news: any
+      const { data: newsData } = await supabase.from('news').select('*').eq('id', newsId).single()
+      news = newsData
       if (!news) {
         await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
           messageText + '\n\n❌ <b>Помилка:</b> Новина не знайдена')
         return new Response(JSON.stringify({ ok: false }))
+      }
+
+      // Wait for AI rewrite if not ready (optimistic pipeline)
+      if (!news.is_rewritten) {
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          messageText + `\n\n⏳ <b>Очікую завершення AI рерайту...</b>`)
+        const ready = await waitForRewrite(supabase, newsId)
+        if (!ready) {
+          await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+            messageText + `\n\n❌ <b>Таймаут:</b> AI рерайт не завершився за 3 хвилини`)
+          return new Response(JSON.stringify({ ok: false }))
+        }
+        const { data: refreshed } = await supabase.from('news').select('*').eq('id', newsId).single()
+        if (refreshed) news = refreshed
       }
 
       // Instagram media validation
@@ -627,11 +687,27 @@ serve(async (req) => {
       const langLabel = socialLanguage.toUpperCase()
       console.log(`🌐 Worker: Post ALL (${langLabel}) for ${newsId}`)
 
-      const { data: news } = await supabase.from('news').select('*').eq('id', newsId).single()
+      let news: any
+      const { data: newsData } = await supabase.from('news').select('*').eq('id', newsId).single()
+      news = newsData
       if (!news) {
         await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
           messageText + '\n\n❌ <b>Помилка:</b> Новина не знайдена')
         return new Response(JSON.stringify({ ok: false }))
+      }
+
+      // Wait for AI rewrite if not ready (optimistic pipeline)
+      if (!news.is_rewritten) {
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          messageText + `\n\n⏳ <b>Очікую завершення AI рерайту...</b>`)
+        const ready = await waitForRewrite(supabase, newsId)
+        if (!ready) {
+          await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+            messageText + `\n\n❌ <b>Таймаут:</b> AI рерайт не завершився за 3 хвилини`)
+          return new Response(JSON.stringify({ ok: false }))
+        }
+        const { data: refreshed } = await supabase.from('news').select('*').eq('id', newsId).single()
+        if (refreshed) news = refreshed
       }
 
       // Check for blog post
@@ -761,11 +837,27 @@ serve(async (req) => {
       const { newsId } = params
       console.log(`🔗📘 Worker: Combo LinkedIn + Facebook EN for ${newsId}`)
 
-      const { data: news } = await supabase.from('news').select('*').eq('id', newsId).single()
+      let news: any
+      const { data: newsData } = await supabase.from('news').select('*').eq('id', newsId).single()
+      news = newsData
       if (!news) {
         await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
           messageText + '\n\n❌ <b>Error:</b> News not found')
         return new Response(JSON.stringify({ ok: false }))
+      }
+
+      // Wait for AI rewrite if not ready (optimistic pipeline)
+      if (!news.is_rewritten) {
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          messageText + `\n\n⏳ <b>Очікую завершення AI рерайту...</b>`)
+        const ready = await waitForRewrite(supabase, newsId)
+        if (!ready) {
+          await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+            messageText + `\n\n❌ <b>Таймаут:</b> AI рерайт не завершився за 3 хвилини`)
+          return new Response(JSON.stringify({ ok: false }))
+        }
+        const { data: refreshed } = await supabase.from('news').select('*').eq('id', newsId).single()
+        if (refreshed) news = refreshed
       }
 
       const { data: blogPost } = await supabase.from('blog_posts').select('*').eq('source_news_id', newsId).single()
@@ -892,11 +984,27 @@ serve(async (req) => {
       const langLabel = socialLanguage.toUpperCase()
       console.log(`🔗📘📸 Worker: Combo LI+FB+IG ${langLabel} for ${newsId}`)
 
-      const { data: news } = await supabase.from('news').select('*').eq('id', newsId).single()
+      let news: any
+      const { data: newsData } = await supabase.from('news').select('*').eq('id', newsId).single()
+      news = newsData
       if (!news) {
         await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
           messageText + '\n\n❌ <b>Error:</b> News not found')
         return new Response(JSON.stringify({ ok: false }))
+      }
+
+      // Wait for AI rewrite if not ready (optimistic pipeline)
+      if (!news.is_rewritten) {
+        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+          messageText + `\n\n⏳ <b>Очікую завершення AI рерайту...</b>`)
+        const ready = await waitForRewrite(supabase, newsId)
+        if (!ready) {
+          await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
+            messageText + `\n\n❌ <b>Таймаут:</b> AI рерайт не завершився за 3 хвилини`)
+          return new Response(JSON.stringify({ ok: false }))
+        }
+        const { data: refreshed } = await supabase.from('news').select('*').eq('id', newsId).single()
+        if (refreshed) news = refreshed
       }
 
       const { data: blogPost } = await supabase.from('blog_posts').select('*').eq('source_news_id', newsId).single()
@@ -1201,35 +1309,13 @@ serve(async (req) => {
           ? `\n📐 <b>16:9</b> (LinkedIn/FB): ${escapeHtml(wideImageUrl)}`
           : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
 
-        const newKeyboard = isRssSource ? {
-          inline_keyboard: [
-            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
-            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }],
-            [{ text: '❌ Skip', callback_data: `reject_${newsId}` }]
-          ]
-        } : {
-          inline_keyboard: [
-            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
-            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }],
-            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
-          ]
-        }
-
-        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
-          newKeyboard)
+        // Send as NEW message (gallery buttons already shown by dispatcher)
+        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+          `✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`)
       } else {
         const errorMsg = imageGenResult?.error || 'Невідома помилка'
-        const retryKeyboard = {
-          inline_keyboard: [
-            [{ text: '🔄 Спробувати ще', callback_data: `vl_${variantIndex}_${selectedLang}_${newsId}` }, { text: '← Інший варіант', callback_data: `back_to_variants_${newsId}` }],
-            [{ text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }],
-            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
-          ]
-        }
-        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}\n\n<i>Спробуйте ще раз або оберіть інший варіант</i>`),
-          retryKeyboard)
+        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+          `❌ <b>Помилка генерації:</b> ${errorMsg}\n<i>Натисніть "Ще" для повторної спроби</i>`)
       }
 
       console.log(`✅ Worker: variant_with_lang completed in ${Date.now() - startTime}ms`)
@@ -1364,35 +1450,13 @@ serve(async (req) => {
           ? `\n📐 <b>16:9</b>: ${escapeHtml(wideImageUrl)}`
           : '\n📐 <b>16:9</b>: ⚠️ не вдалося згенерувати'
 
-        const resultKeyboard = isRssSource ? {
-          inline_keyboard: [
-            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
-            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }],
-            [{ text: '❌ Skip', callback_data: `reject_${newsId}` }]
-          ]
-        } : {
-          inline_keyboard: [
-            [{ text: `✅ Готово (${galleryCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
-            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }],
-            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
-          ]
-        }
-
-        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
-          resultKeyboard)
+        // Send as NEW message (gallery buttons already shown by dispatcher)
+        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+          `✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`)
       } else {
         const errorMsg = imageGenResult?.error || 'Невідома помилка'
-        const retryKeyboard = {
-          inline_keyboard: [
-            [{ text: '🔄 Спробувати ще', callback_data: `cb_go_${selectedLang}_${newsId}` }, { text: '← Змінити елементи', callback_data: `cb_hub_${newsId}` }],
-            [{ text: '📸 Завантажити своє', callback_data: isRssSource ? `upload_rss_image_${newsId}` : `create_custom_${newsId}` }],
-            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
-          ]
-        }
-        await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          truncateForTelegram(messageText, `\n\n❌ <b>Помилка генерації:</b> ${errorMsg}`),
-          retryKeyboard)
+        await sendNotification(TELEGRAM_BOT_TOKEN, chatId,
+          `❌ <b>Помилка генерації:</b> ${errorMsg}\n<i>Натисніть "Ще" для повторної спроби</i>`)
       }
 
       console.log(`✅ Worker: cb_go completed in ${Date.now() - startTime}ms`)

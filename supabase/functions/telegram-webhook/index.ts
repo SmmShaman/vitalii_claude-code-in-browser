@@ -1039,7 +1039,47 @@ serve(async (req) => {
           }
         )
 
-        // Show processing state
+        // Show social buttons IMMEDIATELY (optimistic pipeline)
+        const socialKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
+              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
+              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
+            ],
+            [
+              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
+              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
+              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
+            ],
+            [
+              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+            ],
+            [
+              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
+              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
+              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
+            ],
+            [
+              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
+              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
+              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
+            ],
+            [
+              { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
+              { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
+              { text: '🐦 Twitter UA', callback_data: `twitter_ua_${newsId}` }
+            ],
+            [
+              { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+            ]
+          ]
+        }
+
+        const typeLabel = publicationType === 'blog' ? 'блог' : 'новину'
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -1048,8 +1088,9 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n⏳ <b>Обробляю ${publicationType === 'blog' ? 'блог' : 'новину'} (AI рерайт EN/NO/UA)...</b>`,
-              parse_mode: 'HTML'
+              text: truncateForTelegram(messageText, `\n\n⏳ <b>AI рерайт ${typeLabel} EN/NO/UA у фоні...</b>\n📱 <i>Можете вже обирати соцмережі:</i>`),
+              parse_mode: 'HTML',
+              reply_markup: socialKeyboard
             })
           }
         )
@@ -1129,7 +1170,41 @@ serve(async (req) => {
           }
         )
 
-        // Show processing state
+        // Show RSS social buttons IMMEDIATELY (optimistic pipeline)
+        const rssSocialKeyboard = {
+          inline_keyboard: [
+            [
+              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
+              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
+              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
+            ],
+            [
+              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
+              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
+              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
+            ],
+            [
+              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+            ],
+            [
+              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
+              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
+              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
+            ],
+            [
+              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
+              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
+              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
+            ],
+            [
+              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+            ]
+          ]
+        }
+
+        const rssTypeLabel = publicationType === 'blog' ? 'блог' : 'новину'
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -1138,8 +1213,9 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: messageText + `\n\n⏳ <b>Обробляю RSS ${publicationType === 'blog' ? 'блог' : 'новину'} (AI рерайт EN/NO/UA)...</b>`,
-              parse_mode: 'HTML'
+              text: truncateForTelegram(messageText, `\n\n⏳ <b>AI рерайт RSS ${rssTypeLabel} EN/NO/UA у фоні...</b>\n📱 <i>Можете вже обирати соцмережі:</i>`),
+              parse_mode: 'HTML',
+              reply_markup: rssSocialKeyboard
             })
           }
         )
@@ -2832,12 +2908,37 @@ serve(async (req) => {
 
       } else if (action === 'variant_with_lang') {
         // =================================================================
-        // 🎨 Variant + Language → DISPATCH TO WORKER
+        // 🎨 Variant + Language → DISPATCH TO WORKER (optimistic: gallery buttons immediately)
         // =================================================================
         const variantIndex = parseInt(socialLanguage || '1')
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
         console.log(`[async] Dispatching variant_with_lang (variant ${variantIndex}, ${selectedLang}) to worker for news:`, newsId)
+
+        // Lightweight DB query for gallery state
+        const { data: galleryRecord } = await supabase
+          .from('news')
+          .select('id, images, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const isRssSource = !!(galleryRecord?.rss_analysis)
+        const imageCount = galleryRecord?.images?.length || 0
+
+        // Gallery buttons shown IMMEDIATELY (optimistic pipeline)
+        const galleryKeyboard = isRssSource ? {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${imageCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }],
+            [{ text: '❌ Skip', callback_data: `reject_${newsId}` }]
+          ]
+        } : {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${imageCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }],
+            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
+          ]
+        }
 
         // Answer callback immediately
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
@@ -2846,14 +2947,15 @@ serve(async (req) => {
           body: JSON.stringify({ callback_query_id: callbackId, text: `🎨 Генерація варіанту ${variantIndex} (${langNames[selectedLang] || selectedLang})...`, show_alert: false })
         })
 
-        // Show processing state
+        // Show gallery buttons + processing state
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId, message_id: messageId,
-            text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація промпта та зображення (варіант ${variantIndex}, ${langNames[selectedLang] || selectedLang})...</b>`),
-            parse_mode: 'HTML'
+            text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація зображення (варіант ${variantIndex}, ${langNames[selectedLang] || selectedLang})...</b>\n<i>Можете продовжити далі або дочекатися результату</i>`),
+            parse_mode: 'HTML',
+            reply_markup: galleryKeyboard
           })
         })
 
@@ -3537,11 +3639,36 @@ serve(async (req) => {
 
       } else if (action === 'cb_go') {
         // =================================================================
-        // 🖼️ Creative Builder Go → DISPATCH TO WORKER
+        // 🖼️ Creative Builder Go → DISPATCH TO WORKER (optimistic: gallery buttons immediately)
         // =================================================================
         const selectedLang = imageLanguage || 'en'
         const langNames: Record<string, string> = { ua: 'UA', no: 'NO', en: 'EN' }
         console.log(`[async] Dispatching cb_go (${selectedLang}) to worker for news:`, newsId)
+
+        // Lightweight DB query for gallery state
+        const { data: cbGalleryRecord } = await supabase
+          .from('news')
+          .select('id, images, rss_analysis')
+          .eq('id', newsId)
+          .single()
+
+        const cbIsRss = !!(cbGalleryRecord?.rss_analysis)
+        const cbImageCount = cbGalleryRecord?.images?.length || 0
+
+        // Gallery buttons shown IMMEDIATELY (optimistic pipeline)
+        const cbGalleryKeyboard = cbIsRss ? {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${cbImageCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }],
+            [{ text: '❌ Skip', callback_data: `reject_${newsId}` }]
+          ]
+        } : {
+          inline_keyboard: [
+            [{ text: `✅ Готово (${cbImageCount} фото)`, callback_data: `gal_done_${newsId}` }, { text: '➕ Ще', callback_data: `add_more_${newsId}` }],
+            [{ text: '🖼 + Оригінал', callback_data: `keep_orig_${newsId}` }, { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }],
+            [{ text: '❌ Reject', callback_data: `reject_${newsId}` }]
+          ]
+        }
 
         // Answer callback immediately
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
@@ -3550,14 +3677,15 @@ serve(async (req) => {
           body: JSON.stringify({ callback_query_id: callbackId, text: `🖼️ Генерація зображення...`, show_alert: false })
         })
 
-        // Show processing state
+        // Show gallery buttons + processing state
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId, message_id: messageId,
-            text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація зображення (${langNames[selectedLang] || selectedLang})...</b>\n<i>Промпт підтверджено, створюю зображення...</i>`),
-            parse_mode: 'HTML'
+            text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація зображення (${langNames[selectedLang] || selectedLang})...</b>\n<i>Можете продовжити далі або дочекатися результату</i>`),
+            parse_mode: 'HTML',
+            reply_markup: cbGalleryKeyboard
           })
         })
 
