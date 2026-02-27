@@ -22,7 +22,8 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
-  Key
+  Key,
+  AlertCircle
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -148,6 +149,8 @@ export const ImageProcessingSettings = () => {
   const [savedProviderKeyValues, setSavedProviderKeyValues] = useState<Record<string, string>>({})
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [showKeyValues, setShowKeyValues] = useState<Record<string, boolean>>({})
+  const [providerTestResults, setProviderTestResults] = useState<Record<string, 'success' | 'error' | null>>({})
+  const [testingKey, setTestingKey] = useState<string | null>(null)
 
   useEffect(() => {
     loadPrompts()
@@ -278,6 +281,51 @@ export const ImageProcessingSettings = () => {
       console.error(`Failed to save ${keyName}:`, error)
     } finally {
       setSavingKey(null)
+    }
+  }
+
+  const testProviderKey = async (keyName: string) => {
+    setTestingKey(keyName)
+    setProviderTestResults(prev => ({ ...prev, [keyName]: null }))
+
+    try {
+      if (keyName === 'CLOUDFLARE_AI_TOKEN') {
+        const accountId = providerKeyValues['CLOUDFLARE_ACCOUNT_ID']
+        const token = providerKeyValues['CLOUDFLARE_AI_TOKEN']
+        if (!accountId || !token) {
+          setProviderTestResults(prev => ({ ...prev, [keyName]: 'error' }))
+          return
+        }
+        const res = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/models/search`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        setProviderTestResults(prev => ({ ...prev, [keyName]: res.ok ? 'success' : 'error' }))
+      } else if (keyName === 'TOGETHER_API_KEY') {
+        const token = providerKeyValues['TOGETHER_API_KEY']
+        if (!token) {
+          setProviderTestResults(prev => ({ ...prev, [keyName]: 'error' }))
+          return
+        }
+        const res = await fetch('https://api.together.xyz/v1/models', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setProviderTestResults(prev => ({ ...prev, [keyName]: res.ok ? 'success' : 'error' }))
+      } else if (keyName === 'HUGGINGFACE_TOKEN') {
+        const token = providerKeyValues['HUGGINGFACE_TOKEN']
+        if (!token) {
+          setProviderTestResults(prev => ({ ...prev, [keyName]: 'error' }))
+          return
+        }
+        const res = await fetch('https://huggingface.co/api/whoami-v2', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setProviderTestResults(prev => ({ ...prev, [keyName]: res.ok ? 'success' : 'error' }))
+      }
+    } catch {
+      setProviderTestResults(prev => ({ ...prev, [keyName]: 'error' }))
+    } finally {
+      setTestingKey(null)
     }
   }
 
@@ -615,7 +663,42 @@ export const ImageProcessingSettings = () => {
                           )}
                           Save
                         </button>
+                        {keyConfig.keyName !== 'CLOUDFLARE_ACCOUNT_ID' && providerKeyValues[keyConfig.keyName] && (
+                          <button
+                            onClick={() => testProviderKey(keyConfig.keyName)}
+                            disabled={testingKey === keyConfig.keyName}
+                            className={`flex items-center gap-1 px-3 py-2 rounded text-xs transition-colors ${
+                              providerTestResults[keyConfig.keyName] === 'success'
+                                ? 'bg-green-600 text-white'
+                                : providerTestResults[keyConfig.keyName] === 'error'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-white/10 text-white hover:bg-white/20'
+                            }`}
+                          >
+                            {testingKey === keyConfig.keyName ? (
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                            ) : providerTestResults[keyConfig.keyName] === 'success' ? (
+                              <Check className="h-3 w-3" />
+                            ) : providerTestResults[keyConfig.keyName] === 'error' ? (
+                              <AlertCircle className="h-3 w-3" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3" />
+                            )}
+                            Test
+                          </button>
+                        )}
                       </div>
+                      {providerTestResults[keyConfig.keyName] && (
+                        <p className={`text-xs mt-1 ${
+                          providerTestResults[keyConfig.keyName] === 'success' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {providerTestResults[keyConfig.keyName] === 'success'
+                            ? '✓ API ключ працює коректно'
+                            : keyConfig.keyName === 'CLOUDFLARE_AI_TOKEN' && !providerKeyValues['CLOUDFLARE_ACCOUNT_ID']
+                              ? '✗ Потрібно також вказати Cloudflare Account ID'
+                              : '✗ API ключ недійсний або не має доступу'}
+                        </p>
+                      )}
                       <p className="text-gray-500 text-xs mt-1">Provider: {keyConfig.provider}</p>
                     </div>
                   )
