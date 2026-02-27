@@ -67,9 +67,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// Dynamic rendering to avoid build timeouts and missing items
-// generateStaticParams removed - all pages rendered on-demand
-export const dynamic = 'force-dynamic'
+// ISR: revalidate every hour so article pages are cached at the edge
+export const revalidate = 3600
 export const dynamicParams = true
 
 export default async function BlogPage({ params }: Props) {

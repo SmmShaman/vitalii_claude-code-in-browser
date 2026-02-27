@@ -11,6 +11,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
+      alternates: {
+        languages: {
+          'x-default': baseUrl,
+          en: baseUrl,
+          no: baseUrl,
+          uk: baseUrl,
+        },
+      },
     },
   ]
 
@@ -22,6 +30,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const pages: MetadataRoute.Sitemap = []
       const lastModified = new Date(item.published_at || item.created_at)
 
+      // Build shared alternates for this news item
+      const newsAlternates: Record<string, string> = {}
+      if (item.slug_en) {
+        newsAlternates['x-default'] = `${baseUrl}/news/${item.slug_en}`
+        newsAlternates.en = `${baseUrl}/news/${item.slug_en}`
+      }
+      if (item.slug_no) newsAlternates.no = `${baseUrl}/news/${item.slug_no}`
+      if (item.slug_ua) newsAlternates.uk = `${baseUrl}/news/${item.slug_ua}`
+
       // English version (primary)
       if (item.slug_en) {
         pages.push({
@@ -29,13 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           lastModified,
           changeFrequency: 'weekly' as const,
           priority: 0.8,
-          alternates: {
-            languages: {
-              en: `${baseUrl}/news/${item.slug_en}`,
-              ...(item.slug_no && { no: `${baseUrl}/news/${item.slug_no}` }),
-              ...(item.slug_ua && { uk: `${baseUrl}/news/${item.slug_ua}` }),
-            },
-          },
+          alternates: { languages: newsAlternates },
         })
       }
 
@@ -46,13 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           lastModified,
           changeFrequency: 'weekly' as const,
           priority: 0.7,
-          alternates: {
-            languages: {
-              ...(item.slug_en && { en: `${baseUrl}/news/${item.slug_en}` }),
-              no: `${baseUrl}/news/${item.slug_no}`,
-              ...(item.slug_ua && { uk: `${baseUrl}/news/${item.slug_ua}` }),
-            },
-          },
+          alternates: { languages: newsAlternates },
         })
       }
 
@@ -63,13 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           lastModified,
           changeFrequency: 'weekly' as const,
           priority: 0.7,
-          alternates: {
-            languages: {
-              ...(item.slug_en && { en: `${baseUrl}/news/${item.slug_en}` }),
-              ...(item.slug_no && { no: `${baseUrl}/news/${item.slug_no}` }),
-              uk: `${baseUrl}/news/${item.slug_ua}`,
-            },
-          },
+          alternates: { languages: newsAlternates },
         })
       }
 
@@ -97,6 +96,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const pages: MetadataRoute.Sitemap = []
       const lastModified = new Date(post.published_at || post.created_at)
 
+      // Build shared alternates for this blog post
+      const blogAlternates: Record<string, string> = {}
+      if (post.slug_en) {
+        blogAlternates['x-default'] = `${baseUrl}/blog/${post.slug_en}`
+        blogAlternates.en = `${baseUrl}/blog/${post.slug_en}`
+      }
+      if (post.slug_no) blogAlternates.no = `${baseUrl}/blog/${post.slug_no}`
+      if (post.slug_ua) blogAlternates.uk = `${baseUrl}/blog/${post.slug_ua}`
+
       // English version (primary)
       if (post.slug_en) {
         pages.push({
@@ -104,13 +112,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           lastModified,
           changeFrequency: 'weekly' as const,
           priority: 0.8,
-          alternates: {
-            languages: {
-              en: `${baseUrl}/blog/${post.slug_en}`,
-              ...(post.slug_no && { no: `${baseUrl}/blog/${post.slug_no}` }),
-              ...(post.slug_ua && { uk: `${baseUrl}/blog/${post.slug_ua}` }),
-            },
-          },
+          alternates: { languages: blogAlternates },
         })
       }
 
@@ -121,13 +123,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           lastModified,
           changeFrequency: 'weekly' as const,
           priority: 0.7,
-          alternates: {
-            languages: {
-              ...(post.slug_en && { en: `${baseUrl}/blog/${post.slug_en}` }),
-              no: `${baseUrl}/blog/${post.slug_no}`,
-              ...(post.slug_ua && { uk: `${baseUrl}/blog/${post.slug_ua}` }),
-            },
-          },
+          alternates: { languages: blogAlternates },
         })
       }
 
@@ -138,13 +134,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           lastModified,
           changeFrequency: 'weekly' as const,
           priority: 0.7,
-          alternates: {
-            languages: {
-              ...(post.slug_en && { en: `${baseUrl}/blog/${post.slug_en}` }),
-              ...(post.slug_no && { no: `${baseUrl}/blog/${post.slug_no}` }),
-              uk: `${baseUrl}/blog/${post.slug_ua}`,
-            },
-          },
+          alternates: { languages: blogAlternates },
         })
       }
 

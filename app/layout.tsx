@@ -59,6 +59,12 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: siteUrl,
+    languages: {
+      'x-default': siteUrl,
+      en: siteUrl,
+      no: siteUrl,
+      uk: siteUrl,
+    },
   },
 }
 
