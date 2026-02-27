@@ -1,6 +1,12 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: '/news', destination: '/', permanent: true },
+      { source: '/blog', destination: '/', permanent: true },
+    ]
+  },
   images: {
     // Wildcard needed: news/blog images are scraped from many external sources
     remotePatterns: [
