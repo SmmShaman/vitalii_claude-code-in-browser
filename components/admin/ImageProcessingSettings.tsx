@@ -15,7 +15,14 @@ import {
   Flower2,
   Leaf,
   Heart,
-  Star
+  Star,
+  Zap,
+  Layers,
+  Activity,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Key
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -105,6 +112,23 @@ Output a professionally enhanced Valentine-themed version.`
   },
 ]
 
+// Provider definitions for cascading mode display
+const CASCADING_PROVIDERS = [
+  { name: 'Cloudflare FLUX', key: 'CLOUDFLARE_AI_TOKEN', freeLimit: '~150 img/day', icon: '☁️' },
+  { name: 'Together AI FLUX', key: 'TOGETHER_API_KEY', freeLimit: 'Unlimited (free endpoint)', icon: '🤝' },
+  { name: 'Pollinations', key: '', freeLimit: 'Unlimited (no key)', icon: '🌸' },
+  { name: 'HuggingFace FLUX', key: 'HUGGINGFACE_TOKEN', freeLimit: '~100 req/hour', icon: '🤗' },
+  { name: 'Gemini (paid fallback)', key: 'GOOGLE_API_KEY', freeLimit: 'Pay-per-use', icon: '💎' },
+]
+
+// API keys required for cascading providers (editable in dashboard)
+const PROVIDER_API_KEYS = [
+  { keyName: 'CLOUDFLARE_ACCOUNT_ID', label: 'Cloudflare Account ID', provider: 'Cloudflare FLUX', helpUrl: 'https://dash.cloudflare.com/', helpText: 'Cloudflare Dashboard' },
+  { keyName: 'CLOUDFLARE_AI_TOKEN', label: 'Cloudflare AI Token', provider: 'Cloudflare FLUX', helpUrl: 'https://dash.cloudflare.com/profile/api-tokens', helpText: 'API Tokens' },
+  { keyName: 'TOGETHER_API_KEY', label: 'Together AI API Key', provider: 'Together AI FLUX', helpUrl: 'https://api.together.xyz/settings/api-keys', helpText: 'Together AI Keys' },
+  { keyName: 'HUGGINGFACE_TOKEN', label: 'HuggingFace Token', provider: 'HuggingFace FLUX', helpUrl: 'https://huggingface.co/settings/tokens', helpText: 'HF Tokens' },
+]
+
 export const ImageProcessingSettings = () => {
   const [prompts, setPrompts] = useState<ImagePrompt[]>([])
   const [loading, setLoading] = useState(true)
@@ -113,9 +137,149 @@ export const ImageProcessingSettings = () => {
   const [customPrompt, setCustomPrompt] = useState('')
   const [showCustomEditor, setShowCustomEditor] = useState(false)
 
+  // Image generation mode state
+  const [imageGenMode, setImageGenMode] = useState<'gemini_only' | 'cascading'>('gemini_only')
+  const [savedImageGenMode, setSavedImageGenMode] = useState<'gemini_only' | 'cascading'>('gemini_only')
+  const [savingMode, setSavingMode] = useState(false)
+  const [providerUsage, setProviderUsage] = useState<Record<string, { success: number; failure: number }>>({})
+
+  // Provider API keys state
+  const [providerKeyValues, setProviderKeyValues] = useState<Record<string, string>>({})
+  const [savedProviderKeyValues, setSavedProviderKeyValues] = useState<Record<string, string>>({})
+  const [savingKey, setSavingKey] = useState<string | null>(null)
+  const [showKeyValues, setShowKeyValues] = useState<Record<string, boolean>>({})
+
   useEffect(() => {
     loadPrompts()
+    loadImageGenMode()
+    loadProviderUsage()
+    loadProviderKeys()
   }, [])
+
+  const loadImageGenMode = async () => {
+    try {
+      const { data } = await supabase
+        .from('api_settings')
+        .select('key_value')
+        .eq('key_name', 'IMAGE_GENERATION_MODE')
+        .single()
+
+      if (data?.key_value) {
+        const mode = data.key_value as 'gemini_only' | 'cascading'
+        setImageGenMode(mode)
+        setSavedImageGenMode(mode)
+      }
+    } catch {
+      // Default to gemini_only if not found
+    }
+  }
+
+  const loadProviderUsage = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const { data } = await supabase
+        .from('image_provider_usage')
+        .select('provider_name, success_count, failure_count')
+        .eq('usage_date', today)
+
+      if (data) {
+        const usage: Record<string, { success: number; failure: number }> = {}
+        data.forEach(row => {
+          usage[row.provider_name] = {
+            success: row.success_count || 0,
+            failure: row.failure_count || 0,
+          }
+        })
+        setProviderUsage(usage)
+      }
+    } catch {
+      // Table may not exist yet
+    }
+  }
+
+  const saveImageGenMode = async (mode: 'gemini_only' | 'cascading') => {
+    try {
+      setSavingMode(true)
+      setImageGenMode(mode)
+
+      // Try update first
+      const { data, error } = await supabase
+        .from('api_settings')
+        .update({ key_value: mode, updated_at: new Date().toISOString() })
+        .eq('key_name', 'IMAGE_GENERATION_MODE')
+        .select()
+
+      if (!data || data.length === 0) {
+        // Insert if not found
+        await supabase
+          .from('api_settings')
+          .insert({
+            key_name: 'IMAGE_GENERATION_MODE',
+            key_value: mode,
+            description: 'Image generation mode: gemini_only or cascading',
+            is_active: true,
+          })
+      }
+
+      setSavedImageGenMode(mode)
+    } catch (error) {
+      console.error('Failed to save image generation mode:', error)
+      setImageGenMode(savedImageGenMode) // Revert on error
+    } finally {
+      setSavingMode(false)
+    }
+  }
+
+  const loadProviderKeys = async () => {
+    try {
+      const keyNames = PROVIDER_API_KEYS.map(k => k.keyName)
+      const { data } = await supabase
+        .from('api_settings')
+        .select('key_name, key_value')
+        .in('key_name', keyNames)
+
+      const values: Record<string, string> = {}
+      data?.forEach(row => {
+        values[row.key_name] = row.key_value || ''
+      })
+      setProviderKeyValues(values)
+      setSavedProviderKeyValues(values)
+    } catch {
+      // Keys may not exist yet
+    }
+  }
+
+  const saveProviderKey = async (keyName: string) => {
+    try {
+      setSavingKey(keyName)
+      const value = providerKeyValues[keyName] || ''
+
+      // Try update first
+      const { data } = await supabase
+        .from('api_settings')
+        .update({ key_value: value, updated_at: new Date().toISOString() })
+        .eq('key_name', keyName)
+        .select()
+
+      if (!data || data.length === 0) {
+        // Insert if not found
+        await supabase
+          .from('api_settings')
+          .insert({
+            key_name: keyName,
+            key_value: value,
+            description: `API key for cascading image provider: ${keyName}`,
+            is_active: true,
+          })
+      }
+
+      setSavedProviderKeyValues(prev => ({ ...prev, [keyName]: value }))
+    } catch (error) {
+      console.error(`Failed to save ${keyName}:`, error)
+    } finally {
+      setSavingKey(null)
+    }
+  }
 
   const loadPrompts = async () => {
     try {
@@ -286,6 +450,183 @@ export const ImageProcessingSettings = () => {
           <h2 className="text-2xl font-bold text-white">Обробка зображень</h2>
           <p className="text-gray-400 text-sm">Налаштування Gemini AI для LinkedIn</p>
         </div>
+      </div>
+
+      {/* Image Generation Mode Toggle */}
+      <div className={`bg-white/5 rounded-xl p-6 border-2 transition-all ${
+        imageGenMode !== savedImageGenMode ? 'border-yellow-500/50' : 'border-white/10'
+      }`}>
+        <div className="flex items-center gap-2 mb-4">
+          <Layers className="h-5 w-5 text-blue-400" />
+          <h3 className="text-lg font-semibold text-white">Режим генерації зображень</h3>
+          {savingMode && <RefreshCw className="h-4 w-4 text-blue-400 animate-spin" />}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Gemini Only */}
+          <button
+            onClick={() => saveImageGenMode('gemini_only')}
+            disabled={savingMode}
+            className={`p-4 rounded-lg border-2 text-left transition-all ${
+              imageGenMode === 'gemini_only'
+                ? 'bg-blue-500/20 border-blue-500 ring-2 ring-blue-500/30'
+                : 'bg-white/5 border-white/10 hover:border-white/30'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">💎</span>
+              <span className="text-white font-semibold">Gemini Only</span>
+              {imageGenMode === 'gemini_only' && <Check className="h-4 w-4 text-blue-400 ml-auto" />}
+            </div>
+            <p className="text-gray-400 text-sm">
+              Поточний стан. Використовує Google Gemini для генерації. Підтримує текст на зображеннях (дата, vitalii.no). Платний.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-300 rounded">~$0.13/img</span>
+            </div>
+          </button>
+
+          {/* Cascading Providers */}
+          <button
+            onClick={() => saveImageGenMode('cascading')}
+            disabled={savingMode}
+            className={`p-4 rounded-lg border-2 text-left transition-all ${
+              imageGenMode === 'cascading'
+                ? 'bg-green-500/20 border-green-500 ring-2 ring-green-500/30'
+                : 'bg-white/5 border-white/10 hover:border-white/30'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🔗</span>
+              <span className="text-white font-semibold">Cascading Providers</span>
+              {imageGenMode === 'cascading' && <Check className="h-4 w-4 text-green-400 ml-auto" />}
+            </div>
+            <p className="text-gray-400 text-sm">
+              Спочатку безкоштовні сервіси (Cloudflare, Together AI, Pollinations, HuggingFace), потім Gemini як fallback. Брендинг через overlay.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-300 rounded">~$0/img (free tier)</span>
+              <span className="text-xs px-2 py-0.5 bg-gray-500/20 text-gray-300 rounded">fallback: $0.02/img</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Provider Status (only shown in cascading mode) */}
+        {imageGenMode === 'cascading' && (
+          <div className="mt-4 bg-black/20 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-4 w-4 text-green-400" />
+              <span className="text-sm text-white font-medium">Провайдери (пріоритет зверху вниз):</span>
+            </div>
+            <div className="space-y-2">
+              {CASCADING_PROVIDERS.map((provider, idx) => {
+                const usage = providerUsage[provider.name]
+                return (
+                  <div key={provider.name} className="flex items-center gap-3 text-sm">
+                    <span className="text-gray-500 w-5">{idx + 1}.</span>
+                    <span>{provider.icon}</span>
+                    <span className="text-white flex-1">{provider.name}</span>
+                    <span className="text-gray-500">{provider.freeLimit}</span>
+                    {usage && (
+                      <span className="text-green-400 text-xs">
+                        {usage.success} ok{usage.failure > 0 ? ` / ${usage.failure} fail` : ''}
+                      </span>
+                    )}
+                    {provider.key && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">
+                        {provider.key}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Якщо провайдер не може згенерувати (ліміт/помилка) — переходить до наступного в списку.
+            </p>
+
+            {/* Provider API Keys */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-3">
+                <Key className="h-4 w-4 text-yellow-400" />
+                <span className="text-sm text-white font-medium">API ключі провайдерів:</span>
+              </div>
+              <div className="space-y-3">
+                {PROVIDER_API_KEYS.map((keyConfig) => {
+                  const isChanged = (providerKeyValues[keyConfig.keyName] || '') !== (savedProviderKeyValues[keyConfig.keyName] || '')
+                  const hasValue = !!(savedProviderKeyValues[keyConfig.keyName])
+
+                  return (
+                    <div key={keyConfig.keyName} className={`bg-black/20 rounded-lg p-3 border transition-all ${
+                      isChanged ? 'border-yellow-500/50' : 'border-white/5'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-white font-medium">{keyConfig.label}</span>
+                          {hasValue ? (
+                            <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">OK</span>
+                          ) : (
+                            <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded">Not set</span>
+                          )}
+                        </div>
+                        <a
+                          href={keyConfig.helpUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                        >
+                          {keyConfig.helpText}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 relative">
+                          <input
+                            type={showKeyValues[keyConfig.keyName] ? 'text' : 'password'}
+                            value={providerKeyValues[keyConfig.keyName] || ''}
+                            onChange={(e) =>
+                              setProviderKeyValues(prev => ({ ...prev, [keyConfig.keyName]: e.target.value }))
+                            }
+                            placeholder={`${keyConfig.label}...`}
+                            className="w-full px-3 py-2 bg-black/30 border border-white/20 rounded text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 pr-10"
+                          />
+                          <button
+                            onClick={() =>
+                              setShowKeyValues(prev => ({ ...prev, [keyConfig.keyName]: !prev[keyConfig.keyName] }))
+                            }
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                          >
+                            {showKeyValues[keyConfig.keyName] ? (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => saveProviderKey(keyConfig.keyName)}
+                          disabled={savingKey === keyConfig.keyName || !isChanged}
+                          className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {savingKey === keyConfig.keyName ? (
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Save className="h-3 w-3" />
+                          )}
+                          Save
+                        </button>
+                      </div>
+                      <p className="text-gray-500 text-xs mt-1">Provider: {keyConfig.provider}</p>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-gray-500 text-xs mt-2">
+                Pollinations не потребує ключа. Google API Key налаштовується у вкладці API Keys.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Current Active Theme */}

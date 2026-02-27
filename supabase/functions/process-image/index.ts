@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-20-v9-fix-language-instructions'
+const VERSION = '2026-02-27-v10-cascading-providers'
 
 // Image generation models in priority order (all use generateContent API)
 const IMAGE_GENERATION_MODELS = [
@@ -20,6 +20,435 @@ const IMAGE_GENERATION_MODELS = [
 const MODEL_TIMEOUT_MS = 40_000
 // Delay between retries for transient errors
 const RETRY_DELAY_MS = 2_000
+
+// ==========================================
+// CASCADING PROVIDERS CONFIGURATION
+// ==========================================
+
+interface CascadingProvider {
+  name: string
+  type: 'cloudflare' | 'together' | 'pollinations' | 'huggingface' | 'gemini'
+  model: string
+  apiKeyEnv: string
+  priority: number
+}
+
+const CASCADING_PROVIDERS: CascadingProvider[] = [
+  { name: 'Cloudflare FLUX', type: 'cloudflare', model: '@cf/black-forest-labs/flux-1-schnell', apiKeyEnv: 'CLOUDFLARE_AI_TOKEN', priority: 1 },
+  { name: 'Together AI FLUX', type: 'together', model: 'black-forest-labs/FLUX.1-schnell-Free', apiKeyEnv: 'TOGETHER_API_KEY', priority: 2 },
+  { name: 'Pollinations', type: 'pollinations', model: 'flux', apiKeyEnv: '', priority: 3 },
+  { name: 'HuggingFace FLUX', type: 'huggingface', model: 'black-forest-labs/FLUX.1-schnell', apiKeyEnv: 'HUGGINGFACE_TOKEN', priority: 4 },
+  { name: 'Gemini (paid fallback)', type: 'gemini', model: 'gemini-2.5-flash-image', apiKeyEnv: 'GOOGLE_API_KEY', priority: 5 },
+]
+
+/**
+ * Get image generation mode from api_settings
+ */
+async function getImageGenerationMode(supabase: any): Promise<'gemini_only' | 'cascading'> {
+  try {
+    const { data } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', 'IMAGE_GENERATION_MODE')
+      .single()
+    return (data?.key_value === 'cascading') ? 'cascading' : 'gemini_only'
+  } catch {
+    return 'gemini_only'
+  }
+}
+
+/**
+ * Track provider usage in the database
+ */
+async function trackProviderUsage(
+  supabase: any,
+  providerName: string,
+  modelName: string,
+  success: boolean
+): Promise<void> {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    // Try upsert with increment
+    const { data: existing } = await supabase
+      .from('image_provider_usage')
+      .select('id, request_count, success_count, failure_count')
+      .eq('provider_name', providerName)
+      .eq('usage_date', today)
+      .single()
+
+    if (existing) {
+      await supabase
+        .from('image_provider_usage')
+        .update({
+          request_count: (existing.request_count || 0) + 1,
+          success_count: (existing.success_count || 0) + (success ? 1 : 0),
+          failure_count: (existing.failure_count || 0) + (success ? 0 : 1),
+        })
+        .eq('id', existing.id)
+    } else {
+      await supabase
+        .from('image_provider_usage')
+        .insert({
+          provider_name: providerName,
+          model_name: modelName,
+          usage_date: today,
+          request_count: 1,
+          success_count: success ? 1 : 0,
+          failure_count: success ? 0 : 1,
+        })
+    }
+  } catch (e) {
+    console.log('⚠️ Failed to track provider usage:', e)
+  }
+}
+
+// ==========================================
+// CASCADING PROVIDER IMPLEMENTATIONS
+// ==========================================
+
+/**
+ * Get API key from env var first, then fall back to api_settings table
+ */
+async function getProviderApiKey(supabase: any, keyName: string): Promise<string | null> {
+  const envKey = Deno.env.get(keyName)
+  if (envKey) return envKey
+
+  try {
+    const { data } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', keyName)
+      .eq('is_active', true)
+      .single()
+    return data?.key_value || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Generate image with Cloudflare Workers AI (FLUX.1 schnell)
+ */
+async function generateWithCloudflare(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
+  const accountId = await getProviderApiKey(supabase, 'CLOUDFLARE_ACCOUNT_ID')
+  const apiToken = await getProviderApiKey(supabase, 'CLOUDFLARE_AI_TOKEN')
+  if (!accountId || !apiToken) {
+    console.log('⚠️ Cloudflare: missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_AI_TOKEN')
+    return null
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
+
+    // FLUX schnell doesn't support aspect ratio natively, use width/height
+    const width = aspectRatio === '16:9' ? 1024 : 1024
+    const height = aspectRatio === '16:9' ? 576 : 1024
+
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          width,
+          height,
+          num_steps: 4,
+        }),
+        signal: controller.signal,
+      }
+    )
+
+    clearTimeout(timeout)
+
+    if (!response.ok) {
+      console.error(`❌ Cloudflare error: ${response.status}`)
+      return null
+    }
+
+    // Cloudflare returns raw image bytes
+    const arrayBuffer = await response.arrayBuffer()
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    )
+    console.log('✅ Cloudflare FLUX generated image successfully')
+    return base64
+  } catch (e: any) {
+    console.error('❌ Cloudflare error:', e.name === 'AbortError' ? 'Timeout' : e.message)
+    return null
+  }
+}
+
+/**
+ * Generate image with Together AI (FLUX.1 schnell-Free)
+ */
+async function generateWithTogether(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
+  const apiKey = await getProviderApiKey(supabase, 'TOGETHER_API_KEY')
+  if (!apiKey) {
+    console.log('⚠️ Together AI: missing TOGETHER_API_KEY')
+    return null
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
+
+    const width = aspectRatio === '16:9' ? 1024 : 1024
+    const height = aspectRatio === '16:9' ? 576 : 1024
+
+    const response = await fetch('https://api.together.xyz/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'black-forest-labs/FLUX.1-schnell-Free',
+        prompt,
+        width,
+        height,
+        n: 1,
+        response_format: 'b64_json',
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeout)
+
+    if (!response.ok) {
+      const errText = await response.text()
+      console.error(`❌ Together AI error: ${response.status} - ${errText.substring(0, 200)}`)
+      return null
+    }
+
+    const result = await response.json()
+    const b64 = result.data?.[0]?.b64_json
+    if (!b64) {
+      console.error('❌ Together AI: no image in response')
+      return null
+    }
+    console.log('✅ Together AI FLUX generated image successfully')
+    return b64
+  } catch (e: any) {
+    console.error('❌ Together AI error:', e.name === 'AbortError' ? 'Timeout' : e.message)
+    return null
+  }
+}
+
+/**
+ * Generate image with Pollinations AI (free, no API key)
+ */
+async function generateWithPollinations(prompt: string, aspectRatio: '1:1' | '16:9'): Promise<string | null> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60_000) // Pollinations can be slow
+
+    const width = aspectRatio === '16:9' ? 1024 : 1024
+    const height = aspectRatio === '16:9' ? 576 : 1024
+
+    const encodedPrompt = encodeURIComponent(prompt.substring(0, 500))
+    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`
+
+    const response = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeout)
+
+    if (!response.ok) {
+      console.error(`❌ Pollinations error: ${response.status}`)
+      return null
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    )
+    console.log('✅ Pollinations generated image successfully')
+    return base64
+  } catch (e: any) {
+    console.error('❌ Pollinations error:', e.name === 'AbortError' ? 'Timeout' : e.message)
+    return null
+  }
+}
+
+/**
+ * Generate image with Hugging Face Inference API (FLUX.1 schnell)
+ */
+async function generateWithHuggingFace(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
+  const token = await getProviderApiKey(supabase, 'HUGGINGFACE_TOKEN')
+  if (!token) {
+    console.log('⚠️ HuggingFace: missing HUGGINGFACE_TOKEN')
+    return null
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
+
+    // HuggingFace Inference API uses simple JSON input
+    const response = await fetch(
+      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ inputs: prompt }),
+        signal: controller.signal,
+      }
+    )
+
+    clearTimeout(timeout)
+
+    if (!response.ok) {
+      const errText = await response.text()
+      console.error(`❌ HuggingFace error: ${response.status} - ${errText.substring(0, 200)}`)
+      return null
+    }
+
+    // HuggingFace returns raw image bytes
+    const arrayBuffer = await response.arrayBuffer()
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    )
+    console.log('✅ HuggingFace FLUX generated image successfully')
+    return base64
+  } catch (e: any) {
+    console.error('❌ HuggingFace error:', e.name === 'AbortError' ? 'Timeout' : e.message)
+    return null
+  }
+}
+
+/**
+ * Generate image using cascading providers (free → paid fallback)
+ * Returns base64 image data or null if all fail
+ */
+async function generateImageCascading(
+  prompt: string,
+  apiKey: string,
+  supabase: any,
+  language?: 'en' | 'no' | 'ua',
+  aspectRatio: '1:1' | '16:9' = '1:1'
+): Promise<{ base64: string; provider: string; model: string } | null> {
+  // Simplified prompt for non-Gemini models (no text instructions)
+  const cleanPrompt = `Professional news illustration for LinkedIn. ${prompt}. Style: Modern, professional, high quality. No text on image.`
+
+  for (const provider of CASCADING_PROVIDERS) {
+    console.log(`🔄 Cascading: trying ${provider.name} (priority ${provider.priority})...`)
+
+    let base64: string | null = null
+
+    switch (provider.type) {
+      case 'cloudflare':
+        base64 = await generateWithCloudflare(cleanPrompt, aspectRatio, supabase)
+        break
+      case 'together':
+        base64 = await generateWithTogether(cleanPrompt, aspectRatio, supabase)
+        break
+      case 'pollinations':
+        base64 = await generateWithPollinations(cleanPrompt, aspectRatio)
+        break
+      case 'huggingface':
+        base64 = await generateWithHuggingFace(cleanPrompt, aspectRatio, supabase)
+        break
+      case 'gemini':
+        // For Gemini fallback, use existing function with full prompt (supports text)
+        const imageUrl = await generateImageFromText(prompt, apiKey, language, 'general', false, aspectRatio)
+        if (imageUrl) {
+          // Download the uploaded image back as base64 for overlay
+          try {
+            const resp = await fetch(imageUrl)
+            if (resp.ok) {
+              const ab = await resp.arrayBuffer()
+              base64 = btoa(new Uint8Array(ab).reduce((d, b) => d + String.fromCharCode(b), ''))
+            }
+          } catch { /* fall through */ }
+          if (base64) {
+            await trackProviderUsage(supabase, provider.name, provider.model, true)
+            return { base64, provider: provider.name, model: provider.model }
+          }
+        }
+        await trackProviderUsage(supabase, provider.name, provider.model, false)
+        continue
+    }
+
+    if (base64) {
+      await trackProviderUsage(supabase, provider.name, provider.model, true)
+      return { base64, provider: provider.name, model: provider.model }
+    }
+
+    await trackProviderUsage(supabase, provider.name, provider.model, false)
+    console.log(`⚠️ ${provider.name} failed, trying next...`)
+  }
+
+  console.log('❌ All cascading providers failed')
+  return null
+}
+
+// ==========================================
+// TEXT OVERLAY (for cascading mode)
+// ==========================================
+
+/**
+ * Add branding overlay: date (bottom-left) + vitalii.no (bottom-right)
+ * Uses magick-wasm (Supabase-recommended WASM library for Edge Functions)
+ */
+async function addBrandingOverlay(
+  imageBase64: string,
+  language: 'en' | 'no' | 'ua' = 'en'
+): Promise<string> {
+  try {
+    const { ImageMagick, initializeImageMagick, MagickFormat, Gravity, MagickColor } =
+      await import('npm:@imagemagick/magick-wasm@0.0.30')
+    await initializeImageMagick()
+
+    // Format date based on language
+    const now = new Date()
+    const dateFormats: Record<string, string> = {
+      'ua': now.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }),
+      'no': now.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }),
+      'en': now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    }
+    const dateText = dateFormats[language] || dateFormats['en']
+    const watermark = 'vitalii.no'
+
+    const binaryString = atob(imageBase64)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+
+    const result = ImageMagick.read(bytes, (img: any) => {
+      const fontSize = Math.max(14, Math.floor(img.width / 60))
+
+      // Add date text (bottom-left)
+      img.settings.font = 'Arial'
+      img.settings.fontSize = fontSize
+      img.settings.fillColor = new MagickColor(255, 255, 255, 180)
+      img.settings.strokeColor = new MagickColor(0, 0, 0, 120)
+      img.settings.strokeWidth = 1
+      img.annotate(dateText, Gravity.Southwest)
+
+      // Add watermark (bottom-right)
+      img.annotate(watermark, Gravity.Southeast)
+
+      return img.write((data: Uint8Array) => {
+        return btoa(
+          new Uint8Array(data).reduce((d: string, b: number) => d + String.fromCharCode(b), '')
+        )
+      }, MagickFormat.Jpeg)
+    })
+
+    console.log(`📝 Branding overlay added: "${dateText}" + "${watermark}"`)
+    return result as string
+  } catch (e) {
+    console.log('⚠️ Branding overlay failed (using original):', e)
+    return imageBase64 // Fallback: return original without overlay
+  }
+}
 
 // Get Google API key from env or database
 async function getGoogleApiKey(supabase: any): Promise<string | null> {
@@ -280,6 +709,80 @@ No text on the image.
 Colors: Vibrant but professional.`
   }
 
+  console.log('📝 Using prompt:', imagePrompt.substring(0, 200) + '...')
+
+  // 3. Check generation mode
+  const generationMode = await getImageGenerationMode(supabase)
+  console.log(`🔧 Generation mode: ${generationMode} (version: ${VERSION})`)
+
+  // ==========================================
+  // CASCADING MODE: Use free providers first
+  // ==========================================
+  if (generationMode === 'cascading') {
+    console.log('🔗 Using CASCADING providers mode')
+
+    const googleApiKey = await getGoogleApiKey(supabase) || ''
+
+    const result = await generateImageCascading(
+      imagePrompt, googleApiKey, supabase, language, aspectRatio
+    )
+
+    if (!result) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'All cascading providers failed',
+          debug: { version: VERSION, timestamp: new Date().toISOString(), lastApiError }
+        } as ProcessImageResponse),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Apply branding overlay (date + vitalii.no)
+    const brandedBase64 = await addBrandingOverlay(result.base64, language || 'en')
+
+    // Upload to Supabase Storage
+    const processedImageUrl = await uploadProcessedImage(brandedBase64)
+
+    // Save to database
+    const updateData: Record<string, any> = {
+      image_processed_at: new Date().toISOString(),
+      image_provider_used: result.provider,
+      image_model_used: result.model,
+      image_retry_count: 0,
+    }
+    if (aspectRatio === '16:9') {
+      updateData.processed_image_url_wide = processedImageUrl
+    } else {
+      updateData.processed_image_url = processedImageUrl
+    }
+
+    await supabase.from('news').update(updateData).eq('id', newsId)
+
+    console.log(`✅ Cascading: Image generated by ${result.provider} (${result.model})`)
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        processedImageUrl,
+        aspectRatio,
+        message: `Image generated by ${result.provider} (${aspectRatio})`,
+        debug: {
+          version: VERSION,
+          timestamp: new Date().toISOString(),
+          lastApiError: null,
+          provider: result.provider,
+          model: result.model,
+        }
+      } as ProcessImageResponse),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // ==========================================
+  // GEMINI ONLY MODE: Original behavior
+  // ==========================================
+
   // If retrying, add improvement feedback from previous validation
   if (retryCount > 0 && previousIssues.length > 0) {
     const feedbackSection = `
@@ -292,9 +795,7 @@ Generate a BETTER image addressing all these issues.`
     console.log('🔄 Added improvement feedback to prompt')
   }
 
-  console.log('📝 Using prompt:', imagePrompt.substring(0, 200) + '...')
-
-  // 3. Get Google API key
+  // Get Google API key
   const googleApiKey = await getGoogleApiKey(supabase)
   if (!googleApiKey) {
     console.log('⚠️ GOOGLE_API_KEY not configured')
@@ -307,11 +808,9 @@ Generate a BETTER image addressing all these issues.`
     )
   }
 
-  // 4. Generate image using Gemini 3 Pro Image (text-to-image)
-  // Note: news table doesn't have category column, use 'general' as default
+  // Generate image using Gemini (text-to-image)
   const newsCategory = 'general'
-  console.log('🖼️ Calling Gemini 3 Pro Image for text-to-image generation... (version:', VERSION, ')')
-  console.log('📂 News category:', newsCategory)
+  console.log('🖼️ Calling Gemini for text-to-image generation... (version:', VERSION, ')')
   console.log('📐 Aspect ratio:', aspectRatio)
   const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language, newsCategory, false, aspectRatio)
 
@@ -321,75 +820,56 @@ Generate a BETTER image addressing all these issues.`
       JSON.stringify({
         success: false,
         error: `Image generation failed: ${lastApiError || 'Unknown error'}`,
-        debug: {
-          version: VERSION,
-          timestamp: new Date().toISOString(),
-          lastApiError: lastApiError,
-          retryCount
-        }
+        debug: { version: VERSION, timestamp: new Date().toISOString(), lastApiError, retryCount }
       } as ProcessImageResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 
-  // 5. Run Critic Agent validation
+  // Track Gemini usage
+  const usedModel = IMAGE_GENERATION_MODELS[0]
+  await trackProviderUsage(supabase, 'Gemini', usedModel, true)
+
+  // Run Critic Agent validation
   console.log('🔍 Running Critic Agent validation...')
   const validation = await validateGeneratedImage(
     processedImageUrl,
     imagePrompt,
-    {
-      title: news.title_en || 'News Article',
-      category: newsCategory,
-      language: language || 'en'
-    },
+    { title: news.title_en || 'News Article', category: newsCategory, language: language || 'en' },
     googleApiKey
   )
 
   console.log(`📊 Validation result: score=${validation.score}, isValid=${validation.isValid}, issues=${validation.issues.length}`)
 
-  // 6. Check if we need to retry
+  // Check if we need to retry
   if (!validation.isValid && validation.shouldRetry && retryCount < MAX_RETRIES - 1) {
     console.log(`🔄 Image failed validation (score: ${validation.score}), retrying... (${retryCount + 1}/${MAX_RETRIES})`)
 
-    // Update retry count in database
-    await supabase
-      .from('news')
-      .update({
-        image_retry_count: retryCount + 1
-      })
-      .eq('id', newsId)
+    await supabase.from('news').update({ image_retry_count: retryCount + 1 }).eq('id', newsId)
 
-    // Recursively retry with improvement suggestions
     return handleTextToImageGeneration(
-      supabase,
-      newsId,
-      language,
-      aspectRatio,
-      retryCount + 1,
+      supabase, newsId, language, aspectRatio, retryCount + 1,
       [...validation.issues, ...(validation.details?.improvementSuggestions || [])]
     )
   }
 
-  // 7. Save final result to database (different column based on aspect ratio)
+  // Save final result to database
   const updateData: Record<string, any> = {
     image_processed_at: new Date().toISOString(),
     image_quality_score: validation.score,
     image_validation_issues: validation.issues,
-    image_retry_count: retryCount
+    image_retry_count: retryCount,
+    image_provider_used: 'Gemini',
+    image_model_used: usedModel,
   }
 
-  // Save to appropriate column based on aspect ratio
   if (aspectRatio === '16:9') {
     updateData.processed_image_url_wide = processedImageUrl
   } else {
     updateData.processed_image_url = processedImageUrl
   }
 
-  const { error: updateError } = await supabase
-    .from('news')
-    .update(updateData)
-    .eq('id', newsId)
-
+  const { error: updateError } = await supabase.from('news').update(updateData).eq('id', newsId)
   if (updateError) {
     console.error('⚠️ Failed to update news record:', updateError)
   }
@@ -409,6 +889,8 @@ Generate a BETTER image addressing all these issues.`
         version: VERSION,
         timestamp: new Date().toISOString(),
         lastApiError: null,
+        provider: 'Gemini',
+        model: usedModel,
         validation: {
           score: validation.score,
           isValid: validation.isValid,
@@ -1030,7 +1512,8 @@ async function uploadProcessedImage(base64Image: string): Promise<string> {
     .from('news-images')
     .upload(fileName, bytes, {
       contentType: 'image/jpeg',
-      upsert: false
+      upsert: false,
+      cacheControl: '31536000'
     })
 
   if (error) {
