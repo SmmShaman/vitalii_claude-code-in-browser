@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Comfortaa } from 'next/font/google'
 import { Providers } from './providers'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { GTMScript, GTMNoScript } from '@/components/analytics/GTMScript'
 import './globals.css'
 
@@ -82,6 +83,8 @@ export default function RootLayout({
       <head>
         {/* Google Tag Manager */}
         <GTMScript />
+        {/* Google Analytics 4 */}
+        <GoogleAnalytics gaId="G-1G5BSRBZT9" />
         {/* Preload hero images for LCP — BentoGrid About & Services sections */}
         <link
           rel="preload"
