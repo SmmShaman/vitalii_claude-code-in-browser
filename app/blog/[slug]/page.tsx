@@ -75,9 +75,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// ISR: revalidate every hour so article pages are cached at the edge
+// ISR: pages generated on-demand, cached for 1 hour
 export const revalidate = 3600
 export const dynamicParams = true
+
+// Empty staticParams enables ISR on-demand generation (without build-time generation)
+export function generateStaticParams() {
+  return []
+}
 
 export default async function BlogPage({ params }: Props) {
   const { slug } = await params
