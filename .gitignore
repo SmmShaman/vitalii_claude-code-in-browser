@@ -43,3 +43,10 @@ get_runs.js
 runs.json
 sync_log.txt
 scripts/test-gemini-api.js
+
+# Auto-installed Claude Code skills
+.agent/
+.claude/skills/
+
+# Deno lock (machine-generated)
+deno.lock
