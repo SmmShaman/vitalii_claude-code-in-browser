@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { Metadata } from 'next'
 import { getNewsBySlug, getLatestNews } from '@/integrations/supabase/client'
 import { NewsArticle } from './NewsArticle'
@@ -13,9 +14,15 @@ import {
   truncateDescription,
 } from '@/utils/seo'
 
-// Deduplicate getNewsBySlug calls within the same request
-// (generateMetadata + page component share one request context)
-const getNewsCached = cache(getNewsBySlug)
+// unstable_cache: tells Next.js this data is cacheable (ISR-compatible)
+// cache(): deduplicates within the same request (generateMetadata + page)
+const getNewsCached = cache(
+  unstable_cache(
+    async (slug: string) => getNewsBySlug(slug),
+    ['news-by-slug'],
+    { revalidate: 3600 }
+  )
+)
 
 interface Props {
   params: Promise<{ slug: string }>

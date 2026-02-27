@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { Metadata } from 'next'
 import { getBlogPostBySlug, getLatestBlogPosts } from '@/integrations/supabase/client'
 import { BlogArticle } from './BlogArticle'
@@ -13,8 +14,15 @@ import {
   truncateDescription,
 } from '@/utils/seo'
 
-// Deduplicate getBlogPostBySlug calls within the same request
-const getBlogPostCached = cache(getBlogPostBySlug)
+// unstable_cache: tells Next.js this data is cacheable (ISR-compatible)
+// cache(): deduplicates within the same request (generateMetadata + page)
+const getBlogPostCached = cache(
+  unstable_cache(
+    async (slug: string) => getBlogPostBySlug(slug),
+    ['blog-by-slug'],
+    { revalidate: 3600 }
+  )
+)
 
 interface Props {
   params: Promise<{ slug: string }>
