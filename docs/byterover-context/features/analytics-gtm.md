@@ -34,10 +34,27 @@
 ### Файли
 
 ```
-├── utils/gtm.ts                        # GTM utility functions (dataLayer)
-├── contexts/TrackingContext.tsx        # React Context для трекінгу
-├── components/analytics/GTMScript.tsx  # GTM скрипт + noscript fallback
+├── utils/gtm.ts                        # GTM utility functions (dataLayer) casted to any
+├── components/analytics/GTMScript.tsx  # GTM script using @next/third-parties/google
 ```
+
+### Google Tag Manager Integration (Updated February 2026)
+
+Ми перейшли на офіційний компонент `@next/third-parties/google` для кращої продуктивності та сумісності з Next.js 15.
+
+**GTMScript.tsx:**
+```typescript
+import { GoogleTagManager } from '@next/third-parties/google'
+import { GTM_ID } from '@/utils/gtm'
+
+export function GTMScript() {
+  if (!GTM_ID) return null
+  return <GoogleTagManager gtmId={GTM_ID} />
+}
+```
+
+**Типізація у `utils/gtm.ts`:**
+Для уникнення конфліктів з внутрішніми типами Next.js, ми використовуємо `(window as any).dataLayer` замість розширення глобального інтерфейсу `Window`.
 
 ### GTM Utility Functions (`utils/gtm.ts`)
 

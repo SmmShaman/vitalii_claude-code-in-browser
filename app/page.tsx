@@ -16,13 +16,11 @@ const Footer = dynamic(
 )
 
 const BentoGrid = dynamic(
-  () => import('@/components/sections/BentoGrid').then(mod => mod.BentoGrid),
-  { ssr: false }
+  () => import('@/components/sections/BentoGrid').then(mod => mod.BentoGrid)
 )
 
 const BentoGridMobile = dynamic(
-  () => import('@/components/sections/BentoGridMobile').then(mod => mod.BentoGridMobile),
-  { ssr: false }
+  () => import('@/components/sections/BentoGridMobile').then(mod => mod.BentoGridMobile)
 )
 
 const ParticlesBackground = dynamic(

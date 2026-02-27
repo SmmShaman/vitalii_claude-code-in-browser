@@ -137,6 +137,7 @@ serve(async (req) => {
                     .upload(fileName, buffer, {
                       contentType: 'image/jpeg',
                       upsert: true,
+                      cacheControl: '31536000'
                     })
 
                   if (!uploadError && uploadData) {

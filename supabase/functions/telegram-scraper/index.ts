@@ -386,145 +386,429 @@ serve(async (req) => {
 
     // Process each channel (only those ready to fetch)
     try {
-    for (const source of sourcesToProcess) {
-      try {
-        const channelUsername = extractUsername(source.url)
-        if (!channelUsername) {
-          console.log(`⚠️  Invalid URL for source ${source.name}: ${source.url}`)
-          results.push({ channel: source.name, processed: 0, error: 'Invalid URL' })
-          continue
-        }
-
-        console.log(`\n🕷️  Scraping channel: @${channelUsername}`)
-
-        // Fetch public Telegram channel page
-        const publicUrl = `https://t.me/s/${channelUsername}`
-        console.log(`📡 Fetching: ${publicUrl}`)
-
-        const response = await fetch(publicUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch channel: ${response.status} ${response.statusText}`)
-        }
-
-        const html = await response.text()
-        console.log(`✅ Fetched HTML (${html.length} bytes)`)
-
-        // Parse HTML (pass shared MTKruto client to avoid FLOOD_WAIT)
-        console.log(`🔍 About to call parseChannelPosts...`)
-        const posts = await parseChannelPosts(html, channelUsername, sharedMTKrutoClient)
-        console.log(`✅ parseChannelPosts RETURNED with ${posts.length} posts`)
-        console.log(`📨 Found ${posts.length} posts`)
-
-        // Log date range of parsed posts for debugging
-        if (posts.length > 0) {
-          const dates = posts.map(p => p.date).sort((a, b) => a.getTime() - b.getTime())
-          const oldestDate = dates[0]
-          const newestDate = dates[dates.length - 1]
-          console.log(`📅 Parsed posts date range: ${oldestDate.toISOString()} to ${newestDate.toISOString()}`)
-        }
-
-        // Determine date filter based on parameters
-        let filterFromDate: Date
-        let filterToDate: Date | null = null
-
-        if (from_date) {
-          // Use custom date range for historical load
-          filterFromDate = new Date(from_date)
-          filterToDate = to_date ? new Date(to_date) : new Date()
-          console.log(`🕒 Historical load: filtering posts from ${filterFromDate.toISOString()} to ${filterToDate.toISOString()}`)
-        } else {
-          // Use last_fetched_at for incremental scraping (default behavior)
-          filterFromDate = source.last_fetched_at
-            ? new Date(source.last_fetched_at)
-            : new Date(Date.now() - 24 * 60 * 60 * 1000) // Default: last 24 hours
-          console.log(`🕒 Incremental scraping: filtering posts since ${filterFromDate.toISOString()}`)
-        }
-
-        // Filter posts by date range
-        console.log(`📊 Filtering ${posts.length} parsed posts by date...`)
-        const newPosts = posts.filter(post => {
-          const passesFilter = filterToDate
-            ? (post.date >= filterFromDate && post.date <= filterToDate)
-            : (post.date > filterFromDate)
-
-          if (!passesFilter) {
-            console.log(`⏭️ Skipping post ${post.messageId} (date ${post.date.toISOString()} outside filter range)`)
+      for (const source of sourcesToProcess) {
+        try {
+          const channelUsername = extractUsername(source.url)
+          if (!channelUsername) {
+            console.log(`⚠️  Invalid URL for source ${source.name}: ${source.url}`)
+            results.push({ channel: source.name, processed: 0, error: 'Invalid URL' })
+            continue
           }
-          return passesFilter
-        })
-        console.log(`✅ Found ${newPosts.length} post(s) matching date filter (out of ${posts.length} parsed)`)
 
-        if (newPosts.length === 0) {
-          console.log(`⚠️ No posts passed date filter. Filter range: ${filterFromDate.toISOString()} to ${filterToDate ? filterToDate.toISOString() : 'now'}`)
-        }
+          console.log(`\n🕷️  Scraping channel: @${channelUsername}`)
 
-        // Process new posts
-        let processedCount = 0
-        let approvedCount = 0
-        let rejectedCount = 0
-        let sentToBotCount = 0
+          // Fetch public Telegram channel page
+          const publicUrl = `https://t.me/s/${channelUsername}`
+          console.log(`📡 Fetching: ${publicUrl}`)
 
-        for (const post of newPosts) {
-          try {
-            console.log(`🔄 Processing post ${post.messageId}...`)
+          const response = await fetch(publicUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            },
+          })
 
-            // Check for duplicate by URL (both with and without /s/ prefix)
-            // This prevents false duplicates when URL format varies
-            // Only check non-rejected posts (allow re-scanning of previously rejected posts)
-            const urlVariant1 = `https://t.me/${channelUsername}/${post.messageId}`;
-            const urlVariant2 = `https://t.me/s/${channelUsername}/${post.messageId}`;
+          if (!response.ok) {
+            throw new Error(`Failed to fetch channel: ${response.status} ${response.statusText}`)
+          }
 
-            const { data: existingPost } = await supabase
-              .from('news')
-              .select('id, original_url, pre_moderation_status, video_type, video_url, is_published, is_rewritten, telegram_message_id')
-              .in('original_url', [urlVariant1, urlVariant2])
-              .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
-              .maybeSingle()
+          const html = await response.text()
+          console.log(`✅ Fetched HTML (${html.length} bytes)`)
 
-            if (existingPost) {
-              console.log(`🔍 Duplicate check: existing.video_type='${existingPost.video_type}', post.videoType='${post.videoType}', post.videoUrl='${post.videoUrl}'`)
-              console.log(`🔍 Duplicate check: status='${existingPost.pre_moderation_status}', published='${existingPost.is_published}', rewritten='${existingPost.is_rewritten}'`)
+          // Parse HTML (pass shared MTKruto client to avoid FLOOD_WAIT)
+          console.log(`🔍 About to call parseChannelPosts...`)
+          const posts = await parseChannelPosts(html, channelUsername, sharedMTKrutoClient)
+          console.log(`✅ parseChannelPosts RETURNED with ${posts.length} posts`)
+          console.log(`📨 Found ${posts.length} posts`)
 
-              // If post exists with telegram_embed and we have YouTube URL, update it
-              if (existingPost.video_type === 'telegram_embed' && post.videoType === 'youtube') {
-                console.log(`🔄 Updating existing post with YouTube video: ${existingPost.id}`)
-                const { error: updateError } = await supabase
+          // Log date range of parsed posts for debugging
+          if (posts.length > 0) {
+            const dates = posts.map(p => p.date).sort((a, b) => a.getTime() - b.getTime())
+            const oldestDate = dates[0]
+            const newestDate = dates[dates.length - 1]
+            console.log(`📅 Parsed posts date range: ${oldestDate.toISOString()} to ${newestDate.toISOString()}`)
+          }
+
+          // Determine date filter based on parameters
+          let filterFromDate: Date
+          let filterToDate: Date | null = null
+
+          if (from_date) {
+            // Use custom date range for historical load
+            filterFromDate = new Date(from_date)
+            filterToDate = to_date ? new Date(to_date) : new Date()
+            console.log(`🕒 Historical load: filtering posts from ${filterFromDate.toISOString()} to ${filterToDate.toISOString()}`)
+          } else {
+            // Use last_fetched_at for incremental scraping (default behavior)
+            filterFromDate = source.last_fetched_at
+              ? new Date(source.last_fetched_at)
+              : new Date(Date.now() - 24 * 60 * 60 * 1000) // Default: last 24 hours
+            console.log(`🕒 Incremental scraping: filtering posts since ${filterFromDate.toISOString()}`)
+          }
+
+          // Filter posts by date range
+          console.log(`📊 Filtering ${posts.length} parsed posts by date...`)
+          const newPosts = posts.filter(post => {
+            const passesFilter = filterToDate
+              ? (post.date >= filterFromDate && post.date <= filterToDate)
+              : (post.date > filterFromDate)
+
+            if (!passesFilter) {
+              console.log(`⏭️ Skipping post ${post.messageId} (date ${post.date.toISOString()} outside filter range)`)
+            }
+            return passesFilter
+          })
+          console.log(`✅ Found ${newPosts.length} post(s) matching date filter (out of ${posts.length} parsed)`)
+
+          if (newPosts.length === 0) {
+            console.log(`⚠️ No posts passed date filter. Filter range: ${filterFromDate.toISOString()} to ${filterToDate ? filterToDate.toISOString() : 'now'}`)
+          }
+
+          // Process new posts
+          let processedCount = 0
+          let approvedCount = 0
+          let rejectedCount = 0
+          let sentToBotCount = 0
+
+          for (const post of newPosts) {
+            try {
+              console.log(`🔄 Processing post ${post.messageId}...`)
+
+              // Check for duplicate by URL (both with and without /s/ prefix)
+              // This prevents false duplicates when URL format varies
+              // Only check non-rejected posts (allow re-scanning of previously rejected posts)
+              const urlVariant1 = `https://t.me/${channelUsername}/${post.messageId}`;
+              const urlVariant2 = `https://t.me/s/${channelUsername}/${post.messageId}`;
+
+              const { data: existingPost } = await supabase
+                .from('news')
+                .select('id, original_url, pre_moderation_status, video_type, video_url, is_published, is_rewritten, telegram_message_id')
+                .in('original_url', [urlVariant1, urlVariant2])
+                .neq('pre_moderation_status', 'rejected')  // Ignore rejected posts
+                .maybeSingle()
+
+              if (existingPost) {
+                console.log(`🔍 Duplicate check: existing.video_type='${existingPost.video_type}', post.videoType='${post.videoType}', post.videoUrl='${post.videoUrl}'`)
+                console.log(`🔍 Duplicate check: status='${existingPost.pre_moderation_status}', published='${existingPost.is_published}', rewritten='${existingPost.is_rewritten}'`)
+
+                // If post exists with telegram_embed and we have YouTube URL, update it
+                if (existingPost.video_type === 'telegram_embed' && post.videoType === 'youtube') {
+                  console.log(`🔄 Updating existing post with YouTube video: ${existingPost.id}`)
+                  const { error: updateError } = await supabase
+                    .from('news')
+                    .update({
+                      video_url: post.videoUrl,
+                      video_type: post.videoType
+                    })
+                    .eq('id', existingPost.id)
+
+                  if (updateError) {
+                    console.error(`❌ Failed to update post: ${updateError.message}`)
+                  } else {
+                    console.log(`✅ Updated post ${existingPost.id} with YouTube URL: ${post.videoUrl}`)
+                  }
+                }
+
+                // 🔄 RETRY LOGIC: If post was approved but not published/rewritten AND not already sent to bot
+                // ⚠️ IMPORTANT: Only retry posts < 1 hour old to prevent infinite retry loops for old "stuck" posts
+                const { data: existingPostData } = await supabase
                   .from('news')
-                  .update({
-                    video_url: post.videoUrl,
-                    video_type: post.videoType
-                  })
+                  .select('created_at')
                   .eq('id', existingPost.id)
+                  .single()
 
-                if (updateError) {
-                  console.error(`❌ Failed to update post: ${updateError.message}`)
+                const postAgeHours = existingPostData?.created_at
+                  ? (Date.now() - new Date(existingPostData.created_at).getTime()) / (1000 * 60 * 60)
+                  : 999 // If no created_at, treat as old post
+
+                if (existingPost.pre_moderation_status === 'approved' && !existingPost.is_published && !existingPost.is_rewritten && !existingPost.telegram_message_id && postAgeHours < 1) {
+                  console.log(`🔄 Retry sending approved but unpublished post to bot: ${existingPost.id} (age: ${postAgeHours.toFixed(2)} hours)`)
+
+                  // Generate image prompt for retry
+                  let imagePrompt: string | null = null
+                  try {
+                    const promptResponse = await fetch(
+                      `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
+                      {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          newsId: existingPost.id,
+                          title: post.text.substring(0, 200),
+                          content: post.text
+                        })
+                      }
+                    )
+
+                    if (promptResponse.ok) {
+                      const promptResult = await promptResponse.json()
+                      imagePrompt = promptResult.prompt
+                      console.log(`✅ Image prompt generated for retry: ${imagePrompt?.substring(0, 100)}...`)
+                    }
+                  } catch (promptError) {
+                    console.error(`❌ Error generating image prompt for retry:`, promptError)
+                  }
+
+                  // Download and upload photo for retry (if not already uploaded)
+                  let retryPhotoUrl = post.photoUrl
+                  if (post.images && post.images.length > 0 && !existingPost.is_published) {
+                    const imageUrl = post.images[0]
+                    try {
+                      const photoResponse = await fetch(imageUrl)
+                      if (photoResponse.ok) {
+                        const photoBuffer = await photoResponse.arrayBuffer()
+                        const fileName = `telegram/${channelUsername}/${post.messageId}.jpg`
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                          .from('news-images')
+                          .upload(fileName, photoBuffer, {
+                            contentType: 'image/jpeg',
+                            upsert: true,
+                            cacheControl: '31536000'
+                          })
+                        if (!uploadError && uploadData) {
+                          const { data: urlData } = supabase.storage.from('news-images').getPublicUrl(fileName)
+                          retryPhotoUrl = urlData.publicUrl
+                          console.log(`📸 Photo re-uploaded for retry: ${retryPhotoUrl}`)
+                        }
+                      }
+                    } catch (photoError) {
+                      console.error(`❌ Failed to re-upload photo:`, photoError)
+                    }
+                  }
+
+                  // Try sending to bot again
+                  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                    const result = await sendToTelegramBot(
+                      existingPost.id,
+                      post,
+                      channelUsername,
+                      imagePrompt,
+                      post.videoUrl || null,
+                      post.videoType || null,
+                      retryPhotoUrl || null
+                    )
+                    if (result.success) {
+                      sentToBotCount++
+                      totalSentToBot++
+                      console.log(`✅ Retry successful - post ${existingPost.id} sent to Telegram bot`)
+
+                      // Save chat_id, message_id and message_text for later notifications (e.g., after GitHub Actions)
+                      if (result.chatId && result.messageId) {
+                        await supabase
+                          .from('news')
+                          .update({
+                            telegram_chat_id: result.chatId,
+                            telegram_message_id: result.messageId,
+                            telegram_message_text: result.messageText || null
+                          })
+                          .eq('id', existingPost.id)
+                        console.log(`📝 Saved Telegram message info for post ${existingPost.id}`)
+                      }
+                    } else {
+                      console.warn(`⚠️  Retry failed - could not send post ${existingPost.id} to Telegram bot`)
+                    }
+                  }
                 } else {
-                  console.log(`✅ Updated post ${existingPost.id} with YouTube URL: ${post.videoUrl}`)
+                  const skipReason = existingPost.telegram_message_id
+                    ? `already sent to bot (msg_id: ${existingPost.telegram_message_id})`
+                    : existingPost.is_published
+                      ? 'already published'
+                      : existingPost.is_rewritten
+                        ? 'already rewritten'
+                        : postAgeHours >= 1
+                          ? `too old for retry (${postAgeHours.toFixed(2)} hours)`
+                          : `status: ${existingPost.pre_moderation_status}`
+                  console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (${skipReason})`)
+                }
+
+                continue
+              }
+
+              // Download and upload ALL photos (multiple images support)
+              let photoUrl = post.photoUrl
+              const uploadedImages: string[] = []
+
+              if (post.images && post.images.length > 0) {
+                console.log(`📸 Processing ${post.images.length} image(s)...`)
+
+                for (let i = 0; i < post.images.length; i++) {
+                  const imageUrl = post.images[i]
+                  try {
+                    // Download photo
+                    const photoResponse = await fetch(imageUrl)
+                    if (photoResponse.ok) {
+                      const photoBuffer = await photoResponse.arrayBuffer()
+
+                      // Upload to Supabase Storage with index for multiple images
+                      const fileName = post.images.length === 1
+                        ? `telegram/${channelUsername}/${post.messageId}.jpg`
+                        : `telegram/${channelUsername}/${post.messageId}_${i + 1}.jpg`
+
+                      const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('news-images')
+                        .upload(fileName, photoBuffer, {
+                          contentType: 'image/jpeg',
+                          upsert: true,
+                          cacheControl: '31536000'
+                        })
+
+                      if (!uploadError && uploadData) {
+                        const { data: urlData } = supabase.storage
+                          .from('news-images')
+                          .getPublicUrl(fileName)
+                        const publicUrl = urlData.publicUrl
+                        uploadedImages.push(publicUrl)
+
+                        // Set first image as main photoUrl for backwards compatibility
+                        if (i === 0) {
+                          photoUrl = publicUrl
+                        }
+                        console.log(`📸 Photo ${i + 1}/${post.images.length} uploaded: ${publicUrl}`)
+                      }
+                    }
+                  } catch (photoError) {
+                    console.error(`❌ Failed to process photo ${i + 1}: ${photoError}`)
+                  }
                 }
               }
 
-              // 🔄 RETRY LOGIC: If post was approved but not published/rewritten AND not already sent to bot
-              // ⚠️ IMPORTANT: Only retry posts < 1 hour old to prevent infinite retry loops for old "stuck" posts
-              const { data: existingPostData } = await supabase
+              // Fallback: if no images uploaded, keep original photoUrl as null
+              if (uploadedImages.length === 0) {
+                photoUrl = null
+              }
+
+              // Log source link if found (already extracted in parseChannelPosts)
+              if (post.sourceLink) {
+                console.log(`📎 Source link: ${post.sourceLink}`)
+              }
+
+              // Title-based duplicate check (cross-source)
+              let duplicateResults: DuplicateResult[] = []
+              const postTitle = post.text.substring(0, 200)
+              if (postTitle.length >= 10) {
+                duplicateResults = await checkDuplicateByTitle(supabase, postTitle)
+                if (duplicateResults.length > 0) {
+                  console.log(`⚠️ Title duplicate found: ${duplicateResults[0].existingTitle?.substring(0, 50)} (${(duplicateResults[0].score! * 100).toFixed(0)}%)`)
+                }
+              }
+              const topDuplicate = duplicateResults.length > 0 ? duplicateResults[0] : null
+
+              // Save to database with pending status (waiting for moderation)
+              const { data: newsEntry, error: insertError } = await supabase
                 .from('news')
-                .select('created_at')
-                .eq('id', existingPost.id)
+                .insert({
+                  original_title: post.text.substring(0, 200), // First 200 chars as title
+                  original_content: post.text,
+                  original_url: post.originalUrl,
+                  source_link: post.sourceLink, // First external source link (backwards compatibility)
+                  source_links: post.sourceLinks.length > 0 ? post.sourceLinks : null, // ALL external source links
+                  image_url: photoUrl,
+                  images: uploadedImages.length > 0 ? uploadedImages : null, // All images array
+                  video_url: post.videoUrl,
+                  video_type: post.videoType,
+                  original_video_url: post.originalVideoUrl, // Original Telegram URL for LinkedIn native video
+                  source_id: source.id,
+                  is_published: false,
+                  is_rewritten: false,
+                  pre_moderation_status: 'pending',
+                  ...(topDuplicate?.existingNewsId && {
+                    duplicate_of_id: topDuplicate.existingNewsId,
+                    duplicate_score: topDuplicate.score
+                  })
+                })
+                .select('id')
                 .single()
 
-              const postAgeHours = existingPostData?.created_at
-                ? (Date.now() - new Date(existingPostData.created_at).getTime()) / (1000 * 60 * 60)
-                : 999 // If no created_at, treat as old post
+              if (insertError || !newsEntry) {
+                console.error(`❌ Failed to create news entry: ${insertError}`)
+                continue
+              }
 
-              if (existingPost.pre_moderation_status === 'approved' && !existingPost.is_published && !existingPost.is_rewritten && !existingPost.telegram_message_id && postAgeHours < 1) {
-                console.log(`🔄 Retry sending approved but unpublished post to bot: ${existingPost.id} (age: ${postAgeHours.toFixed(2)} hours)`)
+              console.log(`💾 News entry created with ID: ${newsEntry.id}`)
 
-                // Generate image prompt for retry
+              // 🤖 AI PRE-MODERATION (check global toggle)
+              let moderationResult = {
+                approved: true,
+                reason: 'Pre-moderation disabled',
+                is_advertisement: false,
+                is_duplicate: false,
+                quality_score: 5
+              }
+
+              if (isPreModerationEnabled && !source.skip_pre_moderation) {
+                console.log(`🤖 Running AI pre-moderation for post ${post.messageId}...`)
+                moderationResult = await preModerate(
+                  post.text.substring(0, 200),
+                  post.text,
+                  post.originalUrl
+                )
+                console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
+              } else {
+                console.log(`⏭️ Pre-moderation ${!isPreModerationEnabled ? 'disabled globally' : 'skipped for source: ' + source.name}, auto-approving post ${post.messageId}`)
+              }
+
+              // Update pre-moderation status in DB
+              await supabase
+                .from('news')
+                .update({
+                  pre_moderation_status: moderationResult.approved ? 'approved' : 'rejected',
+                  rejection_reason: moderationResult.approved ? null : moderationResult.reason,
+                  moderation_checked_at: new Date().toISOString()
+                })
+                .eq('id', newsEntry.id)
+
+              // Send to Telegram bot ONLY if approved by AI
+              if (moderationResult.approved) {
+                approvedCount++
+                totalApproved++
+
+                // 🤖 Auto-publish: fire-and-forget if enabled
+                if (isAutoPublishEnabled) {
+                  console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for post ${post.messageId}`)
+                  try {
+                    // Fire-and-forget: don't await the response
+                    fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        newsId: newsEntry.id,
+                        source: 'telegram'
+                      })
+                    }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
+
+                    // Send lightweight info to Telegram
+                    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                      const infoText = `🤖 <b>Auto-publishing in progress...</b>\n\n📰 ${escapeHtml(post.text.substring(0, 150))}\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`
+                      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          chat_id: TELEGRAM_CHAT_ID,
+                          text: infoText,
+                          parse_mode: 'HTML'
+                        })
+                      })
+                    }
+
+                    sentToBotCount++
+                    totalSentToBot++
+                    continue // Skip the normal Telegram bot flow
+                  } catch (autoPublishError) {
+                    console.error('❌ Auto-publish trigger failed, falling back to manual:', autoPublishError)
+                    // Fall through to normal Telegram bot flow
+                  }
+                }
+
+                // 🎨 Generate image concept variants (moderator will choose before image generation)
+                console.log(`🎨 Generating image concept variants for post ${post.messageId}...`)
                 let imagePrompt: string | null = null
+                let imageVariants: Array<{ label: string, description: string }> | null = null
+
                 try {
                   const promptResponse = await fetch(
                     `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
@@ -535,63 +819,41 @@ serve(async (req) => {
                         'Content-Type': 'application/json'
                       },
                       body: JSON.stringify({
-                        newsId: existingPost.id,
+                        newsId: newsEntry.id,
                         title: post.text.substring(0, 200),
-                        content: post.text
+                        content: post.text,
+                        mode: 'variants'
                       })
                     }
                   )
 
                   if (promptResponse.ok) {
                     const promptResult = await promptResponse.json()
-                    imagePrompt = promptResult.prompt
-                    console.log(`✅ Image prompt generated for retry: ${imagePrompt?.substring(0, 100)}...`)
+                    imageVariants = promptResult.variants || null
+                    console.log(`✅ Image variants generated: ${imageVariants?.length || 0} concepts`)
+                  } else {
+                    console.warn(`⚠️  Failed to generate image variants for post ${post.messageId}`)
                   }
                 } catch (promptError) {
-                  console.error(`❌ Error generating image prompt for retry:`, promptError)
+                  console.error(`❌ Error generating image variants:`, promptError)
                 }
 
-                // Download and upload photo for retry (if not already uploaded)
-                let retryPhotoUrl = post.photoUrl
-                if (post.images && post.images.length > 0 && !existingPost.is_published) {
-                  const imageUrl = post.images[0]
-                  try {
-                    const photoResponse = await fetch(imageUrl)
-                    if (photoResponse.ok) {
-                      const photoBuffer = await photoResponse.arrayBuffer()
-                      const fileName = `telegram/${channelUsername}/${post.messageId}.jpg`
-                      const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('news-images')
-                        .upload(fileName, photoBuffer, {
-                          contentType: 'image/jpeg',
-                          upsert: true,
-                        })
-                      if (!uploadError && uploadData) {
-                        const { data: urlData } = supabase.storage.from('news-images').getPublicUrl(fileName)
-                        retryPhotoUrl = urlData.publicUrl
-                        console.log(`📸 Photo re-uploaded for retry: ${retryPhotoUrl}`)
-                      }
-                    }
-                  } catch (photoError) {
-                    console.error(`❌ Failed to re-upload photo:`, photoError)
-                  }
-                }
-
-                // Try sending to bot again
                 if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
                   const result = await sendToTelegramBot(
-                    existingPost.id,
+                    newsEntry.id,
                     post,
                     channelUsername,
                     imagePrompt,
                     post.videoUrl || null,
                     post.videoType || null,
-                    retryPhotoUrl || null
+                    photoUrl || null, // Pass updated photoUrl from Supabase Storage
+                    imageVariants,    // Pass image concept variants
+                    duplicateResults  // Pass duplicate detection results
                   )
                   if (result.success) {
                     sentToBotCount++
                     totalSentToBot++
-                    console.log(`✅ Retry successful - post ${existingPost.id} sent to Telegram bot`)
+                    console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
 
                     // Save chat_id, message_id and message_text for later notifications (e.g., after GitHub Actions)
                     if (result.chatId && result.messageId) {
@@ -602,327 +864,67 @@ serve(async (req) => {
                           telegram_message_id: result.messageId,
                           telegram_message_text: result.messageText || null
                         })
-                        .eq('id', existingPost.id)
-                      console.log(`📝 Saved Telegram message info for post ${existingPost.id}`)
+                        .eq('id', newsEntry.id)
+                      console.log(`📝 Saved Telegram message info for post ${newsEntry.id}`)
                     }
                   } else {
-                    console.warn(`⚠️  Retry failed - could not send post ${existingPost.id} to Telegram bot`)
-                  }
-                }
-              } else {
-                const skipReason = existingPost.telegram_message_id
-                  ? `already sent to bot (msg_id: ${existingPost.telegram_message_id})`
-                  : existingPost.is_published
-                    ? 'already published'
-                    : existingPost.is_rewritten
-                      ? 'already rewritten'
-                      : postAgeHours >= 1
-                        ? `too old for retry (${postAgeHours.toFixed(2)} hours)`
-                        : `status: ${existingPost.pre_moderation_status}`
-                console.log(`⏭️  Skipping duplicate post: ${post.originalUrl} (${skipReason})`)
-              }
-
-              continue
-            }
-
-            // Download and upload ALL photos (multiple images support)
-            let photoUrl = post.photoUrl
-            const uploadedImages: string[] = []
-
-            if (post.images && post.images.length > 0) {
-              console.log(`📸 Processing ${post.images.length} image(s)...`)
-
-              for (let i = 0; i < post.images.length; i++) {
-                const imageUrl = post.images[i]
-                try {
-                  // Download photo
-                  const photoResponse = await fetch(imageUrl)
-                  if (photoResponse.ok) {
-                    const photoBuffer = await photoResponse.arrayBuffer()
-
-                    // Upload to Supabase Storage with index for multiple images
-                    const fileName = post.images.length === 1
-                      ? `telegram/${channelUsername}/${post.messageId}.jpg`
-                      : `telegram/${channelUsername}/${post.messageId}_${i + 1}.jpg`
-
-                    const { data: uploadData, error: uploadError } = await supabase.storage
-                      .from('news-images')
-                      .upload(fileName, photoBuffer, {
-                        contentType: 'image/jpeg',
-                        upsert: true,
-                      })
-
-                    if (!uploadError && uploadData) {
-                      const { data: urlData } = supabase.storage
-                        .from('news-images')
-                        .getPublicUrl(fileName)
-                      const publicUrl = urlData.publicUrl
-                      uploadedImages.push(publicUrl)
-
-                      // Set first image as main photoUrl for backwards compatibility
-                      if (i === 0) {
-                        photoUrl = publicUrl
-                      }
-                      console.log(`📸 Photo ${i + 1}/${post.images.length} uploaded: ${publicUrl}`)
-                    }
-                  }
-                } catch (photoError) {
-                  console.error(`❌ Failed to process photo ${i + 1}: ${photoError}`)
-                }
-              }
-            }
-
-            // Fallback: if no images uploaded, keep original photoUrl as null
-            if (uploadedImages.length === 0) {
-              photoUrl = null
-            }
-
-            // Log source link if found (already extracted in parseChannelPosts)
-            if (post.sourceLink) {
-              console.log(`📎 Source link: ${post.sourceLink}`)
-            }
-
-            // Title-based duplicate check (cross-source)
-            let duplicateResults: DuplicateResult[] = []
-            const postTitle = post.text.substring(0, 200)
-            if (postTitle.length >= 10) {
-              duplicateResults = await checkDuplicateByTitle(supabase, postTitle)
-              if (duplicateResults.length > 0) {
-                console.log(`⚠️ Title duplicate found: ${duplicateResults[0].existingTitle?.substring(0, 50)} (${(duplicateResults[0].score! * 100).toFixed(0)}%)`)
-              }
-            }
-            const topDuplicate = duplicateResults.length > 0 ? duplicateResults[0] : null
-
-            // Save to database with pending status (waiting for moderation)
-            const { data: newsEntry, error: insertError} = await supabase
-              .from('news')
-              .insert({
-                original_title: post.text.substring(0, 200), // First 200 chars as title
-                original_content: post.text,
-                original_url: post.originalUrl,
-                source_link: post.sourceLink, // First external source link (backwards compatibility)
-                source_links: post.sourceLinks.length > 0 ? post.sourceLinks : null, // ALL external source links
-                image_url: photoUrl,
-                images: uploadedImages.length > 0 ? uploadedImages : null, // All images array
-                video_url: post.videoUrl,
-                video_type: post.videoType,
-                original_video_url: post.originalVideoUrl, // Original Telegram URL for LinkedIn native video
-                source_id: source.id,
-                is_published: false,
-                is_rewritten: false,
-                pre_moderation_status: 'pending',
-                ...(topDuplicate?.existingNewsId && {
-                  duplicate_of_id: topDuplicate.existingNewsId,
-                  duplicate_score: topDuplicate.score
-                })
-              })
-              .select('id')
-              .single()
-
-            if (insertError || !newsEntry) {
-              console.error(`❌ Failed to create news entry: ${insertError}`)
-              continue
-            }
-
-            console.log(`💾 News entry created with ID: ${newsEntry.id}`)
-
-            // 🤖 AI PRE-MODERATION (check global toggle)
-            let moderationResult = {
-              approved: true,
-              reason: 'Pre-moderation disabled',
-              is_advertisement: false,
-              is_duplicate: false,
-              quality_score: 5
-            }
-
-            if (isPreModerationEnabled && !source.skip_pre_moderation) {
-              console.log(`🤖 Running AI pre-moderation for post ${post.messageId}...`)
-              moderationResult = await preModerate(
-                post.text.substring(0, 200),
-                post.text,
-                post.originalUrl
-              )
-              console.log(`Pre-moderation result: ${moderationResult.approved ? '✅ Approved' : '❌ Rejected'} - ${moderationResult.reason}`)
-            } else {
-              console.log(`⏭️ Pre-moderation ${!isPreModerationEnabled ? 'disabled globally' : 'skipped for source: ' + source.name}, auto-approving post ${post.messageId}`)
-            }
-
-            // Update pre-moderation status in DB
-            await supabase
-              .from('news')
-              .update({
-                pre_moderation_status: moderationResult.approved ? 'approved' : 'rejected',
-                rejection_reason: moderationResult.approved ? null : moderationResult.reason,
-                moderation_checked_at: new Date().toISOString()
-              })
-              .eq('id', newsEntry.id)
-
-            // Send to Telegram bot ONLY if approved by AI
-            if (moderationResult.approved) {
-              approvedCount++
-              totalApproved++
-
-              // 🤖 Auto-publish: fire-and-forget if enabled
-              if (isAutoPublishEnabled) {
-                console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for post ${post.messageId}`)
-                try {
-                  // Fire-and-forget: don't await the response
-                  fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      newsId: newsEntry.id,
-                      source: 'telegram'
-                    })
-                  }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
-
-                  // Send lightweight info to Telegram
-                  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                    const infoText = `🤖 <b>Auto-publishing in progress...</b>\n\n📰 ${escapeHtml(post.text.substring(0, 150))}\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`
-                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        chat_id: TELEGRAM_CHAT_ID,
-                        text: infoText,
-                        parse_mode: 'HTML'
-                      })
-                    })
-                  }
-
-                  sentToBotCount++
-                  totalSentToBot++
-                  continue // Skip the normal Telegram bot flow
-                } catch (autoPublishError) {
-                  console.error('❌ Auto-publish trigger failed, falling back to manual:', autoPublishError)
-                  // Fall through to normal Telegram bot flow
-                }
-              }
-
-              // 🎨 Generate image concept variants (moderator will choose before image generation)
-              console.log(`🎨 Generating image concept variants for post ${post.messageId}...`)
-              let imagePrompt: string | null = null
-              let imageVariants: Array<{label: string, description: string}> | null = null
-
-              try {
-                const promptResponse = await fetch(
-                  `${SUPABASE_URL}/functions/v1/generate-image-prompt`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      newsId: newsEntry.id,
-                      title: post.text.substring(0, 200),
-                      content: post.text,
-                      mode: 'variants'
-                    })
-                  }
-                )
-
-                if (promptResponse.ok) {
-                  const promptResult = await promptResponse.json()
-                  imageVariants = promptResult.variants || null
-                  console.log(`✅ Image variants generated: ${imageVariants?.length || 0} concepts`)
-                } else {
-                  console.warn(`⚠️  Failed to generate image variants for post ${post.messageId}`)
-                }
-              } catch (promptError) {
-                console.error(`❌ Error generating image variants:`, promptError)
-              }
-
-              if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-                const result = await sendToTelegramBot(
-                  newsEntry.id,
-                  post,
-                  channelUsername,
-                  imagePrompt,
-                  post.videoUrl || null,
-                  post.videoType || null,
-                  photoUrl || null, // Pass updated photoUrl from Supabase Storage
-                  imageVariants,    // Pass image concept variants
-                  duplicateResults  // Pass duplicate detection results
-                )
-                if (result.success) {
-                  sentToBotCount++
-                  totalSentToBot++
-                  console.log(`✅ Post ${post.messageId} sent to Telegram bot for moderation`)
-
-                  // Save chat_id, message_id and message_text for later notifications (e.g., after GitHub Actions)
-                  if (result.chatId && result.messageId) {
-                    await supabase
-                      .from('news')
-                      .update({
-                        telegram_chat_id: result.chatId,
-                        telegram_message_id: result.messageId,
-                        telegram_message_text: result.messageText || null
-                      })
-                      .eq('id', newsEntry.id)
-                    console.log(`📝 Saved Telegram message info for post ${newsEntry.id}`)
+                    console.warn(`⚠️  Failed to send post ${post.messageId} to Telegram bot (saved in DB anyway)`)
                   }
                 } else {
-                  console.warn(`⚠️  Failed to send post ${post.messageId} to Telegram bot (saved in DB anyway)`)
+                  console.log(`ℹ️  Telegram bot not configured - post saved to DB without moderation`)
                 }
               } else {
-                console.log(`ℹ️  Telegram bot not configured - post saved to DB without moderation`)
+                rejectedCount++
+                totalRejected++
+                console.log(`🚫 Post ${post.messageId} rejected by AI: ${moderationResult.reason}`)
               }
-            } else {
-              rejectedCount++
-              totalRejected++
-              console.log(`🚫 Post ${post.messageId} rejected by AI: ${moderationResult.reason}`)
-            }
 
-            // Count as processed (saved to DB)
-            processedCount++
-            totalProcessed++
-          } catch (processError) {
-            console.error(`❌ Error processing post ${post.messageId}:`, processError)
+              // Count as processed (saved to DB)
+              processedCount++
+              totalProcessed++
+            } catch (processError) {
+              console.error(`❌ Error processing post ${post.messageId}:`, processError)
+            }
           }
-        }
 
-        // Update last_fetched_at only for incremental scraping (not historical loads)
-        if (!from_date) {
-          const { error: updateError } = await supabase
-            .from('news_sources')
-            .update({ last_fetched_at: new Date().toISOString() })
-            .eq('id', source.id)
+          // Update last_fetched_at only for incremental scraping (not historical loads)
+          if (!from_date) {
+            const { error: updateError } = await supabase
+              .from('news_sources')
+              .update({ last_fetched_at: new Date().toISOString() })
+              .eq('id', source.id)
 
-          if (updateError) {
-            console.error(`❌ Failed to update last_fetched_at for ${source.name}:`, updateError)
+            if (updateError) {
+              console.error(`❌ Failed to update last_fetched_at for ${source.name}:`, updateError)
+            } else {
+              console.log(`✅ Updated last_fetched_at for ${source.name}`)
+            }
           } else {
-            console.log(`✅ Updated last_fetched_at for ${source.name}`)
+            console.log(`ℹ️  Historical load - NOT updating last_fetched_at`)
           }
-        } else {
-          console.log(`ℹ️  Historical load - NOT updating last_fetched_at`)
-        }
 
-        results.push({
-          channel: channelUsername,
-          processed: processedCount,
-          approved: approvedCount,
-          rejected: rejectedCount,
-          sentToBot: sentToBotCount
-        })
+          results.push({
+            channel: channelUsername,
+            processed: processedCount,
+            approved: approvedCount,
+            rejected: rejectedCount,
+            sentToBot: sentToBotCount
+          })
 
-        // Rate limiting: wait 3 seconds between channels
-        if (sourcesToProcess.indexOf(source) < sourcesToProcess.length - 1) {
-          console.log('⏳ Waiting 3s before next channel...')
-          await new Promise((resolve) => setTimeout(resolve, 3000))
+          // Rate limiting: wait 3 seconds between channels
+          if (sourcesToProcess.indexOf(source) < sourcesToProcess.length - 1) {
+            console.log('⏳ Waiting 3s before next channel...')
+            await new Promise((resolve) => setTimeout(resolve, 3000))
+          }
+        } catch (channelError: any) {
+          console.error(`❌ Error scraping channel ${source.name}:`, channelError)
+          results.push({
+            channel: source.name,
+            processed: 0,
+            error: channelError.message || 'Unknown error',
+          })
         }
-      } catch (channelError: any) {
-        console.error(`❌ Error scraping channel ${source.name}:`, channelError)
-        results.push({
-          channel: source.name,
-          processed: 0,
-          error: channelError.message || 'Unknown error',
-        })
-      }
-    } // end for loop
+      } // end for loop
     } finally {
       // Disconnect shared MTKruto client after processing all channels
       if (sharedMTKrutoClient) {
@@ -1291,7 +1293,7 @@ async function sendToTelegramBot(
   videoUrl: string | null = null,
   videoType: string | null = null,
   uploadedPhotoUrl: string | null = null, // Updated photoUrl from Supabase Storage
-  variants: Array<{label: string, description: string}> | null = null,
+  variants: Array<{ label: string, description: string }> | null = null,
   duplicates: DuplicateResult[] = []
 ): Promise<TelegramMessageInfo> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
@@ -1333,7 +1335,7 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 `
       variants!.forEach((v, i) => {
         message += `
-${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>
+${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>
 <i>${escapeHtml(v.description)}</i>
 `
       })

@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Optimize for Netlify
   output: 'standalone',
+  // Remove X-Powered-By header
+  poweredByHeader: false,
   // Ignore ESLint during builds (prevents build failures on Netlify)
   eslint: {
     ignoreDuringBuilds: true,

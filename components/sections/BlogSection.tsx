@@ -3,6 +3,7 @@
 import { useState, useEffect, memo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Tag, ExternalLink, Clock, ChevronLeft, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getLatestBlogPosts, getBlogPostById, getAllBlogPosts } from '@/integrations/supabase/client';
 import type { LatestBlogPost, BlogPost } from '@/integrations/supabase/types';
@@ -314,103 +315,104 @@ const BlogSectionComponent = ({
   }
 
   return (
-      <div className="h-full flex flex-col">
-        {/* Blog Posts Grid */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-4 pr-2">
-          <AnimatePresence mode="popLayout">
-            {posts.map((post, index) => {
-              const content = getTranslatedContent(post);
-              const readingTime = calculateReadingTime(content.content);
+    <div className="h-full flex flex-col">
+      {/* Blog Posts Grid */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <AnimatePresence mode="popLayout">
+          {posts.map((post, index) => {
+            const content = getTranslatedContent(post);
+            const readingTime = calculateReadingTime(content.content);
 
-              return (
-                <motion.div
-                  key={post.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={(e) => handlePostClick(post, e)}
-                  className="group cursor-pointer"
-                >
-                  <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
-                    {/* Featured Image */}
-                    {((post as any).processed_image_url || post.image_url) && (
-                      <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden" style={{ aspectRatio: '16/9' }}>
-                        <img
-                          src={(post as any).processed_image_url || post.image_url}
-                          alt={String(content.title)}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </div>
-                    )}
-
-                    {/* Category Badge */}
-                    {content.category && (
-                      <span className="inline-block px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium mb-2">
-                        {content.category}
-                      </span>
-                    )}
-
-                    {/* Title */}
-                    <h4 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                      {content.title}
-                    </h4>
-
-                    {/* Excerpt */}
-                    {content.excerpt && (
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                        {content.excerpt}
-                      </p>
-                    )}
-
-                    {/* Meta Information */}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{post.published_at ? formatDate(post.published_at) : ''}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{readingTime} {t('blog_reading_time')}</span>
-                        </div>
-                        {post.tags && post.tags.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Tag className="h-3 w-3" />
-                            <span className="line-clamp-1">{post.tags[0]}</span>
-                          </div>
-                        )}
-                      </div>
-                      <motion.div
-                        className="text-primary"
-                        whileHover={{ x: 3 }}
-                      >
-                        →
-                      </motion.div>
+            return (
+              <motion.div
+                key={post.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ delay: index * 0.1 }}
+                onClick={(e) => handlePostClick(post, e)}
+                className="group cursor-pointer"
+              >
+                <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
+                  {/* Featured Image */}
+                  {((post as any).processed_image_url || post.image_url) && (
+                    <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                      <Image
+                        src={(post as any).processed_image_url || post.image_url}
+                        alt={String(content.title) || 'Blog Post Image'}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
+                  )}
+
+                  {/* Category Badge */}
+                  {content.category && (
+                    <span className="inline-block px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium mb-2">
+                      {content.category}
+                    </span>
+                  )}
+
+                  {/* Title */}
+                  <h4 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                    {content.title}
+                  </h4>
+
+                  {/* Excerpt */}
+                  {content.excerpt && (
+                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                      {content.excerpt}
+                    </p>
+                  )}
+
+                  {/* Meta Information */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>{post.published_at ? formatDate(post.published_at) : ''}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{readingTime} {t('blog_reading_time')}</span>
+                      </div>
+                      {post.tags && post.tags.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Tag className="h-3 w-3" />
+                          <span className="line-clamp-1">{post.tags[0]}</span>
+                        </div>
+                      )}
+                    </div>
+                    <motion.div
+                      className="text-primary"
+                      whileHover={{ x: 3 }}
+                    >
+                      →
+                    </motion.div>
                   </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
 
-          {/* Loading indicator for infinite scroll */}
-          {isExpanded && loadingMore && (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          )}
+        {/* Loading indicator for infinite scroll */}
+        {isExpanded && loadingMore && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
 
-          {/* End of list indicator */}
-          {isExpanded && !hasMorePosts && posts.length > 8 && (
-            <div className="text-center py-4 text-sm text-muted-foreground">
-              {t('blog_scroll_for_more')}
-            </div>
-          )}
-        </div>
+        {/* End of list indicator */}
+        {isExpanded && !hasMorePosts && posts.length > 8 && (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            {t('blog_scroll_for_more')}
+          </div>
+        )}
       </div>
+    </div>
   );
 };
 

@@ -36,3 +36,10 @@ tsconfig.tsbuildinfo
 
 # Local Netlify folder
 .netlify
+
+# Local tools & temp files
+.brv/
+get_runs.js
+runs.json
+sync_log.txt
+scripts/test-gemini-api.js

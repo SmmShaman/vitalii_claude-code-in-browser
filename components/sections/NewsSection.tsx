@@ -2,7 +2,8 @@
 
 import { useState, useEffect, memo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink, Video, Image, Loader2 } from 'lucide-react';
+import { Calendar, Newspaper, ChevronLeft, Tag, ExternalLink, Video, Image as ImageIcon, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getLatestNews, getNewsById, getAllNews } from '@/integrations/supabase/client';
 import type { LatestNews, NewsItem } from '@/integrations/supabase/types';
@@ -412,7 +413,7 @@ const NewsSectionComponent = ({
                               {/* Telegram logo */}
                               <div className="relative z-10 mb-4">
                                 <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
                                 </svg>
                               </div>
 
@@ -454,13 +455,16 @@ const NewsSectionComponent = ({
                       })()}
                     </div>
                   ) : ((selectedNews as any).processed_image_url || selectedNews.image_url) && (
-                    <img
-                      src={((selectedNews as any).processed_image_url || selectedNews.image_url) as string}
-                      alt={String(content.title)}
-                      loading="eager"
-                      className="w-full h-auto object-cover"
-                      style={{ aspectRatio: '16/9' }}
-                    />
+                    <div className="relative w-full aspect-video">
+                      <Image
+                        src={((selectedNews as any).processed_image_url || selectedNews.image_url) as string}
+                        alt={String(content.title) || 'News Image'}
+                        fill
+                        priority
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    </div>
                   )}
                 </div>
               )}
@@ -521,166 +525,168 @@ const NewsSectionComponent = ({
     <div className="h-full flex">
       {/* News List */}
       <div ref={scrollContainerRef} className="flex-1 flex flex-col gap-2 overflow-y-auto pr-2">
-          <AnimatePresence mode="popLayout">
-            {news.map((newsItem, index) => {
-              const content = getTranslatedContent(newsItem);
-              return (
-                <motion.div
-                  key={newsItem.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={(e) => handleNewsClick(newsItem, e)}
-                  className="group cursor-pointer"
-                >
-                  <div className="bg-card/50 backdrop-blur-sm rounded-lg p-3 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
-                    <div className="flex gap-3">
-                      {/* Content - Left Side */}
-                      <div className="flex-1 flex flex-col justify-between min-w-0">
-                        {/* Title */}
-                        <div>
-                          <h4 className="font-bold text-sm mb-1.5 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
-                            {content.title}
-                          </h4>
+        <AnimatePresence mode="popLayout">
+          {news.map((newsItem, index) => {
+            const content = getTranslatedContent(newsItem);
+            return (
+              <motion.div
+                key={newsItem.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ delay: index * 0.1 }}
+                onClick={(e) => handleNewsClick(newsItem, e)}
+                className="group cursor-pointer"
+              >
+                <div className="bg-card/50 backdrop-blur-sm rounded-lg p-3 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
+                  <div className="flex gap-3">
+                    {/* Content - Left Side */}
+                    <div className="flex-1 flex flex-col justify-between min-w-0">
+                      {/* Title */}
+                      <div>
+                        <h4 className="font-bold text-sm mb-1.5 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
+                          {content.title}
+                        </h4>
 
-                          {/* Summary */}
-                          {content.summary && (
-                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2 leading-snug">
-                              {content.summary}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Meta Information - Bottom */}
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 flex-shrink-0" />
-                              <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
-                            </div>
-                            {/* Video or Image icon indicator */}
-                            {newsItem.video_url && (
-                              <div className="flex items-center gap-1 text-primary">
-                                <Video className="h-3 w-3 flex-shrink-0" />
-                                <span className="text-xs">Video</span>
-                              </div>
-                            )}
-                            {!newsItem.video_url && ((newsItem as any).processed_image_url || newsItem.image_url) && (
-                              <div className="flex items-center gap-1">
-                                <Image className="h-3 w-3 flex-shrink-0" />
-                              </div>
-                            )}
-                          </div>
-
-                          {newsItem.tags && newsItem.tags.length > 0 && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {newsItem.tags.slice(0, 3).map((tag, i) => (
-                                <span
-                                  key={i}
-                                  className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs rounded-full"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        {/* Summary */}
+                        {content.summary && (
+                          <p className="text-xs text-muted-foreground mb-2 line-clamp-2 leading-snug">
+                            {content.summary}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Square Image/Video Thumbnail - Right Side */}
-                      {((newsItem as any).processed_image_url || newsItem.image_url || newsItem.video_url) && (
-                        <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-slate-900">
-                          {(() => {
-                            // Priority 1: Use custom uploaded image if available
-                            const imageUrl = (newsItem as any).processed_image_url || newsItem.image_url;
-                            if (imageUrl) {
-                              return (
-                                <img
-                                  src={imageUrl}
-                                  alt={String(content.title)}
-                                  loading="lazy"
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                />
-                              );
-                            }
+                      {/* Meta Information - Bottom */}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
+                          </div>
+                          {/* Video or Image icon indicator */}
+                          {newsItem.video_url && (
+                            <div className="flex items-center gap-1 text-primary">
+                              <Video className="h-3 w-3 flex-shrink-0" />
+                              <span className="text-xs">Video</span>
+                            </div>
+                          )}
+                          {!newsItem.video_url && ((newsItem as any).processed_image_url || newsItem.image_url) && (
+                            <div className="flex items-center gap-1">
+                              <ImageIcon className="h-3 w-3 flex-shrink-0" />
+                            </div>
+                          )}
+                        </div>
 
-                            // Priority 2: Generate thumbnail from video
-                            if (newsItem.video_url) {
-                              // For YouTube videos - use YouTube thumbnail
-                              if (newsItem.video_type === 'youtube' || newsItem.video_url.includes('youtube.com') || newsItem.video_url.includes('youtu.be')) {
-                                const thumbnailUrl = getYouTubeThumbnail(newsItem.video_url);
-                                if (thumbnailUrl) {
-                                  return (
-                                    <img
-                                      src={thumbnailUrl}
-                                      alt={String(content.title)}
-                                      loading="lazy"
-                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                    />
-                                  );
-                                }
-                              }
+                        {newsItem.tags && newsItem.tags.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {newsItem.tags.slice(0, 3).map((tag, i) => (
+                              <span
+                                key={i}
+                                className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs rounded-full"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                              // For direct video URLs and Telegram - use video element as thumbnail
-                              if (newsItem.video_type === 'direct_url' || newsItem.video_url.includes('.mp4') || newsItem.video_url.includes('telesco.pe')) {
+                    {/* Square Image/Video Thumbnail - Right Side */}
+                    {((newsItem as any).processed_image_url || newsItem.image_url || newsItem.video_url) && (
+                      <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-slate-900">
+                        {(() => {
+                          // Priority 1: Use custom uploaded image if available
+                          const imageUrl = (newsItem as any).processed_image_url || newsItem.image_url;
+                          if (imageUrl) {
+                            return (
+                              <Image
+                                src={imageUrl}
+                                alt={String(content.title) || 'News Thumbnail'}
+                                fill
+                                className="object-cover group-hover:scale-110 transition-transform duration-300"
+                                sizes="96px"
+                              />
+                            );
+                          }
+
+                          // Priority 2: Generate thumbnail from video
+                          if (newsItem.video_url) {
+                            // For YouTube videos - use YouTube thumbnail
+                            if (newsItem.video_type === 'youtube' || newsItem.video_url.includes('youtube.com') || newsItem.video_url.includes('youtu.be')) {
+                              const thumbnailUrl = getYouTubeThumbnail(newsItem.video_url);
+                              if (thumbnailUrl) {
                                 return (
-                                  <video
-                                    src={newsItem.video_url}
-                                    className="w-full h-full object-cover"
-                                    preload={isExpanded ? "metadata" : "none"}
-                                    muted
-                                    playsInline
+                                  <Image
+                                    src={thumbnailUrl}
+                                    alt={String(content.title) || 'Video Thumbnail'}
+                                    fill
+                                    className="object-cover group-hover:scale-110 transition-transform duration-300"
+                                    sizes="96px"
                                   />
                                 );
                               }
                             }
 
-                            // Fallback: gradient placeholder
-                            return (
-                              <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 flex items-center justify-center">
-                                <Video className="w-8 h-8 text-white/30" />
-                              </div>
-                            );
-                          })()}
+                            // For direct video URLs and Telegram - use video element as thumbnail
+                            if (newsItem.video_type === 'direct_url' || newsItem.video_url.includes('.mp4') || newsItem.video_url.includes('telesco.pe')) {
+                              return (
+                                <video
+                                  src={newsItem.video_url}
+                                  className="w-full h-full object-cover"
+                                  preload={isExpanded ? "metadata" : "none"}
+                                  muted
+                                  playsInline
+                                />
+                              );
+                            }
+                          }
 
-                          {/* Play button overlay for videos */}
-                          {newsItem.video_url && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                              <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                                <svg className="w-5 h-5 text-black ml-0.5" fill="currentColor" viewBox="0 0 16 16">
-                                  <path d="M4 2v12l10-6L4 2z"/>
-                                </svg>
-                              </div>
+                          // Fallback: gradient placeholder
+                          return (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 flex items-center justify-center">
+                              <Video className="w-8 h-8 text-white/30" />
                             </div>
-                          )}
+                          );
+                        })()}
 
-                          {/* Hover overlay gradient */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        </div>
-                      )}
-                    </div>
+                        {/* Play button overlay for videos */}
+                        {newsItem.video_url && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                            <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                              <svg className="w-5 h-5 text-black ml-0.5" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M4 2v12l10-6L4 2z" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Hover overlay gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      </div>
+                    )}
                   </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
 
-          {/* Loading indicator for infinite scroll */}
-          {isExpanded && loadingMore && (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          )}
+        {/* Loading indicator for infinite scroll */}
+        {isExpanded && loadingMore && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
 
-          {/* End of list indicator */}
-          {isExpanded && !hasMoreNews && news.length > 8 && (
-            <div className="text-center py-4 text-sm text-muted-foreground">
-              {t('news_scroll_for_more')}
-            </div>
-          )}
-        </div>
+        {/* End of list indicator */}
+        {isExpanded && !hasMoreNews && news.length > 8 && (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            {t('news_scroll_for_more')}
+          </div>
+        )}
       </div>
+    </div>
   );
 };
 
