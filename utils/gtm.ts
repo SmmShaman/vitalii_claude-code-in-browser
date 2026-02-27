@@ -6,12 +6,7 @@
  * LinkedIn Insight Tag, Hotjar, etc.
  */
 
-// Extend Window interface for dataLayer
-declare global {
-  interface Window {
-    dataLayer: Record<string, unknown>[]
-  }
-}
+
 
 export const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID
 
@@ -30,7 +25,7 @@ export const isTrackingEnabled = (): boolean => {
  */
 export const initDataLayer = (): void => {
   if (typeof window === 'undefined') return
-  window.dataLayer = window.dataLayer || []
+    ; (window as any).dataLayer = (window as any).dataLayer || []
 }
 
 /**
@@ -40,12 +35,12 @@ export const pageview = (url: string, title?: string): void => {
   if (!isTrackingEnabled()) return
 
   initDataLayer()
-  window.dataLayer.push({
-    event: 'page_view',
-    page_path: url,
-    page_title: title || document.title,
-    page_location: typeof window !== 'undefined' ? window.location.href : '',
-  })
+    ; (window as any).dataLayer.push({
+      event: 'page_view',
+      page_path: url,
+      page_title: title || document.title,
+      page_location: typeof window !== 'undefined' ? window.location.href : '',
+    })
 }
 
 /**
@@ -58,10 +53,10 @@ export const trackEvent = (
   if (!isTrackingEnabled()) return
 
   initDataLayer()
-  window.dataLayer.push({
-    event: eventName,
-    ...data,
-  })
+    ; (window as any).dataLayer.push({
+      event: eventName,
+      ...data,
+    })
 }
 
 /**
@@ -140,7 +135,7 @@ export const trackOutboundLink = (linkUrl: string, linkText?: string): void => {
   let linkDomain = ''
   try {
     linkDomain = new URL(linkUrl).hostname
-  } catch {}
+  } catch { }
 
   trackEvent('outbound_link', {
     link_url: linkUrl,
