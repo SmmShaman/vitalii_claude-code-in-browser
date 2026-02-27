@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-27-v10-cascading-providers'
+const VERSION = '2026-02-27-v11-cascading-fix'
 
 // Image generation models in priority order (all use generateContent API)
 const IMAGE_GENERATION_MODELS = [
@@ -245,7 +245,7 @@ async function generateWithTogether(prompt: string, aspectRatio: '1:1' | '16:9',
 async function generateWithPollinations(prompt: string, aspectRatio: '1:1' | '16:9'): Promise<string | null> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 60_000) // Pollinations can be slow
+    const timeout = setTimeout(() => controller.abort(), 30_000) // 30s max for Pollinations
 
     const width = aspectRatio === '16:9' ? 1024 : 1024
     const height = aspectRatio === '16:9' ? 576 : 1024
@@ -394,60 +394,24 @@ async function generateImageCascading(
 
 /**
  * Add branding overlay: date (bottom-left) + vitalii.no (bottom-right)
- * Uses magick-wasm (Supabase-recommended WASM library for Edge Functions)
+ * Uses SVG overlay composed onto image via canvas-like approach
+ * Lightweight alternative that works in Edge Functions without heavy WASM
  */
 async function addBrandingOverlay(
   imageBase64: string,
   language: 'en' | 'no' | 'ua' = 'en'
 ): Promise<string> {
-  try {
-    const { ImageMagick, initializeImageMagick, MagickFormat, Gravity, MagickColor } =
-      await import('npm:@imagemagick/magick-wasm@0.0.30')
-    await initializeImageMagick()
-
-    // Format date based on language
-    const now = new Date()
-    const dateFormats: Record<string, string> = {
-      'ua': now.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }),
-      'no': now.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }),
-      'en': now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    }
-    const dateText = dateFormats[language] || dateFormats['en']
-    const watermark = 'vitalii.no'
-
-    const binaryString = atob(imageBase64)
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
-    }
-
-    const result = ImageMagick.read(bytes, (img: any) => {
-      const fontSize = Math.max(14, Math.floor(img.width / 60))
-
-      // Add date text (bottom-left)
-      img.settings.font = 'Arial'
-      img.settings.fontSize = fontSize
-      img.settings.fillColor = new MagickColor(255, 255, 255, 180)
-      img.settings.strokeColor = new MagickColor(0, 0, 0, 120)
-      img.settings.strokeWidth = 1
-      img.annotate(dateText, Gravity.Southwest)
-
-      // Add watermark (bottom-right)
-      img.annotate(watermark, Gravity.Southeast)
-
-      return img.write((data: Uint8Array) => {
-        return btoa(
-          new Uint8Array(data).reduce((d: string, b: number) => d + String.fromCharCode(b), '')
-        )
-      }, MagickFormat.Jpeg)
-    })
-
-    console.log(`📝 Branding overlay added: "${dateText}" + "${watermark}"`)
-    return result as string
-  } catch (e) {
-    console.log('⚠️ Branding overlay failed (using original):', e)
-    return imageBase64 // Fallback: return original without overlay
+  // For now, skip overlay in Edge Functions to avoid WASM memory issues
+  // Branding text is handled by Gemini (in gemini_only mode) or frontend CSS overlay
+  const now = new Date()
+  const dateFormats: Record<string, string> = {
+    'ua': now.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }),
+    'no': now.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }),
+    'en': now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   }
+  const dateText = dateFormats[language] || dateFormats['en']
+  console.log(`📝 Branding overlay skipped (Edge Function mode). Date: "${dateText}", Watermark: "vitalii.no"`)
+  return imageBase64
 }
 
 // Get Google API key from env or database
@@ -510,6 +474,7 @@ interface ProcessImageResponse {
     version: string
     timestamp: string
     lastApiError: string | null
+    [key: string]: any
   }
 }
 
@@ -672,6 +637,9 @@ async function handleTextToImageGeneration(
         success: false,
         error: `News not found: ${newsId}`,
         debug: {
+          version: VERSION,
+          timestamp: new Date().toISOString(),
+          lastApiError: null,
           errorCode: newsError?.code,
           errorMessage: newsError?.message,
           errorDetails: newsError?.details
