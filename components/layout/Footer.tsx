@@ -29,6 +29,18 @@ const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+// Snapchat icon component
+const SnapchatIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301.165-.088.344-.104.464-.104.182 0 .359.029.509.09.45.149.734.479.734.838.015.449-.39.839-1.213 1.168-.089.029-.209.075-.344.119-.45.135-1.139.36-1.333.81-.09.224-.061.524.12.868l.015.015c.06.136 1.526 3.475 4.791 4.014.255.044.435.27.42.509 0 .075-.015.149-.045.225-.24.569-1.273.988-3.146 1.271-.059.091-.12.375-.164.57-.029.179-.074.36-.134.553-.076.271-.27.405-.555.405h-.03c-.135 0-.313-.031-.538-.076-.375-.09-.84-.181-1.455-.181-.592 0-1.035.074-1.395.135l-.12.029c-.405.091-.763.165-1.184.165-2.535 0-4.316-1.949-6.062-3.735C5.106 14.706 3.63 13.376 2.005 13.376c-.375 0-.72.074-1.035.209C.345 13.876 0 14.311 0 14.836c0 .285.135.539.36.674.165.091.375.149.585.149.12 0 .239-.015.359-.044.389-.091.689-.136.929-.136.899 0 1.139.509 1.353 1.064.03.089.06.179.104.269.15.33.374.499.674.499.12 0 .255-.03.404-.074l.03-.016c.285-.09.585-.135.899-.135 1.02 0 2.265.644 3.734 1.949 2.13 1.905 4.316 2.879 6.466 2.879.42 0 .779-.074 1.094-.165l.12-.029c.36-.091.749-.165 1.215-.165.584 0 1.05.089 1.424.179.225.045.404.075.539.075.135 0 .24-.029.3-.089.03-.045.06-.09.06-.164.015-.045.03-.12.044-.196.06-.27.135-.569.225-.72.044-.074.044-.119.044-.164 0-.134-.089-.254-.209-.284-3.6-.615-5.175-4.065-5.235-4.2l-.015-.015c-.24-.449-.285-.84-.135-1.168.254-.524.87-.72 1.35-.869.119-.044.239-.074.329-.104.9-.36 1.335-.75 1.335-1.199 0-.359-.284-.659-.719-.809-.135-.046-.299-.075-.479-.075-.135 0-.284.015-.434.089-.375.18-.72.284-1.035.299h-.06c-.24 0-.42-.06-.539-.165l-.015-.015c.009-.179.019-.359.03-.539l.002-.06c.105-1.628.234-3.654-.299-4.847C16.523 1.069 13.176.793 12.206.793z"/>
+  </svg>
+);
+
 const CONTACT_EMAIL = 'berbeha@vitalii.no';
 
 export const Footer = () => {
@@ -166,6 +178,7 @@ export const Footer = () => {
     { icon: Github, href: 'https://github.com/SmmShaman', label: 'GitHub', username: 'SmmShaman' },
     { icon: Twitter, href: 'https://twitter.com/SmmShaman', label: 'Twitter', username: 'SmmShaman' },
     { icon: TikTokIcon, href: 'https://tiktok.com/@stuardbmw', label: 'TikTok', username: '@stuardbmw' },
+    { icon: SnapchatIcon, href: 'https://snapchat.com/add/smmshaman', label: 'Snapchat', username: 'smmshaman' },
   ];
 
   const { userLocation, weather, distance, error } = footerData;
@@ -240,8 +253,12 @@ export const Footer = () => {
               )}
             </motion.div>
 
-            {/* Right: Email + Social Icons */}
+            {/* Right: Contact label + Email + Social Icons */}
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+              {/* Contact label */}
+              <span className={`${textSecondary} text-[9px] sm:text-[10px] mr-1 hidden md:inline`}>
+                {t('footer_contact_me')}
+              </span>
               {/* Email Button */}
               <button
                 onClick={openEmailModal}
@@ -355,12 +372,12 @@ export const Footer = () => {
                 </button>
               </div>
 
-              {/* QR Code */}
+              {/* QR Code / Snapcode */}
               <div className="flex justify-center mb-4">
-                <div className="bg-white p-3 rounded-xl shadow-inner border border-gray-100">
+                <div className={`${modalSocial.label === 'Snapchat' ? 'bg-[#FFFC00] p-2' : 'bg-white p-3'} rounded-xl shadow-inner border border-gray-100`}>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(modalSocial.href)}&format=svg`}
-                    alt={`QR Code for ${modalSocial.label}`}
+                    src={modalSocial.label === 'Snapchat' ? '/snapcode.png' : `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(modalSocial.href)}&format=svg`}
+                    alt={modalSocial.label === 'Snapchat' ? 'Snapcode' : `QR Code for ${modalSocial.label}`}
                     width={150}
                     height={150}
                     className="rounded-lg"
