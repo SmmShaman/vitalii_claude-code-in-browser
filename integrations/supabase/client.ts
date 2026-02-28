@@ -332,6 +332,8 @@ export interface BlogFilters {
   category?: string;
   search?: string;
   featured?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 /**
@@ -366,7 +368,7 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
     return { data: [], count: 0 };
   }
 
-  const { limit = 10, offset = 0, tags, category, search, featured } = filters;
+  const { limit = 10, offset = 0, tags, category, search, featured, dateFrom, dateTo } = filters;
 
   let query = supabase
     .from('blog_posts')
@@ -389,6 +391,14 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
 
   if (search) {
     query = query.or(`title_en.ilike.%${search}%,title_no.ilike.%${search}%,title_ua.ilike.%${search}%,description_en.ilike.%${search}%,description_no.ilike.%${search}%,description_ua.ilike.%${search}%`);
+  }
+
+  if (dateFrom) {
+    query = query.gte('published_at', dateFrom);
+  }
+
+  if (dateTo) {
+    query = query.lte('published_at', dateTo);
   }
 
   query = query.range(offset, offset + limit - 1);

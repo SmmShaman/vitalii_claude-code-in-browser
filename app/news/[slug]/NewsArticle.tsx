@@ -310,7 +310,7 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
                 {news.tags.map((tag: string) => (
                   <Link
                     key={tag}
-                    href={`/news?tag=${encodeURIComponent(tag)}`}
+                    href={`/search?tag=${encodeURIComponent(tag)}`}
                     className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-lime-100 hover:text-lime-700 transition-colors"
                   >
                     #{tag}

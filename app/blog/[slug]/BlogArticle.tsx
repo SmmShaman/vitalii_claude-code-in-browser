@@ -347,7 +347,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                 {post.tags.map((tag: string) => (
                   <Link
                     key={tag}
-                    href={`/blog?tag=${encodeURIComponent(tag)}`}
+                    href={`/search?tag=${encodeURIComponent(tag)}`}
                     className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-blue-100 hover:text-blue-700 transition-colors"
                   >
                     #{tag}
