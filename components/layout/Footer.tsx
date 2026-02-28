@@ -190,10 +190,10 @@ export const Footer = () => {
   const textAccent = isMobile ? 'text-gray-900' : ''
   const hoverBg = isMobile ? 'hover:bg-gray-100 active:bg-gray-200' : 'hover:bg-white/10 active:bg-white/20'
 
-  // Desktop refined colors (Polished Amethyst)
-  const dPrimary = 'rgba(255, 255, 255, 0.92)'
-  const dSecondary = 'rgba(220, 215, 235, 0.75)'
-  const dAccent = 'rgba(255, 255, 255, 0.95)'
+  // Desktop refined colors (Obsidian Prism)
+  const dPrimary = 'rgba(245, 243, 255, 0.95)'
+  const dSecondary = 'rgba(167, 160, 195, 0.8)'
+  const dAccent = '#fbbf24'
 
   return (
     <footer className="h-full w-full flex items-center overflow-y-auto">
@@ -204,11 +204,11 @@ export const Footer = () => {
         style={isMobile ? {
           background: 'transparent',
         } : {
-          background: 'linear-gradient(135deg, rgba(88, 112, 220, 0.65) 0%, rgba(102, 126, 234, 0.55) 35%, rgba(118, 75, 162, 0.6) 70%, rgba(88, 60, 140, 0.7) 100%)',
-          backdropFilter: 'blur(16px) saturate(1.8)',
-          WebkitBackdropFilter: 'blur(16px) saturate(1.8)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+          background: 'linear-gradient(160deg, rgba(15, 15, 25, 0.88) 0%, rgba(25, 20, 45, 0.92) 50%, rgba(18, 12, 35, 0.9) 100%)',
+          backdropFilter: 'blur(20px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+          border: '1px solid rgba(167, 139, 250, 0.1)',
+          boxShadow: '0 -1px 0 rgba(167, 139, 250, 0.08), 0 12px 40px rgba(0, 0, 0, 0.4)',
         }}
       >
         <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
@@ -275,8 +275,8 @@ export const Footer = () => {
                 onMouseLeave={() => setSelectedSocial(null)}
               >
                 <Mail className="w-4 h-4 sm:w-4 sm:h-4" style={{
-                  color: !isMobile && selectedSocial === 'Email' ? '#EA4335' : (isMobile ? '#EA4335' : 'rgba(255, 255, 255, 0.7)'),
-                  filter: !isMobile && selectedSocial === 'Email' ? 'drop-shadow(0 0 6px rgba(234, 67, 53, 0.4))' : 'none',
+                  color: !isMobile && selectedSocial === 'Email' ? '#ffffff' : (isMobile ? '#EA4335' : 'rgba(167, 160, 195, 0.5)'),
+                  filter: !isMobile && selectedSocial === 'Email' ? 'drop-shadow(0 0 8px rgba(234, 67, 53, 0.6)) drop-shadow(0 0 2px rgba(234, 67, 53, 0.9))' : 'none',
                   transition: 'color 0.3s ease, filter 0.3s ease',
                 }} />
               </button>
@@ -285,7 +285,7 @@ export const Footer = () => {
               <div
                 className="w-px h-5 mx-1.5"
                 style={!isMobile ? {
-                  background: 'linear-gradient(180deg, transparent 0%, rgba(251, 191, 36, 0.5) 50%, transparent 100%)',
+                  background: 'linear-gradient(180deg, transparent 0%, rgba(167, 139, 250, 0.4) 50%, transparent 100%)',
                 } : {
                   background: '#d1d5db',
                 }}
@@ -304,8 +304,8 @@ export const Footer = () => {
                     onMouseLeave={() => setSelectedSocial(null)}
                   >
                     <Icon className="w-4 h-4 sm:w-4 sm:h-4" style={{
-                      color: !isMobile && selectedSocial === social.label ? social.color : (isMobile ? social.color : 'rgba(255, 255, 255, 0.7)'),
-                      filter: !isMobile && selectedSocial === social.label ? `drop-shadow(0 0 6px ${social.color}40)` : 'none',
+                      color: !isMobile && selectedSocial === social.label ? '#ffffff' : (isMobile ? social.color : 'rgba(167, 160, 195, 0.5)'),
+                      filter: !isMobile && selectedSocial === social.label ? `drop-shadow(0 0 8px ${social.color}60) drop-shadow(0 0 2px ${social.color}90)` : 'none',
                       transition: 'color 0.3s ease, filter 0.3s ease',
                     }} />
                   </button>
@@ -340,26 +340,26 @@ export const Footer = () => {
 
           {/* Business info & cookie links */}
           <div className="flex items-center justify-center gap-1.5 mt-1 flex-wrap">
-            <span className="text-[9px] tracking-wider" style={{ color: 'rgba(200, 195, 220, 0.5)' }}>
+            <span className="text-[9px] tracking-widest font-mono" style={{ color: 'rgba(140, 130, 170, 0.45)' }}>
               BERBEHA · 932 905 736 · Hagegata 8, Lena
             </span>
-            <span className="text-[9px]" style={{ color: 'rgba(200, 195, 220, 0.25)' }}>|</span>
+            <span className="text-[9px]" style={{ color: 'rgba(140, 130, 170, 0.2)' }}>|</span>
             <button
               onClick={handleOpenCookieSettings}
               className="text-[9px] hover:underline transition-colors cursor-pointer bg-transparent border-none"
-              style={{ color: 'rgba(200, 195, 220, 0.55)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.85)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(200, 195, 220, 0.55)'}
+              style={{ color: 'rgba(167, 160, 195, 0.5)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#c4b5fd'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(167, 160, 195, 0.5)'}
             >
               Cookies
             </button>
-            <span className="text-[9px]" style={{ color: 'rgba(200, 195, 220, 0.25)' }}>|</span>
+            <span className="text-[9px]" style={{ color: 'rgba(140, 130, 170, 0.2)' }}>|</span>
             <a
               href="/informasjonskapsler"
               className="text-[9px] hover:underline transition-colors"
-              style={{ color: 'rgba(200, 195, 220, 0.55)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.85)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(200, 195, 220, 0.55)'}
+              style={{ color: 'rgba(167, 160, 195, 0.5)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#c4b5fd'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(167, 160, 195, 0.5)'}
             >
               Erklæring
             </a>
