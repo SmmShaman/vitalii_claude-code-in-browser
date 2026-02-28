@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Globe } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useTranslations, type Language } from '@/contexts/TranslationContext'
 
 interface ArticleHeaderProps {
@@ -11,7 +13,42 @@ interface ArticleHeaderProps {
 
 export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps) {
   const { t, currentLanguage, setCurrentLanguage } = useTranslations()
+  const router = useRouter()
   const languages: Language[] = ['NO', 'EN', 'UA']
+
+  // Search state
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  const handleSearchToggle = () => {
+    if (searchOpen && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchOpen(false)
+      setSearchQuery('')
+    } else {
+      setSearchOpen(true)
+      setTimeout(() => searchInputRef.current?.focus(), 100)
+    }
+  }
+
+  const handleSearchBlur = () => {
+    if (!searchQuery.trim()) {
+      setTimeout(() => setSearchOpen(false), 150)
+    }
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchOpen(false)
+      setSearchQuery('')
+    }
+    if (e.key === 'Escape') {
+      setSearchOpen(false)
+      setSearchQuery('')
+    }
+  }
 
   const getBackLabel = () => {
     if (backLabel) return backLabel
@@ -36,8 +73,8 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
           <span className="hidden sm:inline text-sm text-gray-500">{getBackLabel()}</span>
         </Link>
 
-        {/* Compact language switcher */}
-        <div className="flex gap-1">
+        {/* Compact language switcher + search */}
+        <div className="flex items-center gap-1">
           {languages.map((lang) => (
             <button
               key={lang}
@@ -52,6 +89,34 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
               {lang}
             </button>
           ))}
+          {/* Search */}
+          <div className="flex items-center ml-1 relative">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onBlur={handleSearchBlur}
+              onKeyDown={handleSearchKeyDown}
+              placeholder={t('search_placeholder_short') as string}
+              className={`transition-all duration-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 mr-1 ${
+                searchOpen ? 'w-36 sm:w-48 px-3 py-1.5 opacity-100' : 'w-0 px-0 py-1.5 opacity-0 border-transparent'
+              }`}
+            />
+            <button
+              onClick={handleSearchToggle}
+              className={`p-1.5 rounded-lg transition-all duration-300 ${
+                searchQuery.trim()
+                  ? 'bg-purple-600 text-white animate-pulse'
+                  : searchOpen
+                    ? 'bg-gray-200 text-gray-700'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+              aria-label="Search"
+            >
+              <Search className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </header>

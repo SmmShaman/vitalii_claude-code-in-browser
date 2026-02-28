@@ -229,7 +229,7 @@ function SearchPageInner() {
             `}</style>
             <AnimatePresence mode="popLayout">
               {results.map((result, index) => {
-                const hasImage = !!(result.processed_image_url || result.image_url)
+                const hasImage = !!(result.processed_image_url || result.image_url || result.video_url)
                 const size = getCardSize(index, hasImage)
                 return (
                   <SearchResultCard

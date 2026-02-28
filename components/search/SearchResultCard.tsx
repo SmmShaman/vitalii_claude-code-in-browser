@@ -5,6 +5,27 @@ import Image from 'next/image'
 import { Calendar, Eye, Video, Newspaper, BookOpen } from 'lucide-react'
 import { motion } from 'framer-motion'
 
+// Helper to extract YouTube video ID from URL
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ]
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match) return match[1]
+  }
+  return null
+}
+
+// Helper to get YouTube thumbnail URL
+const getYouTubeThumbnail = (videoUrl: string): string | null => {
+  const videoId = getYouTubeVideoId(videoUrl)
+  if (!videoId) return null
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+}
+
 export interface SearchResult {
   id: string
   type: 'news' | 'blog'
@@ -54,7 +75,12 @@ interface SearchResultCardProps {
 }
 
 export function SearchResultCard({ result, size, index }: SearchResultCardProps) {
-  const imageUrl = result.processed_image_url || result.image_url
+  const directImage = result.processed_image_url || result.image_url
+  const videoThumbnail = result.video_url && result.video_type === 'youtube'
+    ? getYouTubeThumbnail(result.video_url)
+    : null
+  const imageUrl = directImage || videoThumbnail
+  const isVideoThumbnail = !directImage && !!videoThumbnail
   const href = `/${result.type === 'news' ? 'news' : 'blog'}/${result.slug}`
   const isNews = result.type === 'news'
 
@@ -101,6 +127,28 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
                 <Video className="w-3.5 h-3.5" />
               </div>
             )}
+            {/* Play overlay for video thumbnails */}
+            {isVideoThumbnail && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                  <div className="w-0 h-0 border-l-[14px] border-l-gray-800 border-y-[8px] border-y-transparent ml-1" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Gradient placeholder for non-YouTube video articles without images */}
+        {!imageUrl && result.video_url && size !== 'small' && (
+          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden`}>
+            <Video className="w-10 h-10 text-gray-400" />
+            <div
+              className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
+                isNews ? 'bg-purple-600/90' : 'bg-blue-600/90'
+              }`}
+            >
+              {isNews ? 'News' : 'Blog'}
+            </div>
           </div>
         )}
 

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Globe, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useTranslations, type Language } from '@/contexts/TranslationContext';
 import { heroContrastColors } from '@/components/sections/BentoGrid';
 import { HeroTextAnimation } from '@/components/ui/HeroTextAnimation';
@@ -16,6 +17,41 @@ interface HeaderProps {
 export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps) => {
   const { t, currentLanguage, setCurrentLanguage } = useTranslations();
   const isMobile = useIsMobile();
+  const router = useRouter();
+
+  // Search state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSearchToggle = () => {
+    if (searchOpen && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchOpen(false);
+      setSearchQuery('');
+    } else {
+      setSearchOpen(true);
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  };
+
+  const handleSearchBlur = () => {
+    if (!searchQuery.trim()) {
+      setTimeout(() => setSearchOpen(false), 150);
+    }
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchOpen(false);
+      setSearchQuery('');
+    }
+    if (e.key === 'Escape') {
+      setSearchOpen(false);
+      setSearchQuery('');
+    }
+  };
 
   // Debounced state for smooth transitions between sections
   const [debouncedSection, setDebouncedSection] = useState<string | null>(null);
@@ -96,8 +132,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {t('subtitle')}
             </p>
           </div>
-          {/* Compact language buttons */}
-          <div className="flex gap-1 flex-shrink-0">
+          {/* Compact language buttons + search */}
+          <div className="flex items-center gap-1 flex-shrink-0">
             {languages.map((lang) => (
               <button
                 key={lang}
@@ -111,6 +147,40 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 {lang}
               </button>
             ))}
+            {/* Search */}
+            <div className="flex items-center ml-1 relative">
+              <AnimatePresence>
+                {searchOpen && (
+                  <motion.input
+                    ref={searchInputRef}
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 120, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onBlur={handleSearchBlur}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder={t('search_placeholder_short') as string}
+                    className="px-2 py-1 rounded-lg bg-white/90 text-gray-900 text-xs placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 mr-1"
+                  />
+                )}
+              </AnimatePresence>
+              <button
+                onClick={handleSearchToggle}
+                className={`p-1.5 rounded-lg transition-all duration-300 ${
+                  searchQuery.trim()
+                    ? 'bg-purple-600 text-white animate-pulse'
+                    : searchOpen
+                      ? 'bg-white/80 text-gray-700'
+                      : 'bg-white/70 text-gray-500'
+                }`}
+                aria-label="Search"
+              >
+                <Search className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -185,8 +255,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
           )}
         </motion.div>
 
-        {/* Language Switcher */}
-        <div className="flex gap-1 sm:gap-2 flex-shrink-0 ml-4">
+        {/* Language Switcher + Search */}
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-4">
           {languages.map((lang) => (
             <button
               key={lang}
@@ -202,6 +272,40 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               <span className="font-semibold text-xs sm:text-sm">{lang}</span>
             </button>
           ))}
+          {/* Search */}
+          <div className="flex items-center ml-1 relative">
+            <AnimatePresence>
+              {searchOpen && (
+                <motion.input
+                  ref={searchInputRef}
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 200, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={handleSearchBlur}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder={t('search_placeholder_short') as string}
+                  className="px-3 py-1.5 rounded-lg bg-white/90 text-gray-900 text-sm placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 mr-1"
+                />
+              )}
+            </AnimatePresence>
+            <button
+              onClick={handleSearchToggle}
+              className={`p-2 rounded-lg transition-all duration-300 ${
+                searchQuery.trim()
+                  ? 'bg-purple-600 text-white animate-pulse'
+                  : searchOpen
+                    ? 'bg-white/80 text-gray-700'
+                    : 'bg-white/70 text-gray-500 hover:bg-white/90'
+              }`}
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </motion.div>
     </header>
