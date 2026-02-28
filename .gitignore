@@ -44,6 +44,10 @@ runs.json
 sync_log.txt
 scripts/test-gemini-api.js
 
+# Credentials (NEVER commit)
+ga4-credentials.json
+*-credentials.json
+
 # Auto-installed Claude Code skills
 .agent/
 .claude/skills/
