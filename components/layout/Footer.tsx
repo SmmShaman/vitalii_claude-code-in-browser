@@ -295,30 +295,24 @@ export const Footer = () => {
             </AnimatePresence>
           </div>
 
-          {/* Business address */}
-          <div className="text-center mt-2 space-y-0.5">
-            <p className="text-white/35 text-[9px] leading-tight">
-              BERBEHA · Org.nr: 932 905 736 · Underenhet av 932 838 982
-            </p>
-            <p className="text-white/35 text-[9px] leading-tight">
-              Hagegata 8, 2850 Lena · Østre Toten, Norge
-            </p>
-          </div>
-
-          {/* Cookie links */}
-          <div className="flex items-center justify-center gap-3 mt-1.5">
+          {/* Business info & cookie links */}
+          <div className="flex items-center justify-center gap-1.5 mt-1 flex-wrap">
+            <span className="text-white/35 text-[9px]">
+              BERBEHA · 932 905 736 · Hagegata 8, Lena
+            </span>
+            <span className="text-white/20 text-[9px]">|</span>
             <button
               onClick={handleOpenCookieSettings}
-              className="text-white/40 text-[10px] hover:text-white/70 hover:underline transition-colors cursor-pointer bg-transparent border-none"
+              className="text-white/40 text-[9px] hover:text-white/70 hover:underline transition-colors cursor-pointer bg-transparent border-none"
             >
-              Administrer cookies
+              Cookies
             </button>
-            <span className="text-white/20 text-[10px]">|</span>
+            <span className="text-white/20 text-[9px]">|</span>
             <a
               href="/informasjonskapsler"
-              className="text-white/40 text-[10px] hover:text-white/70 hover:underline transition-colors"
+              className="text-white/40 text-[9px] hover:text-white/70 hover:underline transition-colors"
             >
-              Informasjonskapsler
+              Erklæring
             </a>
           </div>
         </div>
