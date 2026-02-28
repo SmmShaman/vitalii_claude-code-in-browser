@@ -185,24 +185,30 @@ export const Footer = () => {
   const { userLocation, weather, distance, error } = footerData;
 
   // Text colors based on mobile/desktop
-  const textPrimary = isMobile ? 'text-gray-700' : 'text-white/80'
-  const textSecondary = isMobile ? 'text-gray-600' : 'text-white/60'
-  const textAccent = isMobile ? 'text-gray-900' : 'text-white/90'
-  const iconColor = isMobile ? 'text-gray-600 hover:text-gray-800' : 'text-white/80 hover:text-white'
-  const dividerColor = isMobile ? 'bg-gray-300' : 'bg-white/30'
+  const textPrimary = isMobile ? 'text-gray-700' : ''
+  const textSecondary = isMobile ? 'text-gray-600' : ''
+  const textAccent = isMobile ? 'text-gray-900' : ''
   const hoverBg = isMobile ? 'hover:bg-gray-100 active:bg-gray-200' : 'hover:bg-white/10 active:bg-white/20'
+
+  // Desktop refined colors (Polished Amethyst)
+  const dPrimary = 'rgba(255, 255, 255, 0.92)'
+  const dSecondary = 'rgba(220, 215, 235, 0.75)'
+  const dAccent = 'rgba(255, 255, 255, 0.95)'
 
   return (
     <footer className="h-full w-full flex items-center overflow-y-auto">
       <div
         className={`max-w-6xl mx-auto rounded-xl sm:rounded-2xl w-full ${
-          isMobile ? 'border-black/10' : 'shadow-2xl border border-black/20'
+          isMobile ? 'border-black/10' : ''
         }`}
         style={isMobile ? {
           background: 'transparent',
         } : {
-          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
-          backdropFilter: 'blur(2px)',
+          background: 'linear-gradient(135deg, rgba(88, 112, 220, 0.65) 0%, rgba(102, 126, 234, 0.55) 35%, rgba(118, 75, 162, 0.6) 70%, rgba(88, 60, 140, 0.7) 100%)',
+          backdropFilter: 'blur(16px) saturate(1.8)',
+          WebkitBackdropFilter: 'blur(16px) saturate(1.8)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
         }}
       >
         <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
@@ -211,7 +217,7 @@ export const Footer = () => {
             {/* Left: Clock */}
             <div
               className={`${textPrimary} font-mono flex-shrink-0 flex items-center`}
-              style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
+              style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)', ...(!isMobile && { color: dPrimary }) }}
             >
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
             </div>
@@ -224,16 +230,16 @@ export const Footer = () => {
               transition={{ delay: 0.2 }}
             >
               {isLoading ? (
-                <div className={`${textSecondary} text-xs sm:text-sm flex items-center`}>{t('footer_loading' as any)}</div>
+                <div className={`${textSecondary} text-xs sm:text-sm flex items-center`} style={!isMobile ? { color: dSecondary } : undefined}>{t('footer_loading' as any)}</div>
               ) : error ? (
-                <div className={`${textSecondary} text-xs sm:text-sm flex items-center`}>{error}</div>
+                <div className={`${textSecondary} text-xs sm:text-sm flex items-center`} style={!isMobile ? { color: dSecondary } : undefined}>{error}</div>
               ) : (
                 <div className="flex items-center gap-3 flex-wrap justify-center">
                   {/* Weather text */}
                   {weather && userLocation && (
                     <div
                       className={`${textAccent} text-center flex items-center`}
-                      style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
+                      style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)', ...(!isMobile && { color: dAccent }) }}
                     >
                       {t('footer_weather_in' as any)} <span className="font-semibold ml-1">{userLocation.city}</span>{' '}
                       {weather.temperature > 0 ? '+' : ''}
@@ -245,7 +251,7 @@ export const Footer = () => {
                   {distance !== null && (
                     <div
                       className={`${textAccent} flex items-center`}
-                      style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)' }}
+                      style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.9rem)', ...(!isMobile && { color: dAccent }) }}
                     >
                       {distance.toLocaleString()} {t('footer_distance_from_me' as any)}
                     </div>
@@ -257,7 +263,7 @@ export const Footer = () => {
             {/* Right: Contact label + Email + Social Icons */}
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {/* Contact label */}
-              <span className={`${textSecondary} text-[9px] sm:text-[10px] mr-1 hidden md:inline`}>
+              <span className={`${textSecondary} text-[9px] sm:text-[10px] mr-1 hidden md:inline`} style={!isMobile ? { color: dSecondary } : undefined}>
                 {t('footer_contact_me')}
               </span>
               {/* Email Button */}
@@ -268,11 +274,22 @@ export const Footer = () => {
                 onMouseEnter={() => setSelectedSocial('Email')}
                 onMouseLeave={() => setSelectedSocial(null)}
               >
-                <Mail className="w-4 h-4 sm:w-4 sm:h-4" style={{ color: '#EA4335' }} />
+                <Mail className="w-4 h-4 sm:w-4 sm:h-4" style={{
+                  color: !isMobile && selectedSocial === 'Email' ? '#EA4335' : (isMobile ? '#EA4335' : 'rgba(255, 255, 255, 0.7)'),
+                  filter: !isMobile && selectedSocial === 'Email' ? 'drop-shadow(0 0 6px rgba(234, 67, 53, 0.4))' : 'none',
+                  transition: 'color 0.3s ease, filter 0.3s ease',
+                }} />
               </button>
 
               {/* Divider */}
-              <div className={`w-px h-4 sm:h-5 ${dividerColor} mx-1`} />
+              <div
+                className="w-px h-5 mx-1.5"
+                style={!isMobile ? {
+                  background: 'linear-gradient(180deg, transparent 0%, rgba(251, 191, 36, 0.5) 50%, transparent 100%)',
+                } : {
+                  background: '#d1d5db',
+                }}
+              />
 
               {/* Social Icons */}
               {socialLinks.map((social) => {
@@ -286,7 +303,11 @@ export const Footer = () => {
                     onMouseEnter={() => setSelectedSocial(social.label)}
                     onMouseLeave={() => setSelectedSocial(null)}
                   >
-                    <Icon className="w-4 h-4 sm:w-4 sm:h-4" style={{ color: social.color }} />
+                    <Icon className="w-4 h-4 sm:w-4 sm:h-4" style={{
+                      color: !isMobile && selectedSocial === social.label ? social.color : (isMobile ? social.color : 'rgba(255, 255, 255, 0.7)'),
+                      filter: !isMobile && selectedSocial === social.label ? `drop-shadow(0 0 6px ${social.color}40)` : 'none',
+                      transition: 'color 0.3s ease, filter 0.3s ease',
+                    }} />
                   </button>
                 );
               })}
@@ -300,6 +321,7 @@ export const Footer = () => {
                 <motion.div
                   key={selectedSocial}
                   className={`text-center ${textSecondary} text-xs`}
+                  style={!isMobile ? { color: dSecondary } : undefined}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -318,20 +340,26 @@ export const Footer = () => {
 
           {/* Business info & cookie links */}
           <div className="flex items-center justify-center gap-1.5 mt-1 flex-wrap">
-            <span className="text-white/35 text-[9px]">
+            <span className="text-[9px] tracking-wider" style={{ color: 'rgba(200, 195, 220, 0.5)' }}>
               BERBEHA · 932 905 736 · Hagegata 8, Lena
             </span>
-            <span className="text-white/20 text-[9px]">|</span>
+            <span className="text-[9px]" style={{ color: 'rgba(200, 195, 220, 0.25)' }}>|</span>
             <button
               onClick={handleOpenCookieSettings}
-              className="text-white/40 text-[9px] hover:text-white/70 hover:underline transition-colors cursor-pointer bg-transparent border-none"
+              className="text-[9px] hover:underline transition-colors cursor-pointer bg-transparent border-none"
+              style={{ color: 'rgba(200, 195, 220, 0.55)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.85)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(200, 195, 220, 0.55)'}
             >
               Cookies
             </button>
-            <span className="text-white/20 text-[9px]">|</span>
+            <span className="text-[9px]" style={{ color: 'rgba(200, 195, 220, 0.25)' }}>|</span>
             <a
               href="/informasjonskapsler"
-              className="text-white/40 text-[9px] hover:text-white/70 hover:underline transition-colors"
+              className="text-[9px] hover:underline transition-colors"
+              style={{ color: 'rgba(200, 195, 220, 0.55)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.85)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(200, 195, 220, 0.55)'}
             >
               Erklæring
             </a>
