@@ -11,10 +11,11 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useCookieConsent } from '@/contexts/CookieConsentContext';
 
 interface SocialLink {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   href: string;
   label: string;
   username: string;
+  color: string;
 }
 
 // TikTok icon component
@@ -29,15 +30,15 @@ const TikTokIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// Snapchat icon component
+// Snapchat icon component (ghost)
 const SnapchatIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
   <svg
-    viewBox="0 0 24 24"
+    viewBox="0 0 512 512"
     fill="currentColor"
     className={className}
     {...props}
   >
-    <path d="M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301.165-.088.344-.104.464-.104.182 0 .359.029.509.09.45.149.734.479.734.838.015.449-.39.839-1.213 1.168-.089.029-.209.075-.344.119-.45.135-1.139.36-1.333.81-.09.224-.061.524.12.868l.015.015c.06.136 1.526 3.475 4.791 4.014.255.044.435.27.42.509 0 .075-.015.149-.045.225-.24.569-1.273.988-3.146 1.271-.059.091-.12.375-.164.57-.029.179-.074.36-.134.553-.076.271-.27.405-.555.405h-.03c-.135 0-.313-.031-.538-.076-.375-.09-.84-.181-1.455-.181-.592 0-1.035.074-1.395.135l-.12.029c-.405.091-.763.165-1.184.165-2.535 0-4.316-1.949-6.062-3.735C5.106 14.706 3.63 13.376 2.005 13.376c-.375 0-.72.074-1.035.209C.345 13.876 0 14.311 0 14.836c0 .285.135.539.36.674.165.091.375.149.585.149.12 0 .239-.015.359-.044.389-.091.689-.136.929-.136.899 0 1.139.509 1.353 1.064.03.089.06.179.104.269.15.33.374.499.674.499.12 0 .255-.03.404-.074l.03-.016c.285-.09.585-.135.899-.135 1.02 0 2.265.644 3.734 1.949 2.13 1.905 4.316 2.879 6.466 2.879.42 0 .779-.074 1.094-.165l.12-.029c.36-.091.749-.165 1.215-.165.584 0 1.05.089 1.424.179.225.045.404.075.539.075.135 0 .24-.029.3-.089.03-.045.06-.09.06-.164.015-.045.03-.12.044-.196.06-.27.135-.569.225-.72.044-.074.044-.119.044-.164 0-.134-.089-.254-.209-.284-3.6-.615-5.175-4.065-5.235-4.2l-.015-.015c-.24-.449-.285-.84-.135-1.168.254-.524.87-.72 1.35-.869.119-.044.239-.074.329-.104.9-.36 1.335-.75 1.335-1.199 0-.359-.284-.659-.719-.809-.135-.046-.299-.075-.479-.075-.135 0-.284.015-.434.089-.375.18-.72.284-1.035.299h-.06c-.24 0-.42-.06-.539-.165l-.015-.015c.009-.179.019-.359.03-.539l.002-.06c.105-1.628.234-3.654-.299-4.847C16.523 1.069 13.176.793 12.206.793z"/>
+    <path d="M256 32C132.3 32 32 132.3 32 256s100.3 224 224 224 224-100.3 224-224S379.7 32 256 32zm108.2 309.5c-2.7 6.4-15.4 11.5-38.8 15.5-1.5 8.3-3.5 17-6 17-5.3 0-14.3-4.8-30.5-4.8-5.5 0-11.5.7-18.2 2.3-15.5 3.7-28.2 19.5-52.7 19.5h-1c-24.5 0-37-15.8-52.5-19.5-6.7-1.6-12.8-2.3-18.3-2.3-16.2 0-25.2 4.8-30.5 4.8-2.5 0-4.5-8.7-6-17-23.3-4-36-9-38.7-15.5-1-2.2-1-4.2.2-5.8 12.8-16.2 23.2-33.2 31-50.5 2.3-5 3.7-9.5 4.3-13.5 1-6.5-1-11.5-5.7-15.2-3-2.3-7-4.3-11.5-6-15-5.5-17-12.2-16.2-16.8 1.2-6.2 9-10 14.8-10 2 0 3.7.3 5.2 1 8 3.5 15.2 5.3 21 5.3 5 0 7.5-1.3 8-1.7-.3-5-.8-10.2-1.2-15.5-3.2-38.5-7.2-86.2 17.5-115.5 26.7-31.5 65.2-48.2 108-48.5h2c42.8.3 81.2 17 108 48.5 24.7 29.3 20.7 77 17.5 115.5-.5 5.3-.8 10.5-1.2 15.5.5.3 3 1.7 8 1.7 5.8 0 13-1.8 21-5.3 1.5-.7 3.2-1 5.2-1 5.8 0 13.5 3.8 14.8 10 .8 4.5-1.2 11.2-16.2 16.8-4.5 1.7-8.5 3.7-11.5 6-4.8 3.7-6.7 8.7-5.7 15.2.5 4 2 8.5 4.3 13.5 7.8 17.3 18.2 34.3 31 50.5 1.2 1.5 1.2 3.5.2 5.7z"/>
   </svg>
 );
 
@@ -171,14 +172,14 @@ export const Footer = () => {
   };
 
   const socialLinks: SocialLink[] = [
-    { icon: Instagram, href: 'https://instagram.com/smmshaman', label: 'Instagram', username: '@smmshaman' },
-    { icon: Send, href: 'https://t.me/smmshaman', label: 'Telegram', username: 'SmmShaman' },
-    { icon: Facebook, href: 'https://facebook.com/smm.shaman', label: 'Facebook', username: 'smm.shaman' },
-    { icon: Linkedin, href: 'https://linkedin.com/in/smmshaman', label: 'LinkedIn', username: 'smmshaman' },
-    { icon: Github, href: 'https://github.com/SmmShaman', label: 'GitHub', username: 'SmmShaman' },
-    { icon: Twitter, href: 'https://twitter.com/SmmShaman', label: 'Twitter', username: 'SmmShaman' },
-    { icon: TikTokIcon, href: 'https://tiktok.com/@stuardbmw', label: 'TikTok', username: '@stuardbmw' },
-    { icon: SnapchatIcon, href: 'https://snapchat.com/add/smmshaman', label: 'Snapchat', username: 'smmshaman' },
+    { icon: Instagram, href: 'https://instagram.com/smmshaman', label: 'Instagram', username: '@smmshaman', color: '#E4405F' },
+    { icon: Send, href: 'https://t.me/smmshaman', label: 'Telegram', username: 'SmmShaman', color: '#26A5E4' },
+    { icon: Facebook, href: 'https://facebook.com/smm.shaman', label: 'Facebook', username: 'smm.shaman', color: '#1877F2' },
+    { icon: Linkedin, href: 'https://linkedin.com/in/smmshaman', label: 'LinkedIn', username: 'smmshaman', color: '#0A66C2' },
+    { icon: Github, href: 'https://github.com/SmmShaman', label: 'GitHub', username: 'SmmShaman', color: '#8b5cf6' },
+    { icon: Twitter, href: 'https://twitter.com/SmmShaman', label: 'Twitter', username: 'SmmShaman', color: '#1DA1F2' },
+    { icon: TikTokIcon, href: 'https://tiktok.com/@stuardbmw', label: 'TikTok', username: '@stuardbmw', color: '#ff0050' },
+    { icon: SnapchatIcon, href: 'https://snapchat.com/add/smmshaman', label: 'Snapchat', username: 'smmshaman', color: '#FFFC00' },
   ];
 
   const { userLocation, weather, distance, error } = footerData;
@@ -262,12 +263,12 @@ export const Footer = () => {
               {/* Email Button */}
               <button
                 onClick={openEmailModal}
-                className={`${iconColor} ${hoverBg} transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg`}
+                className={`${hoverBg} transition-all duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:scale-110`}
                 aria-label="Send Email"
                 onMouseEnter={() => setSelectedSocial('Email')}
                 onMouseLeave={() => setSelectedSocial(null)}
               >
-                <Mail className="w-4 h-4 sm:w-4 sm:h-4" />
+                <Mail className="w-4 h-4 sm:w-4 sm:h-4" style={{ color: '#EA4335' }} />
               </button>
 
               {/* Divider */}
@@ -280,12 +281,12 @@ export const Footer = () => {
                   <button
                     key={social.label}
                     onClick={() => handleSocialClick(social)}
-                    className={`${iconColor} ${hoverBg} transition-colors duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg`}
+                    className={`${hoverBg} transition-all duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:scale-110`}
                     aria-label={social.label}
                     onMouseEnter={() => setSelectedSocial(social.label)}
                     onMouseLeave={() => setSelectedSocial(null)}
                   >
-                    <Icon className="w-4 h-4 sm:w-4 sm:h-4" />
+                    <Icon className="w-4 h-4 sm:w-4 sm:h-4" style={{ color: social.color }} />
                   </button>
                 );
               })}
@@ -306,7 +307,10 @@ export const Footer = () => {
                 >
                   {selectedSocial === 'Email'
                     ? CONTACT_EMAIL
-                    : socialLinks.find((s) => s.label === selectedSocial)?.username}
+                    : (() => {
+                        const s = socialLinks.find((s) => s.label === selectedSocial);
+                        return s ? `${s.label}: ${s.username}` : '';
+                      })()}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -356,8 +360,8 @@ export const Footer = () => {
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <modalSocial.icon className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                    <modalSocial.icon className="w-5 h-5" style={{ color: modalSocial.color }} />
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900">{modalSocial.label}</h3>
