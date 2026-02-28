@@ -50,6 +50,7 @@ export interface ContentData {
   slug: string;
   imageUrl?: string;         // Default: square (1:1) for Instagram, or original
   imageUrlWide?: string;     // Wide (16:9) for LinkedIn/Facebook
+  hasProcessedImage: boolean; // True if processed_image_url exists (proper aspect ratio)
   videoUrl?: string;
   videoType?: string;
   originalVideoUrl?: string;  // Direct video URL from Telegram (for Instagram Reels)
@@ -116,6 +117,8 @@ export async function getContent(
     imageUrl: data.processed_image_url || data.image_url || data.cover_image_url || null,
     // Wide (16:9) image for LinkedIn/Facebook
     imageUrlWide: data.processed_image_url_wide || data.processed_image_url || data.image_url || data.cover_image_url || null,
+    // Whether a processed image exists (guarantees valid aspect ratio for Instagram)
+    hasProcessedImage: !!data.processed_image_url,
     videoUrl: data.video_url,
     videoType: data.video_type,
     originalVideoUrl: data.original_video_url || null,  // Direct Telegram video URL for Instagram

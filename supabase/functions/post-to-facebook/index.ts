@@ -94,7 +94,7 @@ interface FacebookPostRequest {
  * Post content to Facebook Page
  * Supports both news and blog posts in multiple languages
  * Supports native video upload via GitHub Actions
- * Version: 2025-01-19-v1
+ * Version: 2026-02-28-v2 - Message truncation to prevent "Reduce data amount" errors
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -252,10 +252,11 @@ serve(async (req) => {
     )
 
     // Use AI teaser if available, otherwise fallback to basic format
+    // Facebook Graph API recommends < 500 chars for engagement, max ~63206 chars
     let message: string
     if (teaser) {
       const cta = FACEBOOK_CTA[requestData.language] || FACEBOOK_CTA.en
-      message = `${teaser}\n\n${cta}: ${articleUrl}`
+      message = `${teaser}\n\n${cta}: ${articleUrl}`.substring(0, 2000)
       console.log('📝 Using AI-generated teaser for Facebook post')
     } else {
       message = formatFacebookPost(
@@ -264,6 +265,12 @@ serve(async (req) => {
         content.tags || []
       )
       console.log('📝 No teaser available, using formatFacebookPost fallback')
+    }
+
+    // Safety truncation to prevent "Reduce data amount" errors
+    if (message.length > 2000) {
+      console.warn(`⚠️ Facebook message truncated: ${message.length} -> 2000 chars`)
+      message = message.substring(0, 2000)
     }
 
     // Create tracking record (with race condition protection)

@@ -88,11 +88,99 @@ interface InstagramPostRequest {
   debug?: boolean  // Set to true to run token debug instead of posting
 }
 
+// Instagram aspect ratio limits: 4:5 (0.8) to 1.91:1 (1.91)
+const INSTAGRAM_MIN_RATIO = 0.8   // 4:5 portrait
+const INSTAGRAM_MAX_RATIO = 1.91  // 1.91:1 landscape
+
+/**
+ * Check image dimensions via fetch and validate aspect ratio for Instagram
+ * Returns { valid, width, height, ratio } or null if check fails
+ */
+async function checkImageAspectRatio(imageUrl: string): Promise<{
+  valid: boolean
+  width?: number
+  height?: number
+  ratio?: number
+  error?: string
+} | null> {
+  try {
+    // Fetch first bytes to read image header for dimensions
+    const response = await fetch(imageUrl, {
+      method: 'GET',
+      headers: { 'Range': 'bytes=0-65535' } // First 64KB for headers
+    })
+
+    if (!response.ok && response.status !== 206) {
+      return { valid: false, error: `Image fetch failed: ${response.status}` }
+    }
+
+    const buffer = new Uint8Array(await response.arrayBuffer())
+
+    // Check PNG (89 50 4E 47)
+    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+      // PNG: IHDR chunk starts at byte 16, width at 16-19, height at 20-23
+      if (buffer.length >= 24) {
+        const width = (buffer[16] << 24) | (buffer[17] << 16) | (buffer[18] << 8) | buffer[19]
+        const height = (buffer[20] << 24) | (buffer[21] << 16) | (buffer[22] << 8) | buffer[23]
+        const ratio = width / height
+        const valid = ratio >= INSTAGRAM_MIN_RATIO && ratio <= INSTAGRAM_MAX_RATIO
+        return { valid, width, height, ratio }
+      }
+    }
+
+    // Check JPEG (FF D8 FF)
+    if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+      // JPEG: scan for SOF0 (FFC0) or SOF2 (FFC2) markers
+      let offset = 2
+      while (offset < buffer.length - 9) {
+        if (buffer[offset] === 0xFF) {
+          const marker = buffer[offset + 1]
+          if (marker === 0xC0 || marker === 0xC2) {
+            // SOF marker: height at offset+5, width at offset+7
+            const height = (buffer[offset + 5] << 8) | buffer[offset + 6]
+            const width = (buffer[offset + 7] << 8) | buffer[offset + 8]
+            const ratio = width / height
+            const valid = ratio >= INSTAGRAM_MIN_RATIO && ratio <= INSTAGRAM_MAX_RATIO
+            return { valid, width, height, ratio }
+          }
+          // Skip to next marker
+          const segmentLength = (buffer[offset + 2] << 8) | buffer[offset + 3]
+          offset += 2 + segmentLength
+        } else {
+          offset++
+        }
+      }
+    }
+
+    // WebP check (52 49 46 46 ... 57 45 42 50)
+    if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+        buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+      // VP8 lossy: width/height at bytes 26-29
+      if (buffer[12] === 0x56 && buffer[13] === 0x50 && buffer[14] === 0x38 && buffer[15] === 0x20) {
+        if (buffer.length >= 30) {
+          const width = (buffer[26] | (buffer[27] << 8)) & 0x3FFF
+          const height = (buffer[28] | (buffer[29] << 8)) & 0x3FFF
+          const ratio = width / height
+          const valid = ratio >= INSTAGRAM_MIN_RATIO && ratio <= INSTAGRAM_MAX_RATIO
+          return { valid, width, height, ratio }
+        }
+      }
+    }
+
+    // Could not determine dimensions
+    console.log('⚠️ Could not determine image dimensions from headers')
+    return null
+  } catch (error: any) {
+    console.warn(`⚠️ Image aspect ratio check failed: ${error.message}`)
+    return null
+  }
+}
+
 /**
  * Post content to Instagram Business Account
  * Supports both images and videos (Reels)
  * Uses Facebook Graph API for Instagram Business accounts
- * Version: 2025-01-20-v4 - Added video/Reels support + image fallback logging
+ * Version: 2026-02-28-v5 - Aspect ratio pre-validation + hasProcessedImage warning
  *
  * Debug mode: POST with { debug: true } to check token permissions
  */
@@ -244,9 +332,17 @@ serve(async (req) => {
       console.log(`📸 Instagram: Falling back to image (video URL "${potentialVideoUrl.substring(0, 50)}..." is not a direct file URL)`)
     }
 
+    // Warn about aspect ratio risk when no processed image exists
+    if (hasImage && !hasVideo && !content.hasProcessedImage) {
+      console.warn('⚠️ Instagram: No processed image available — using original scraped image.')
+      console.warn('⚠️ Original images may have invalid aspect ratio (Instagram requires 4:5 to 1.91:1).')
+      console.warn('⚠️ Consider generating a processed image first via Telegram bot.')
+    }
+
     console.log('📝 Content to post:', {
       title: content.title.substring(0, 50) + '...',
       descriptionLength: content.description.length,
+      hasProcessedImage: content.hasProcessedImage,
       imageUrl: content.imageUrl?.substring(0, 50),
       videoUrl: content.videoUrl?.substring(0, 50),
       originalVideoUrl: content.originalVideoUrl?.substring(0, 50),
@@ -287,6 +383,25 @@ serve(async (req) => {
 
     // Determine which media URL to use (prefer video for Reels)
     const mediaUrl = hasVideo ? videoUrlForInstagram! : content.imageUrl!
+
+    // Pre-validate image aspect ratio before sending to Instagram API
+    if (hasImage && !hasVideo) {
+      const aspectCheck = await checkImageAspectRatio(mediaUrl)
+      if (aspectCheck) {
+        if (aspectCheck.valid) {
+          console.log(`✅ Image aspect ratio OK: ${aspectCheck.width}x${aspectCheck.height} (ratio: ${aspectCheck.ratio?.toFixed(2)})`)
+        } else {
+          console.error(`❌ Image aspect ratio INVALID: ${aspectCheck.width}x${aspectCheck.height} (ratio: ${aspectCheck.ratio?.toFixed(2)})`)
+          console.error(`❌ Instagram requires ratio between ${INSTAGRAM_MIN_RATIO} (4:5) and ${INSTAGRAM_MAX_RATIO} (1.91:1)`)
+          throw new Error(
+            `Image aspect ratio ${aspectCheck.ratio?.toFixed(2)} is outside Instagram's allowed range (4:5 to 1.91:1). ` +
+            `Image is ${aspectCheck.width}x${aspectCheck.height}. Generate a processed image with proper aspect ratio first.`
+          )
+        }
+      } else {
+        console.log('ℹ️ Could not pre-validate image aspect ratio, proceeding with Instagram API')
+      }
+    }
 
     // Create tracking record (with race condition protection)
     const { post: socialPost, raceCondition } = await createSocialPost({
