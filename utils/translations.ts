@@ -266,6 +266,19 @@ export const translations = {
     nav_contact: "Contact",
     view_all: "View all",
     read_more: "Read more",
+
+    // Cookie consent
+    cookie_banner_title: "This website uses cookies",
+    cookie_banner_description: "Our website uses a few cookies for security. In addition, we use cookies for analytics and marketing where we ask for consent first.",
+    cookie_necessary: "Necessary cookies",
+    cookie_necessary_desc: "Required for the website to function",
+    cookie_analytics: "Analytics and marketing",
+    cookie_analytics_desc: "Google Analytics, Meta Pixel, LinkedIn Insight Tag",
+    cookie_accept_all: "Accept all",
+    cookie_save_choice: "Save my choice",
+    cookie_read_more: "Read our cookie declaration",
+    cookie_manage: "Manage cookies",
+    cookie_policy: "Cookie declaration",
   },
   no: {
     title: "Vitalii Berbeha",
@@ -532,6 +545,19 @@ export const translations = {
     nav_contact: "Kontakt",
     view_all: "Se alle",
     read_more: "Les mer",
+
+    // Cookie consent
+    cookie_banner_title: "Vi bruker informasjonskapsler (cookies)",
+    cookie_banner_description: "Våre nettsider benytter noen få informasjonskapsler (cookies) til sikkerhet. I tillegg bruker vi cookies til analyse og markedsføring der vi ber om samtykke først.",
+    cookie_necessary: "Nødvendige cookies",
+    cookie_necessary_desc: "Påkrevd for at nettstedet skal fungere",
+    cookie_analytics: "Analyse og markedsføring",
+    cookie_analytics_desc: "Google Analytics, Meta Pixel, LinkedIn Insight Tag",
+    cookie_accept_all: "Godta alle",
+    cookie_save_choice: "Lagre mitt valg",
+    cookie_read_more: "Les vår cookieerklæring",
+    cookie_manage: "Administrer cookies",
+    cookie_policy: "Informasjonskapsler",
   },
   ua: {
     title: "Віталій Бербега",
@@ -798,6 +824,19 @@ export const translations = {
     nav_contact: "Контакт",
     view_all: "Дивитись все",
     read_more: "Читати далі",
+
+    // Cookie consent
+    cookie_banner_title: "Цей вебсайт використовує файли cookie",
+    cookie_banner_description: "Наш вебсайт використовує кілька файлів cookie для безпеки. Крім того, ми використовуємо cookies для аналітики та маркетингу, де ми спочатку просимо згоду.",
+    cookie_necessary: "Необхідні cookies",
+    cookie_necessary_desc: "Потрібні для роботи сайту",
+    cookie_analytics: "Аналітика та маркетинг",
+    cookie_analytics_desc: "Google Analytics, Meta Pixel, LinkedIn Insight Tag",
+    cookie_accept_all: "Прийняти всі",
+    cookie_save_choice: "Зберегти мій вибір",
+    cookie_read_more: "Читати нашу cookie-декларацію",
+    cookie_manage: "Керувати cookies",
+    cookie_policy: "Файли cookie",
   },
 };
 

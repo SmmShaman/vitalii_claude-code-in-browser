@@ -8,6 +8,7 @@ import type { FooterData } from '@/utils/footerApi';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { sendContactEmail } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useCookieConsent } from '@/contexts/CookieConsentContext';
 
 interface SocialLink {
   icon: React.ComponentType<{ className?: string }>;
@@ -43,6 +44,11 @@ export const Footer = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { t, currentLanguage } = useTranslations();
   const isMobile = useIsMobile();
+  const { resetConsent } = useCookieConsent();
+
+  const handleOpenCookieSettings = () => {
+    resetConsent();
+  };
 
   // Email modal state
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -287,6 +293,23 @@ export const Footer = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          {/* Cookie links */}
+          <div className="flex items-center justify-center gap-3 mt-1">
+            <button
+              onClick={handleOpenCookieSettings}
+              className="text-white/40 text-[10px] hover:text-white/70 hover:underline transition-colors cursor-pointer bg-transparent border-none"
+            >
+              Administrer cookies
+            </button>
+            <span className="text-white/20 text-[10px]">|</span>
+            <a
+              href="/informasjonskapsler"
+              className="text-white/40 text-[10px] hover:text-white/70 hover:underline transition-colors"
+            >
+              Informasjonskapsler
+            </a>
           </div>
         </div>
       </div>

@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Comfortaa } from 'next/font/google'
 import { Providers } from './providers'
-import { GoogleAnalytics } from '@next/third-parties/google'
-import { GTMScript, GTMNoScript } from '@/components/analytics/GTMScript'
 import './globals.css'
 
 const comfortaa = Comfortaa({
@@ -87,10 +85,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={comfortaa.variable}>
       <head>
-        {/* Google Tag Manager */}
-        <GTMScript />
-        {/* Google Analytics 4 */}
-        <GoogleAnalytics gaId="G-1G5BSRBZT9" />
         {/* Preload hero images for LCP — BentoGrid About & Services sections */}
         <link
           rel="preload"
@@ -106,8 +100,6 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/* GTM NoScript fallback */}
-        <GTMNoScript />
         {/* Skip Link for keyboard navigation - WCAG 2.4.1 */}
         <a
           href="#main-content"
