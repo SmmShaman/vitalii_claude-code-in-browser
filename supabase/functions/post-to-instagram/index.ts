@@ -45,12 +45,16 @@ async function getInstagramTeaser(
   try {
     console.log(`🎯 Fetching/generating Instagram teaser (${language})...`)
 
+    // 25s timeout for AI teaser generation (function has 60s total)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 25000)
     const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json'
       },
+      signal: controller.signal,
       body: JSON.stringify({
         newsId: contentType === 'news' ? recordId : undefined,
         blogPostId: contentType === 'blog' ? recordId : undefined,
@@ -61,6 +65,7 @@ async function getInstagramTeaser(
         language
       })
     })
+    clearTimeout(timeout)
 
     if (!response.ok) {
       console.warn('⚠️ Instagram teaser generation failed:', await response.text())
@@ -104,11 +109,15 @@ async function checkImageAspectRatio(imageUrl: string): Promise<{
   error?: string
 } | null> {
   try {
-    // Fetch first bytes to read image header for dimensions
+    // Fetch first bytes to read image header for dimensions (5s timeout)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
     const response = await fetch(imageUrl, {
       method: 'GET',
-      headers: { 'Range': 'bytes=0-65535' } // First 64KB for headers
+      headers: { 'Range': 'bytes=0-65535' }, // First 64KB for headers
+      signal: controller.signal
     })
+    clearTimeout(timeout)
 
     if (!response.ok && response.status !== 206) {
       return { valid: false, error: `Image fetch failed: ${response.status}` }
