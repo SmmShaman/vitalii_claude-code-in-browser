@@ -148,28 +148,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               </button>
             ))}
             {/* Search */}
-            <div className="flex items-center ml-1 relative">
-              <AnimatePresence>
-                {searchOpen && (
-                  <motion.input
-                    ref={searchInputRef}
-                    initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 120, opacity: 1 }}
-                    exit={{ width: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onBlur={handleSearchBlur}
-                    onKeyDown={handleSearchKeyDown}
-                    placeholder={t('search_placeholder_short') as string}
-                    className="px-2 py-1 rounded-lg bg-white/90 text-gray-900 text-xs placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 mr-1"
-                  />
-                )}
-              </AnimatePresence>
+            <div className="relative">
               <button
                 onClick={handleSearchToggle}
-                className={`p-1.5 rounded-lg transition-all duration-300 ${
+                className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                   searchQuery.trim()
                     ? 'bg-purple-600 text-white animate-pulse'
                     : searchOpen
@@ -180,6 +162,28 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               >
                 <Search className="w-3.5 h-3.5" />
               </button>
+              <AnimatePresence>
+                {searchOpen && (
+                  <motion.div
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 180, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    className="absolute right-8 top-1/2 -translate-y-1/2 overflow-hidden z-20"
+                  >
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onBlur={handleSearchBlur}
+                      onKeyDown={handleSearchKeyDown}
+                      placeholder={t('search_placeholder_short') as string}
+                      className="w-full px-2 py-1 rounded-lg bg-white/95 text-gray-900 text-xs placeholder-gray-400 border border-gray-300 shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -273,28 +277,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
             </button>
           ))}
           {/* Search */}
-          <div className="flex items-center ml-1 relative">
-            <AnimatePresence>
-              {searchOpen && (
-                <motion.input
-                  ref={searchInputRef}
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 200, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onBlur={handleSearchBlur}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder={t('search_placeholder_short') as string}
-                  className="px-3 py-1.5 rounded-lg bg-white/90 text-gray-900 text-sm placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 mr-1"
-                />
-              )}
-            </AnimatePresence>
+          <div className="relative">
             <button
               onClick={handleSearchToggle}
-              className={`p-2 rounded-lg transition-all duration-300 ${
+              className={`relative z-10 p-2 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
                   ? 'bg-purple-600 text-white animate-pulse'
                   : searchOpen
@@ -305,6 +291,28 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
             >
               <Search className="w-4 h-4" />
             </button>
+            <AnimatePresence>
+              {searchOpen && (
+                <motion.div
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 280, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  className="absolute right-10 top-1/2 -translate-y-1/2 overflow-hidden z-20"
+                >
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onBlur={handleSearchBlur}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder={t('search_placeholder_short') as string}
+                    className="w-full px-3 py-1.5 rounded-lg bg-white/95 text-gray-900 text-sm placeholder-gray-400 border border-gray-300 shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-400"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </motion.div>

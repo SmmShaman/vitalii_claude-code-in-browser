@@ -90,22 +90,10 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
             </button>
           ))}
           {/* Search */}
-          <div className="flex items-center ml-1 relative">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onBlur={handleSearchBlur}
-              onKeyDown={handleSearchKeyDown}
-              placeholder={t('search_placeholder_short') as string}
-              className={`transition-all duration-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 mr-1 ${
-                searchOpen ? 'w-36 sm:w-48 px-3 py-1.5 opacity-100' : 'w-0 px-0 py-1.5 opacity-0 border-transparent'
-              }`}
-            />
+          <div className="relative">
             <button
               onClick={handleSearchToggle}
-              className={`p-1.5 rounded-lg transition-all duration-300 ${
+              className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
                   ? 'bg-purple-600 text-white animate-pulse'
                   : searchOpen
@@ -116,6 +104,22 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
             >
               <Search className="w-3.5 h-3.5" />
             </button>
+            <div
+              className={`absolute right-8 top-1/2 -translate-y-1/2 overflow-hidden z-20 transition-all duration-300 ease-out ${
+                searchOpen ? 'w-36 sm:w-56 opacity-100' : 'w-0 opacity-0'
+              }`}
+            >
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={handleSearchBlur}
+                onKeyDown={handleSearchKeyDown}
+                placeholder={t('search_placeholder_short') as string}
+                className="w-full px-3 py-1.5 rounded-lg text-sm text-gray-900 placeholder-gray-400 border border-gray-200 shadow-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-400"
+              />
+            </div>
           </div>
         </div>
       </div>
