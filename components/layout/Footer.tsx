@@ -185,15 +185,15 @@ export const Footer = () => {
   const { userLocation, weather, distance, error } = footerData;
 
   // Text colors based on mobile/desktop
-  const textPrimary = isMobile ? 'text-[#C8C5D6]' : ''
-  const textSecondary = isMobile ? 'text-[#9B97B0]' : ''
-  const textAccent = isMobile ? 'text-[#EEEDF5]' : ''
-  const hoverBg = isMobile ? 'hover:bg-[#221F3A] active:bg-[#2D2A40]' : 'hover:bg-white/10 active:bg-white/20'
+  const textPrimary = isMobile ? 'text-gray-700' : ''
+  const textSecondary = isMobile ? 'text-gray-600' : ''
+  const textAccent = isMobile ? 'text-gray-900' : ''
+  const hoverBg = isMobile ? 'hover:bg-gray-100 active:bg-gray-200' : 'hover:bg-white/10 active:bg-white/20'
 
   // Desktop refined colors (Obsidian Prism)
-  const dPrimary = '#EEEDF5'
-  const dSecondary = '#9B97B0'
-  const dAccent = '#F59E0B'
+  const dPrimary = 'rgba(245, 243, 255, 0.95)'
+  const dSecondary = 'rgba(167, 160, 195, 0.8)'
+  const dAccent = '#fbbf24'
 
   return (
     <footer className="h-full w-full flex items-center overflow-y-auto">
@@ -204,11 +204,11 @@ export const Footer = () => {
         style={isMobile ? {
           background: 'transparent',
         } : {
-          background: 'linear-gradient(160deg, rgba(8, 7, 16, 0.95) 0%, rgba(10, 8, 18, 0.97) 50%, rgba(8, 7, 16, 0.95) 100%)',
+          background: 'linear-gradient(160deg, rgba(15, 15, 25, 0.88) 0%, rgba(25, 20, 45, 0.92) 50%, rgba(18, 12, 35, 0.9) 100%)',
           backdropFilter: 'blur(20px) saturate(1.2)',
           WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
-          border: '1px solid rgba(99, 102, 241, 0.1)',
-          boxShadow: '0 -1px 0 rgba(99, 102, 241, 0.08), 0 12px 40px rgba(0, 0, 0, 0.5)',
+          border: '1px solid rgba(167, 139, 250, 0.1)',
+          boxShadow: '0 -1px 0 rgba(167, 139, 250, 0.08), 0 12px 40px rgba(0, 0, 0, 0.4)',
         }}
       >
         <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
@@ -289,7 +289,7 @@ export const Footer = () => {
               <div
                 className="w-px h-5 mx-1.5"
                 style={!isMobile ? {
-                  background: 'linear-gradient(180deg, transparent 0%, rgba(99, 102, 241, 0.3) 50%, transparent 100%)',
+                  background: 'linear-gradient(180deg, transparent 0%, rgba(167, 139, 250, 0.4) 50%, transparent 100%)',
                 } : {
                   background: '#d1d5db',
                 }}
@@ -398,23 +398,23 @@ export const Footer = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-[#1A1730] rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#221F3A] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
                     <modalSocial.icon className="w-5 h-5" style={{ color: modalSocial.color }} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#EEEDF5]">{modalSocial.label}</h3>
-                    <p className="text-sm text-[#9B97B0]">{modalSocial.username}</p>
+                    <h3 className="font-bold text-gray-900">{modalSocial.label}</h3>
+                    <p className="text-sm text-gray-500">{modalSocial.username}</p>
                   </div>
                 </div>
                 <button
                   onClick={closeModal}
-                  className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -422,7 +422,7 @@ export const Footer = () => {
 
               {/* QR Code / Snapcode */}
               <div className="flex justify-center mb-4">
-                <div className={`${modalSocial.label === 'Snapchat' ? 'bg-[#FFFC00] p-2' : 'bg-[#221F3A] p-3'} rounded-xl shadow-inner border border-[#2D2A40]`}>
+                <div className={`${modalSocial.label === 'Snapchat' ? 'bg-[#FFFC00] p-2' : 'bg-white p-3'} rounded-xl shadow-inner border border-gray-100`}>
                   <img
                     src={modalSocial.label === 'Snapchat' ? '/snapcode.png' : `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(modalSocial.href)}&format=svg`}
                     alt={modalSocial.label === 'Snapchat' ? 'Snapcode' : `QR Code for ${modalSocial.label}`}
@@ -434,9 +434,9 @@ export const Footer = () => {
               </div>
 
               {/* URL Display */}
-              <div className="bg-[#221F3A] rounded-lg p-3 mb-4">
-                <p className="text-xs text-[#6B6680] mb-1">URL</p>
-                <p className="text-sm text-[#C8C5D6] font-mono break-all">{modalSocial.href}</p>
+              <div className="bg-gray-100 rounded-lg p-3 mb-4">
+                <p className="text-xs text-gray-500 mb-1">URL</p>
+                <p className="text-sm text-gray-800 font-mono break-all">{modalSocial.href}</p>
               </div>
 
               {/* Action Buttons */}
@@ -446,7 +446,7 @@ export const Footer = () => {
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
                     copied
                       ? 'bg-green-500 text-white'
-                      : 'bg-[#221F3A] text-[#C8C5D6] hover:bg-[#2D2A40]'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {copied ? (
@@ -465,7 +465,7 @@ export const Footer = () => {
                   href={modalSocial.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-[#6366F1] to-[#7C3AED] text-white hover:from-[#4F46E5] hover:to-[#6D28D9] transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open
@@ -491,22 +491,22 @@ export const Footer = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-[#1A1730] rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4"
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               {emailSent ? (
                 // Success state
                 <div className="text-center py-4">
-                  <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                     <Check className="w-8 h-8 text-green-500" />
                   </div>
-                  <h3 className="font-bold text-[#EEEDF5] text-lg mb-2">Message Sent!</h3>
-                  <p className="text-[#9B97B0] text-sm mb-4">
+                  <h3 className="font-bold text-gray-900 text-lg mb-2">Message Sent!</h3>
+                  <p className="text-gray-500 text-sm mb-4">
                     Thank you for your message. We will get back to you soon.
                   </p>
                   <button
                     onClick={closeEmailModal}
-                    className="px-6 py-2.5 rounded-lg font-medium bg-gradient-to-r from-[#6366F1] to-[#7C3AED] text-white hover:from-[#4F46E5] hover:to-[#6D28D9] transition-all"
+                    className="px-6 py-2.5 rounded-lg font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all"
                   >
                     Close
                   </button>
@@ -521,30 +521,30 @@ export const Footer = () => {
                         <Mail className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-[#EEEDF5]">Send Email</h3>
-                        <p className="text-sm text-[#9B97B0]">Contact Vitalii</p>
+                        <h3 className="font-bold text-gray-900">Send Email</h3>
+                        <p className="text-sm text-gray-500">Contact Vitalii</p>
                       </div>
                     </div>
                     <button
                       onClick={closeEmailModal}
-                      className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
                   </div>
 
                   {/* Email Address Display */}
-                  <div className="bg-[#221F3A] rounded-lg p-3 mb-4 flex items-center justify-between">
+                  <div className="bg-gray-100 rounded-lg p-3 mb-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-[#6B6680] mb-0.5">To:</p>
-                      <p className="text-sm text-[#C8C5D6] font-mono">{CONTACT_EMAIL}</p>
+                      <p className="text-xs text-gray-500 mb-0.5">To:</p>
+                      <p className="text-sm text-gray-800 font-mono">{CONTACT_EMAIL}</p>
                     </div>
                     <button
                       onClick={handleCopyEmail}
                       className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         emailCopied
                           ? 'bg-green-500 text-white'
-                          : 'bg-[#1A1730] text-[#9B97B0] hover:bg-[#221F3A] border border-[#2D2A40]'
+                          : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                       }`}
                     >
                       {emailCopied ? (
@@ -564,43 +564,43 @@ export const Footer = () => {
                   {/* Form */}
                   <div className="space-y-3 mb-4">
                     <div>
-                      <label className="block text-xs text-[#6B6680] mb-1">Your Email</label>
+                      <label className="block text-xs text-gray-500 mb-1">Your Email</label>
                       <input
                         type="email"
                         name="senderEmail"
                         value={emailForm.senderEmail}
                         onChange={handleEmailFormChange}
                         placeholder="your@email.com"
-                        className="w-full px-3 py-2 rounded-lg border border-[#2D2A40] bg-[#221F3A] text-[#EEEDF5] placeholder-[#6B6680] focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] outline-none transition-all text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-[#6B6680] mb-1">Subject</label>
+                      <label className="block text-xs text-gray-500 mb-1">Subject</label>
                       <input
                         type="text"
                         name="subject"
                         value={emailForm.subject}
                         onChange={handleEmailFormChange}
                         placeholder="What's this about?"
-                        className="w-full px-3 py-2 rounded-lg border border-[#2D2A40] bg-[#221F3A] text-[#EEEDF5] placeholder-[#6B6680] focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] outline-none transition-all text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-[#6B6680] mb-1">Message</label>
+                      <label className="block text-xs text-gray-500 mb-1">Message</label>
                       <textarea
                         name="message"
                         value={emailForm.message}
                         onChange={handleEmailFormChange}
                         placeholder="Write your message here..."
                         rows={4}
-                        className="w-full px-3 py-2 rounded-lg border border-[#2D2A40] bg-[#221F3A] text-[#EEEDF5] placeholder-[#6B6680] focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] outline-none transition-all text-sm resize-none"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm resize-none"
                       />
                     </div>
                   </div>
 
                   {/* Error Message */}
                   {emailError && (
-                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
                       {emailError}
                     </div>
                   )}
@@ -609,7 +609,7 @@ export const Footer = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={closeEmailModal}
-                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-[#221F3A] text-[#C8C5D6] hover:bg-[#2D2A40] transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
                     >
                       Cancel
                     </button>

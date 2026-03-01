@@ -10,7 +10,7 @@ export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-md bg-[#221F3A]',
+        'animate-pulse rounded-md bg-gray-200 dark:bg-gray-700',
         className
       )}
     />
@@ -22,7 +22,7 @@ export function ArticleSkeleton() {
   return (
     <div className="animate-pulse" role="status" aria-label="Loading article">
       {/* Hero skeleton — matches aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] */}
-      <div className="w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-[#1A1730]" />
+      <div className="w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-gray-200 dark:bg-gray-800" />
 
       {/* Content container — matches max-w-2xl */}
       <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
@@ -62,7 +62,7 @@ export function ArticleSkeleton() {
         <Skeleton className="h-12 w-48 rounded-lg mb-8" />
 
         {/* Share buttons skeleton */}
-        <div className="py-6 border-t border-[#2D2A40]">
+        <div className="py-6 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <Skeleton className="h-4 w-12" />
             <Skeleton className="h-10 w-10 rounded-lg" />
@@ -73,12 +73,12 @@ export function ArticleSkeleton() {
       </div>
 
       {/* Related section skeleton */}
-      <div className="bg-[#141225] py-12">
+      <div className="bg-gray-50 dark:bg-gray-900 py-12">
         <div className="max-w-5xl mx-auto px-4">
           <Skeleton className="h-8 w-48 mb-6" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-[#1A1730] rounded-xl overflow-hidden shadow-sm">
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm">
                 <Skeleton className="w-full aspect-video" />
                 <div className="p-4">
                   <Skeleton className="h-5 w-full mb-2" />
@@ -102,7 +102,7 @@ export function ArticleSkeleton() {
 // News card skeleton for list views
 export function NewsCardSkeleton() {
   return (
-    <div className="animate-pulse bg-[#1A1730] rounded-lg overflow-hidden border border-[#2D2A40]">
+    <div className="animate-pulse bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
       <Skeleton className="w-full h-48" />
       <div className="p-4">
         <Skeleton className="h-5 w-full mb-2" />

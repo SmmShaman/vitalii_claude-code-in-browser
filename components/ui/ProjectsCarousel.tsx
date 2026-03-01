@@ -262,7 +262,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
           pointerEvents: isExploding ? 'none' : 'auto',
         }}
       >
-        <div className="p-4 bg-[#1A1730] rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
+        <div className="p-4 bg-white rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
           {/* === IMPROVEMENT 5: Progress indicator bar === */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
             <div
@@ -277,14 +277,14 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
 
           <h4
             ref={titleRef}
-            className="font-bold text-[#EEEDF5] mb-2 mt-1"
+            className="font-bold text-gray-900 mb-2 mt-1"
             style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
           >
             {currentProject?.title}
           </h4>
           <p
             ref={descriptionRef}
-            className="text-[#C8C5D6]"
+            className="text-gray-800"
             style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}
           >
             {currentProject?.short}

@@ -101,7 +101,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
     >
       <Link
         href={href}
-        className="group block h-full rounded-xl overflow-hidden border border-[#2D2A40] bg-[#1A1730] hover:shadow-lg hover:border-[#3D3960] transition-all duration-300 hover:scale-[1.02]"
+        className="group block h-full rounded-xl overflow-hidden border border-gray-200 bg-white hover:shadow-lg hover:border-gray-300 transition-all duration-300 hover:scale-[1.02]"
       >
         {/* Image */}
         {imageUrl && size !== 'small' && (
@@ -116,7 +116,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {/* Type badge */}
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
+                isNews ? 'bg-purple-600/90' : 'bg-blue-600/90'
               }`}
             >
               {isNews ? 'News' : 'Blog'}
@@ -131,7 +131,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {isVideoThumbnail && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                 <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
-                  <div className="w-0 h-0 border-l-[14px] border-l-[#1A1730] border-y-[8px] border-y-transparent ml-1" />
+                  <div className="w-0 h-0 border-l-[14px] border-l-gray-800 border-y-[8px] border-y-transparent ml-1" />
                 </div>
               </div>
             )}
@@ -140,11 +140,11 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
 
         {/* Gradient placeholder for non-YouTube video articles without images */}
         {!imageUrl && result.video_url && size !== 'small' && (
-          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} bg-gradient-to-br from-[#1A1730] to-[#221F3A] flex items-center justify-center overflow-hidden`}>
-            <Video className="w-10 h-10 text-[#6B6680]" />
+          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden`}>
+            <Video className="w-10 h-10 text-gray-400" />
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
+                isNews ? 'bg-purple-600/90' : 'bg-blue-600/90'
               }`}
             >
               {isNews ? 'News' : 'Blog'}
@@ -158,7 +158,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
           {size === 'small' && (
             <div className="flex-shrink-0 mt-0.5">
               {isNews ? (
-                <Newspaper className="w-4 h-4 text-[#818CF8]" />
+                <Newspaper className="w-4 h-4 text-purple-500" />
               ) : (
                 <BookOpen className="w-4 h-4 text-blue-500" />
               )}
@@ -170,7 +170,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {!imageUrl && size !== 'small' && (
               <div
                 className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2 ${
-                  isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
+                  isNews ? 'bg-purple-600/90' : 'bg-blue-600/90'
                 }`}
               >
                 {isNews ? 'News' : 'Blog'}
@@ -178,7 +178,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             )}
 
             <h3
-              className={`font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors ${
+              className={`font-semibold text-gray-900 group-hover:text-purple-700 transition-colors ${
                 size === 'large' ? 'text-base sm:text-lg line-clamp-3' : 'text-sm line-clamp-2'
               }`}
             >
@@ -187,7 +187,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
 
             {/* Description for large cards */}
             {size === 'large' && result.description && (
-              <p className="text-xs text-[#9B97B0] mt-1 line-clamp-2">{result.description}</p>
+              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{result.description}</p>
             )}
 
             {/* Tags */}
@@ -196,7 +196,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
                 {result.tags.slice(0, 2).map((tag) => (
                   <span
                     key={tag}
-                    className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#221F3A] text-[#6B6680]"
+                    className="px-1.5 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-500"
                   >
                     #{tag}
                   </span>
@@ -205,7 +205,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             )}
 
             {/* Meta */}
-            <div className="flex items-center gap-2 mt-2 text-[10px] text-[#6B6680]">
+            <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400">
               {result.published_at && (
                 <span className="flex items-center gap-0.5">
                   <Calendar className="w-3 h-3" />

@@ -24,7 +24,7 @@ interface ScrollProgressIndicatorProps {
 }
 
 export function ScrollProgressIndicator({
-  color = '#818CF8',
+  color = '#0F4C81',
   height = 3,
   position = 'top',
   showPercentage = false

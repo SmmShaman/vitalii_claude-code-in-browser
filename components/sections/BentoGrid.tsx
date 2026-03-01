@@ -77,22 +77,22 @@ interface BentoGridProps {
 
 // Neon colors for each section - exported for use in background
 export const sectionNeonColors: { [key: string]: { primary: string; secondary: string } } = {
-  about: { primary: '#4F46E5', secondary: '#6366F1' },     // Indigo Flow
-  services: { primary: '#6366F1', secondary: '#818CF8' },   // Mid Indigo
-  projects: { primary: '#7C3AED', secondary: '#8B5CF6' },   // Violet accent
-  skills: { primary: '#221F3A', secondary: '#2D2A40' },     // Subtle elevation
-  news: { primary: '#4F46E5', secondary: '#7C3AED' },       // Indigo-Violet
-  blog: { primary: '#6366F1', secondary: '#4F46E5' },       // Reverse indigo
+  about: { primary: '#AF601A', secondary: '#c97a2e' }, // Насичений коричнево-оранжевий
+  services: { primary: '#EC008C', secondary: '#ff33a8' }, // Яскравий фуксієвий рожевий
+  projects: { primary: '#009B77', secondary: '#00c49a' }, // Emerald
+  skills: { primary: '#fde5e5', secondary: '#fdd5d5' }, // Light Pink
+  news: { primary: '#88B04B', secondary: '#a3c96a' }, // Greenery
+  blog: { primary: '#0F4C81', secondary: '#1a6bb3' }, // Classic Blue
 };
 
 // Контрастні кольори для Hero тексту (комплементарні пари для максимального контрасту)
 export const heroContrastColors: { [key: string]: string } = {
-  about: '#F59E0B',      // Warm Amber
-  services: '#FBBF24',   // Light Amber
-  projects: '#F59E0B',   // Warm Amber
-  skills: '#818CF8',     // Soft Indigo (cool-on-cool)
-  news: '#FBBF24',       // Light Amber
-  blog: '#F59E0B',       // Warm Amber
+  about: '#009B77',      // Teal/Cyan для коричнево-оранжевого
+  services: '#00FF80',   // Lime Green для фуксії
+  projects: '#FF4040',   // Vibrant Red для смарагдового
+  skills: '#0F4C81',     // Navy Blue для світло-рожевого
+  news: '#734BB0',       // Royal Purple для зеленого
+  blog: '#AF601A',       // Warm Orange для синього
 };
 
 // Opposite section mapping (kept for reference)
@@ -963,14 +963,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                       >
                         {/* Background - conditional based on section */}
                         {section.id === 'about' || section.id === 'services' || section.id === 'skills' ? (
-                          <div className="absolute inset-0 bg-[#1A1730]" />
+                          <div className="absolute inset-0 bg-white" />
                         ) : section.id === 'news' || section.id === 'blog' ? (
-                          <div className="absolute inset-0 bg-gradient-to-br from-[#141225] via-[#1A1730] to-[#141225]" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
                         ) : section.id === 'projects' ? (
                           <>
                             {/* White background layer - bottom - fades out when exploding */}
                             <div
-                              className="absolute inset-0 bg-[#1A1730]/85 z-0 transition-opacity duration-500"
+                              className="absolute inset-0 bg-white/85 z-0 transition-opacity duration-500"
                               style={{ opacity: isProjectsExploding ? 0 : 1 }}
                             />
                             {/* Project image layer - middle - fades out when exploding */}
@@ -1065,7 +1065,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         </div>
 
                         {/* Hover Effect Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-purple-500/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                       </motion.div>
                     );
                   })}

@@ -91,7 +91,7 @@ export const TypewriterText = ({
       const formattedLine = parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**')) {
           return (
-            <strong key={i} className="font-bold text-[#EEEDF5]">
+            <strong key={i} className="font-bold text-gray-900">
               {part.slice(2, -2)}
             </strong>
           );
@@ -130,7 +130,7 @@ export const TypewriterText = ({
       }}
     >
       <div
-        className="text-[#C8C5D6] leading-snug whitespace-pre-wrap break-words"
+        className="text-gray-800 leading-snug whitespace-pre-wrap break-words"
         style={{
           fontSize: 'clamp(0.7rem, 1.2vw, 1rem)',
           fontFamily: "'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
@@ -139,7 +139,7 @@ export const TypewriterText = ({
         {formatText(displayedText)}
         {showCursor && (
           <span
-            className="inline-block bg-[#818CF8] ml-0.5 sm:ml-1 animate-pulse"
+            className="inline-block bg-gray-800 ml-0.5 sm:ml-1 animate-pulse"
             style={{
               width: 'clamp(4px, 0.5vw, 8px)',
               height: 'clamp(10px, 1.5vw, 16px)'
