@@ -73,24 +73,10 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
           <span className="hidden sm:inline text-sm text-gray-500">{getBackLabel()}</span>
         </Link>
 
-        {/* Compact language switcher + search */}
+        {/* Search + language switcher */}
         <div className="flex items-center gap-1">
-          {languages.map((lang) => (
-            <button
-              key={lang}
-              onClick={() => setCurrentLanguage(lang)}
-              className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                currentLanguage === lang
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              aria-label={`Switch to ${lang}`}
-            >
-              {lang}
-            </button>
-          ))}
-          {/* Search */}
-          <div className="relative">
+          {/* Search — before lang buttons, expands right */}
+          <div className="relative z-20">
             <button
               onClick={handleSearchToggle}
               className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
@@ -105,8 +91,8 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
               <Search className="w-3.5 h-3.5" />
             </button>
             <div
-              className={`absolute right-8 top-1/2 -translate-y-1/2 overflow-hidden z-20 transition-all duration-300 ease-out ${
-                searchOpen ? 'w-36 sm:w-56 opacity-100' : 'w-0 opacity-0'
+              className={`absolute left-8 top-1/2 -translate-y-1/2 overflow-hidden transition-all duration-300 ease-out ${
+                searchOpen ? 'w-40 sm:w-56 opacity-100' : 'w-0 opacity-0'
               }`}
             >
               <input
@@ -121,6 +107,21 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
               />
             </div>
           </div>
+          {/* Language buttons */}
+          {languages.map((lang) => (
+            <button
+              key={lang}
+              onClick={() => setCurrentLanguage(lang)}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                currentLanguage === lang
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              aria-label={`Switch to ${lang}`}
+            >
+              {lang}
+            </button>
+          ))}
         </div>
       </div>
     </header>

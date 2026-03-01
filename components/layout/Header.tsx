@@ -132,23 +132,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {t('subtitle')}
             </p>
           </div>
-          {/* Compact language buttons + search */}
+          {/* Search + compact language buttons */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            {languages.map((lang) => (
-              <button
-                key={lang}
-                onClick={() => setCurrentLanguage(lang)}
-                className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
-                  currentLanguage === lang
-                    ? 'bg-gray-800/80 text-white'
-                    : 'bg-white/70 text-gray-700'
-                }`}
-              >
-                {lang}
-              </button>
-            ))}
-            {/* Search */}
-            <div className="relative">
+            {/* Search — before lang buttons, expands right */}
+            <div className="relative z-20">
               <button
                 onClick={handleSearchToggle}
                 className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
@@ -166,10 +153,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 {searchOpen && (
                   <motion.div
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 180, opacity: 1 }}
+                    animate={{ width: 160, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                    className="absolute right-8 top-1/2 -translate-y-1/2 overflow-hidden z-20"
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="absolute left-8 top-1/2 -translate-y-1/2 overflow-hidden"
                   >
                     <input
                       ref={searchInputRef}
@@ -185,6 +172,20 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 )}
               </AnimatePresence>
             </div>
+            {/* Language buttons */}
+            {languages.map((lang) => (
+              <button
+                key={lang}
+                onClick={() => setCurrentLanguage(lang)}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
+                  currentLanguage === lang
+                    ? 'bg-gray-800/80 text-white'
+                    : 'bg-white/70 text-gray-700'
+                }`}
+              >
+                {lang}
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -259,25 +260,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
           )}
         </motion.div>
 
-        {/* Language Switcher + Search */}
+        {/* Search + Language Switcher */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-4">
-          {languages.map((lang) => (
-            <button
-              key={lang}
-              onClick={() => setCurrentLanguage(lang)}
-              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-all duration-300 ${
-                currentLanguage === lang
-                  ? 'bg-gray-200/80 text-black border border-gray-300'
-                  : 'bg-white/70 text-black/70 hover:bg-white/90 hover:text-black border border-gray-200'
-              }`}
-              aria-label={`Switch to ${lang}`}
-            >
-              <Globe className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="font-semibold text-xs sm:text-sm">{lang}</span>
-            </button>
-          ))}
-          {/* Search */}
-          <div className="relative">
+          {/* Search — before lang buttons, input expands right */}
+          <div className="relative z-20">
             <button
               onClick={handleSearchToggle}
               className={`relative z-10 p-2 rounded-lg transition-all duration-300 ${
@@ -295,10 +281,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {searchOpen && (
                 <motion.div
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 280, opacity: 1 }}
+                  animate={{ width: 250, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className="absolute right-10 top-1/2 -translate-y-1/2 overflow-hidden z-20"
+                  className="absolute left-10 top-1/2 -translate-y-1/2 overflow-hidden"
                 >
                   <input
                     ref={searchInputRef}
@@ -314,6 +300,22 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               )}
             </AnimatePresence>
           </div>
+          {/* Language buttons */}
+          {languages.map((lang) => (
+            <button
+              key={lang}
+              onClick={() => setCurrentLanguage(lang)}
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-all duration-300 ${
+                currentLanguage === lang
+                  ? 'bg-gray-200/80 text-black border border-gray-300'
+                  : 'bg-white/70 text-black/70 hover:bg-white/90 hover:text-black border border-gray-200'
+              }`}
+              aria-label={`Switch to ${lang}`}
+            >
+              <Globe className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="font-semibold text-xs sm:text-sm">{lang}</span>
+            </button>
+          ))}
         </div>
       </motion.div>
     </header>
