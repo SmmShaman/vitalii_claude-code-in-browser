@@ -80,7 +80,7 @@ export const sectionNeonColors: { [key: string]: { primary: string; secondary: s
   about: { primary: '#AF601A', secondary: '#c97a2e' }, // Насичений коричнево-оранжевий
   services: { primary: '#EC008C', secondary: '#ff33a8' }, // Яскравий фуксієвий рожевий
   projects: { primary: '#009B77', secondary: '#00c49a' }, // Emerald
-  skills: { primary: '#fde5e5', secondary: '#fdd5d5' }, // Light Pink
+  skills: { primary: '#F5A0C0', secondary: '#F0B0D0' }, // Rose Pink (підсилений для темного фону)
   news: { primary: '#88B04B', secondary: '#a3c96a' }, // Greenery
   blog: { primary: '#0F4C81', secondary: '#1a6bb3' }, // Classic Blue
 };
@@ -963,14 +963,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                       >
                         {/* Background - conditional based on section */}
                         {section.id === 'about' || section.id === 'services' || section.id === 'skills' ? (
-                          <div className="absolute inset-0 bg-white" />
+                          <div className="absolute inset-0 bg-[#1A1730]" />
                         ) : section.id === 'news' || section.id === 'blog' ? (
-                          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-[#1A1730] via-[#1A1730] to-[#221F3A]" />
                         ) : section.id === 'projects' ? (
                           <>
                             {/* White background layer - bottom - fades out when exploding */}
                             <div
-                              className="absolute inset-0 bg-white/85 z-0 transition-opacity duration-500"
+                              className="absolute inset-0 bg-[#1A1730]/85 z-0 transition-opacity duration-500"
                               style={{ opacity: isProjectsExploding ? 0 : 1 }}
                             />
                             {/* Project image layer - middle - fades out when exploding */}

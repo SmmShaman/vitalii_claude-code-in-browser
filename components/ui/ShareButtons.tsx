@@ -50,7 +50,7 @@ export function ShareButtons({ url, title, description }: ShareButtonsProps) {
 
   return (
     <div className="flex items-center gap-2" role="group" aria-label="Share options">
-      <span className="text-sm text-gray-500 mr-2">Share:</span>
+      <span className="text-sm text-[#9B97B0] mr-2">Share:</span>
 
       <button
         onClick={shareOnLinkedIn}
@@ -75,7 +75,7 @@ export function ShareButtons({ url, title, description }: ShareButtonsProps) {
         className={`p-2.5 rounded-lg transition-all focus:ring-2 focus:ring-offset-2 ${
           copied
             ? 'bg-green-500 text-white focus:ring-green-500'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 focus:ring-gray-400'
+            : 'bg-[#1A1730] text-[#9B97B0] hover:bg-[#221F3A] focus:ring-[#6366F1]'
         }`}
         aria-label={copied ? 'Link copied' : 'Copy link to clipboard'}
         title={copied ? 'Copied!' : 'Copy link'}

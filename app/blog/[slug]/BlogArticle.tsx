@@ -126,9 +126,9 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
 
   if (!post) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-gray-900">
+      <div className="flex flex-col items-center justify-center py-20 text-[#EEEDF5]">
         <h1 className="text-2xl font-bold mb-4">Blog Post Not Found</h1>
-        <Link href="/" className="text-blue-600 hover:text-blue-500">
+        <Link href="/" className="text-[#818CF8] hover:text-[#818CF8]">
           Back to Home
         </Link>
       </div>
@@ -151,7 +151,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           itemScope
           itemType="https://schema.org/BreadcrumbList"
         >
-          <ol className="flex items-center gap-2 text-sm text-gray-600">
+          <ol className="flex items-center gap-2 text-sm text-[#9B97B0]">
             <li
               itemProp="itemListElement"
               itemScope
@@ -161,14 +161,14 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               <Link
                 href="/"
                 itemProp="item"
-                className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+                className="flex items-center gap-1.5 hover:text-[#818CF8] transition-colors"
               >
                 <Home className="w-4 h-4" />
                 <span itemProp="name">Home</span>
               </Link>
               <meta itemProp="position" content="1" />
             </li>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="w-4 h-4 text-[#6B6680]" />
             <li
               itemProp="itemListElement"
               itemScope
@@ -178,7 +178,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               <Link
                 href="/#blog"
                 itemProp="item"
-                className="hover:text-blue-600 transition-colors"
+                className="hover:text-[#818CF8] transition-colors"
               >
                 <span itemProp="name">Blog</span>
               </Link>
@@ -186,21 +186,21 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
             </li>
             {post.category && (
               <>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <ChevronRight className="w-4 h-4 text-[#6B6680]" />
                 <li
                   itemProp="itemListElement"
                   itemScope
                   itemType="https://schema.org/ListItem"
                   className="flex items-center"
                 >
-                  <span itemProp="name" className="text-blue-600">
+                  <span itemProp="name" className="text-[#818CF8]">
                     {post.category}
                   </span>
                   <meta itemProp="position" content="3" />
                 </li>
               </>
             )}
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="w-4 h-4 text-[#6B6680]" />
             <li
               itemProp="itemListElement"
               itemScope
@@ -209,7 +209,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
             >
               <span
                 itemProp="name"
-                className="text-gray-900 font-medium truncate max-w-[200px] sm:max-w-[300px]"
+                className="text-[#EEEDF5] font-medium truncate max-w-[200px] sm:max-w-[300px]"
                 title={title}
               >
                 {title}
@@ -224,7 +224,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           <button
             type="button"
             onClick={() => handleImageClick(heroImage)}
-            className="relative w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-gray-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="relative w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-[#221F3A] cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:ring-offset-2"
             aria-label={`View ${title} image in fullscreen`}
           >
             <Image
@@ -241,7 +241,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
             {/* Category badge on hero */}
             {post.category && (
               <div className="absolute top-4 left-4 md:top-6 md:left-6 pointer-events-none">
-                <span className="px-3 py-1.5 bg-blue-600 text-white rounded-full text-sm font-medium shadow-lg">
+                <span className="px-3 py-1.5 bg-[#6366F1] text-white rounded-full text-sm font-medium shadow-lg">
                   {post.category}
                 </span>
               </div>
@@ -287,7 +287,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   key={index}
                   type="button"
                   onClick={() => handleImageClick(img.src!)}
-                  className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  className="relative aspect-[4/3] bg-[#221F3A] rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
                 >
                   <Image
                     src={img.src!}
@@ -306,16 +306,16 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
         <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
           {/* Title FIRST (editorial standard) */}
           <ScrollReveal delay={0.1}>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#EEEDF5] mb-4 leading-tight">
               {title}
             </h1>
           </ScrollReveal>
 
           {/* Meta info AFTER title */}
           <ScrollReveal delay={0.15}>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-6">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-[#9B97B0] mb-6">
               {post.category && !heroImage && (
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+                <span className="px-3 py-1 bg-[#221F3A] text-[#818CF8] rounded-full font-medium">
                   {post.category}
                 </span>
               )}
@@ -348,7 +348,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   <Link
                     key={tag}
                     href={`/search?tag=${encodeURIComponent(tag)}`}
-                    className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                    className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#221F3A] hover:text-[#818CF8] transition-colors"
                   >
                     #{tag}
                   </Link>
@@ -364,8 +364,8 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                 <button
                   type="button"
                   onClick={() => handleImageClick(originalImage)}
-                  className="relative w-full overflow-hidden rounded-xl bg-gray-100 cursor-zoom-in
-                             hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="relative w-full overflow-hidden rounded-xl bg-[#221F3A] cursor-zoom-in
+                             hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
                 >
                   <Image
                     src={originalImage}
@@ -390,37 +390,37 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                     a: ({ href, children }) => {
                       const isInternal = href?.startsWith('/news/') || href?.startsWith('/blog/')
                       if (isInternal && href) {
-                        return <Link href={href} className="text-blue-600 hover:text-blue-800 underline">{children}</Link>
+                        return <Link href={href} className="text-[#818CF8] hover:text-[#A5B4FC] underline">{children}</Link>
                       }
                       return (
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#818CF8] hover:text-[#A5B4FC] underline">
                           {children}
                         </a>
                       )
                     },
                     p: ({ children }) => (
-                      <p className="text-gray-700 leading-relaxed text-lg mb-4">{children}</p>
+                      <p className="text-[#C8C5D6] leading-relaxed text-lg mb-4">{children}</p>
                     ),
                     strong: ({ children }) => (
                       <strong className="font-semibold">{children}</strong>
                     ),
                     ul: ({ children }) => (
-                      <ul className="list-disc list-inside mb-4 space-y-1 text-gray-700">{children}</ul>
+                      <ul className="list-disc list-inside mb-4 space-y-1 text-[#C8C5D6]">{children}</ul>
                     ),
                     ol: ({ children }) => (
-                      <ol className="list-decimal list-inside mb-4 space-y-1 text-gray-700">{children}</ol>
+                      <ol className="list-decimal list-inside mb-4 space-y-1 text-[#C8C5D6]">{children}</ol>
                     ),
                     li: ({ children }) => (
-                      <li className="text-gray-700">{children}</li>
+                      <li className="text-[#C8C5D6]">{children}</li>
                     ),
                     h1: ({ children }) => (
-                      <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-4">{children}</h1>
+                      <h1 className="text-2xl font-bold text-[#EEEDF5] mt-6 mb-4">{children}</h1>
                     ),
                     h2: ({ children }) => (
-                      <h2 className="text-xl font-bold text-gray-900 mt-5 mb-3">{children}</h2>
+                      <h2 className="text-xl font-bold text-[#EEEDF5] mt-5 mb-3">{children}</h2>
                     ),
                     h3: ({ children }) => (
-                      <h3 className="text-lg font-semibold text-gray-900 mt-4 mb-2">{children}</h3>
+                      <h3 className="text-lg font-semibold text-[#EEEDF5] mt-4 mb-2">{children}</h3>
                     ),
                     img: ({ src, alt }) => {
                       const imgSrc = typeof src === 'string' ? src : ''
@@ -428,7 +428,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                         <button
                           type="button"
                           onClick={() => imgSrc && handleImageClick(imgSrc)}
-                          className="block w-full my-4 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg overflow-hidden"
+                          className="block w-full my-4 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:ring-offset-2 rounded-lg overflow-hidden"
                           aria-label={`View ${alt || 'image'} in fullscreen`}
                         >
                           <Image
@@ -463,7 +463,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                         key={index}
                         type="button"
                         onClick={() => handleImageClick(img.src!)}
-                        className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="relative aspect-[4/3] bg-[#221F3A] rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
                       >
                         <Image
                           src={img.src!}
@@ -484,8 +484,8 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           {(post.source_links?.length > 0 || post.original_url) && (
             <ScrollReveal delay={0.5}>
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <ExternalLink className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-[#EEEDF5] mb-3 flex items-center gap-2">
+                  <ExternalLink className="w-5 h-5 text-[#818CF8]" />
                   Resources
                 </h2>
                 <div className="flex flex-wrap gap-3">
@@ -502,7 +502,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                           href={link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-700 rounded-lg transition-colors text-sm font-medium"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#221F3A] hover:bg-[#221F3A] text-[#C8C5D6] hover:text-[#818CF8] rounded-lg transition-colors text-sm font-medium"
                         >
                           <ExternalLink className="w-4 h-4" />
                           {hostname}
@@ -515,7 +515,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                       href={post.original_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-lg transition-colors font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
                       Read Original Article
@@ -530,7 +530,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           <ScrollReveal delay={0.6}>
             <section aria-labelledby="share-section">
               <h2 id="share-section" className="sr-only">Share this article</h2>
-              <div className="py-6 border-t border-gray-200">
+              <div className="py-6 border-t border-[#2D2A40]">
                 <ShareButtons
                   url={`/blog/${currentSlug}`}
                   title={title}
@@ -543,9 +543,9 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
 
         {/* Related Posts - Full width background */}
         {relatedPosts.length > 0 && (
-          <div className="bg-gray-50 py-12">
+          <div className="bg-[#141225] py-12">
             <div className="max-w-5xl mx-auto px-4">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Articles</h2>
+              <h2 className="text-2xl font-bold text-[#EEEDF5] mb-6">Related Articles</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {relatedPosts.map((relatedPost) => {
                   const relatedTitle = relatedPost[`title_${lang}`] || relatedPost.title_en
@@ -556,7 +556,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                     <Link
                       key={relatedPost.id}
                       href={`/blog/${relatedSlug}`}
-                      className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                      className="group bg-[#1A1730] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                     >
                       {relatedImage && (
                         <div className="relative w-full aspect-video overflow-hidden">
@@ -570,7 +570,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                         </div>
                       )}
                       <div className="p-4">
-                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                        <h3 className="font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors line-clamp-2">
                           {relatedTitle}
                         </h3>
                         {relatedPost.tags && relatedPost.tags.length > 0 && (
@@ -578,7 +578,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                             {relatedPost.tags.slice(0, 2).map((tag: string) => (
                               <span
                                 key={tag}
-                                className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full"
+                                className="text-xs px-2 py-0.5 bg-[#221F3A] text-[#9B97B0] rounded-full"
                               >
                                 #{tag}
                               </span>
@@ -616,8 +616,8 @@ function TelegramVideoPlaceholder({ url }: { url: string }) {
   return (
     <div className="w-full h-full bg-gradient-to-br from-[#2AABEE] to-[#229ED9] flex flex-col items-center justify-center relative overflow-hidden">
       <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-white/20" />
-        <div className="absolute bottom-8 right-8 w-32 h-32 rounded-full bg-white/10" />
+        <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-[#1A1730]/20" />
+        <div className="absolute bottom-8 right-8 w-32 h-32 rounded-full bg-[#1A1730]/10" />
       </div>
       <div className="relative z-10 mb-4">
         <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">

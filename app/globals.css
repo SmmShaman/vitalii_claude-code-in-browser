@@ -15,7 +15,7 @@
 @layer base {
   /* Focus Visible Styles - WCAG 2.4.7 */
   :focus-visible {
-    outline: 3px solid #005fcc;
+    outline: 3px solid #818CF8;
     outline-offset: 2px;
   }
 
@@ -31,7 +31,7 @@
   }
 
   body {
-    @apply bg-gray-200 text-foreground;
+    @apply bg-[#0F0D1A] text-foreground;
     margin: 0;
     padding: 0;
     /* Allow body to grow with content - min-height instead of fixed height */
@@ -128,15 +128,15 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(102, 126, 234, 0.5);
+  background: rgba(99, 102, 241, 0.4);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(102, 126, 234, 0.7);
+  background: rgba(99, 102, 241, 0.6);
 }

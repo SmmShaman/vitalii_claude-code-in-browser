@@ -122,7 +122,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {t('title')}
             </h1>
             <p
-              className="text-gray-700 font-comfortaa mt-0.5"
+              className="text-[#C8C5D6] font-comfortaa mt-0.5"
               style={{
                 fontSize: '0.75rem',
                 fontWeight: '600',
@@ -140,10 +140,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={handleSearchToggle}
                 className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                   searchQuery.trim()
-                    ? 'bg-purple-600 text-white animate-pulse'
+                    ? 'bg-[#6366F1] text-white animate-pulse'
                     : searchOpen
-                      ? 'bg-white/80 text-gray-700'
-                      : 'bg-white/70 text-gray-500'
+                      ? 'bg-[#1A1730]/80 text-[#C8C5D6]'
+                      : 'bg-[#1A1730]/70 text-[#9B97B0]'
                 }`}
                 aria-label="Search"
               >
@@ -166,7 +166,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                       onBlur={handleSearchBlur}
                       onKeyDown={handleSearchKeyDown}
                       placeholder={t('search_placeholder_short') as string}
-                      className="w-full px-2 py-1 rounded-lg bg-white/95 text-gray-900 text-xs placeholder-gray-400 border border-gray-300 shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                      className="w-full px-2 py-1 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-xs placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]/40"
                     />
                   </motion.div>
                 )}
@@ -179,8 +179,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={() => setCurrentLanguage(lang)}
                 className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
                   currentLanguage === lang
-                    ? 'bg-gray-800/80 text-white'
-                    : 'bg-white/70 text-gray-700'
+                    ? 'bg-[#6366F1]/80 text-white'
+                    : 'bg-[#1A1730]/70 text-[#C8C5D6]'
                 }`}
               >
                 {lang}
@@ -268,10 +268,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={handleSearchToggle}
               className={`relative z-10 p-2 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
-                  ? 'bg-purple-600 text-white animate-pulse'
+                  ? 'bg-[#6366F1] text-white animate-pulse'
                   : searchOpen
-                    ? 'bg-white/80 text-gray-700'
-                    : 'bg-white/70 text-gray-500 hover:bg-white/90'
+                    ? 'bg-[#1A1730]/80 text-[#C8C5D6]'
+                    : 'bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90'
               }`}
               aria-label="Search"
             >
@@ -294,7 +294,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                     onBlur={handleSearchBlur}
                     onKeyDown={handleSearchKeyDown}
                     placeholder={t('search_placeholder_short') as string}
-                    className="w-full px-3 py-1.5 rounded-lg bg-white/95 text-gray-900 text-sm placeholder-gray-400 border border-gray-300 shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-400"
+                    className="w-full px-3 py-1.5 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-sm placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]/40 focus:border-[#6366F1]"
                   />
                 </motion.div>
               )}
@@ -307,8 +307,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={() => setCurrentLanguage(lang)}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-all duration-300 ${
                 currentLanguage === lang
-                  ? 'bg-gray-200/80 text-black border border-gray-300'
-                  : 'bg-white/70 text-black/70 hover:bg-white/90 hover:text-black border border-gray-200'
+                  ? 'bg-[#221F3A]/80 text-[#EEEDF5] border border-[#2D2A40]'
+                  : 'bg-[#1A1730]/70 text-[#C8C5D6] hover:bg-[#1A1730]/90 hover:text-[#EEEDF5] border border-[#2D2A40]'
               }`}
               aria-label={`Switch to ${lang}`}
             >

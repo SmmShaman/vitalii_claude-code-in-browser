@@ -49,9 +49,9 @@ export const BottomNavigation = ({ activeSection, onSectionChange }: BottomNavig
     >
       {/* Glassmorphism container */}
       <div
-        className="mx-auto max-w-md rounded-2xl border border-white/20 shadow-lg"
+        className="mx-auto max-w-md rounded-2xl border border-[#2D2A40] shadow-lg"
         style={{
-          background: 'rgba(255, 255, 255, 0.85)',
+          background: 'rgba(15, 13, 26, 0.85)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
         }}

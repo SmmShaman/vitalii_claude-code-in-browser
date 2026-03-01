@@ -24,7 +24,7 @@ interface ScrollProgressIndicatorProps {
 }
 
 export function ScrollProgressIndicator({
-  color = '#0F4C81',
+  color = '#818CF8',
   height = 3,
   position = 'top',
   showPercentage = false
@@ -55,7 +55,7 @@ export function ScrollProgressIndicator({
         }`}
         style={{
           height: `${height}px`,
-          backgroundColor: 'rgba(0, 0, 0, 0.1)'
+          backgroundColor: 'rgba(255, 255, 255, 0.1)'
         }}
       >
         <motion.div
@@ -95,7 +95,7 @@ export function SectionedScrollProgress({ sections, activeSection }: SectionedPr
   const segmentWidth = 100 / sections.length
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200/30 flex">
+    <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-[#221F3A]/30 flex">
       {sections.map((section, index) => (
         <div
           key={section.id}

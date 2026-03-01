@@ -22,34 +22,34 @@ interface SkillsAnimationProps {
 // Color mapping for skill categories
 const categoryColors: Record<string, { bg: string; text: string; hover: string }> = {
   development: {
-    bg: 'bg-green-100',
-    text: 'text-green-800',
-    hover: 'hover:bg-green-200'
+    bg: 'bg-green-900/30',
+    text: 'text-green-400',
+    hover: 'hover:bg-green-800/40'
   },
   ui: {
-    bg: 'bg-purple-100',
-    text: 'text-purple-800',
-    hover: 'hover:bg-purple-200'
+    bg: 'bg-purple-900/30',
+    text: 'text-purple-400',
+    hover: 'hover:bg-purple-800/40'
   },
   ai: {
-    bg: 'bg-orange-100',
-    text: 'text-orange-800',
-    hover: 'hover:bg-orange-200'
+    bg: 'bg-orange-900/30',
+    text: 'text-orange-400',
+    hover: 'hover:bg-orange-800/40'
   },
   automation: {
-    bg: 'bg-blue-100',
-    text: 'text-blue-800',
-    hover: 'hover:bg-blue-200'
+    bg: 'bg-blue-900/30',
+    text: 'text-blue-400',
+    hover: 'hover:bg-blue-800/40'
   },
   marketing: {
-    bg: 'bg-pink-100',
-    text: 'text-pink-800',
-    hover: 'hover:bg-pink-200'
+    bg: 'bg-pink-900/30',
+    text: 'text-pink-400',
+    hover: 'hover:bg-pink-800/40'
   },
   integration: {
-    bg: 'bg-cyan-100',
-    text: 'text-cyan-800',
-    hover: 'hover:bg-cyan-200'
+    bg: 'bg-cyan-900/30',
+    text: 'text-cyan-400',
+    hover: 'hover:bg-cyan-800/40'
   },
 };
 
@@ -225,7 +225,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                     alt={skill.name}
                     className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-contain"
                     style={{
-                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))'
                     }}
                     onLoad={() => index === 0 && debugLog('✅ First logo image loaded')}
                     onError={() => debugError(`❌ Logo failed to load: ${skill.name}`)}
@@ -244,7 +244,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
         {/* Background text */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
           <h2
-            className="font-bold text-white/10 select-none text-center"
+            className="font-bold text-white/5 select-none text-center"
             style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)' }}
           >
             {backgroundText}

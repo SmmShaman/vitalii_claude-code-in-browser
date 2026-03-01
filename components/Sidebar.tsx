@@ -72,17 +72,17 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
     <aside className="w-full lg:w-80 xl:w-96 flex-shrink-0">
       <div className="sticky top-8 space-y-6">
         {/* About Me Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-[#1A1730] rounded-2xl p-6 shadow-sm border border-[#2D2A40]">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
               <User className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Vitalii Berbeha</h3>
-              <p className="text-sm text-gray-500">Marketing & Analytics Expert</p>
+              <h3 className="font-bold text-[#EEEDF5]">Vitalii Berbeha</h3>
+              <p className="text-sm text-[#9B97B0]">Marketing & Analytics Expert</p>
             </div>
           </div>
-          <p className="text-sm text-gray-600 leading-relaxed mb-4">
+          <p className="text-sm text-[#9B97B0] leading-relaxed mb-4">
             {currentLanguage === 'UA'
               ? 'Допомагаю організаціям зростати через дані, автоматизацію та AI. Творець Elvarika.'
               : currentLanguage === 'NO'
@@ -91,7 +91,7 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#818CF8] hover:text-[#A5B4FC] transition-colors"
           >
             {currentLanguage === 'UA' ? 'Дізнатись більше' : currentLanguage === 'NO' ? 'Les mer' : 'Learn more'}
             <ArrowRight className="w-4 h-4" />
@@ -100,8 +100,8 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
 
         {/* Related Articles (same type) */}
         {relatedItems.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-[#1A1730] rounded-2xl p-6 shadow-sm border border-[#2D2A40]">
+            <h3 className="font-bold text-[#EEEDF5] mb-4 flex items-center gap-2">
               {currentType === 'news' ? '📰' : '📝'}
               {currentType === 'news'
                 ? (currentLanguage === 'UA' ? 'Більше новин' : currentLanguage === 'NO' ? 'Flere nyheter' : 'More News')
@@ -116,7 +116,7 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
                 >
                   <article className="flex gap-3">
                     {item.image_url && (
-                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[#221F3A]">
                         <img
                           src={item.image_url}
                           alt=""
@@ -125,11 +125,11 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                      <h4 className="text-sm font-medium text-[#EEEDF5] line-clamp-2 group-hover:text-[#818CF8] transition-colors">
                         {getTitle(item)}
                       </h4>
                       {item.published_at && (
-                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <p className="text-xs text-[#9B97B0] mt-1 flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {formatDate(item.published_at)}
                         </p>
@@ -144,8 +144,8 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
 
         {/* Other Type Articles */}
         {otherTypeItems.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-[#1A1730] rounded-2xl p-6 shadow-sm border border-[#2D2A40]">
+            <h3 className="font-bold text-[#EEEDF5] mb-4 flex items-center gap-2">
               {currentType === 'news' ? '📝' : '📰'}
               {currentType === 'news'
                 ? (currentLanguage === 'UA' ? 'З блогу' : currentLanguage === 'NO' ? 'Fra bloggen' : 'From the Blog')
@@ -158,7 +158,7 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
                   href={`/${currentType === 'news' ? 'blog' : 'news'}/${getSlug(item)}`}
                   className="block group"
                 >
-                  <h4 className="text-sm text-gray-700 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                  <h4 className="text-sm text-[#C8C5D6] line-clamp-2 group-hover:text-[#818CF8] transition-colors">
                     {getTitle(item)}
                   </h4>
                 </Link>
@@ -168,8 +168,8 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
         )}
 
         {/* Skills Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-[#1A1730] rounded-2xl p-6 shadow-sm border border-[#2D2A40]">
+          <h3 className="font-bold text-[#EEEDF5] mb-4 flex items-center gap-2">
             🏷️ {currentLanguage === 'UA' ? 'Навички' : currentLanguage === 'NO' ? 'Ferdigheter' : 'Skills'}
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -191,7 +191,7 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
         <div className="text-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-medium"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#6366F1] text-white rounded-xl hover:bg-[#4F46E5] transition-colors font-medium"
           >
             {currentLanguage === 'UA' ? '← На головну' : currentLanguage === 'NO' ? '← Til forsiden' : '← Back to Home'}
           </Link>

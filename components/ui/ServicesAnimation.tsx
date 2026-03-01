@@ -411,7 +411,7 @@ export const ServicesAnimation = ({ services, currentLanguage = 'EN' }: Services
                 style={{
                   fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
                   fontWeight: 900,
-                  color: '#1a1a1a',
+                  color: '#EEEDF5',
                   lineHeight: 1.3,
                   wordBreak: 'normal',
                   overflowWrap: 'normal',

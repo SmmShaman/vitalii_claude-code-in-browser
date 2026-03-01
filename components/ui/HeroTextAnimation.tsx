@@ -116,7 +116,7 @@ export const HeroTextAnimation = ({
           fontSize,
           fontWeight,
           color: 'transparent',
-          WebkitTextStroke: '0.5px rgba(0, 0, 0, 0.4)',
+          WebkitTextStroke: '0.5px rgba(255, 255, 255, 0.15)',
         }}
       >
         {text}
@@ -129,7 +129,7 @@ export const HeroTextAnimation = ({
           fontSize,
           fontWeight,
           color: fillColor || 'transparent',
-          WebkitTextStroke: fillColor ? '0.5px rgba(0, 0, 0, 0.3)' : 'none',
+          WebkitTextStroke: fillColor ? '0.5px rgba(255, 255, 255, 0.1)' : 'none',
           clipPath: getWaveClipPath(),
           textShadow: fillColor ? `0 0 10px ${fillColor}50` : 'none',
           transition: 'color 300ms ease-out',
