@@ -60,7 +60,7 @@ export default function HomePage() {
   const currentNeonColor = getCurrentColor()
 
   return (
-    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'overflow-hidden bg-gray-50' : 'p-4 sm:p-6 lg:p-8 pb-3 sm:pb-4 overflow-hidden'}`}>
+    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'overflow-hidden bg-gray-50' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
       {/* Structured Data for SEO */}
       <script
         type="application/ld+json"
@@ -84,12 +84,12 @@ export default function HomePage() {
       {showParticles && <ParticlesBackground />}
 
       {/* Header - Smaller on mobile */}
-      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'p-4 pb-2.5' : 'mb-4 sm:mb-6'}`}>
+      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'p-3 pb-2' : 'mb-3 sm:mb-5'}`}>
         <Header hoveredSection={hoveredSection} />
       </div>
 
       {/* Main Content - Different layouts for mobile/desktop */}
-      <main id="main-content" className={`relative z-10 ${isMobile ? 'flex-1 min-h-0 px-3' : 'flex-1 min-h-0 overflow-hidden'}`}>
+      <main id="main-content" className={`relative z-10 ${isMobile ? 'flex-1 min-h-0 px-2' : 'flex-1 min-h-0 overflow-hidden'}`}>
         {isMobile ? (
           <BentoGridMobile onHoveredSectionChange={handleSectionChange} />
         ) : (
@@ -99,7 +99,7 @@ export default function HomePage() {
 
       {/* Footer - Only show on desktop, mobile has BottomNavigation */}
       {!isMobile && (
-        <div className="flex-shrink-0 relative z-20 mt-4 sm:mt-6">
+        <div className="flex-shrink-0 relative z-20 mt-3 sm:mt-4">
           <Footer />
         </div>
       )}

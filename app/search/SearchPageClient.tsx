@@ -162,7 +162,7 @@ function SearchPageInner() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       {/* Header */}
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
         {t('search_title')}
@@ -265,7 +265,7 @@ function SearchPageInner() {
 // Skeleton for Suspense fallback
 function SearchSkeleton() {
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       <div className="h-9 w-32 bg-gray-200 rounded-lg mb-6 animate-pulse" />
       <div className="h-12 w-full bg-gray-200 rounded-xl mb-4 animate-pulse" />
       <div className="flex gap-2 mb-6">
