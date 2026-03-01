@@ -207,8 +207,8 @@ const BlogSectionComponent = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="text-sm text-muted-foreground">{t('blog_loading')}</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#818CF8]"></div>
+          <p className="text-sm text-[#9B97B0]">{t('blog_loading')}</p>
         </div>
       </div>
     );
@@ -218,7 +218,7 @@ const BlogSectionComponent = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground">{t('blog_no_posts')}</p>
+          <p className="text-[#9B97B0]">{t('blog_no_posts')}</p>
         </div>
       </div>
     );
@@ -235,7 +235,7 @@ const BlogSectionComponent = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onBack}
-            className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+            className="flex items-center gap-2 text-[#818CF8] hover:text-[#818CF8]/80 transition-colors"
           >
             <ChevronLeft className="h-5 w-5" />
             <span className="font-medium">Back to blog</span>
@@ -244,7 +244,7 @@ const BlogSectionComponent = ({
 
         {loadingDetail ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#818CF8]"></div>
           </div>
         ) : (
           <motion.div
@@ -255,19 +255,19 @@ const BlogSectionComponent = ({
             {/* Category Badge */}
             {content.category && (
               <div className="mb-4">
-                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                <span className="px-3 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-sm font-medium">
                   {content.category}
                 </span>
               </div>
             )}
 
             {/* Title */}
-            <h1 className="text-4xl font-bold mb-4 text-foreground">
+            <h1 className="text-4xl font-bold mb-4 text-[#EEEDF5]">
               {content.title}
             </h1>
 
             {/* Meta */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6 pb-6 border-b">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-[#9B97B0] mb-6 pb-6 border-b">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 <span>{selectedPost.published_at ? formatDate(selectedPost.published_at) : ''}</span>
@@ -282,7 +282,7 @@ const BlogSectionComponent = ({
                   {selectedPost.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
+                      className="px-2 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-xs"
                     >
                       {tag}
                     </span>
@@ -292,7 +292,7 @@ const BlogSectionComponent = ({
             </div>
 
             {/* Content */}
-            <div className="prose prose-lg dark:prose-invert max-w-none mb-6 text-foreground">
+            <div className="prose prose-lg prose-invert max-w-none mb-6 text-[#EEEDF5]">
               <p className="whitespace-pre-wrap leading-relaxed">{content.content}</p>
             </div>
 
@@ -302,7 +302,7 @@ const BlogSectionComponent = ({
                 href={(selectedPost as any).original_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-primary hover:underline font-medium"
+                className="inline-flex items-center gap-2 text-[#818CF8] hover:underline font-medium"
               >
                 Read original article
                 <ExternalLink className="h-4 w-4" />
@@ -333,7 +333,7 @@ const BlogSectionComponent = ({
                 onClick={(e) => handlePostClick(post, e)}
                 className="group cursor-pointer"
               >
-                <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg">
+                <div className="bg-[#1A1730]/50 backdrop-blur-sm rounded-lg p-4 border border-[#2D2A40]/50 hover:border-[#818CF8]/50 transition-all duration-300 hover:shadow-lg">
                   {/* Featured Image */}
                   {((post as any).processed_image_url || post.image_url) && (
                     <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden" style={{ aspectRatio: '16/9' }}>
@@ -350,25 +350,25 @@ const BlogSectionComponent = ({
 
                   {/* Category Badge */}
                   {content.category && (
-                    <span className="inline-block px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium mb-2">
+                    <span className="inline-block px-2 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-xs font-medium mb-2">
                       {content.category}
                     </span>
                   )}
 
                   {/* Title */}
-                  <h4 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                  <h4 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-[#818CF8] transition-colors">
                     {content.title}
                   </h4>
 
                   {/* Excerpt */}
                   {content.excerpt && (
-                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                    <p className="text-xs text-[#9B97B0] mb-3 line-clamp-2">
                       {content.excerpt}
                     </p>
                   )}
 
                   {/* Meta Information */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between text-xs text-[#9B97B0]">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -386,7 +386,7 @@ const BlogSectionComponent = ({
                       )}
                     </div>
                     <motion.div
-                      className="text-primary"
+                      className="text-[#818CF8]"
                       whileHover={{ x: 3 }}
                     >
                       →
@@ -401,13 +401,13 @@ const BlogSectionComponent = ({
         {/* Loading indicator for infinite scroll */}
         {isExpanded && loadingMore && (
           <div className="flex justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#818CF8]" />
           </div>
         )}
 
         {/* End of list indicator */}
         {isExpanded && !hasMorePosts && posts.length > 8 && (
-          <div className="text-center py-4 text-sm text-muted-foreground">
+          <div className="text-center py-4 text-sm text-[#9B97B0]">
             {t('blog_scroll_for_more')}
           </div>
         )}
