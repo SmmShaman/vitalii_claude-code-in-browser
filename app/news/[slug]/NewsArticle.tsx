@@ -311,6 +311,13 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
                   <Link
                     key={tag}
                     href={`/search?tag=${encodeURIComponent(tag)}`}
+                    onClick={(e) => {
+                      // В модальному контексті soft navigation не закриває модал
+                      if ((e.currentTarget as HTMLElement).closest('[role="dialog"]')) {
+                        e.preventDefault()
+                        window.location.href = `/search?tag=${encodeURIComponent(tag)}`
+                      }
+                    }}
                     className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#88B04B]/15 hover:text-[#88B04B] transition-colors"
                   >
                     #{tag}

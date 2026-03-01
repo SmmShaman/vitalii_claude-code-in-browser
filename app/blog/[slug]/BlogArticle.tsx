@@ -348,6 +348,12 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   <Link
                     key={tag}
                     href={`/search?tag=${encodeURIComponent(tag)}`}
+                    onClick={(e) => {
+                      if ((e.currentTarget as HTMLElement).closest('[role="dialog"]')) {
+                        e.preventDefault()
+                        window.location.href = `/search?tag=${encodeURIComponent(tag)}`
+                      }
+                    }}
                     className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#221F3A] hover:text-[#818CF8] transition-colors"
                   >
                     #{tag}
