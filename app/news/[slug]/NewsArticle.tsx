@@ -352,7 +352,7 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
           <ScrollReveal delay={0.4}>
             <section aria-labelledby="article-content">
               <h2 id="article-content" className="sr-only">Article Content</h2>
-              <div className="prose prose-lg max-w-none mb-8" itemProp="articleBody">
+              <div className="prose prose-invert prose-lg max-w-none mb-8" itemProp="articleBody">
                 <ReactMarkdown
                   components={{
                     a: ({ href, children }) => {
