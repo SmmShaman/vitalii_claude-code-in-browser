@@ -34,8 +34,8 @@ export function TagCloud({ tags, activeTag }: TagCloudProps) {
               href={isActive ? '/search' : `/search?tag=${encodeURIComponent(tag.name)}`}
               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-purple-50 hover:text-indigo-600'
+                  ? 'bg-purple-700 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-purple-50 hover:text-purple-700'
               }`}
             >
               #{tag.name}

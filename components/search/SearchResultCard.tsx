@@ -116,7 +116,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {/* Type badge */}
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-indigo-600/90' : 'bg-blue-600/90'
+                isNews ? 'bg-purple-700/90' : 'bg-blue-600/90'
               }`}
             >
               {isNews ? 'News' : 'Blog'}
@@ -144,7 +144,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             <Video className="w-10 h-10 text-gray-400" />
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-indigo-600/90' : 'bg-blue-600/90'
+                isNews ? 'bg-purple-700/90' : 'bg-blue-600/90'
               }`}
             >
               {isNews ? 'News' : 'Blog'}
@@ -158,7 +158,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
           {size === 'small' && (
             <div className="flex-shrink-0 mt-0.5">
               {isNews ? (
-                <Newspaper className="w-4 h-4 text-indigo-500" />
+                <Newspaper className="w-4 h-4 text-purple-500" />
               ) : (
                 <BookOpen className="w-4 h-4 text-blue-500" />
               )}
@@ -170,7 +170,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {!imageUrl && size !== 'small' && (
               <div
                 className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2 ${
-                  isNews ? 'bg-indigo-600/90' : 'bg-blue-600/90'
+                  isNews ? 'bg-purple-700/90' : 'bg-blue-600/90'
                 }`}
               >
                 {isNews ? 'News' : 'Blog'}
@@ -178,7 +178,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             )}
 
             <h3
-              className={`font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors ${
+              className={`font-semibold text-gray-900 group-hover:text-purple-700 transition-colors ${
                 size === 'large' ? 'text-base sm:text-lg line-clamp-3' : 'text-sm line-clamp-2'
               }`}
             >

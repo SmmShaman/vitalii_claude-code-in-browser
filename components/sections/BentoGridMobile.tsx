@@ -13,14 +13,14 @@ import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorag
 
 // Section colors (same as desktop)
 export const sectionColors: { [key: string]: { bg: string; text: string; icon: string; gradient: string } } = {
-  home: { bg: 'bg-pink-50', text: 'text-pink-900', icon: '#EC4899', gradient: 'from-pink-100 to-pink-50' },
-  about: { bg: 'bg-pink-50', text: 'text-pink-900', icon: '#EC4899', gradient: 'from-pink-100 to-pink-50' },
-  services: { bg: 'bg-indigo-50', text: 'text-indigo-900', icon: '#6366F1', gradient: 'from-indigo-100 to-indigo-50' },
-  projects: { bg: 'bg-amber-50', text: 'text-amber-900', icon: '#F59E0B', gradient: 'from-amber-100 to-amber-50' },
-  skills: { bg: 'bg-green-50', text: 'text-green-900', icon: '#10B981', gradient: 'from-green-100 to-green-50' },
-  news: { bg: 'bg-cyan-50', text: 'text-cyan-900', icon: '#06B6D4', gradient: 'from-cyan-100 to-cyan-50' },
-  blog: { bg: 'bg-violet-50', text: 'text-violet-900', icon: '#8B5CF6', gradient: 'from-violet-100 to-violet-50' },
-  contact: { bg: 'bg-indigo-50', text: 'text-indigo-900', icon: '#6366F1', gradient: 'from-indigo-100 to-indigo-50' },
+  home: { bg: 'bg-yellow-50', text: 'text-yellow-900', icon: '#CA8A04', gradient: 'from-yellow-100 to-yellow-50' },
+  about: { bg: 'bg-yellow-50', text: 'text-yellow-900', icon: '#CA8A04', gradient: 'from-yellow-100 to-yellow-50' },
+  services: { bg: 'bg-red-50', text: 'text-red-900', icon: '#DC2626', gradient: 'from-red-100 to-red-50' },
+  projects: { bg: 'bg-sky-50', text: 'text-sky-900', icon: '#0EA5E9', gradient: 'from-sky-100 to-sky-50' },
+  skills: { bg: 'bg-stone-50', text: 'text-stone-900', icon: '#78716C', gradient: 'from-stone-100 to-stone-50' },
+  news: { bg: 'bg-green-50', text: 'text-green-900', icon: '#16A34A', gradient: 'from-green-100 to-green-50' },
+  blog: { bg: 'bg-purple-50', text: 'text-purple-900', icon: '#9333EA', gradient: 'from-purple-100 to-purple-50' },
+  contact: { bg: 'bg-yellow-50', text: 'text-yellow-900', icon: '#CA8A04', gradient: 'from-yellow-100 to-yellow-50' },
 }
 
 // Skill category colors
