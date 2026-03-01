@@ -33,60 +33,91 @@ export const NeonVerticalLabel = ({
   const currentYRef = useRef(svgHeight);
   const targetYRef = useRef(svgHeight);
   const waveOffsetRef = useRef(0);
+  const isAnimatingRef = useRef(false);
+  const startTimeRef = useRef(0);
+  const startYRef = useRef(svgHeight);
+  const svgHeightRef = useRef(svgHeight);
+  svgHeightRef.current = svgHeight;
+
+  // Тривалість анімації заливки (мс)
+  const FILL_DURATION = 800;
 
   useEffect(() => {
-    const animate = () => {
-      // Плавне наближення до цільової позиції (збільшена швидкість для плавної заливки)
-      const diff = targetYRef.current - currentYRef.current;
-      if (Math.abs(diff) < 0.5) {
-        currentYRef.current = targetYRef.current;
-      } else {
-        currentYRef.current += diff * 0.12;
+    const createWave = (y: number): string => {
+      const h = svgHeightRef.current;
+      const amplitude = 10;
+      const frequency = 0.03;
+      const segments = 20;
+      const step = 200 / segments;
+      const parts = [`M 0 ${y + 15}`];
+
+      for (let i = 0; i <= segments; i++) {
+        const x = i * step;
+        const waveY = y + Math.sin(x * frequency + waveOffsetRef.current) * amplitude;
+        parts.push(`L ${x.toFixed(1)} ${waveY.toFixed(1)}`);
       }
 
-      // Оновлюємо позицію рівня рідини
-      if (liquidLevelRef.current) {
-        liquidLevelRef.current.setAttribute('y', currentYRef.current.toString());
-      }
+      parts.push(`L 200 ${h} L 0 ${h} Z`);
+      return parts.join(' ');
+    };
 
-      // Створюємо хвилю
-      waveOffsetRef.current += 0.15;
-      if (waveRef.current) {
-        waveRef.current.setAttribute('d', createWave(currentYRef.current));
-      }
+    const runAnimation = () => {
+      if (isAnimatingRef.current) return;
+      isAnimatingRef.current = true;
+      startTimeRef.current = performance.now();
+      startYRef.current = currentYRef.current;
+      const capturedTarget = targetYRef.current;
+      const capturedStart = startYRef.current;
 
-      // Продовжуємо анімацію
+      const animate = (now: number) => {
+        // Якщо target змінився під час анімації — перезапустити
+        if (targetYRef.current !== capturedTarget) {
+          isAnimatingRef.current = false;
+          animationFrameRef.current = undefined;
+          runAnimation();
+          return;
+        }
+
+        const elapsed = now - startTimeRef.current;
+        const totalDistance = capturedTarget - capturedStart;
+        // Ease-out cubic: швидкий старт, плавне завершення
+        const t = Math.min(elapsed / FILL_DURATION, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+
+        currentYRef.current = capturedStart + totalDistance * eased;
+
+        // Оновлюємо SVG
+        if (liquidLevelRef.current) {
+          liquidLevelRef.current.setAttribute('y', currentYRef.current.toFixed(1));
+        }
+
+        waveOffsetRef.current += 0.12;
+        if (waveRef.current) {
+          waveRef.current.setAttribute('d', createWave(currentYRef.current));
+        }
+
+        if (t < 1) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          // Анімація завершена — ЗУПИНЯЄМО цикл, 0 навантаження в idle
+          currentYRef.current = capturedTarget;
+          isAnimatingRef.current = false;
+          animationFrameRef.current = undefined;
+        }
+      };
+
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 
-    const createWave = (y: number): string => {
-      const amplitude = 12; // Висота хвилі
-      const frequency = 0.03; // Частота хвилі
-      const points = 50;
-      let path = `M 0 ${y + 20}`;
-
-      for (let i = 0; i <= points; i++) {
-        const x = (i / points) * 200;
-        const waveY = y + Math.sin(x * frequency + waveOffsetRef.current) * amplitude;
-        path += ` L ${x} ${waveY}`;
-      }
-
-      path += ` L 200 ${svgHeight} L 0 ${svgHeight} Z`;
-      return path;
-    };
-
-    // Запускаємо анімаційний цикл
-    animate();
+    targetYRef.current = isHovered ? -30 : svgHeight;
+    runAnimation();
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        isAnimatingRef.current = false;
       }
     };
-  }, [svgHeight]);
-
-  useEffect(() => {
-    targetYRef.current = isHovered ? -30 : svgHeight;
   }, [isHovered, svgHeight]);
 
   const uniqueId = useRef(`neon-${Math.random().toString(36).substr(2, 9)}`).current;
