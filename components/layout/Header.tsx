@@ -112,7 +112,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <h1
-              className="font-bold text-amber-400 font-comfortaa"
+              className="font-bold text-red-500 font-comfortaa"
               style={{
                 fontSize: '1.25rem',
                 textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
@@ -219,7 +219,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
               }}
             >
-              <span className="font-bold text-amber-400">Vitalii Berbeha</span>
+              <span className="font-bold text-red-500">Vitalii Berbeha</span>
               <span className="hidden sm:inline"> - {t('subtitle')}</span>
             </div>
           ) : (
@@ -228,7 +228,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {/* First line: Name + Subtitle */}
               <div className="flex flex-wrap items-baseline gap-2">
                 <h1
-                  className="font-bold text-amber-400 font-comfortaa"
+                  className="font-bold text-red-500 font-comfortaa"
                   style={{
                     fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
                     textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',

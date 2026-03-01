@@ -36,9 +36,13 @@ export const NeonVerticalLabel = ({
 
   useEffect(() => {
     const animate = () => {
-      // Плавне наближення до цільової позиції
+      // Плавне наближення до цільової позиції (збільшена швидкість для плавної заливки)
       const diff = targetYRef.current - currentYRef.current;
-      currentYRef.current += diff * 0.08;
+      if (Math.abs(diff) < 0.5) {
+        currentYRef.current = targetYRef.current;
+      } else {
+        currentYRef.current += diff * 0.12;
+      }
 
       // Оновлюємо позицію рівня рідини
       if (liquidLevelRef.current) {
@@ -82,7 +86,7 @@ export const NeonVerticalLabel = ({
   }, [svgHeight]);
 
   useEffect(() => {
-    targetYRef.current = isHovered ? 0 : svgHeight;
+    targetYRef.current = isHovered ? -30 : svgHeight;
   }, [isHovered, svgHeight]);
 
   const uniqueId = useRef(`neon-${Math.random().toString(36).substr(2, 9)}`).current;
@@ -129,7 +133,7 @@ export const NeonVerticalLabel = ({
 
           {/* Маска для ефекту наповнення з хвилею */}
           <clipPath id={`${uniqueId}-liquid-mask`}>
-            <rect ref={liquidLevelRef} id={`${uniqueId}-liquid-level`} x="0" y={svgHeight} width="200" height={svgHeight} />
+            <rect ref={liquidLevelRef} id={`${uniqueId}-liquid-level`} x="0" y={svgHeight} width="200" height={svgHeight * 2} />
             <path ref={waveRef} id={`${uniqueId}-wave`} d="" fill="white" />
           </clipPath>
         </defs>
@@ -143,7 +147,7 @@ export const NeonVerticalLabel = ({
           textAnchor="middle"
           dominantBaseline="central"
           fill="none"
-          stroke={isDarkBackground ? "#000000" : "#252630"}
+          stroke="#8B7500"
           strokeWidth="4"
         >
           {letters.map((letter, idx) => (
