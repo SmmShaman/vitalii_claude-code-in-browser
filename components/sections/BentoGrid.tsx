@@ -20,8 +20,8 @@ import { trackSectionClick } from '@/utils/gtm';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 // Grid layout constants
-const GAP_SIZE_DESKTOP = 20; // Desktop gap between windows in pixels
-const GAP_SIZE_MOBILE = 12; // Mobile gap - smaller for better space usage
+const GAP_SIZE_DESKTOP = 24; // Desktop gap between windows in pixels
+const GAP_SIZE_MOBILE = 16; // Mobile gap - better space usage
 const COLUMNS_COUNT = 3; // Always 3 columns (fluid width with 1fr)
 
 interface Section {
@@ -921,7 +921,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                             debugLog(`❌ BLOG: Умова НЕ виконалась - таймер НЕ встановлено`);
                           }
                         }}
-                        className={`relative rounded-lg transition-all duration-300 hover:shadow-2xl active:shadow-xl w-full cursor-pointer ${(section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105 active:scale-[0.98]' : 'active:scale-[0.99]'
+                        className={`relative rounded-2xl transition-all duration-300 hover:shadow-2xl active:shadow-xl w-full cursor-pointer ${(section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105 active:scale-[0.98]' : 'active:scale-[0.99]'
                           } ${
                           // Allow scroll when news/blog item is selected, otherwise hide overflow
                           (section.id === 'news' && selectedNewsId) || (section.id === 'blog' && selectedBlogId)
@@ -1005,8 +1005,8 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                         {/* Content */}
                         <div className={`relative h-full max-h-full flex items-start justify-center z-30 ${section.id === 'about'
-                          ? 'p-5 pl-12 sm:p-6 sm:pl-14 md:p-8 md:pl-16'
-                          : 'p-5 pl-12 sm:p-6 sm:pl-14 md:p-8 md:pl-16'
+                          ? 'p-5 pl-12 sm:p-6 sm:pl-14 md:p-10 md:pl-20'
+                          : 'p-5 pl-12 sm:p-6 sm:pl-14 md:p-10 md:pl-20'
                           } overflow-hidden`}>
                           {section.id === 'about' ? (
                             <div className="w-full h-full max-h-full flex flex-col">

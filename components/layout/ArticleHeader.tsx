@@ -61,7 +61,7 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         {/* Back button + Brand */}
         <Link
           href={backHref}
