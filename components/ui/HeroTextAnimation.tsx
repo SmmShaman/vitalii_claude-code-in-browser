@@ -124,7 +124,8 @@ export const HeroTextAnimation = ({
 
       {/* Filled text overlay with wave clip */}
       <span
-        className="absolute inset-0 font-comfortaa"
+        aria-hidden="true"
+        className="absolute inset-0 font-comfortaa select-none"
         style={{
           fontSize,
           fontWeight,

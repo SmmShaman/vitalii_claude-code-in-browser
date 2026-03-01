@@ -33,14 +33,10 @@ export const NeonVerticalLabel = ({
   const currentYRef = useRef(svgHeight);
   const targetYRef = useRef(svgHeight);
   const waveOffsetRef = useRef(0);
-  const isAnimatingRef = useRef(false);
-  const startTimeRef = useRef(0);
-  const startYRef = useRef(svgHeight);
+  const isHoveredRef = useRef(isHovered);
   const svgHeightRef = useRef(svgHeight);
   svgHeightRef.current = svgHeight;
-
-  // Тривалість анімації заливки (мс)
-  const FILL_DURATION = 800;
+  isHoveredRef.current = isHovered;
 
   useEffect(() => {
     const createWave = (y: number): string => {
@@ -61,61 +57,51 @@ export const NeonVerticalLabel = ({
       return parts.join(' ');
     };
 
-    const runAnimation = () => {
-      if (isAnimatingRef.current) return;
-      isAnimatingRef.current = true;
-      startTimeRef.current = performance.now();
-      startYRef.current = currentYRef.current;
-      const capturedTarget = targetYRef.current;
-      const capturedStart = startYRef.current;
+    const animate = () => {
+      const target = targetYRef.current;
+      const diff = target - currentYRef.current;
 
-      const animate = (now: number) => {
-        // Якщо target змінився під час анімації — перезапустити
-        if (targetYRef.current !== capturedTarget) {
-          isAnimatingRef.current = false;
-          animationFrameRef.current = undefined;
-          runAnimation();
-          return;
-        }
+      // Плавне наближення до цілі (як в HeroTextAnimation)
+      currentYRef.current += diff * 0.06;
 
-        const elapsed = now - startTimeRef.current;
-        const totalDistance = capturedTarget - capturedStart;
-        // Ease-out cubic: швидкий старт, плавне завершення
-        const t = Math.min(elapsed / FILL_DURATION, 1);
-        const eased = 1 - Math.pow(1 - t, 3);
+      // Snap коли близько
+      if (Math.abs(diff) < 0.5) {
+        currentYRef.current = target;
+      }
 
-        currentYRef.current = capturedStart + totalDistance * eased;
+      // Оновлюємо SVG позицію
+      if (liquidLevelRef.current) {
+        liquidLevelRef.current.setAttribute('y', currentYRef.current.toFixed(1));
+      }
 
-        // Оновлюємо SVG
-        if (liquidLevelRef.current) {
-          liquidLevelRef.current.setAttribute('y', currentYRef.current.toFixed(1));
-        }
+      // Хвиля завжди рухається поки анімація активна
+      waveOffsetRef.current += 0.15;
+      if (waveRef.current) {
+        waveRef.current.setAttribute('d', createWave(currentYRef.current));
+      }
 
-        waveOffsetRef.current += 0.12;
-        if (waveRef.current) {
-          waveRef.current.setAttribute('d', createWave(currentYRef.current));
-        }
-
-        if (t < 1) {
-          animationFrameRef.current = requestAnimationFrame(animate);
-        } else {
-          // Анімація завершена — ЗУПИНЯЄМО цикл, 0 навантаження в idle
-          currentYRef.current = capturedTarget;
-          isAnimatingRef.current = false;
-          animationFrameRef.current = undefined;
-        }
-      };
-
-      animationFrameRef.current = requestAnimationFrame(animate);
+      // Продовжуємо анімацію якщо:
+      // 1. Рівень ще не досяг цілі (заливка/зливання в процесі)
+      // 2. АБО hover активний (хвиля продовжує рухатись на поверхні)
+      const stillMoving = Math.abs(diff) > 0.1;
+      if (stillMoving || isHoveredRef.current) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        // Повністю зупиняємо — 0% CPU в idle (не hovered, рідина злита)
+        animationFrameRef.current = undefined;
+      }
     };
 
     targetYRef.current = isHovered ? -30 : svgHeight;
-    runAnimation();
+    // Запускаємо тільки якщо ще не працює
+    if (!animationFrameRef.current) {
+      animationFrameRef.current = requestAnimationFrame(animate);
+    }
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
-        isAnimatingRef.current = false;
+        animationFrameRef.current = undefined;
       }
     };
   }, [isHovered, svgHeight]);
