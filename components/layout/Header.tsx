@@ -112,7 +112,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <h1
-              className="font-bold text-yellow-500 font-comfortaa"
+              className="font-bold text-amber-400 font-comfortaa"
               style={{
                 fontSize: '1.25rem',
                 textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
@@ -140,7 +140,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={handleSearchToggle}
                 className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                   searchQuery.trim()
-                    ? 'bg-purple-700 text-white animate-pulse'
+                    ? 'bg-purple-600 text-white animate-pulse'
                     : searchOpen
                       ? 'bg-white/80 text-gray-700'
                       : 'bg-white/70 text-gray-500'
@@ -219,7 +219,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
               }}
             >
-              <span className="font-bold text-yellow-500">Vitalii Berbeha</span>
+              <span className="font-bold text-amber-400">Vitalii Berbeha</span>
               <span className="hidden sm:inline"> - {t('subtitle')}</span>
             </div>
           ) : (
@@ -228,7 +228,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {/* First line: Name + Subtitle */}
               <div className="flex flex-wrap items-baseline gap-2">
                 <h1
-                  className="font-bold text-yellow-500 font-comfortaa"
+                  className="font-bold text-amber-400 font-comfortaa"
                   style={{
                     fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
                     textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
@@ -268,7 +268,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={handleSearchToggle}
               className={`relative z-10 p-2 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
-                  ? 'bg-purple-700 text-white animate-pulse'
+                  ? 'bg-purple-600 text-white animate-pulse'
                   : searchOpen
                     ? 'bg-white/80 text-gray-700'
                     : 'bg-white/70 text-gray-500 hover:bg-white/90'

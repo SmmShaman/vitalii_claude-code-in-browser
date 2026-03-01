@@ -98,7 +98,7 @@ export function SearchFilters({
               onClick={() => onContentTypeChange(tab.key)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 contentType === tab.key
-                  ? 'bg-purple-700 text-white shadow-sm'
+                  ? 'bg-purple-600 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -152,7 +152,7 @@ export function SearchFilters({
           {(dateFrom || dateTo) && (
             <button
               onClick={() => { onDateFromChange(''); onDateToChange('') }}
-              className="text-xs text-purple-700 hover:text-purple-800 underline"
+              className="text-xs text-purple-600 hover:text-purple-800 underline"
             >
               {t('search_clear_filters')}
             </button>

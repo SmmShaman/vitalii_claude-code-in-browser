@@ -13,14 +13,14 @@ import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorag
 
 // Section colors (same as desktop)
 export const sectionColors: { [key: string]: { bg: string; text: string; icon: string; gradient: string } } = {
-  home: { bg: 'bg-yellow-50', text: 'text-yellow-900', icon: '#CA8A04', gradient: 'from-yellow-100 to-yellow-50' },
-  about: { bg: 'bg-yellow-50', text: 'text-yellow-900', icon: '#CA8A04', gradient: 'from-yellow-100 to-yellow-50' },
-  services: { bg: 'bg-red-50', text: 'text-red-900', icon: '#DC2626', gradient: 'from-red-100 to-red-50' },
-  projects: { bg: 'bg-sky-50', text: 'text-sky-900', icon: '#0EA5E9', gradient: 'from-sky-100 to-sky-50' },
-  skills: { bg: 'bg-stone-50', text: 'text-stone-900', icon: '#78716C', gradient: 'from-stone-100 to-stone-50' },
-  news: { bg: 'bg-green-50', text: 'text-green-900', icon: '#16A34A', gradient: 'from-green-100 to-green-50' },
-  blog: { bg: 'bg-purple-50', text: 'text-purple-900', icon: '#9333EA', gradient: 'from-purple-100 to-purple-50' },
-  contact: { bg: 'bg-yellow-50', text: 'text-yellow-900', icon: '#CA8A04', gradient: 'from-yellow-100 to-yellow-50' },
+  home: { bg: 'bg-amber-50', text: 'text-amber-900', icon: '#AF601A', gradient: 'from-amber-100 to-amber-50' },
+  about: { bg: 'bg-amber-50', text: 'text-amber-900', icon: '#AF601A', gradient: 'from-amber-100 to-amber-50' },
+  services: { bg: 'bg-pink-50', text: 'text-pink-900', icon: '#EC008C', gradient: 'from-pink-100 to-pink-50' },
+  projects: { bg: 'bg-emerald-50', text: 'text-emerald-900', icon: '#009B77', gradient: 'from-emerald-100 to-emerald-50' },
+  skills: { bg: 'bg-rose-50', text: 'text-rose-900', icon: '#e11d48', gradient: 'from-rose-100 to-rose-50' },
+  news: { bg: 'bg-lime-50', text: 'text-lime-900', icon: '#88B04B', gradient: 'from-lime-100 to-lime-50' },
+  blog: { bg: 'bg-blue-50', text: 'text-blue-900', icon: '#0F4C81', gradient: 'from-blue-100 to-blue-50' },
+  contact: { bg: 'bg-purple-50', text: 'text-purple-900', icon: '#764BB0', gradient: 'from-purple-100 to-purple-50' },
 }
 
 // Skill category colors
