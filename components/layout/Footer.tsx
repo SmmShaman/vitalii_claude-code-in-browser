@@ -193,7 +193,7 @@ export const Footer = () => {
   // Desktop refined colors (Obsidian Prism)
   const dPrimary = 'rgba(245, 243, 255, 0.95)'
   const dSecondary = 'rgba(167, 160, 195, 0.8)'
-  const dAccent = '#fbbf24'
+  const dAccent = '#EAB308'
 
   return (
     <footer className="h-full w-full flex items-center overflow-y-auto">
@@ -204,11 +204,11 @@ export const Footer = () => {
         style={isMobile ? {
           background: 'transparent',
         } : {
-          background: 'linear-gradient(160deg, rgba(15, 15, 25, 0.88) 0%, rgba(25, 20, 45, 0.92) 50%, rgba(18, 12, 35, 0.9) 100%)',
+          background: 'linear-gradient(160deg, rgba(12, 10, 9, 0.92) 0%, rgba(28, 25, 23, 0.94) 50%, rgba(15, 12, 10, 0.93) 100%)',
           backdropFilter: 'blur(20px) saturate(1.2)',
           WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
-          border: '1px solid rgba(167, 139, 250, 0.1)',
-          boxShadow: '0 -1px 0 rgba(167, 139, 250, 0.08), 0 12px 40px rgba(0, 0, 0, 0.4)',
+          border: '1px solid rgba(202, 138, 4, 0.10)',
+          boxShadow: '0 -1px 0 rgba(202, 138, 4, 0.06), 0 12px 40px rgba(0, 0, 0, 0.5)',
         }}
       >
         <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
@@ -289,7 +289,7 @@ export const Footer = () => {
               <div
                 className="w-px h-5 mx-1.5"
                 style={!isMobile ? {
-                  background: 'linear-gradient(180deg, transparent 0%, rgba(167, 139, 250, 0.4) 50%, transparent 100%)',
+                  background: 'linear-gradient(180deg, transparent 0%, rgba(202, 138, 4, 0.3) 50%, transparent 100%)',
                 } : {
                   background: '#d1d5db',
                 }}

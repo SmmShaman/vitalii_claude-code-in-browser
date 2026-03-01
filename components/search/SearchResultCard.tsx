@@ -116,7 +116,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {/* Type badge */}
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-purple-600/90' : 'bg-blue-600/90'
+                isNews ? 'bg-purple-700/90' : 'bg-blue-600/90'
               }`}
             >
               {isNews ? 'News' : 'Blog'}
@@ -144,7 +144,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             <Video className="w-10 h-10 text-gray-400" />
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-purple-600/90' : 'bg-blue-600/90'
+                isNews ? 'bg-purple-700/90' : 'bg-blue-600/90'
               }`}
             >
               {isNews ? 'News' : 'Blog'}
@@ -170,7 +170,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {!imageUrl && size !== 'small' && (
               <div
                 className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2 ${
-                  isNews ? 'bg-purple-600/90' : 'bg-blue-600/90'
+                  isNews ? 'bg-purple-700/90' : 'bg-blue-600/90'
                 }`}
               >
                 {isNews ? 'News' : 'Blog'}
