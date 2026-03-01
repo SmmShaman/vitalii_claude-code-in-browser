@@ -6,12 +6,12 @@ import { useTranslations } from '@/contexts/TranslationContext'
 
 // Section colors matching desktop Bento Grid
 const navColors: { [key: string]: string } = {
-  home: '#CA8A04',      // About/Home - gold
-  services: '#DC2626',  // Services - ruby red
-  projects: '#0EA5E9',  // Projects - sky blue
-  news: '#16A34A',      // News - emerald
-  blog: '#9333EA',      // Blog - deep purple
-  contact: '#CA8A04',   // Contact - gold
+  home: '#EC4899',      // About/Home - hot pink
+  services: '#6366F1',  // Services - indigo
+  projects: '#F59E0B',  // Projects - amber
+  news: '#06B6D4',      // News - cyan
+  blog: '#8B5CF6',      // Blog - violet
+  contact: '#6366F1',   // Contact - indigo
 }
 
 interface NavItem {

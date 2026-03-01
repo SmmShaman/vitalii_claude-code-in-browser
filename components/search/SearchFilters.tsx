@@ -57,7 +57,7 @@ export function SearchFilters({
       {/* Active tag chip */}
       {activeTag && (
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-purple-100 text-purple-700">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-purple-100 text-indigo-600">
             #{activeTag}
             <button
               onClick={onClearTag}
@@ -77,7 +77,7 @@ export function SearchFilters({
           value={localQuery}
           onChange={(e) => handleQueryChange(e.target.value)}
           placeholder={t('search_articles_placeholder')}
-          className="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all"
+          className="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
         />
         {localQuery && (
           <button
@@ -98,7 +98,7 @@ export function SearchFilters({
               onClick={() => onContentTypeChange(tab.key)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 contentType === tab.key
-                  ? 'bg-purple-700 text-white shadow-sm'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -112,7 +112,7 @@ export function SearchFilters({
             onClick={() => setShowDateFilters(!showDateFilters)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ${
               showDateFilters || dateFrom || dateTo
-                ? 'bg-purple-100 text-purple-700'
+                ? 'bg-purple-100 text-indigo-600'
                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}
           >
@@ -137,7 +137,7 @@ export function SearchFilters({
               type="date"
               value={dateFrom}
               onChange={(e) => onDateFromChange(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -146,13 +146,13 @@ export function SearchFilters({
               type="date"
               value={dateTo}
               onChange={(e) => onDateToChange(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
             />
           </div>
           {(dateFrom || dateTo) && (
             <button
               onClick={() => { onDateFromChange(''); onDateToChange('') }}
-              className="text-xs text-purple-700 hover:text-purple-800 underline"
+              className="text-xs text-indigo-600 hover:text-purple-800 underline"
             >
               {t('search_clear_filters')}
             </button>

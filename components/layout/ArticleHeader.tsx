@@ -68,7 +68,7 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
           className="flex items-center gap-3 text-gray-600 hover:text-gray-900 transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-bold text-yellow-500 text-lg">Vitalii Berbeha</span>
+          <span className="font-bold text-pink-400 text-lg">Vitalii Berbeha</span>
           <span className="hidden sm:inline text-gray-400">|</span>
           <span className="hidden sm:inline text-sm text-gray-500">{getBackLabel()}</span>
         </Link>
@@ -81,7 +81,7 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
               onClick={handleSearchToggle}
               className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
-                  ? 'bg-purple-700 text-white animate-pulse'
+                  ? 'bg-indigo-600 text-white animate-pulse'
                   : searchOpen
                     ? 'bg-gray-200 text-gray-700'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -103,7 +103,7 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
                 onBlur={handleSearchBlur}
                 onKeyDown={handleSearchKeyDown}
                 placeholder={t('search_placeholder_short') as string}
-                className="w-full px-3 py-1.5 rounded-lg text-sm text-gray-900 placeholder-gray-400 border border-gray-200 shadow-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-400"
+                className="w-full px-3 py-1.5 rounded-lg text-sm text-gray-900 placeholder-gray-400 border border-gray-200 shadow-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
               />
             </div>
           </div>

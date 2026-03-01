@@ -77,22 +77,22 @@ interface BentoGridProps {
 
 // Neon colors for each section - exported for use in background
 export const sectionNeonColors: { [key: string]: { primary: string; secondary: string } } = {
-  about: { primary: '#CA8A04', secondary: '#EAB308' }, // Gold — преміум бренд
-  services: { primary: '#DC2626', secondary: '#EF4444' }, // Ruby Red — сила
-  projects: { primary: '#0EA5E9', secondary: '#38BDF8' }, // Sky Blue — цифрова майстерність
-  skills: { primary: '#F5F5F4', secondary: '#E7E5E4' }, // Warm Stone — розкішний нейтральний
-  news: { primary: '#16A34A', secondary: '#4ADE80' }, // Emerald — авторитет
-  blog: { primary: '#9333EA', secondary: '#A855F7' }, // Deep Purple — мудрість
+  about: { primary: '#EC4899', secondary: '#F472B6' }, // Hot Pink — запам'ятовується
+  services: { primary: '#6366F1', secondary: '#818CF8' }, // Indigo — професійні послуги
+  projects: { primary: '#F59E0B', secondary: '#FBBF24' }, // Amber — тепло, креатив
+  skills: { primary: '#F0FDF4', secondary: '#DCFCE7' }, // Mint White — свіжість
+  news: { primary: '#06B6D4', secondary: '#22D3EE' }, // Cyan — інформація
+  blog: { primary: '#8B5CF6', secondary: '#A78BFA' }, // Violet — лідерство думок
 };
 
 // Контрастні кольори для Hero тексту (комплементарні пари для максимального контрасту)
 export const heroContrastColors: { [key: string]: string } = {
-  about: '#3B82F6',      // Синій ↔ Золото
-  services: '#06B6D4',   // Cyan ↔ Рубін
-  projects: '#F97316',   // Помаранч ↔ Блакитний
-  skills: '#DC2626',     // Червоний ↔ Камінь
-  news: '#E879F9',       // Фуксія ↔ Смарагд
-  blog: '#EAB308',       // Золото ↔ Фіолетовий
+  about: '#10B981',      // Смарагд ↔ Рожевий
+  services: '#F59E0B',   // Amber ↔ Indigo
+  projects: '#6366F1',   // Indigo ↔ Amber
+  skills: '#EC4899',     // Рожевий ↔ М'ята
+  news: '#F97316',       // Помаранч ↔ Cyan
+  blog: '#22C55E',       // Зелений ↔ Фіолетовий
 };
 
 // Opposite section mapping (kept for reference)
