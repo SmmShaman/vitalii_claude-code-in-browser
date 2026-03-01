@@ -164,7 +164,7 @@ function SearchPageInner() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       {/* Header */}
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#EEEDF5] mb-6">
         {t('search_title')}
       </h1>
 
@@ -191,17 +191,17 @@ function SearchPageInner() {
       {/* Results */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#818CF8] animate-spin" />
         </div>
       ) : results.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <SearchX className="w-12 h-12 text-gray-300 mb-4" />
-          <p className="text-lg font-medium text-gray-600">{t('search_no_results')}</p>
-          <p className="text-sm text-gray-400 mt-1">{t('search_no_results_hint')}</p>
+          <SearchX className="w-12 h-12 text-[#6B6680] mb-4" />
+          <p className="text-lg font-medium text-[#C8C5D6]">{t('search_no_results')}</p>
+          <p className="text-sm text-[#6B6680] mt-1">{t('search_no_results_hint')}</p>
           {(tagParam || queryParam || dateFromParam || dateToParam) && (
             <button
               onClick={() => router.replace('/search')}
-              className="mt-4 px-4 py-2 rounded-full text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+              className="mt-4 px-4 py-2 rounded-full text-sm font-medium bg-[#6366F1] text-white hover:bg-[#4F46E5] transition-colors"
             >
               {t('search_clear_filters')}
             </button>
@@ -249,7 +249,7 @@ function SearchPageInner() {
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="px-6 py-2.5 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition-all flex items-center gap-2"
+                className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#1A1730] text-[#C8C5D6] hover:bg-[#221F3A] disabled:opacity-50 transition-all flex items-center gap-2"
               >
                 {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
                 {t('search_load_more')}
@@ -266,21 +266,21 @@ function SearchPageInner() {
 function SearchSkeleton() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-      <div className="h-9 w-32 bg-gray-200 rounded-lg mb-6 animate-pulse" />
-      <div className="h-12 w-full bg-gray-200 rounded-xl mb-4 animate-pulse" />
+      <div className="h-9 w-32 bg-[#221F3A] rounded-lg mb-6 animate-pulse" />
+      <div className="h-12 w-full bg-[#221F3A] rounded-xl mb-4 animate-pulse" />
       <div className="flex gap-2 mb-6">
-        <div className="h-9 w-16 bg-gray-200 rounded-full animate-pulse" />
-        <div className="h-9 w-20 bg-gray-200 rounded-full animate-pulse" />
-        <div className="h-9 w-16 bg-gray-200 rounded-full animate-pulse" />
+        <div className="h-9 w-16 bg-[#221F3A] rounded-full animate-pulse" />
+        <div className="h-9 w-20 bg-[#221F3A] rounded-full animate-pulse" />
+        <div className="h-9 w-16 bg-[#221F3A] rounded-full animate-pulse" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl overflow-hidden border border-gray-200">
-            <div className="w-full aspect-video bg-gray-200 animate-pulse" />
+          <div key={i} className="bg-[#1A1730] rounded-xl overflow-hidden border border-[#2D2A40]">
+            <div className="w-full aspect-video bg-[#221F3A] animate-pulse" />
             <div className="p-4">
-              <div className="h-5 w-full bg-gray-200 rounded mb-2 animate-pulse" />
-              <div className="h-5 w-3/4 bg-gray-200 rounded mb-3 animate-pulse" />
-              <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-5 w-full bg-[#221F3A] rounded mb-2 animate-pulse" />
+              <div className="h-5 w-3/4 bg-[#221F3A] rounded mb-3 animate-pulse" />
+              <div className="h-3 w-24 bg-[#221F3A] rounded animate-pulse" />
             </div>
           </div>
         ))}

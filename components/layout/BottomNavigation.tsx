@@ -6,12 +6,12 @@ import { useTranslations } from '@/contexts/TranslationContext'
 
 // Section colors matching desktop Bento Grid
 const navColors: { [key: string]: string } = {
-  home: '#AF601A',      // About/Home - brown-orange
-  services: '#EC008C',  // Services - fuchsia
-  projects: '#009B77',  // Projects - emerald
-  news: '#88B04B',      // News - greenery
-  blog: '#0F4C81',      // Blog - classic blue
-  contact: '#764BB0',   // Contact - purple
+  home: '#818CF8',      // Soft Indigo
+  services: '#6366F1',  // Mid Indigo
+  projects: '#7C3AED',  // Violet
+  news: '#A5B4FC',      // Bright Indigo
+  blog: '#6366F1',      // Mid Indigo
+  contact: '#F59E0B',   // Amber accent
 }
 
 interface NavItem {
@@ -49,9 +49,9 @@ export const BottomNavigation = ({ activeSection, onSectionChange }: BottomNavig
     >
       {/* Glassmorphism container */}
       <div
-        className="mx-auto max-w-md rounded-2xl border border-white/20 shadow-lg"
+        className="mx-auto max-w-md rounded-2xl border border-[#2D2A40]/50 shadow-lg"
         style={{
-          background: 'rgba(255, 255, 255, 0.85)',
+          background: 'rgba(15, 13, 26, 0.85)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
         }}
@@ -89,7 +89,7 @@ export const BottomNavigation = ({ activeSection, onSectionChange }: BottomNavig
                 <div
                   className="w-5 h-5 relative z-10 transition-colors duration-200"
                   style={{
-                    color: isActive ? color : '#6B7280',
+                    color: isActive ? color : '#6B6680',
                   }}
                 >
                   <Icon className="w-full h-full" />
@@ -105,7 +105,7 @@ export const BottomNavigation = ({ activeSection, onSectionChange }: BottomNavig
                   }}
                   className="text-[10px] font-semibold relative z-10 overflow-hidden"
                   style={{
-                    color: isActive ? color : '#6B7280',
+                    color: isActive ? color : '#6B6680',
                   }}
                 >
                   {t(item.labelKey as any) || item.id}

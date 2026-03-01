@@ -13,24 +13,24 @@ import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorag
 
 // Section colors (same as desktop)
 export const sectionColors: { [key: string]: { bg: string; text: string; icon: string; gradient: string } } = {
-  home: { bg: 'bg-amber-50', text: 'text-amber-900', icon: '#AF601A', gradient: 'from-amber-100 to-amber-50' },
-  about: { bg: 'bg-amber-50', text: 'text-amber-900', icon: '#AF601A', gradient: 'from-amber-100 to-amber-50' },
-  services: { bg: 'bg-pink-50', text: 'text-pink-900', icon: '#EC008C', gradient: 'from-pink-100 to-pink-50' },
-  projects: { bg: 'bg-emerald-50', text: 'text-emerald-900', icon: '#009B77', gradient: 'from-emerald-100 to-emerald-50' },
-  skills: { bg: 'bg-rose-50', text: 'text-rose-900', icon: '#e11d48', gradient: 'from-rose-100 to-rose-50' },
-  news: { bg: 'bg-lime-50', text: 'text-lime-900', icon: '#88B04B', gradient: 'from-lime-100 to-lime-50' },
-  blog: { bg: 'bg-blue-50', text: 'text-blue-900', icon: '#0F4C81', gradient: 'from-blue-100 to-blue-50' },
-  contact: { bg: 'bg-purple-50', text: 'text-purple-900', icon: '#764BB0', gradient: 'from-purple-100 to-purple-50' },
+  home: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#818CF8', gradient: 'from-[#141225] to-[#0F0D1A]' },
+  about: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#818CF8', gradient: 'from-[#1A1730] to-[#141225]' },
+  services: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#6366F1', gradient: 'from-[#1A1730] to-[#141225]' },
+  projects: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#7C3AED', gradient: 'from-[#141225] to-[#0F0D1A]' },
+  skills: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#818CF8', gradient: 'from-[#221F3A] to-[#141225]' },
+  news: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#A5B4FC', gradient: 'from-[#141225] to-[#0F0D1A]' },
+  blog: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#6366F1', gradient: 'from-[#1A1730] to-[#141225]' },
+  contact: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#F59E0B', gradient: 'from-[#141225] to-[#0F0D1A]' },
 }
 
 // Skill category colors
 const categoryColors: { [key: string]: { bg: string; text: string } } = {
-  development: { bg: 'bg-green-100', text: 'text-green-800' },
-  ui: { bg: 'bg-purple-100', text: 'text-purple-800' },
-  automation: { bg: 'bg-blue-100', text: 'text-blue-800' },
-  ai: { bg: 'bg-orange-100', text: 'text-orange-800' },
-  marketing: { bg: 'bg-pink-100', text: 'text-pink-800' },
-  integration: { bg: 'bg-cyan-100', text: 'text-cyan-800' },
+  development: { bg: 'bg-[#1A1730]', text: 'text-[#818CF8]' },
+  ui: { bg: 'bg-[#1A1730]', text: 'text-[#A5B4FC]' },
+  automation: { bg: 'bg-[#1A1730]', text: 'text-[#818CF8]' },
+  ai: { bg: 'bg-[#1A1730]', text: 'text-[#F59E0B]' },
+  marketing: { bg: 'bg-[#1A1730]', text: 'text-[#FBBF24]' },
+  integration: { bg: 'bg-[#1A1730]', text: 'text-[#6366F1]' },
 }
 
 // Vertical Label Component (like desktop NeonVerticalLabel but simpler for mobile)
@@ -75,7 +75,7 @@ const AboutExplosionOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-white"
+      className="fixed inset-0 z-50 bg-[#1A1730]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -95,7 +95,7 @@ const AboutExplosionOverlay = ({
 
       {/* Scrollable content */}
       <div className="h-full overflow-y-auto pt-16 pb-8 px-6">
-        <div className="text-gray-800" style={{ fontSize: '1rem', lineHeight: 1.8 }}>
+        <div className="text-[#C8C5D6]" style={{ fontSize: '1rem', lineHeight: 1.8 }}>
           {paragraphs.map((paragraph, pIndex) => {
             const words = paragraph.trim().split(' ')
             const boldCount = Math.min(3, words.length)
@@ -151,7 +151,7 @@ const ServicesExplosionOverlay = ({
 }) => {
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-white"
+      className="fixed inset-0 z-50 bg-[#1A1730]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -182,7 +182,7 @@ const ServicesExplosionOverlay = ({
                 delay: index * 0.08,
                 ease: [0.25, 0.46, 0.45, 0.94],
               }}
-              className="bg-gradient-to-br from-pink-50 to-white rounded-2xl p-4 shadow-sm border border-pink-100"
+              className="bg-gradient-to-br from-[#141225] to-[#0F0D1A] rounded-2xl p-4 shadow-sm border border-pink-100"
             >
               {/* Service title */}
               <h3
@@ -194,14 +194,14 @@ const ServicesExplosionOverlay = ({
 
               {/* Short description */}
               {service.description && (
-                <p className="text-gray-500 text-xs mb-3 italic">
+                <p className="text-[#9B97B0] text-xs mb-3 italic">
                   {service.description}
                 </p>
               )}
 
               {/* Detailed description */}
               {service.detailedDescription && (
-                <p className="text-gray-700 text-sm leading-relaxed mb-2">
+                <p className="text-[#C8C5D6] text-sm leading-relaxed mb-2">
                   {service.detailedDescription}
                 </p>
               )}
@@ -209,7 +209,7 @@ const ServicesExplosionOverlay = ({
               {/* Simple explanation */}
               {service.simpleExplanation && (
                 <div className="mt-3 pt-3 border-t border-pink-100">
-                  <p className="text-gray-600 text-xs leading-relaxed">
+                  <p className="text-[#9B97B0] text-xs leading-relaxed">
                     💡 {service.simpleExplanation}
                   </p>
                 </div>
@@ -224,10 +224,10 @@ const ServicesExplosionOverlay = ({
 
 // Project colors (matching desktop)
 const projectColors = [
-  { from: '#fc51c9', via: '#e707f7', to: '#9c27b0' },
-  { from: '#05ddfa', via: '#00bfff', to: '#4169e1' },
-  { from: '#ffeb3b', via: '#ffc107', to: '#ff9800' },
-  { from: '#4caf50', via: '#8bc34a', to: '#cddc39' },
+  { from: '#4F46E5', via: '#6366F1', to: '#818CF8' },
+  { from: '#6366F1', via: '#7C3AED', to: '#8B5CF6' },
+  { from: '#D97706', via: '#F59E0B', to: '#FBBF24' },
+  { from: '#818CF8', via: '#A5B4FC', to: '#C7D2FE' },
   { from: '#ff6b6b', via: '#ff5252', to: '#f44336' },
 ]
 
@@ -258,7 +258,7 @@ const ProjectsExplosionOverlay = ({
 
     return (
       <motion.div
-        className="fixed inset-0 z-50 bg-white"
+        className="fixed inset-0 z-50 bg-[#1A1730]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -323,7 +323,7 @@ const ProjectsExplosionOverlay = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="text-gray-500 text-base mb-6 italic"
+                className="text-[#9B97B0] text-base mb-6 italic"
               >
                 {project.short}
               </motion.p>
@@ -335,7 +335,7 @@ const ProjectsExplosionOverlay = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-gray-700 text-base leading-relaxed mb-6"
+                className="text-[#C8C5D6] text-base leading-relaxed mb-6"
               >
                 {project.description}
               </motion.p>
@@ -368,7 +368,7 @@ const ProjectsExplosionOverlay = ({
   // Grid view of all projects
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-white"
+      className="fixed inset-0 z-50 bg-[#1A1730]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -527,7 +527,7 @@ const NewsListOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-white"
+      className="fixed inset-0 z-50 bg-[#1A1730]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -567,7 +567,7 @@ const NewsListOverlay = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.05, 0.5) }}
-                  className="flex gap-3 bg-gradient-to-r from-lime-50 to-white rounded-xl p-3 shadow-sm border border-lime-100 active:scale-[0.98] transition-transform"
+                  className="flex gap-3 bg-gradient-to-r from-[#141225] to-[#0F0D1A] rounded-xl p-3 shadow-sm border border-lime-100 active:scale-[0.98] transition-transform"
                 >
                   {(item.processed_image_url || item.image_url) && (
                     <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
@@ -579,13 +579,13 @@ const NewsListOverlay = ({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">
+                    <h4 className="font-semibold text-[#EEEDF5] text-sm line-clamp-2 mb-1">
                       {getLocalizedField(item, 'title')}
                     </h4>
-                    <p className="text-gray-500 text-xs line-clamp-2 mb-2">
+                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-2">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-[#9B97B0]">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -607,13 +607,13 @@ const NewsListOverlay = ({
               </div>
             )}
             {!hasMore && allNews.length > 0 && (
-              <p className="text-center text-gray-400 text-sm py-4">
+              <p className="text-center text-[#6B6680] text-sm py-4">
                 {t('no_more_news' as any) || 'No more news'}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-gray-500 text-sm text-center py-12">
+          <p className="text-[#9B97B0] text-sm text-center py-12">
             {t('no_news' as any) || 'No news available'}
           </p>
         )}
@@ -754,7 +754,7 @@ const ContactsOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-white"
+      className="fixed inset-0 z-50 bg-[#1A1730]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -775,7 +775,7 @@ const ContactsOverlay = ({
       {/* Title */}
       <div className="pt-4 px-4 pb-2">
         <h2 className="font-bold text-xl" style={{ color }}>{t('contact_title' as any) || 'Contact'}</h2>
-        <p className="text-gray-500 text-sm mt-1">{t('contact_subtitle' as any) || 'Get in touch'}</p>
+        <p className="text-[#9B97B0] text-sm mt-1">{t('contact_subtitle' as any) || 'Get in touch'}</p>
       </div>
 
       {/* Scrollable content - List of contacts */}
@@ -790,7 +790,7 @@ const ContactsOverlay = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => handleContactClick(social)}
-                className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-white rounded-2xl shadow-sm border border-purple-100 active:scale-[0.98] transition-transform"
+                className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-[#141225] to-[#0F0D1A] rounded-2xl shadow-sm border border-purple-100 active:scale-[0.98] transition-transform"
               >
                 {/* Icon */}
                 <div
@@ -802,12 +802,12 @@ const ContactsOverlay = ({
 
                 {/* Info */}
                 <div className="flex-1 text-left">
-                  <h3 className="font-semibold text-gray-900">{social.label}</h3>
-                  <p className="text-sm text-gray-500">{social.username}</p>
+                  <h3 className="font-semibold text-[#EEEDF5]">{social.label}</h3>
+                  <p className="text-sm text-[#9B97B0]">{social.username}</p>
                 </div>
 
                 {/* Arrow */}
-                <ChevronRight className="w-5 h-5 text-gray-400" />
+                <ChevronRight className="w-5 h-5 text-[#6B6680]" />
               </motion.button>
             )
           })}
@@ -829,7 +829,7 @@ const ContactsOverlay = ({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+              className="bg-[#1A1730] rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -842,13 +842,13 @@ const ContactsOverlay = ({
                     <selectedSocial.icon className="w-5 h-5" style={{ color: selectedSocial.color }} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">{selectedSocial.label}</h3>
-                    <p className="text-sm text-gray-500">{selectedSocial.username}</p>
+                    <h3 className="font-bold text-[#EEEDF5]">{selectedSocial.label}</h3>
+                    <p className="text-sm text-[#9B97B0]">{selectedSocial.username}</p>
                   </div>
                 </div>
                 <button
                   onClick={closeQRModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -856,7 +856,7 @@ const ContactsOverlay = ({
 
               {/* QR Code */}
               <div className="flex justify-center mb-4">
-                <div className="bg-white p-3 rounded-xl shadow-inner border border-gray-100">
+                <div className="bg-[#1A1730] p-3 rounded-xl shadow-inner border border-[#2D2A40]">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(selectedSocial.href)}&format=svg`}
                     alt={`QR Code for ${selectedSocial.label}`}
@@ -868,9 +868,9 @@ const ContactsOverlay = ({
               </div>
 
               {/* URL Display */}
-              <div className="bg-gray-100 rounded-lg p-3 mb-4">
-                <p className="text-xs text-gray-500 mb-1">URL</p>
-                <p className="text-sm text-gray-800 font-mono break-all">{selectedSocial.href}</p>
+              <div className="bg-[#221F3A] rounded-lg p-3 mb-4">
+                <p className="text-xs text-[#9B97B0] mb-1">URL</p>
+                <p className="text-sm text-[#C8C5D6] font-mono break-all">{selectedSocial.href}</p>
               </div>
 
               {/* Action Buttons */}
@@ -880,7 +880,7 @@ const ContactsOverlay = ({
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
                     copied
                       ? 'bg-green-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                      : 'bg-[#221F3A] text-[#C8C5D6] hover:bg-[#2D2A40] active:bg-gray-300'
                   }`}
                 >
                   {copied ? (
@@ -926,7 +926,7 @@ const ContactsOverlay = ({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
+              className="bg-[#1A1730] rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {emailSent ? (
@@ -935,8 +935,8 @@ const ContactsOverlay = ({
                   <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                     <Check className="w-8 h-8 text-green-500" />
                   </div>
-                  <h3 className="font-bold text-gray-900 text-lg mb-2">Message Sent!</h3>
-                  <p className="text-gray-500 text-sm mb-4">
+                  <h3 className="font-bold text-[#EEEDF5] text-lg mb-2">Message Sent!</h3>
+                  <p className="text-[#9B97B0] text-sm mb-4">
                     Thank you for your message. We will get back to you soon.
                   </p>
                   <button
@@ -956,30 +956,30 @@ const ContactsOverlay = ({
                         <Mail className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900">Send Email</h3>
-                        <p className="text-sm text-gray-500">Contact Vitalii</p>
+                        <h3 className="font-bold text-[#EEEDF5]">Send Email</h3>
+                        <p className="text-sm text-[#9B97B0]">Contact Vitalii</p>
                       </div>
                     </div>
                     <button
                       onClick={closeEmailModal}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
                   </div>
 
                   {/* Email Address Display */}
-                  <div className="bg-gray-100 rounded-lg p-3 mb-4 flex items-center justify-between">
+                  <div className="bg-[#221F3A] rounded-lg p-3 mb-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-500 mb-0.5">To:</p>
-                      <p className="text-sm text-gray-800 font-mono">{CONTACT_EMAIL}</p>
+                      <p className="text-xs text-[#9B97B0] mb-0.5">To:</p>
+                      <p className="text-sm text-[#C8C5D6] font-mono">{CONTACT_EMAIL}</p>
                     </div>
                     <button
                       onClick={handleCopyEmail}
                       className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         emailCopied
                           ? 'bg-green-500 text-white'
-                          : 'bg-white text-gray-600 active:bg-gray-50 border border-gray-200'
+                          : 'bg-[#1A1730] text-[#9B97B0] active:bg-[#141225] border border-[#2D2A40]'
                       }`}
                     >
                       {emailCopied ? (
@@ -999,36 +999,36 @@ const ContactsOverlay = ({
                   {/* Form */}
                   <div className="space-y-3 mb-4">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Your Email</label>
+                      <label className="block text-xs text-[#9B97B0] mb-1">Your Email</label>
                       <input
                         type="email"
                         name="senderEmail"
                         value={emailForm.senderEmail}
                         onChange={handleEmailFormChange}
                         placeholder="your@email.com"
-                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
+                        className="w-full px-3 py-2.5 rounded-lg border border-[#2D2A40] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Subject</label>
+                      <label className="block text-xs text-[#9B97B0] mb-1">Subject</label>
                       <input
                         type="text"
                         name="subject"
                         value={emailForm.subject}
                         onChange={handleEmailFormChange}
                         placeholder="What's this about?"
-                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
+                        className="w-full px-3 py-2.5 rounded-lg border border-[#2D2A40] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Message</label>
+                      <label className="block text-xs text-[#9B97B0] mb-1">Message</label>
                       <textarea
                         name="message"
                         value={emailForm.message}
                         onChange={handleEmailFormChange}
                         placeholder="Write your message here..."
                         rows={4}
-                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm resize-none"
+                        className="w-full px-3 py-2.5 rounded-lg border border-[#2D2A40] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm resize-none"
                       />
                     </div>
                   </div>
@@ -1044,7 +1044,7 @@ const ContactsOverlay = ({
                   <div className="flex gap-2">
                     <button
                       onClick={closeEmailModal}
-                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-gray-100 text-gray-700 active:bg-gray-200 transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-[#221F3A] text-[#C8C5D6] active:bg-[#2D2A40] transition-all"
                     >
                       Cancel
                     </button>
@@ -1166,7 +1166,7 @@ const BlogListOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-white"
+      className="fixed inset-0 z-50 bg-[#1A1730]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -1206,7 +1206,7 @@ const BlogListOverlay = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.05, 0.5) }}
-                  className="flex gap-3 bg-gradient-to-r from-blue-50 to-white rounded-xl p-3 shadow-sm border border-blue-100 active:scale-[0.98] transition-transform"
+                  className="flex gap-3 bg-gradient-to-r from-[#141225] to-[#0F0D1A] rounded-xl p-3 shadow-sm border border-blue-100 active:scale-[0.98] transition-transform"
                 >
                   {(item.processed_image_url || item.image_url || item.cover_image_url) && (
                     <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
@@ -1218,13 +1218,13 @@ const BlogListOverlay = ({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">
+                    <h4 className="font-semibold text-[#EEEDF5] text-sm line-clamp-2 mb-1">
                       {getLocalizedField(item, 'title')}
                     </h4>
-                    <p className="text-gray-500 text-xs line-clamp-2 mb-2">
+                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-2">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-[#9B97B0]">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -1249,13 +1249,13 @@ const BlogListOverlay = ({
               </div>
             )}
             {!hasMore && allBlogs.length > 0 && (
-              <p className="text-center text-gray-400 text-sm py-4">
+              <p className="text-center text-[#6B6680] text-sm py-4">
                 {t('no_more_blogs' as any) || 'No more blog posts'}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-gray-500 text-sm text-center py-12">
+          <p className="text-[#9B97B0] text-sm text-center py-12">
             {t('no_blog_posts' as any) || 'No blog posts available'}
           </p>
         )}
@@ -1499,7 +1499,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 ref={aboutTextRef}
                 className="h-full overflow-y-auto pr-2 scrollbar-thin scroll-smooth"
               >
-                <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">
+                <p className="text-sm leading-relaxed text-[#C8C5D6] whitespace-pre-line">
                   {typedText}
                   {isTyping && (
                     <span className="inline-block w-0.5 h-4 bg-gray-800 ml-0.5 animate-pulse" />
@@ -1538,12 +1538,12 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                     className="text-center px-4"
                   >
                     <h3
-                      className="font-bold text-gray-900 uppercase"
+                      className="font-bold text-[#EEEDF5] uppercase"
                       style={{ fontSize: 'clamp(1rem, 5vw, 1.5rem)', lineHeight: 1.2 }}
                     >
                       {translations[langKey].services_list[currentServiceIndex]?.title}
                     </h3>
-                    <p className="text-gray-500 text-xs mt-2 italic">
+                    <p className="text-[#9B97B0] text-xs mt-2 italic">
                       {translations[langKey].services_list[currentServiceIndex]?.description}
                     </p>
                   </motion.div>
@@ -1586,7 +1586,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 onTouchEnd={handleProjectTouchEnd}
               >
                 {/* Progress bar */}
-                <div className="h-1 bg-gray-200 rounded-full mb-3 overflow-hidden">
+                <div className="h-1 bg-[#2D2A40] rounded-full mb-3 overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
                     style={{ background: `linear-gradient(to right, ${currentColor.from}, ${currentColor.to})` }}
@@ -1616,8 +1616,8 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-gray-900 text-sm mb-1 line-clamp-1">{currentProject?.title}</h4>
-                      <p className="text-gray-600 text-xs line-clamp-2">{currentProject?.short}</p>
+                      <h4 className="font-bold text-[#EEEDF5] text-sm mb-1 line-clamp-1">{currentProject?.title}</h4>
+                      <p className="text-[#9B97B0] text-xs line-clamp-2">{currentProject?.short}</p>
                     </div>
                   </motion.div>
                 </AnimatePresence>
@@ -1699,7 +1699,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                           className="w-10 h-10 object-contain"
                           style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
                         />
-                        <span className="text-[9px] text-gray-600 mt-1 text-center line-clamp-1">{skill.name}</span>
+                        <span className="text-[9px] text-[#9B97B0] mt-1 text-center line-clamp-1">{skill.name}</span>
                       </motion.div>
                     ))}
                   </motion.div>
@@ -1748,7 +1748,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
                           whileTap={{ scale: 0.98 }}
-                          className="w-44 flex-shrink-0 bg-white/80 rounded-xl overflow-hidden shadow-sm"
+                          className="w-44 flex-shrink-0 bg-[#1A1730]/80 rounded-xl overflow-hidden shadow-sm"
                         >
                           {(item.processed_image_url || item.image_url) && (
                             <div className="h-24 overflow-hidden">
@@ -1760,10 +1760,10 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                             </div>
                           )}
                           <div className="p-2.5">
-                            <h4 className="font-semibold text-gray-900 text-xs line-clamp-2">
+                            <h4 className="font-semibold text-[#EEEDF5] text-xs line-clamp-2">
                               {getLocalizedField(item, 'title')}
                             </h4>
-                            <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-[#9B97B0]">
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(item.published_at)}</span>
                               {item.views_count > 0 && (
@@ -1780,7 +1780,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm text-center py-4">
+                <p className="text-[#9B97B0] text-sm text-center py-4">
                   {t('no_news' as any) || 'No news available'}
                 </p>
               )}
@@ -1827,7 +1827,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
                           whileTap={{ scale: 0.98 }}
-                          className="w-44 flex-shrink-0 bg-white/80 rounded-xl overflow-hidden shadow-sm"
+                          className="w-44 flex-shrink-0 bg-[#1A1730]/80 rounded-xl overflow-hidden shadow-sm"
                         >
                           {(item.processed_image_url || item.image_url || item.cover_image_url) && (
                             <div className="h-24 overflow-hidden">
@@ -1839,10 +1839,10 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                             </div>
                           )}
                           <div className="p-2.5">
-                            <h4 className="font-semibold text-gray-900 text-xs line-clamp-2">
+                            <h4 className="font-semibold text-[#EEEDF5] text-xs line-clamp-2">
                               {getLocalizedField(item, 'title')}
                             </h4>
-                            <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-[#9B97B0]">
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(item.published_at)}</span>
                               {item.reading_time && <span>• {item.reading_time} min</span>}
@@ -1854,7 +1854,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm text-center py-4">
+                <p className="text-[#9B97B0] text-sm text-center py-4">
                   {t('no_blog_posts' as any) || 'No blog posts available'}
                 </p>
               )}
