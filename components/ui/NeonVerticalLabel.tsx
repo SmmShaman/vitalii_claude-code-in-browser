@@ -60,9 +60,9 @@ export const NeonVerticalLabel = ({
     const animate = () => {
       const target = targetYRef.current;
       const diff = target - currentYRef.current;
-
-      // Плавне наближення до цілі (як в HeroTextAnimation)
-      currentYRef.current += diff * 0.06;
+      // Заливка (вгору) повільніша, зливання (вниз) швидше — імітація гравітації
+      const speed = diff > 0 ? 0.09 : 0.06;
+      currentYRef.current += diff * speed;
 
       // Snap коли близько
       if (Math.abs(diff) < 0.5) {
