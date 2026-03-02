@@ -73,7 +73,12 @@ function SearchPageInner() {
 
     const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
     const offset = pageNum * ITEMS_PER_PAGE
-    const tagsFilter = tagParam ? [tagParam] : undefined
+
+    // Handle __other__ — exclude top visible tags
+    const isOther = tagParam === '__other__'
+    const topTagNames = categoryTags.slice(0, 7).map(t => t.tag_name)
+    const tagsFilter = (tagParam && !isOther) ? [tagParam] : undefined
+    const excludeFilter = isOther ? topTagNames : undefined
 
     try {
       const promises: Promise<any>[] = []
@@ -81,6 +86,7 @@ function SearchPageInner() {
       if (typeParam === 'all' || typeParam === 'news') {
         promises.push(getAllNews({
           tags: tagsFilter,
+          excludeTags: excludeFilter,
           search: queryParam || undefined,
           dateFrom: dateFromParam || undefined,
           dateTo: dateToParam || undefined,
@@ -94,6 +100,7 @@ function SearchPageInner() {
       if (typeParam === 'all' || typeParam === 'blog') {
         promises.push(getAllBlogPosts({
           tags: tagsFilter,
+          excludeTags: excludeFilter,
           search: queryParam || undefined,
           dateFrom: dateFromParam || undefined,
           dateTo: dateToParam || undefined,
@@ -158,7 +165,7 @@ function SearchPageInner() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [tagParam, queryParam, typeParam, dateFromParam, dateToParam, currentLanguage])
+  }, [tagParam, queryParam, typeParam, dateFromParam, dateToParam, currentLanguage, categoryTags])
 
   useEffect(() => {
     setPage(0)
