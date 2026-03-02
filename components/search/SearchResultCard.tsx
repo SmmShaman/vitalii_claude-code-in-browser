@@ -101,7 +101,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
     >
       <Link
         href={href}
-        className="group block h-full rounded-xl overflow-hidden border border-[#2D2A40] bg-[#1A1730] hover:shadow-lg hover:border-[#3D3960] transition-all duration-300 hover:scale-[1.02]"
+        className="group block h-full rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]"
       >
         {/* Image */}
         {imageUrl && size !== 'small' && (
@@ -130,8 +130,8 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             {/* Play overlay for video thumbnails */}
             {isVideoThumbnail && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                <div className="w-10 h-10 rounded-full bg-[#1A1730]/90 flex items-center justify-center">
-                  <div className="w-0 h-0 border-l-[14px] border-l-[#1A1730] border-y-[8px] border-y-transparent ml-1" />
+                <div className="w-10 h-10 rounded-full bg-[#352F5A]/90 flex items-center justify-center">
+                  <div className="w-0 h-0 border-l-[14px] border-l-[#352F5A] border-y-[8px] border-y-transparent ml-1" />
                 </div>
               </div>
             )}
@@ -140,8 +140,8 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
 
         {/* Gradient placeholder for non-YouTube video articles without images */}
         {!imageUrl && result.video_url && size !== 'small' && (
-          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} bg-gradient-to-br from-[#1A1730] to-[#221F3A] flex items-center justify-center overflow-hidden`}>
-            <Video className="w-10 h-10 text-[#6B6680]" />
+          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} bg-gradient-to-br from-[#352F5A] to-[#3D3768] flex items-center justify-center overflow-hidden`}>
+            <Video className="w-10 h-10 text-[#8A84A8]" />
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
                 isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
@@ -187,7 +187,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
 
             {/* Description for large cards */}
             {size === 'large' && result.description && (
-              <p className="text-xs text-[#9B97B0] mt-1 line-clamp-2">{result.description}</p>
+              <p className="text-xs text-[#B0ABCA] mt-1 line-clamp-2">{result.description}</p>
             )}
 
             {/* Tags */}
@@ -196,7 +196,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
                 {result.tags.slice(0, 2).map((tag) => (
                   <span
                     key={tag}
-                    className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#221F3A] text-[#9B97B0]"
+                    className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA]"
                   >
                     #{tag}
                   </span>
@@ -205,7 +205,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
             )}
 
             {/* Meta */}
-            <div className="flex items-center gap-2 mt-2 text-[10px] text-[#6B6680]">
+            <div className="flex items-center gap-2 mt-2 text-[10px] text-[#8A84A8]">
               {result.published_at && (
                 <span className="flex items-center gap-0.5">
                   <Calendar className="w-3 h-3" />

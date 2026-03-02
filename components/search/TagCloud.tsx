@@ -22,7 +22,7 @@ export function TagCloud({ tags, activeTag }: TagCloudProps) {
 
   return (
     <div className="mb-6">
-      <h2 className="text-xs font-semibold text-[#6B6680] uppercase tracking-wider mb-3">
+      <h2 className="text-xs font-semibold text-[#8A84A8] uppercase tracking-wider mb-3">
         {t('search_popular_tags')}
       </h2>
       <div className="flex flex-wrap gap-2">
@@ -35,11 +35,11 @@ export function TagCloud({ tags, activeTag }: TagCloudProps) {
               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                 isActive
                   ? 'bg-[#6366F1] text-white shadow-sm'
-                  : 'bg-[#1A1730] text-[#9B97B0] hover:bg-[#221F3A] hover:text-[#818CF8]'
+                  : 'bg-[#352F5A] text-[#B0ABCA] hover:bg-[#3D3768] hover:text-[#818CF8]'
               }`}
             >
               #{tag.name}
-              <span className={`text-[10px] ${isActive ? 'text-[#A5B4FC]' : 'text-[#6B6680]'}`}>
+              <span className={`text-[10px] ${isActive ? 'text-[#A5B4FC]' : 'text-[#8A84A8]'}`}>
                 {tag.usage_count}
               </span>
             </Link>

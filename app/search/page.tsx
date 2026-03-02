@@ -1,5 +1,4 @@
 import { Metadata } from 'next'
-import { ArticleLayout } from '@/components/ArticleLayout'
 import { SearchPageClient } from './SearchPageClient'
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://vitalii.no'
@@ -14,9 +13,5 @@ export const metadata: Metadata = {
 }
 
 export default function SearchPage() {
-  return (
-    <ArticleLayout backLabel="Search">
-      <SearchPageClient />
-    </ArticleLayout>
-  )
+  return <SearchPageClient />
 }

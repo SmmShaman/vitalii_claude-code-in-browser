@@ -1,22 +1,29 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { getAllNews, getAllBlogPosts, getAllTags } from '@/integrations/supabase/client'
-import { useTranslations } from '@/contexts/TranslationContext'
-import { SearchFilters } from '@/components/search/SearchFilters'
+import { useTranslations, type Language } from '@/contexts/TranslationContext'
 import { SearchResultCard, getCardSize } from '@/components/search/SearchResultCard'
 import { TagCloud } from '@/components/search/TagCloud'
-import { Loader2, SearchX } from 'lucide-react'
+import { Loader2, SearchX, ArrowLeft, Search, X, Calendar, SlidersHorizontal } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import type { SearchResult } from '@/components/search/SearchResultCard'
+
+const Footer = dynamic(
+  () => import('@/components/layout/Footer').then(mod => mod.Footer),
+  { ssr: false }
+)
 
 const ITEMS_PER_PAGE = 12
 
 function SearchPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { t, currentLanguage } = useTranslations()
+  const { t, currentLanguage, setCurrentLanguage } = useTranslations()
+  const languages: Language[] = ['NO', 'EN', 'UA']
 
   // Read URL params
   const tagParam = searchParams.get('tag') || ''
@@ -32,6 +39,19 @@ function SearchPageInner() {
   const [page, setPage] = useState(0)
   const [tags, setTags] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(false)
+
+  // Inline filter state (moved from SearchFilters)
+  const [localQuery, setLocalQuery] = useState(queryParam)
+  const [showDateFilters, setShowDateFilters] = useState(!!dateFromParam || !!dateToParam)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => { setLocalQuery(queryParam) }, [queryParam])
+
+  const handleQueryChange = (value: string) => {
+    setLocalQuery(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => updateFilters({ q: value }), 300)
+  }
 
   // Fetch tags once
   useEffect(() => {
@@ -78,7 +98,6 @@ function SearchPageInner() {
 
       const [newsResult, blogResult] = await Promise.all(promises)
 
-      // Transform news
       const newsItems: SearchResult[] = (newsResult.data || []).map((item: any) => ({
         id: item.id,
         type: 'news' as const,
@@ -94,7 +113,6 @@ function SearchPageInner() {
         video_type: item.video_type,
       }))
 
-      // Transform blog
       const blogItems: SearchResult[] = (blogResult.data || []).map((item: any) => ({
         id: item.id,
         type: 'blog' as const,
@@ -110,7 +128,6 @@ function SearchPageInner() {
         reading_time: item.reading_time,
       }))
 
-      // Merge and sort by date
       const merged = [...newsItems, ...blogItems].sort((a, b) => {
         const dateA = new Date(a.published_at || 0).getTime()
         const dateB = new Date(b.published_at || 0).getTime()
@@ -135,13 +152,11 @@ function SearchPageInner() {
     }
   }, [tagParam, queryParam, typeParam, dateFromParam, dateToParam, currentLanguage])
 
-  // Refetch when filters change
   useEffect(() => {
     setPage(0)
     fetchResults(0, false)
   }, [fetchResults])
 
-  // URL update helper
   const updateFilters = useCallback((updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString())
     Object.entries(updates).forEach(([key, value]) => {
@@ -161,103 +176,237 @@ function SearchPageInner() {
     fetchResults(nextPage, true)
   }
 
+  const tabs: Array<{ key: 'all' | 'news' | 'blog'; label: string }> = [
+    { key: 'all', label: t('search_all') },
+    { key: 'news', label: t('search_news') },
+    { key: 'blog', label: t('search_blog') },
+  ]
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-      {/* Header */}
-      <h1 className="text-2xl sm:text-3xl font-bold text-[#EEEDF5] mb-6">
-        {t('search_title')}
-      </h1>
-
-      {/* Filters */}
-      <SearchFilters
-        query={queryParam}
-        onQueryChange={(q) => updateFilters({ q })}
-        contentType={typeParam}
-        onContentTypeChange={(type) => updateFilters({ type: type === 'all' ? '' : type })}
-        dateFrom={dateFromParam}
-        onDateFromChange={(date) => updateFilters({ dateFrom: date })}
-        dateTo={dateToParam}
-        onDateToChange={(date) => updateFilters({ dateTo: date })}
-        activeTag={tagParam}
-        onClearTag={() => updateFilters({ tag: '' })}
-        totalResults={totalCount}
-      />
-
-      {/* Tag Cloud */}
-      <div className="mt-6">
-        <TagCloud tags={tags} activeTag={tagParam} />
-      </div>
-
-      {/* Results */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-[#818CF8] animate-spin" />
-        </div>
-      ) : results.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <SearchX className="w-12 h-12 text-[#6B6680] mb-4" />
-          <p className="text-lg font-medium text-[#9B97B0]">{t('search_no_results')}</p>
-          <p className="text-sm text-[#6B6680] mt-1">{t('search_no_results_hint')}</p>
-          {(tagParam || queryParam || dateFromParam || dateToParam) && (
-            <button
-              onClick={() => router.replace('/search')}
-              className="mt-4 px-4 py-2 rounded-full text-sm font-medium bg-[#6366F1] text-white hover:bg-[#4F46E5] transition-colors"
-            >
-              {t('search_clear_filters')}
-            </button>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Masonry Grid */}
-          <div
-            className="search-grid mt-6"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(1, 1fr)',
-              gridAutoRows: '120px',
-              gap: '16px',
-            }}
+    <div className="min-h-screen bg-[#2D2850] flex flex-col">
+      {/* Compact Sticky Header — 2 rows */}
+      <header className="sticky top-0 z-50 bg-[#2D2850]/95 backdrop-blur-sm border-b border-[#443D6E]">
+        {/* Row 1: Brand + Search Input + Language */}
+        <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-[#B0ABCA] hover:text-[#EEEDF5] transition-colors group flex-shrink-0"
           >
-            <style>{`
-              @media (min-width: 640px) {
-                .search-grid { grid-template-columns: repeat(2, 1fr) !important; grid-auto-rows: 130px !important; }
-              }
-              @media (min-width: 1024px) {
-                .search-grid { grid-template-columns: repeat(3, 1fr) !important; grid-auto-rows: 120px !important; }
-              }
-            `}</style>
-            <AnimatePresence mode="popLayout">
-              {results.map((result, index) => {
-                const hasImage = !!(result.processed_image_url || result.image_url || result.video_url)
-                const size = getCardSize(index, hasImage)
-                return (
-                  <SearchResultCard
-                    key={`${result.type}-${result.id}`}
-                    result={result}
-                    size={size}
-                    index={index}
-                  />
-                )
-              })}
-            </AnimatePresence>
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-bold text-amber-500 text-lg hidden sm:inline">Vitalii Berbeha</span>
+          </Link>
+
+          {/* Search input — flexible width */}
+          <div className="relative flex-1 max-w-2xl">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A84A8]" />
+            <input
+              type="text"
+              value={localQuery}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder={t('search_articles_placeholder')}
+              className="w-full pl-9 pr-9 py-2 rounded-lg border border-[#443D6E] bg-[#352F5A] text-sm text-[#EEEDF5] placeholder-[#8A84A8] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30 focus:border-[#6366F1] transition-all"
+            />
+            {localQuery && (
+              <button
+                onClick={() => { setLocalQuery(''); updateFilters({ q: '' }) }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-[#3D3768] text-[#8A84A8] hover:text-[#B0ABCA] transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Load More */}
-          {hasMore && (
-            <div className="flex justify-center mt-8">
+          {/* Language buttons */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {languages.map((lang) => (
               <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#1A1730] text-[#C8C5D6] hover:bg-[#221F3A] disabled:opacity-50 transition-all flex items-center gap-2"
+                key={lang}
+                onClick={() => setCurrentLanguage(lang)}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  currentLanguage === lang
+                    ? 'bg-[#6366F1] text-white'
+                    : 'bg-[#352F5A] text-[#B0ABCA] hover:bg-[#3D3768]'
+                }`}
+                aria-label={`Switch to ${lang}`}
               >
-                {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
-                {t('search_load_more')}
+                {lang}
               </button>
-            </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2: Tag + Tabs + Date + Count */}
+        <div className="px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2 flex-wrap border-t border-[#443D6E]/50">
+          {/* Active tag chip */}
+          {tagParam && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#3D3768] text-[#818CF8]">
+              #{tagParam}
+              <button
+                onClick={() => updateFilters({ tag: '' })}
+                className="p-0.5 rounded-full hover:bg-[#443D6E] transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
           )}
-        </>
-      )}
+
+          {/* Type tabs */}
+          <div className="flex items-center gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => updateFilters({ type: tab.key === 'all' ? '' : tab.key })}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  typeParam === tab.key
+                    ? 'bg-[#6366F1] text-white shadow-sm'
+                    : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Date toggle */}
+          <button
+            onClick={() => setShowDateFilters(!showDateFilters)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-all ${
+              showDateFilters || dateFromParam || dateToParam
+                ? 'bg-[#3D3768] text-[#818CF8]'
+                : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
+            }`}
+          >
+            <Calendar className="w-3 h-3" />
+            <SlidersHorizontal className="w-3 h-3" />
+          </button>
+
+          {/* Result count */}
+          {totalCount > 0 && (
+            <span className="text-xs text-[#8A84A8]">
+              {totalCount} {t('search_results_count')}
+            </span>
+          )}
+        </div>
+
+        {/* Expandable date range (not a permanent row) */}
+        {showDateFilters && (
+          <div className="px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-3 flex-wrap border-t border-[#443D6E]/30">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#B0ABCA]">{t('search_date_from')}:</span>
+              <input
+                type="date"
+                value={dateFromParam}
+                onChange={(e) => updateFilters({ dateFrom: e.target.value })}
+                className="px-2.5 py-1 rounded-lg border border-[#443D6E] bg-[#352F5A] text-xs text-[#C8C5D6] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/20 focus:border-[#6366F1]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#B0ABCA]">{t('search_date_to')}:</span>
+              <input
+                type="date"
+                value={dateToParam}
+                onChange={(e) => updateFilters({ dateTo: e.target.value })}
+                className="px-2.5 py-1 rounded-lg border border-[#443D6E] bg-[#352F5A] text-xs text-[#C8C5D6] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/20 focus:border-[#6366F1]"
+              />
+            </div>
+            {(dateFromParam || dateToParam) && (
+              <button
+                onClick={() => updateFilters({ dateFrom: '', dateTo: '' })}
+                className="text-xs text-[#818CF8] hover:text-[#A5B4FC] underline"
+              >
+                {t('search_clear_filters')}
+              </button>
+            )}
+          </div>
+        )}
+      </header>
+
+      {/* Main Content — full width */}
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4">
+        {/* Tag Cloud */}
+        <TagCloud tags={tags} activeTag={tagParam} />
+
+        {/* Results */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 text-[#818CF8] animate-spin" />
+          </div>
+        ) : results.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <SearchX className="w-12 h-12 text-[#8A84A8] mb-4" />
+            <p className="text-lg font-medium text-[#B0ABCA]">{t('search_no_results')}</p>
+            <p className="text-sm text-[#8A84A8] mt-1">{t('search_no_results_hint')}</p>
+            {(tagParam || queryParam || dateFromParam || dateToParam) && (
+              <button
+                onClick={() => router.replace('/search')}
+                className="mt-4 px-4 py-2 rounded-full text-sm font-medium bg-[#6366F1] text-white hover:bg-[#4F46E5] transition-colors"
+              >
+                {t('search_clear_filters')}
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Masonry Grid — full width */}
+            <div
+              className="search-grid mt-4"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(1, 1fr)',
+                gridAutoRows: '120px',
+                gap: '16px',
+              }}
+            >
+              <style>{`
+                @media (min-width: 640px) {
+                  .search-grid { grid-template-columns: repeat(2, 1fr) !important; grid-auto-rows: 130px !important; }
+                }
+                @media (min-width: 1024px) {
+                  .search-grid { grid-template-columns: repeat(3, 1fr) !important; grid-auto-rows: 120px !important; }
+                }
+                @media (min-width: 1280px) {
+                  .search-grid { grid-template-columns: repeat(4, 1fr) !important; grid-auto-rows: 120px !important; }
+                }
+              `}</style>
+              <AnimatePresence mode="popLayout">
+                {results.map((result, index) => {
+                  const hasImage = !!(result.processed_image_url || result.image_url || result.video_url)
+                  const size = getCardSize(index, hasImage)
+                  return (
+                    <SearchResultCard
+                      key={`${result.type}-${result.id}`}
+                      result={result}
+                      size={size}
+                      index={index}
+                    />
+                  )
+                })}
+              </AnimatePresence>
+            </div>
+
+            {/* Load More */}
+            {hasMore && (
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#352F5A] text-[#C8C5D6] hover:bg-[#3D3768] disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {t('search_load_more')}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+
+      {/* Footer */}
+      <div className="mt-auto">
+        <Footer />
+      </div>
     </div>
   )
 }
@@ -265,26 +414,37 @@ function SearchPageInner() {
 // Skeleton for Suspense fallback
 function SearchSkeleton() {
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-      <div className="h-9 w-32 bg-[#221F3A] rounded-lg mb-6 animate-pulse" />
-      <div className="h-12 w-full bg-[#221F3A] rounded-xl mb-4 animate-pulse" />
-      <div className="flex gap-2 mb-6">
-        <div className="h-9 w-16 bg-[#221F3A] rounded-full animate-pulse" />
-        <div className="h-9 w-20 bg-[#221F3A] rounded-full animate-pulse" />
-        <div className="h-9 w-16 bg-[#221F3A] rounded-full animate-pulse" />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="bg-[#1A1730] rounded-xl overflow-hidden border border-[#2D2A40]">
-            <div className="w-full aspect-video bg-[#221F3A] animate-pulse" />
-            <div className="p-4">
-              <div className="h-5 w-full bg-[#221F3A] rounded mb-2 animate-pulse" />
-              <div className="h-5 w-3/4 bg-[#221F3A] rounded mb-3 animate-pulse" />
-              <div className="h-3 w-24 bg-[#221F3A] rounded animate-pulse" />
-            </div>
+    <div className="min-h-screen bg-[#2D2850] flex flex-col">
+      <div className="sticky top-0 z-50 bg-[#2D2850] border-b border-[#443D6E]">
+        <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
+          <div className="h-6 w-36 bg-[#3D3768] rounded animate-pulse" />
+          <div className="flex-1 max-w-2xl h-9 bg-[#3D3768] rounded-lg animate-pulse" />
+          <div className="flex gap-1">
+            <div className="h-7 w-8 bg-[#3D3768] rounded animate-pulse" />
+            <div className="h-7 w-8 bg-[#3D3768] rounded animate-pulse" />
+            <div className="h-7 w-8 bg-[#3D3768] rounded animate-pulse" />
           </div>
-        ))}
+        </div>
+        <div className="px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2">
+          <div className="h-6 w-14 bg-[#3D3768] rounded-full animate-pulse" />
+          <div className="h-6 w-16 bg-[#3D3768] rounded-full animate-pulse" />
+          <div className="h-6 w-14 bg-[#3D3768] rounded-full animate-pulse" />
+        </div>
       </div>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-[#352F5A] rounded-xl overflow-hidden border border-[#443D6E]">
+              <div className="w-full aspect-video bg-[#3D3768] animate-pulse" />
+              <div className="p-4">
+                <div className="h-5 w-full bg-[#3D3768] rounded mb-2 animate-pulse" />
+                <div className="h-5 w-3/4 bg-[#3D3768] rounded mb-3 animate-pulse" />
+                <div className="h-3 w-24 bg-[#3D3768] rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
     </div>
   )
 }
