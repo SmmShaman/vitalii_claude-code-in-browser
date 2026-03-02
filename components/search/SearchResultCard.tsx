@@ -97,13 +97,15 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
   const href = `/${result.type === 'news' ? 'news' : 'blog'}/${result.slug}`
   const isNews = result.type === 'news'
 
-  // Grid span classes
+  // Grid span classes (layout only, content is always the same)
   const gridClasses =
     size === 'large'
       ? 'sm:col-span-2 row-span-3'
       : size === 'medium'
         ? 'row-span-3'
         : 'row-span-2'
+
+  const imageHeight = size === 'large' ? 'h-48 sm:h-56' : 'h-32 sm:h-36'
 
   return (
     <motion.div
@@ -116,9 +118,9 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
         href={href}
         className="group block h-full rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]"
       >
-        {/* Image */}
-        {displayImage && size !== 'small' && (
-          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-32 sm:h-36'} overflow-hidden`}>
+        {/* Image — always full width */}
+        {displayImage ? (
+          <div className={`relative w-full ${imageHeight} overflow-hidden`}>
             <Image
               src={displayImage}
               alt={result.title}
@@ -154,12 +156,16 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
               </div>
             )}
           </div>
-        )}
-
-        {/* Gradient placeholder for non-YouTube video articles without images */}
-        {!displayImage && result.video_url && size !== 'small' && (
-          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} bg-gradient-to-br from-[#352F5A] to-[#3D3768] flex items-center justify-center overflow-hidden`}>
-            <Video className="w-10 h-10 text-[#8A84A8]" />
+        ) : (
+          /* Gradient placeholder when no image */
+          <div className={`relative w-full ${imageHeight} bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden`}>
+            {result.video_url ? (
+              <Video className="w-10 h-10 text-[#5A5190]" />
+            ) : isNews ? (
+              <Newspaper className="w-10 h-10 text-[#5A5190]" />
+            ) : (
+              <BookOpen className="w-10 h-10 text-[#5A5190]" />
+            )}
             <div
               className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
                 isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
@@ -170,93 +176,52 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
           </div>
         )}
 
-        {/* Content */}
-        <div className={`p-3 ${size === 'small' ? 'flex items-start gap-3' : ''}`}>
-          {/* Small card: thumbnail or icon */}
-          {size === 'small' && (
-            displayImage ? (
-              <div className="relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden">
-                <Image
-                  src={displayImage}
-                  alt={result.title}
-                  fill
-                  className="object-cover"
-                  sizes="64px"
-                  onError={() => {
-                    if (!imgFailed) setImgFailed(true)
-                    else if (!fallbackFailed) setFallbackFailed(true)
-                  }}
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="flex-shrink-0 mt-0.5">
-                {isNews ? (
-                  <Newspaper className="w-4 h-4 text-[#818CF8]" />
-                ) : (
-                  <BookOpen className="w-4 h-4 text-blue-500" />
-                )}
-              </div>
-            )
+        {/* Content — always the same regardless of size */}
+        <div className="p-3">
+          <h3
+            className={`font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors ${
+              size === 'large' ? 'text-base sm:text-lg line-clamp-3' : 'text-sm line-clamp-2'
+            }`}
+          >
+            {result.title}
+          </h3>
+
+          {/* Description — always shown if available */}
+          {result.description && (
+            <p className="text-xs text-[#B0ABCA] mt-1 line-clamp-2">{result.description}</p>
           )}
 
-          <div className="min-w-0 flex-1">
-            {/* No-image medium card badge */}
-            {!displayImage && size !== 'small' && (
-              <div
-                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2 ${
-                  isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
-                }`}
-              >
-                {isNews ? 'News' : 'Blog'}
-              </div>
-            )}
-
-            <h3
-              className={`font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors ${
-                size === 'large' ? 'text-base sm:text-lg line-clamp-3' : 'text-sm line-clamp-2'
-              }`}
-            >
-              {result.title}
-            </h3>
-
-            {/* Description for large cards */}
-            {size === 'large' && result.description && (
-              <p className="text-xs text-[#B0ABCA] mt-1 line-clamp-2">{result.description}</p>
-            )}
-
-            {/* Tags */}
-            {size !== 'small' && result.tags && result.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {result.tags.slice(0, 2).map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA]"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Meta */}
-            <div className="flex items-center gap-2 mt-2 text-[10px] text-[#8A84A8]">
-              {result.published_at && (
-                <span className="flex items-center gap-0.5">
-                  <Calendar className="w-3 h-3" />
-                  {formatDate(result.published_at)}
+          {/* Tags — always shown if available */}
+          {result.tags && result.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {result.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA]"
+                >
+                  #{tag}
                 </span>
-              )}
-              {result.views_count > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <Eye className="w-3 h-3" />
-                  {result.views_count}
-                </span>
-              )}
-              {result.reading_time && (
-                <span>{result.reading_time} min</span>
-              )}
+              ))}
             </div>
+          )}
+
+          {/* Meta */}
+          <div className="flex items-center gap-2 mt-2 text-[10px] text-[#8A84A8]">
+            {result.published_at && (
+              <span className="flex items-center gap-0.5">
+                <Calendar className="w-3 h-3" />
+                {formatDate(result.published_at)}
+              </span>
+            )}
+            {result.views_count > 0 && (
+              <span className="flex items-center gap-0.5">
+                <Eye className="w-3 h-3" />
+                {result.views_count}
+              </span>
+            )}
+            {result.reading_time && (
+              <span>{result.reading_time} min</span>
+            )}
           </div>
         </div>
       </Link>
