@@ -9,7 +9,7 @@ import type { TagFrequency } from '@/integrations/supabase/client'
 import { useTranslations, type Language } from '@/contexts/TranslationContext'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
 import type { SearchResult } from '@/components/search/SearchResultCard'
-import { CategoryTabs } from '@/components/CategoryTabs'
+import { CategoryTabs, getActivePageBg } from '@/components/CategoryTabs'
 import { Loader2, SearchX, ArrowLeft } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 
@@ -125,8 +125,10 @@ function NewsListingInner() {
     router.replace(qs ? `/news?${qs}` : '/news', { scroll: false })
   }
 
+  const pageBgTint = getActivePageBg(activeTag, tags, 7)
+
   return (
-    <div className="min-h-screen bg-[#2D2850] flex flex-col">
+    <div className="min-h-screen bg-[#2D2850] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#2D2850]/95 backdrop-blur-sm border-b border-[#443D6E]">
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">

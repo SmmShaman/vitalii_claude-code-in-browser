@@ -6,18 +6,37 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useTranslations } from '@/contexts/TranslationContext'
 import type { TagFrequency } from '@/integrations/supabase/client'
 
-// Color palette for category tabs (index-based)
-const CATEGORY_COLORS = [
-  { bg: 'bg-[#6366F1]/15', text: 'text-[#818CF8]', activeBg: 'bg-[#6366F1]' },       // indigo
-  { bg: 'bg-[#EC4899]/15', text: 'text-[#F472B6]', activeBg: 'bg-[#EC4899]' },       // pink
-  { bg: 'bg-[#10B981]/15', text: 'text-[#34D399]', activeBg: 'bg-[#10B981]' },       // emerald
-  { bg: 'bg-[#F59E0B]/15', text: 'text-[#FBBF24]', activeBg: 'bg-[#F59E0B]' },       // amber
-  { bg: 'bg-[#3B82F6]/15', text: 'text-[#60A5FA]', activeBg: 'bg-[#3B82F6]' },       // blue
-  { bg: 'bg-[#EF4444]/15', text: 'text-[#F87171]', activeBg: 'bg-[#EF4444]' },       // red
-  { bg: 'bg-[#8B5CF6]/15', text: 'text-[#A78BFA]', activeBg: 'bg-[#8B5CF6]' },       // violet
-  { bg: 'bg-[#14B8A6]/15', text: 'text-[#2DD4BF]', activeBg: 'bg-[#14B8A6]' },       // teal
-  { bg: 'bg-[#F97316]/15', text: 'text-[#FB923C]', activeBg: 'bg-[#F97316]' },       // orange
+// Color scheme: pill text, pill bg, active pill bg, page background tint
+export const CATEGORY_COLORS = [
+  { text: '#06B6D4', pillBg: 'rgba(6,182,212,0.12)',  activeBg: '#0891B2', pageBg: 'rgba(6,182,212,0.06)' },   // cyan
+  { text: '#3B82F6', pillBg: 'rgba(59,130,246,0.12)', activeBg: '#2563EB', pageBg: 'rgba(59,130,246,0.06)' },   // blue
+  { text: '#A78BFA', pillBg: 'rgba(167,139,250,0.12)', activeBg: '#7C3AED', pageBg: 'rgba(139,92,246,0.06)' },  // violet
+  { text: '#F472B6', pillBg: 'rgba(244,114,182,0.12)', activeBg: '#DB2777', pageBg: 'rgba(236,72,153,0.06)' },  // pink
+  { text: '#34D399', pillBg: 'rgba(52,211,153,0.12)', activeBg: '#059669', pageBg: 'rgba(16,185,129,0.06)' },   // emerald
+  { text: '#FB923C', pillBg: 'rgba(251,146,60,0.12)', activeBg: '#EA580C', pageBg: 'rgba(249,115,22,0.06)' },   // orange
+  { text: '#F87171', pillBg: 'rgba(248,113,113,0.12)', activeBg: '#DC2626', pageBg: 'rgba(239,68,68,0.06)' },   // red
+  { text: '#FBBF24', pillBg: 'rgba(251,191,36,0.12)', activeBg: '#D97706', pageBg: 'rgba(245,158,11,0.06)' },   // amber
+  { text: '#2DD4BF', pillBg: 'rgba(45,212,191,0.12)', activeBg: '#0D9488', pageBg: 'rgba(20,184,166,0.06)' },   // teal
 ]
+
+export const OTHER_COLOR = {
+  text: '#94A3B8', pillBg: 'rgba(148,163,184,0.10)', activeBg: '#64748B', pageBg: 'rgba(139,92,246,0.05)',
+}
+
+export const ALL_PAGE_BG = 'transparent'
+
+export function getCategoryColor(index: number) {
+  return CATEGORY_COLORS[index % CATEGORY_COLORS.length]
+}
+
+/** Returns the page background tint for the currently active tag */
+export function getActivePageBg(activeTag: string | null, tags: TagFrequency[], visibleCount: number): string {
+  if (!activeTag) return ALL_PAGE_BG
+  if (activeTag === '__other__') return OTHER_COLOR.pageBg
+  const idx = tags.slice(0, visibleCount).findIndex(t => t.tag_name === activeTag)
+  if (idx >= 0) return getCategoryColor(idx).pageBg
+  return ALL_PAGE_BG
+}
 
 interface CategoryTabsProps {
   tags: TagFrequency[]
@@ -47,8 +66,6 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
 
   const isOtherActive = activeTag === '__other__'
 
-  const getColor = (index: number) => CATEGORY_COLORS[index % CATEGORY_COLORS.length]
-
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       {/* "All" tab */}
@@ -56,8 +73,8 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
         onClick={() => onTagChange(null)}
         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
           activeTag === null
-            ? 'bg-[#6366F1] text-white shadow-md'
-            : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580]'
+            ? 'bg-white/15 text-white shadow-md'
+            : 'bg-white/5 text-[#B0ABCA] hover:bg-white/10'
         }`}
       >
         {t('category_all')}
@@ -65,18 +82,18 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
 
       {/* Visible tag tabs — each with its own color */}
       {visibleTags.map((tag, index) => {
-        const color = getColor(index)
+        const color = getCategoryColor(index)
         const isActive = activeTag === tag.tag_name
 
         return (
           <button
             key={tag.tag_name}
             onClick={() => onTagChange(tag.tag_name)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-              isActive
-                ? `${color.activeBg} text-white shadow-md`
-                : `${color.bg} ${color.text} hover:opacity-80`
-            }`}
+            style={isActive
+              ? { backgroundColor: color.activeBg, color: '#fff' }
+              : { backgroundColor: color.pillBg, color: color.text }
+            }
+            className="px-3 py-1.5 rounded-full text-sm font-medium transition-all hover:opacity-80 shadow-sm"
           >
             {tag.tag_name}
             <span className="ml-1 text-xs opacity-60">{tag.article_count}</span>
@@ -88,11 +105,11 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
       {hiddenTags.length > 0 && (
         <button
           onClick={() => onTagChange('__other__')}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-            isOtherActive
-              ? 'bg-[#64748B] text-white shadow-md'
-              : 'bg-[#64748B]/15 text-[#94A3B8] hover:opacity-80'
-          }`}
+          style={isOtherActive
+            ? { backgroundColor: OTHER_COLOR.activeBg, color: '#fff' }
+            : { backgroundColor: OTHER_COLOR.pillBg, color: OTHER_COLOR.text }
+          }
+          className="px-3 py-1.5 rounded-full text-sm font-medium transition-all hover:opacity-80 shadow-sm"
         >
           {t('category_other')}
         </button>

@@ -8,7 +8,7 @@ import { getAllNews, getAllBlogPosts, getTagFrequencies } from '@/integrations/s
 import type { TagFrequency } from '@/integrations/supabase/client'
 import { useTranslations, type Language } from '@/contexts/TranslationContext'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
-import { CategoryTabs } from '@/components/CategoryTabs'
+import { CategoryTabs, getActivePageBg } from '@/components/CategoryTabs'
 import { Loader2, SearchX, ArrowLeft, Search, X, Calendar, SlidersHorizontal } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import type { SearchResult } from '@/components/search/SearchResultCard'
@@ -197,8 +197,10 @@ function SearchPageInner() {
     { key: 'blog', label: t('search_blog') },
   ]
 
+  const pageBgTint = getActivePageBg(tagParam || null, categoryTags, 7)
+
   return (
-    <div className="min-h-screen bg-[#2D2850] flex flex-col">
+    <div className="min-h-screen bg-[#2D2850] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
       {/* Compact Sticky Header — 2 rows */}
       <header className="sticky top-0 z-50 bg-[#2D2850]/95 backdrop-blur-sm border-b border-[#443D6E]">
         {/* Row 1: Brand + Search Input + Language */}
