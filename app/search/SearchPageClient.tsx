@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { getAllNews, getAllBlogPosts, getAllTags } from '@/integrations/supabase/client'
+import { getAllNews, getAllBlogPosts, getTagFrequencies } from '@/integrations/supabase/client'
+import type { TagFrequency } from '@/integrations/supabase/client'
 import { useTranslations, type Language } from '@/contexts/TranslationContext'
 import { SearchResultCard } from '@/components/search/SearchResultCard'
-import { TagCloud } from '@/components/search/TagCloud'
+import { CategoryTabs } from '@/components/CategoryTabs'
 import { Loader2, SearchX, ArrowLeft, Search, X, Calendar, SlidersHorizontal } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import type { SearchResult } from '@/components/search/SearchResultCard'
@@ -43,7 +44,7 @@ function SearchPageInner() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(0)
-  const [tags, setTags] = useState<any[]>([])
+  const [categoryTags, setCategoryTags] = useState<TagFrequency[]>([])
   const [hasMore, setHasMore] = useState(false)
 
   // Inline filter state (moved from SearchFilters)
@@ -59,10 +60,11 @@ function SearchPageInner() {
     debounceRef.current = setTimeout(() => updateFilters({ q: value }), 300)
   }
 
-  // Fetch tags once
+  // Fetch tag frequencies based on current type filter
   useEffect(() => {
-    getAllTags().then(setTags)
-  }, [])
+    const contentType = typeParam === 'news' ? 'news' : typeParam === 'blog' ? 'blog' : 'all'
+    getTagFrequencies(contentType).then(setCategoryTags)
+  }, [typeParam])
 
   // Fetch results when filters change
   const fetchResults = useCallback(async (pageNum: number = 0, append: boolean = false) => {
@@ -222,6 +224,36 @@ function SearchPageInner() {
             )}
           </div>
 
+          {/* Type tabs */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => updateFilters({ type: tab.key === 'all' ? '' : tab.key })}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  typeParam === tab.key
+                    ? 'bg-[#6366F1] text-white shadow-sm'
+                    : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Date toggle */}
+          <button
+            onClick={() => setShowDateFilters(!showDateFilters)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs transition-all flex-shrink-0 ${
+              showDateFilters || dateFromParam || dateToParam
+                ? 'bg-[#3D3768] text-[#818CF8]'
+                : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
+            }`}
+          >
+            <Calendar className="w-3 h-3" />
+            <SlidersHorizontal className="w-3 h-3" />
+          </button>
+
           {/* Language buttons */}
           <div className="flex items-center gap-1 flex-shrink-0">
             {languages.map((lang) => (
@@ -241,56 +273,19 @@ function SearchPageInner() {
           </div>
         </div>
 
-        {/* Row 2: Tag + Tabs + Date + Count */}
-        <div className="px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2 flex-wrap border-t border-[#443D6E]/50">
-          {/* Active tag chip */}
-          {tagParam && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#3D3768] text-[#818CF8]">
-              #{tagParam}
-              <button
-                onClick={() => updateFilters({ tag: '' })}
-                className="p-0.5 rounded-full hover:bg-[#443D6E] transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {/* Type tabs */}
-          <div className="flex items-center gap-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => updateFilters({ type: tab.key === 'all' ? '' : tab.key })}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  typeParam === tab.key
-                    ? 'bg-[#6366F1] text-white shadow-sm'
-                    : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {/* Row 2: Categories + Count */}
+        <div className="px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2 border-t border-[#443D6E]/50">
+          <div className="flex-1 min-w-0">
+            <CategoryTabs
+              tags={categoryTags}
+              activeTag={tagParam || null}
+              onTagChange={(tag) => updateFilters({ tag: tag || '' })}
+            />
           </div>
-
-          <div className="flex-1" />
-
-          {/* Date toggle */}
-          <button
-            onClick={() => setShowDateFilters(!showDateFilters)}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-all ${
-              showDateFilters || dateFromParam || dateToParam
-                ? 'bg-[#3D3768] text-[#818CF8]'
-                : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
-            }`}
-          >
-            <Calendar className="w-3 h-3" />
-            <SlidersHorizontal className="w-3 h-3" />
-          </button>
 
           {/* Result count */}
           {totalCount > 0 && (
-            <span className="text-xs text-[#8A84A8]">
+            <span className="text-xs text-[#8A84A8] flex-shrink-0">
               {totalCount} {t('search_results_count')}
             </span>
           )}
@@ -331,9 +326,6 @@ function SearchPageInner() {
 
       {/* Main Content — full width */}
       <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4">
-        {/* Tag Cloud */}
-        <TagCloud tags={tags} activeTag={tagParam} />
-
         {/* Results */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
