@@ -35,14 +35,16 @@ export const NeonVerticalLabel = ({
   const waveOffsetRef = useRef(0);
   const isHoveredRef = useRef(isHovered);
   const svgHeightRef = useRef(svgHeight);
-  const animateFnRef = useRef<() => void>(() => {});
 
-  // Синхронне оновлення refs під час рендеру — 0 затримки
+  // Синхронне оновлення refs (fallback від React props)
   svgHeightRef.current = svgHeight;
   isHoveredRef.current = isHovered;
   targetYRef.current = isHovered ? -30 : svgHeight;
 
-  // Анімаційний цикл — mount only
+  // Допоміжна функція для запуску анімації
+  const kickAnimation = useRef<() => void>(() => {});
+
+  // Анімаційний цикл + прямий DOM listener на картку (обходить React render pipeline)
   useEffect(() => {
     const createWave = (y: number): string => {
       const h = svgHeightRef.current;
@@ -85,19 +87,47 @@ export const NeonVerticalLabel = ({
         waveRef.current.setAttribute('d', createWave(currentYRef.current));
       }
 
-      // Продовжуємо анімацію якщо:
-      // 1. Рівень ще не досяг цілі (заливка/зливання в процесі)
-      // 2. АБО hover активний (хвиля продовжує рухатись на поверхні)
+      // Продовжуємо анімацію якщо рухається або hover активний
       const stillMoving = Math.abs(diff) > 0.1;
       if (stillMoving || isHoveredRef.current) {
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
-        // Повністю зупиняємо — 0% CPU в idle
         animationFrameRef.current = undefined;
       }
     };
 
-    animateFnRef.current = animate;
+    kickAnimation.current = () => {
+      if (!animationFrameRef.current) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    // Прямий DOM listener на батьківську картку — миттєва реакція без React render
+    const cardEl = containerRef.current?.parentElement;
+    if (cardEl) {
+      const onEnter = () => {
+        targetYRef.current = -30;
+        isHoveredRef.current = true;
+        kickAnimation.current();
+      };
+      const onLeave = () => {
+        targetYRef.current = svgHeightRef.current;
+        isHoveredRef.current = false;
+        kickAnimation.current();
+      };
+
+      cardEl.addEventListener('mouseenter', onEnter);
+      cardEl.addEventListener('mouseleave', onLeave);
+
+      return () => {
+        cardEl.removeEventListener('mouseenter', onEnter);
+        cardEl.removeEventListener('mouseleave', onLeave);
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = undefined;
+        }
+      };
+    }
 
     return () => {
       if (animationFrameRef.current) {
@@ -108,11 +138,9 @@ export const NeonVerticalLabel = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kick — запускає цикл якщо він зупинений (idle → active)
+  // Fallback kick від React props (якщо DOM listener не спрацював)
   useEffect(() => {
-    if (!animationFrameRef.current) {
-      animationFrameRef.current = requestAnimationFrame(animateFnRef.current);
-    }
+    kickAnimation.current();
   }, [isHovered]);
 
   const uniqueId = useRef(`neon-${Math.random().toString(36).substr(2, 9)}`).current;
