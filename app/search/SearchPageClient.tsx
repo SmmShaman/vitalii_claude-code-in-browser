@@ -25,6 +25,12 @@ function SearchPageInner() {
   const { t, currentLanguage, setCurrentLanguage } = useTranslations()
   const languages: Language[] = ['NO', 'EN', 'UA']
 
+  // Override body background for this page
+  useEffect(() => {
+    document.body.style.backgroundColor = '#2D2850'
+    return () => { document.body.style.backgroundColor = '' }
+  }, [])
+
   // Read URL params
   const tagParam = searchParams.get('tag') || ''
   const queryParam = searchParams.get('q') || ''
