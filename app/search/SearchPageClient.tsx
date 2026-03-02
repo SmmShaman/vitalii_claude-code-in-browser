@@ -355,14 +355,13 @@ function SearchPageInner() {
           </div>
         ) : (
           <>
-            {/* Results Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+            {/* Masonry Layout — CSS columns for tight packing */}
+            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 mt-4">
               <AnimatePresence mode="popLayout">
                 {results.map((result, index) => (
                   <SearchResultCard
                     key={`${result.type}-${result.id}`}
                     result={result}
-                    featured={index === 0}
                     index={index}
                   />
                 ))}

@@ -59,11 +59,10 @@ function formatDate(dateStr: string | null): string {
 
 interface SearchResultCardProps {
   result: SearchResult
-  featured?: boolean
   index: number
 }
 
-export function SearchResultCard({ result, featured = false, index }: SearchResultCardProps) {
+export function SearchResultCard({ result, index }: SearchResultCardProps) {
   const [imgFailed, setImgFailed] = useState(false)
   const [fallbackFailed, setFallbackFailed] = useState(false)
 
@@ -85,29 +84,27 @@ export function SearchResultCard({ result, featured = false, index }: SearchResu
   const href = `/${result.type === 'news' ? 'news' : 'blog'}/${result.slug}`
   const isNews = result.type === 'news'
 
-  const gridClasses = featured ? 'sm:col-span-2' : ''
-  const imageAspect = featured ? 'aspect-[2/1]' : 'aspect-video'
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.3) }}
-      className={gridClasses}
+      className="break-inside-avoid mb-4"
     >
       <Link
         href={href}
-        className="group block h-full rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]"
+        className="group block rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]"
       >
-        {/* Image — always full width */}
+        {/* Image — natural aspect ratio, no cropping */}
         {displayImage ? (
-          <div className={`relative w-full ${imageAspect} bg-[#2D2850] overflow-hidden`}>
+          <div className="relative w-full overflow-hidden">
             <Image
               src={displayImage}
               alt={result.title}
-              fill
-              className="object-contain group-hover:scale-105 transition-transform duration-500"
-              sizes={featured ? '(max-width: 640px) 100vw, 50vw' : '(max-width: 640px) 100vw, 25vw'}
+              width={600}
+              height={400}
+              className="w-full h-auto group-hover:scale-105 transition-transform duration-500"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               onError={() => {
                 if (!imgFailed) setImgFailed(true)
                 else if (!fallbackFailed) setFallbackFailed(true)
@@ -139,7 +136,7 @@ export function SearchResultCard({ result, featured = false, index }: SearchResu
           </div>
         ) : (
           /* Gradient placeholder when no image */
-          <div className={`relative w-full ${imageAspect} bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden`}>
+          <div className="relative w-full aspect-video bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden">
             {result.video_url ? (
               <Video className="w-10 h-10 text-[#5A5190]" />
             ) : isNews ? (
@@ -157,22 +154,16 @@ export function SearchResultCard({ result, featured = false, index }: SearchResu
           </div>
         )}
 
-        {/* Content — always the same regardless of size */}
+        {/* Content */}
         <div className="p-3">
-          <h3
-            className={`font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors ${
-              featured ? 'text-base sm:text-lg line-clamp-3' : 'text-sm line-clamp-2'
-            }`}
-          >
+          <h3 className="text-sm font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors line-clamp-2">
             {result.title}
           </h3>
 
-          {/* Description — always shown if available */}
           {result.description && (
             <p className="text-xs text-[#B0ABCA] mt-1 line-clamp-2">{result.description}</p>
           )}
 
-          {/* Tags — always shown if available */}
           {result.tags && result.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {result.tags.slice(0, 3).map((tag) => (
@@ -186,7 +177,6 @@ export function SearchResultCard({ result, featured = false, index }: SearchResu
             </div>
           )}
 
-          {/* Meta */}
           <div className="flex items-center gap-2 mt-2 text-[10px] text-[#8A84A8]">
             {result.published_at && (
               <span className="flex items-center gap-0.5">
