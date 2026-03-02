@@ -255,6 +255,12 @@ export const translations = {
     search_load_more: "Load More",
     search_clear_filters: "Clear Filters",
     search_results_count: "results",
+    category_all: "All",
+    category_other: "Other",
+    news_listing_title: "News",
+    blog_listing_title: "Blog",
+    listing_no_articles: "No articles found",
+    listing_load_more: "Load More",
     map_marker_you: "You",
 
     // Weather descriptions
@@ -549,6 +555,12 @@ export const translations = {
     search_load_more: "Last inn mer",
     search_clear_filters: "Fjern filtre",
     search_results_count: "resultater",
+    category_all: "Alle",
+    category_other: "Andre",
+    news_listing_title: "Nyheter",
+    blog_listing_title: "Blogg",
+    listing_no_articles: "Ingen artikler funnet",
+    listing_load_more: "Last inn mer",
     map_marker_you: "Deg",
 
     // Weather descriptions
@@ -843,6 +855,12 @@ export const translations = {
     search_load_more: "Завантажити ще",
     search_clear_filters: "Очистити фільтри",
     search_results_count: "результатів",
+    category_all: "Усі",
+    category_other: "Інші",
+    news_listing_title: "Новини",
+    blog_listing_title: "Блог",
+    listing_no_articles: "Статей не знайдено",
+    listing_load_more: "Завантажити ще",
     map_marker_you: "Ти",
 
     // Weather descriptions

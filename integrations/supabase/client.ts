@@ -117,6 +117,7 @@ export interface NewsFilters {
   limit?: number;
   offset?: number;
   tags?: string[];
+  excludeTags?: string[];
   search?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -207,7 +208,7 @@ export const getAllNews = async (filters: NewsFilters = {}) => {
     return { data: [], count: 0 };
   }
 
-  const { limit = 10, offset = 0, tags, search, dateFrom, dateTo } = filters;
+  const { limit = 10, offset = 0, tags, excludeTags, search, dateFrom, dateTo } = filters;
 
   let query = supabase
     .from('news')
@@ -218,6 +219,13 @@ export const getAllNews = async (filters: NewsFilters = {}) => {
   // Apply filters
   if (tags && tags.length > 0) {
     query = query.contains('tags', tags);
+  }
+
+  // Exclude articles that have any of the excluded tags
+  if (excludeTags && excludeTags.length > 0) {
+    for (const tag of excludeTags) {
+      query = query.not('tags', 'cs', `{${tag}}`);
+    }
   }
 
   if (search) {
@@ -329,6 +337,7 @@ export interface BlogFilters {
   limit?: number;
   offset?: number;
   tags?: string[];
+  excludeTags?: string[];
   category?: string;
   search?: string;
   featured?: boolean;
@@ -368,7 +377,7 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
     return { data: [], count: 0 };
   }
 
-  const { limit = 10, offset = 0, tags, category, search, featured, dateFrom, dateTo } = filters;
+  const { limit = 10, offset = 0, tags, excludeTags, category, search, featured, dateFrom, dateTo } = filters;
 
   let query = supabase
     .from('blog_posts')
@@ -379,6 +388,13 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
   // Apply filters
   if (tags && tags.length > 0) {
     query = query.contains('tags', tags);
+  }
+
+  // Exclude articles that have any of the excluded tags
+  if (excludeTags && excludeTags.length > 0) {
+    for (const tag of excludeTags) {
+      query = query.not('tags', 'cs', `{${tag}}`);
+    }
   }
 
   if (category) {
@@ -544,21 +560,42 @@ export const getRelatedNews = async (
 // TAGS API
 // ============================================
 
+export interface TagFrequency {
+  tag_name: string;
+  article_count: number;
+}
+
 /**
- * Get all tags
+ * Get tag frequencies from actual article data via RPC
+ * @param contentType - 'all' | 'news' | 'blog'
+ */
+export const getTagFrequencies = async (contentType: 'all' | 'news' | 'blog' = 'all'): Promise<TagFrequency[]> => {
+  if (!isSupabaseConfigured()) return [];
+
+  const { data, error } = await supabase
+    .rpc('get_tag_frequencies', { content_type: contentType });
+
+  if (error) {
+    console.error('Error fetching tag frequencies:', error);
+    return [];
+  }
+
+  return (data || []).map((item: any) => ({
+    tag_name: item.tag_name,
+    article_count: Number(item.article_count),
+  }));
+};
+
+/**
+ * Get all tags (uses RPC for real-time frequencies from articles)
  */
 export const getAllTags = async () => {
   if (!isSupabaseConfigured()) return [];
 
-  const { data, error } = await supabase
-    .from('tags')
-    .select('*')
-    .order('usage_count', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching tags:', error);
-    return [];
-  }
-
-  return data || [];
+  const frequencies = await getTagFrequencies('all');
+  return frequencies.map((f, index) => ({
+    id: index,
+    name: f.tag_name,
+    usage_count: f.article_count,
+  }));
 };

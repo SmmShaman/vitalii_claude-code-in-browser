@@ -22,9 +22,10 @@ import { SocialMediaPostsManager } from '@/components/admin/SocialMediaPostsMana
 import { SocialMediaCommentsManager } from '@/components/admin/SocialMediaCommentsManager'
 import { SocialMediaAccountsManager } from '@/components/admin/SocialMediaAccountsManager'
 import { NewsMonitorManager } from '@/components/admin/news-monitor'
+import { TagFrequencyTable } from '@/components/admin/TagFrequencyTable'
 
 type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'comments' | 'skills' | 'settings'
-type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'debug'
+type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'tags' | 'debug'
 
 interface HeaderStats {
   totalNews: number
@@ -301,6 +302,16 @@ export default function AdminDashboardPage() {
               Cron Schedule
             </button>
             <button
+              onClick={() => setSettingsSubTab('tags')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                settingsSubTab === 'tags'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Tags
+            </button>
+            <button
               onClick={() => setSettingsSubTab('debug')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 settingsSubTab === 'debug'
@@ -345,6 +356,7 @@ export default function AdminDashboardPage() {
                 {settingsSubTab === 'accounts' && <SocialMediaAccountsManager />}
                 {settingsSubTab === 'schedule' && <AutoPublishSettings />}
                 {settingsSubTab === 'automation' && <CronScheduleSettings />}
+                {settingsSubTab === 'tags' && <TagFrequencyTable />}
                 {settingsSubTab === 'debug' && <DebugSettings />}
               </>
             )}

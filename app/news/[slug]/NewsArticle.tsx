@@ -177,7 +177,7 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
               className="flex items-center"
             >
               <Link
-                href="/#news"
+                href="/news"
                 itemProp="item"
                 className="hover:text-[#88B04B] transition-colors"
               >
@@ -185,6 +185,26 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
               </Link>
               <meta itemProp="position" content="2" />
             </li>
+            {news.tags?.[0] && (
+              <>
+                <ChevronRight className="w-4 h-4 text-[#6B6680]" />
+                <li
+                  itemProp="itemListElement"
+                  itemScope
+                  itemType="https://schema.org/ListItem"
+                  className="flex items-center"
+                >
+                  <Link
+                    href={`/news?tag=${encodeURIComponent(news.tags[0])}`}
+                    itemProp="item"
+                    className="text-[#88B04B] hover:text-[#A5C85A] transition-colors"
+                  >
+                    <span itemProp="name">{news.tags[0]}</span>
+                  </Link>
+                  <meta itemProp="position" content="3" />
+                </li>
+              </>
+            )}
             <ChevronRight className="w-4 h-4 text-[#6B6680]" />
             <li
               itemProp="itemListElement"
@@ -199,7 +219,7 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
               >
                 {title}
               </span>
-              <meta itemProp="position" content="3" />
+              <meta itemProp="position" content={news.tags?.[0] ? "4" : "3"} />
             </li>
           </ol>
         </nav>
@@ -314,12 +334,12 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
                 {news.tags.map((tag: string) => (
                   <Link
                     key={tag}
-                    href={`/search?tag=${encodeURIComponent(tag)}`}
+                    href={`/news?tag=${encodeURIComponent(tag)}`}
                     onClick={(e) => {
                       // В модальному контексті soft navigation не закриває модал
                       if ((e.currentTarget as HTMLElement).closest('[role="dialog"]')) {
                         e.preventDefault()
-                        window.location.href = `/search?tag=${encodeURIComponent(tag)}`
+                        window.location.href = `/news?tag=${encodeURIComponent(tag)}`
                       }
                     }}
                     className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#88B04B]/15 hover:text-[#88B04B] transition-colors"

@@ -178,7 +178,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               className="flex items-center"
             >
               <Link
-                href="/#blog"
+                href="/blog"
                 itemProp="item"
                 className="hover:text-[#818CF8] transition-colors"
               >
@@ -195,9 +195,13 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   itemType="https://schema.org/ListItem"
                   className="flex items-center"
                 >
-                  <span itemProp="name" className="text-[#818CF8]">
-                    {post.category}
-                  </span>
+                  <Link
+                    href={`/blog?tag=${encodeURIComponent(post.category)}`}
+                    itemProp="item"
+                    className="text-[#818CF8] hover:text-[#A5B4FC] transition-colors"
+                  >
+                    <span itemProp="name">{post.category}</span>
+                  </Link>
                   <meta itemProp="position" content="3" />
                 </li>
               </>
@@ -351,11 +355,11 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                 {post.tags.map((tag: string) => (
                   <Link
                     key={tag}
-                    href={`/search?tag=${encodeURIComponent(tag)}`}
+                    href={`/blog?tag=${encodeURIComponent(tag)}`}
                     onClick={(e) => {
                       if ((e.currentTarget as HTMLElement).closest('[role="dialog"]')) {
                         e.preventDefault()
-                        window.location.href = `/search?tag=${encodeURIComponent(tag)}`
+                        window.location.href = `/blog?tag=${encodeURIComponent(tag)}`
                       }
                     }}
                     className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#221F3A] hover:text-[#818CF8] transition-colors"

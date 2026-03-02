@@ -79,7 +79,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
   const loadTags = async () => {
     try {
       const tags = await getAllTags();
-      const uniqueTags = Array.from(new Set(tags.flatMap(t => t.tags || [])));
+      const uniqueTags = tags.map(t => t.name);
       setAllTags(uniqueTags);
     } catch (error) {
       console.error('Failed to load tags:', error);

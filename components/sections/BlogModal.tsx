@@ -79,7 +79,7 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
   const loadTags = async () => {
     try {
       const tags = await getAllTags();
-      const uniqueTags = Array.from(new Set(tags.flatMap(t => t.tags || [])));
+      const uniqueTags = tags.map(t => t.name);
       setAllTags(uniqueTags);
 
       // Extract unique categories from blog posts
