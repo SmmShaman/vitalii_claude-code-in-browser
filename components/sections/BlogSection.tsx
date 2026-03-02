@@ -323,7 +323,7 @@ const BlogSectionComponent = ({
   return (
     <div className="h-full flex flex-col">
       {/* Blog Posts Grid */}
-      <div ref={scrollContainerRef} className={`flex-1 overflow-y-auto pr-2 ${isExpanded ? 'columns-1 sm:columns-2 lg:columns-3 gap-4' : 'space-y-4'}`}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-4 pr-2">
         <AnimatePresence mode="popLayout">
           {posts.map((post, index) => {
             const content = getTranslatedContent(post);
@@ -337,70 +337,66 @@ const BlogSectionComponent = ({
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ delay: index * 0.1 }}
                 onClick={(e) => handlePostClick(post, e)}
-                className={`group cursor-pointer ${isExpanded ? 'break-inside-avoid mb-4' : ''}`}
+                className="group cursor-pointer"
               >
-                <div className="bg-[#1A1730]/50 backdrop-blur-sm rounded-lg overflow-hidden border border-[#2D2A40]/50 hover:border-[#818CF8]/50 transition-all duration-300 hover:shadow-lg">
-                  {/* Featured Image — natural aspect ratio */}
+                <div className="bg-[#1A1730]/50 backdrop-blur-sm rounded-lg p-4 border border-[#2D2A40]/50 hover:border-[#818CF8]/50 transition-all duration-300 hover:shadow-lg">
+                  {/* Featured Image */}
                   {((post as any).processed_image_url || post.image_url) && (
-                    <div className="relative w-full overflow-hidden">
+                    <div className="relative w-full h-32 mb-3 rounded-md overflow-hidden" style={{ aspectRatio: '16/9' }}>
                       <Image
                         src={(post as any).processed_image_url || post.image_url}
                         alt={String(content.title) || 'Blog Post Image'}
-                        width={600}
-                        height={400}
-                        className="w-full h-auto group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        unoptimized
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                   )}
 
-                  <div className="p-4">
-                    {/* Category Badge */}
-                    {content.category && (
-                      <span className="inline-block px-2 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-xs font-medium mb-2">
-                        {content.category}
-                      </span>
-                    )}
+                  {/* Category Badge */}
+                  {content.category && (
+                    <span className="inline-block px-2 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-xs font-medium mb-2">
+                      {content.category}
+                    </span>
+                  )}
 
-                    {/* Title */}
-                    <h4 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-[#818CF8] transition-colors">
-                      {content.title}
-                    </h4>
+                  {/* Title */}
+                  <h4 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-[#818CF8] transition-colors">
+                    {content.title}
+                  </h4>
 
-                    {/* Excerpt */}
-                    {content.excerpt && (
-                      <p className="text-xs text-[#9B97B0] mb-3 line-clamp-2">
-                        {content.excerpt}
-                      </p>
-                    )}
+                  {/* Excerpt */}
+                  {content.excerpt && (
+                    <p className="text-xs text-[#9B97B0] mb-3 line-clamp-2">
+                      {content.excerpt}
+                    </p>
+                  )}
 
-                    {/* Meta Information */}
-                    <div className="flex items-center justify-between text-xs text-[#9B97B0]">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{post.published_at ? formatDate(post.published_at) : ''}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{readingTime} {t('blog_reading_time')}</span>
-                        </div>
-                        {post.tags && post.tags.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Tag className="h-3 w-3" />
-                            <span className="line-clamp-1">{post.tags[0]}</span>
-                          </div>
-                        )}
+                  {/* Meta Information */}
+                  <div className="flex items-center justify-between text-xs text-[#9B97B0]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>{post.published_at ? formatDate(post.published_at) : ''}</span>
                       </div>
-                      <motion.div
-                        className="text-[#818CF8]"
-                        whileHover={{ x: 3 }}
-                      >
-                        →
-                      </motion.div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{readingTime} {t('blog_reading_time')}</span>
+                      </div>
+                      {post.tags && post.tags.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Tag className="h-3 w-3" />
+                          <span className="line-clamp-1">{post.tags[0]}</span>
+                        </div>
+                      )}
                     </div>
+                    <motion.div
+                      className="text-[#818CF8]"
+                      whileHover={{ x: 3 }}
+                    >
+                      →
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
