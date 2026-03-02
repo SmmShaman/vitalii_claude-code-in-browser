@@ -280,12 +280,18 @@ const BlogSectionComponent = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <Tag className="h-4 w-4" />
                   {selectedPost.tags.map((tag, index) => (
-                    <span
+                    <a
                       key={index}
-                      className="px-2 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-xs"
+                      href={`/search?tag=${encodeURIComponent(tag)}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        window.location.href = `/search?tag=${encodeURIComponent(tag)}`;
+                      }}
+                      className="px-2 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-xs hover:bg-[#818CF8]/25 transition-colors cursor-pointer"
                     >
-                      {tag}
-                    </span>
+                      #{tag}
+                    </a>
                   ))}
                 </div>
               )}

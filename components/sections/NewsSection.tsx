@@ -269,18 +269,20 @@ const NewsSectionComponent = ({
     console.log('📝 Content:', content);
     return (
       <div className="h-full flex flex-col overflow-y-auto">
-        {/* Floating Back Button - Sticky at top-right */}
-        <div className="sticky top-0 right-0 z-50 flex justify-end pointer-events-none -mb-14">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onBack}
-            className="pointer-events-auto m-2 sm:m-4 w-11 h-11 sm:w-12 sm:h-12 min-w-[44px] min-h-[44px] rounded-full bg-[#1A1730]/95 backdrop-blur-sm shadow-lg flex items-center justify-center text-[#C8C5D6] hover:bg-[#221F3A] transition-all duration-300 border border-[#2D2A40] active:scale-95"
-            title="Back to news"
-            aria-label="Back to news list"
-          >
-            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
-          </motion.button>
+        {/* Floating Back Button - Sticky at top-right, absolute positioning to avoid blocking content */}
+        <div className="sticky top-0 z-50 h-0">
+          <div className="flex justify-end">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={onBack}
+              className="m-2 sm:m-4 w-11 h-11 sm:w-12 sm:h-12 min-w-[44px] min-h-[44px] rounded-full bg-[#1A1730]/95 backdrop-blur-sm shadow-lg flex items-center justify-center text-[#C8C5D6] hover:bg-[#221F3A] transition-all duration-300 border border-[#2D2A40] active:scale-95"
+              title="Back to news"
+              aria-label="Back to news list"
+            >
+              <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+            </motion.button>
+          </div>
         </div>
 
         {loadingDetail ? (
@@ -484,12 +486,18 @@ const NewsSectionComponent = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     <Tag className="h-4 w-4" />
                     {selectedNews.tags.map((tag, index) => (
-                      <span
+                      <a
                         key={index}
-                        className="px-2 py-1 bg-[#88B04B]/10 text-[#88B04B] rounded-full text-xs"
+                        href={`/search?tag=${encodeURIComponent(tag)}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          window.location.href = `/search?tag=${encodeURIComponent(tag)}`;
+                        }}
+                        className="px-2 py-1 bg-[#88B04B]/10 text-[#88B04B] rounded-full text-xs hover:bg-[#88B04B]/25 transition-colors cursor-pointer"
                       >
-                        {tag}
-                      </span>
+                        #{tag}
+                      </a>
                     ))}
                   </div>
                 )}
