@@ -61,7 +61,7 @@ export const NeonVerticalLabel = ({
       const target = targetYRef.current;
       const diff = target - currentYRef.current;
       // Заливка (вгору) повільніша, зливання (вниз) швидше — імітація гравітації
-      const speed = diff > 0 ? 0.09 : 0.06;
+      const speed = diff > 0 ? 0.10 : 0.08;
       currentYRef.current += diff * speed;
 
       // Snap коли близько
