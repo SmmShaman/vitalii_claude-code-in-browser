@@ -36,39 +36,27 @@ export const NeonVerticalLabel = ({
   const isHoveredRef = useRef(isHovered);
   const svgHeightRef = useRef(svgHeight);
 
-  // Прапорець: чи DOM listener активний (має пріоритет над React props)
-  const hasDomListenerRef = useRef(false);
-
-  // svgHeight завжди оновлюємо
+  // Синхронне оновлення refs
   svgHeightRef.current = svgHeight;
+  isHoveredRef.current = isHovered;
 
-  // Target і isHovered оновлюємо ТІЛЬКИ якщо DOM listener не працює (fallback)
-  if (!hasDomListenerRef.current) {
-    isHoveredRef.current = isHovered;
-    targetYRef.current = isHovered ? -30 : svgHeight;
-  }
-
-  // Допоміжна функція для запуску анімації
-  const kickAnimation = useRef<() => void>(() => {});
-
-  // Анімаційний цикл + прямий DOM listener на картку (обходить React render pipeline)
+  // Анімаційний цикл — завжди біжить, як в оригіналі
   useEffect(() => {
     const createWave = (y: number): string => {
       const h = svgHeightRef.current;
-      const amplitude = 10;
+      const amplitude = 12;
       const frequency = 0.03;
-      const segments = 20;
-      const step = 200 / segments;
-      const parts = [`M 0 ${y + 15}`];
+      const points = 50;
+      let path = `M 0 ${y + 20}`;
 
-      for (let i = 0; i <= segments; i++) {
-        const x = i * step;
+      for (let i = 0; i <= points; i++) {
+        const x = (i / points) * 200;
         const waveY = y + Math.sin(x * frequency + waveOffsetRef.current) * amplitude;
-        parts.push(`L ${x.toFixed(1)} ${waveY.toFixed(1)}`);
+        path += ` L ${x} ${waveY}`;
       }
 
-      parts.push(`L 200 ${h} L 0 ${h} Z`);
-      return parts.join(' ');
+      path += ` L 200 ${h} L 0 ${h} Z`;
+      return path;
     };
 
     const animate = () => {
@@ -78,78 +66,34 @@ export const NeonVerticalLabel = ({
       const speed = diff > 0 ? 0.10 : 0.08;
       currentYRef.current += diff * speed;
 
-      // Snap коли близько
-      if (Math.abs(diff) < 0.5) {
-        currentYRef.current = target;
-      }
-
-      // Оновлюємо SVG позицію
+      // Оновлюємо позицію рівня рідини
       if (liquidLevelRef.current) {
-        liquidLevelRef.current.setAttribute('y', currentYRef.current.toFixed(1));
+        liquidLevelRef.current.setAttribute('y', currentYRef.current.toString());
       }
 
-      // Хвиля завжди рухається поки анімація активна
+      // Хвиля
       waveOffsetRef.current += 0.15;
       if (waveRef.current) {
         waveRef.current.setAttribute('d', createWave(currentYRef.current));
       }
 
-      // Продовжуємо анімацію якщо рухається або hover активний
-      const stillMoving = Math.abs(diff) > 0.1;
-      if (stillMoving || isHoveredRef.current) {
-        animationFrameRef.current = requestAnimationFrame(animate);
-      } else {
-        animationFrameRef.current = undefined;
-      }
+      // Завжди продовжуємо — простота і надійність
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
 
-    kickAnimation.current = () => {
-      if (!animationFrameRef.current) {
-        animationFrameRef.current = requestAnimationFrame(animate);
-      }
-    };
-
-    // Прямий DOM listener на батьківську картку — миттєва реакція без React render
-    const cardEl = containerRef.current?.parentElement;
-    if (cardEl) {
-      const onEnter = () => {
-        targetYRef.current = -30;
-        isHoveredRef.current = true;
-        kickAnimation.current();
-      };
-      const onLeave = () => {
-        targetYRef.current = svgHeightRef.current;
-        isHoveredRef.current = false;
-        kickAnimation.current();
-      };
-
-      hasDomListenerRef.current = true;
-      cardEl.addEventListener('mouseenter', onEnter);
-      cardEl.addEventListener('mouseleave', onLeave);
-
-      return () => {
-        cardEl.removeEventListener('mouseenter', onEnter);
-        cardEl.removeEventListener('mouseleave', onLeave);
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-          animationFrameRef.current = undefined;
-        }
-      };
-    }
+    animate();
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = undefined;
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [svgHeight]);
 
-  // Fallback kick від React props (якщо DOM listener не спрацював)
+  // Простий target update — як в оригіналі
   useEffect(() => {
-    kickAnimation.current();
-  }, [isHovered]);
+    targetYRef.current = isHovered ? -30 : svgHeight;
+  }, [isHovered, svgHeight]);
 
   const uniqueId = useRef(`neon-${Math.random().toString(36).substr(2, 9)}`).current;
 
