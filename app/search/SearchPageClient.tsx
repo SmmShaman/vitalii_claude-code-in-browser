@@ -35,7 +35,7 @@ function SearchPageInner() {
   // Read URL params
   const tagParam = searchParams.get('tag') || ''
   const queryParam = searchParams.get('q') || ''
-  const typeParam = (searchParams.get('type') || 'all') as 'all' | 'news' | 'blog'
+  const typeParam = (searchParams.get('type') || 'news') as 'news' | 'blog'
   const dateFromParam = searchParams.get('dateFrom') || ''
   const dateToParam = searchParams.get('dateTo') || ''
 
@@ -62,7 +62,7 @@ function SearchPageInner() {
 
   // Fetch tag frequencies based on current type filter
   useEffect(() => {
-    const contentType = typeParam === 'news' ? 'news' : typeParam === 'blog' ? 'blog' : 'all'
+    const contentType = typeParam === 'blog' ? 'blog' : 'news'
     getTagFrequencies(contentType).then(setCategoryTags)
   }, [typeParam])
 
@@ -83,7 +83,7 @@ function SearchPageInner() {
     try {
       const promises: Promise<any>[] = []
 
-      if (typeParam === 'all' || typeParam === 'news') {
+      if (typeParam === 'news') {
         promises.push(getAllNews({
           tags: tagsFilter,
           excludeTags: excludeFilter,
@@ -93,11 +93,9 @@ function SearchPageInner() {
           limit: ITEMS_PER_PAGE,
           offset,
         }))
+        promises.push(Promise.resolve({ data: [], count: 0 }))
       } else {
         promises.push(Promise.resolve({ data: [], count: 0 }))
-      }
-
-      if (typeParam === 'all' || typeParam === 'blog') {
         promises.push(getAllBlogPosts({
           tags: tagsFilter,
           excludeTags: excludeFilter,
@@ -107,8 +105,6 @@ function SearchPageInner() {
           limit: ITEMS_PER_PAGE,
           offset,
         }))
-      } else {
-        promises.push(Promise.resolve({ data: [], count: 0 }))
       }
 
       const [newsResult, blogResult] = await Promise.all(promises)
@@ -191,8 +187,7 @@ function SearchPageInner() {
     fetchResults(nextPage, true)
   }
 
-  const tabs: Array<{ key: 'all' | 'news' | 'blog'; label: string }> = [
-    { key: 'all', label: t('search_all') },
+  const tabs: Array<{ key: 'news' | 'blog'; label: string }> = [
     { key: 'news', label: t('search_news') },
     { key: 'blog', label: t('search_blog') },
   ]
@@ -238,7 +233,7 @@ function SearchPageInner() {
             {tabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => updateFilters({ type: tab.key === 'all' ? '' : tab.key })}
+                onClick={() => updateFilters({ type: tab.key, tag: '' })}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   typeParam === tab.key
                     ? 'bg-[#6366F1] text-white shadow-sm'
@@ -250,21 +245,8 @@ function SearchPageInner() {
             ))}
           </div>
 
-          {/* Date toggle */}
-          <button
-            onClick={() => setShowDateFilters(!showDateFilters)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs transition-all flex-shrink-0 ${
-              showDateFilters || dateFromParam || dateToParam
-                ? 'bg-[#3D3768] text-[#818CF8]'
-                : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
-            }`}
-          >
-            <Calendar className="w-3 h-3" />
-            <SlidersHorizontal className="w-3 h-3" />
-          </button>
-
-          {/* Language buttons */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Language buttons — pushed to far right */}
+          <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
             {languages.map((lang) => (
               <button
                 key={lang}
@@ -291,6 +273,19 @@ function SearchPageInner() {
               onTagChange={(tag) => updateFilters({ tag: tag || '' })}
             />
           </div>
+
+          {/* Date toggle — in category row */}
+          <button
+            onClick={() => setShowDateFilters(!showDateFilters)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs transition-all flex-shrink-0 ${
+              showDateFilters || dateFromParam || dateToParam
+                ? 'bg-[#3D3768] text-[#818CF8]'
+                : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
+            }`}
+          >
+            <Calendar className="w-3 h-3" />
+            <SlidersHorizontal className="w-3 h-3" />
+          </button>
 
           {/* Result count */}
           {totalCount > 0 && (

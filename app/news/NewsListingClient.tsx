@@ -144,8 +144,8 @@ function NewsListingInner() {
             {t('news_listing_title')}
           </h1>
 
-          {/* Language buttons */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Language buttons — far right */}
+          <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
             {languages.map((lang) => (
               <button
                 key={lang}

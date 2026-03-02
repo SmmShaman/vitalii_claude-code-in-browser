@@ -68,18 +68,6 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
-      {/* "All" tab */}
-      <button
-        onClick={() => onTagChange(null)}
-        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-          activeTag === null
-            ? 'bg-white/15 text-white shadow-md'
-            : 'bg-white/5 text-[#B0ABCA] hover:bg-white/10'
-        }`}
-      >
-        {t('category_all')}
-      </button>
-
       {/* Visible tag tabs — each with its own color */}
       {visibleTags.map((tag, index) => {
         const color = getCategoryColor(index)

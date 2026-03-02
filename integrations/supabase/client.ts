@@ -216,16 +216,19 @@ export const getAllNews = async (filters: NewsFilters = {}) => {
     .eq('is_published', true)
     .order('published_at', { ascending: false });
 
-  // Apply filters (case-insensitive via array-to-text cast)
+  // Apply filters (case-insensitive, normalize space/hyphen variants)
   if (tags && tags.length > 0) {
-    const tagConditions = tags.map(tag => `tags::text.ilike.%${tag}%`).join(',');
-    query = query.or(tagConditions);
+    for (const tag of tags) {
+      const pat = tag.replace(/[ -]/g, '[- ]');
+      query = query.filter('tags::text', 'ilike', `%${pat}%`);
+    }
   }
 
   // Exclude articles that have any of the excluded tags (case-insensitive)
   if (excludeTags && excludeTags.length > 0) {
     for (const tag of excludeTags) {
-      query = query.filter('tags::text', 'not.ilike', `%${tag}%`);
+      const pat = tag.replace(/[ -]/g, '[- ]');
+      query = query.filter('tags::text', 'not.ilike', `%${pat}%`);
     }
   }
 
@@ -386,16 +389,19 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
     .eq('is_published', true)
     .order('published_at', { ascending: false });
 
-  // Apply filters (case-insensitive via array-to-text cast)
+  // Apply filters (case-insensitive, normalize space/hyphen variants)
   if (tags && tags.length > 0) {
-    const tagConditions = tags.map(tag => `tags::text.ilike.%${tag}%`).join(',');
-    query = query.or(tagConditions);
+    for (const tag of tags) {
+      const pat = tag.replace(/[ -]/g, '[- ]');
+      query = query.filter('tags::text', 'ilike', `%${pat}%`);
+    }
   }
 
   // Exclude articles that have any of the excluded tags (case-insensitive)
   if (excludeTags && excludeTags.length > 0) {
     for (const tag of excludeTags) {
-      query = query.filter('tags::text', 'not.ilike', `%${tag}%`);
+      const pat = tag.replace(/[ -]/g, '[- ]');
+      query = query.filter('tags::text', 'not.ilike', `%${pat}%`);
     }
   }
 

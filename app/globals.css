@@ -31,7 +31,7 @@
   }
 
   body {
-    @apply bg-[#0F0D1A] text-foreground;
+    @apply bg-white text-foreground;
     margin: 0;
     padding: 0;
     /* Allow body to grow with content - min-height instead of fixed height */

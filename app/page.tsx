@@ -62,7 +62,7 @@ export default function HomePage() {
   const currentNeonColor = getCurrentColor()
 
   return (
-    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'overflow-hidden bg-[#0F0D1A]' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
+    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'overflow-hidden bg-white' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
       {/* Structured Data for SEO */}
       <script
         type="application/ld+json"
