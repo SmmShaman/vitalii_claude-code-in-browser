@@ -44,18 +44,6 @@ export interface SearchResult {
   video_type?: string | null
 }
 
-type CardSize = 'small' | 'medium' | 'large'
-
-const SIZE_PATTERN: CardSize[] = [
-  'large', 'medium', 'small', 'medium', 'small', 'small',
-  'medium', 'small', 'large', 'small', 'medium', 'small',
-]
-
-export function getCardSize(index: number, hasImage: boolean): CardSize {
-  if (!hasImage) return 'small'
-  return SIZE_PATTERN[index % SIZE_PATTERN.length]
-}
-
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return ''
   try {
@@ -71,11 +59,11 @@ function formatDate(dateStr: string | null): string {
 
 interface SearchResultCardProps {
   result: SearchResult
-  size: CardSize
+  featured?: boolean
   index: number
 }
 
-export function SearchResultCard({ result, size, index }: SearchResultCardProps) {
+export function SearchResultCard({ result, featured = false, index }: SearchResultCardProps) {
   const [imgFailed, setImgFailed] = useState(false)
   const [fallbackFailed, setFallbackFailed] = useState(false)
 
@@ -97,15 +85,8 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
   const href = `/${result.type === 'news' ? 'news' : 'blog'}/${result.slug}`
   const isNews = result.type === 'news'
 
-  // Grid span classes (layout only, content is always the same)
-  const gridClasses =
-    size === 'large'
-      ? 'sm:col-span-2 row-span-3'
-      : size === 'medium'
-        ? 'row-span-3'
-        : 'row-span-2'
-
-  const imageHeight = size === 'large' ? 'h-48 sm:h-56' : 'h-32 sm:h-36'
+  const gridClasses = featured ? 'sm:col-span-2' : ''
+  const imageAspect = featured ? 'aspect-[2/1]' : 'aspect-video'
 
   return (
     <motion.div
@@ -120,13 +101,13 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
       >
         {/* Image — always full width */}
         {displayImage ? (
-          <div className={`relative w-full ${imageHeight} overflow-hidden`}>
+          <div className={`relative w-full ${imageAspect} bg-[#2D2850] overflow-hidden`}>
             <Image
               src={displayImage}
               alt={result.title}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-              sizes={size === 'large' ? '(max-width: 640px) 100vw, 66vw' : '(max-width: 640px) 100vw, 33vw'}
+              className="object-contain group-hover:scale-105 transition-transform duration-500"
+              sizes={featured ? '(max-width: 640px) 100vw, 50vw' : '(max-width: 640px) 100vw, 25vw'}
               onError={() => {
                 if (!imgFailed) setImgFailed(true)
                 else if (!fallbackFailed) setFallbackFailed(true)
@@ -158,7 +139,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
           </div>
         ) : (
           /* Gradient placeholder when no image */
-          <div className={`relative w-full ${imageHeight} bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden`}>
+          <div className={`relative w-full ${imageAspect} bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden`}>
             {result.video_url ? (
               <Video className="w-10 h-10 text-[#5A5190]" />
             ) : isNews ? (
@@ -180,7 +161,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
         <div className="p-3">
           <h3
             className={`font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors ${
-              size === 'large' ? 'text-base sm:text-lg line-clamp-3' : 'text-sm line-clamp-2'
+              featured ? 'text-base sm:text-lg line-clamp-3' : 'text-sm line-clamp-2'
             }`}
           >
             {result.title}

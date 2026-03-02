@@ -6,7 +6,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { getAllNews, getAllBlogPosts, getAllTags } from '@/integrations/supabase/client'
 import { useTranslations, type Language } from '@/contexts/TranslationContext'
-import { SearchResultCard, getCardSize } from '@/components/search/SearchResultCard'
+import { SearchResultCard } from '@/components/search/SearchResultCard'
 import { TagCloud } from '@/components/search/TagCloud'
 import { Loader2, SearchX, ArrowLeft, Search, X, Calendar, SlidersHorizontal } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
@@ -355,40 +355,17 @@ function SearchPageInner() {
           </div>
         ) : (
           <>
-            {/* Masonry Grid — full width */}
-            <div
-              className="search-grid mt-4"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(1, 1fr)',
-                gridAutoRows: '120px',
-                gap: '16px',
-              }}
-            >
-              <style>{`
-                @media (min-width: 640px) {
-                  .search-grid { grid-template-columns: repeat(2, 1fr) !important; grid-auto-rows: 130px !important; }
-                }
-                @media (min-width: 1024px) {
-                  .search-grid { grid-template-columns: repeat(3, 1fr) !important; grid-auto-rows: 120px !important; }
-                }
-                @media (min-width: 1280px) {
-                  .search-grid { grid-template-columns: repeat(4, 1fr) !important; grid-auto-rows: 120px !important; }
-                }
-              `}</style>
+            {/* Results Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
               <AnimatePresence mode="popLayout">
-                {results.map((result, index) => {
-                  const hasImage = !!(result.processed_image_url || result.image_url || result.video_url)
-                  const size = getCardSize(index, hasImage)
-                  return (
-                    <SearchResultCard
-                      key={`${result.type}-${result.id}`}
-                      result={result}
-                      size={size}
-                      index={index}
-                    />
-                  )
-                })}
+                {results.map((result, index) => (
+                  <SearchResultCard
+                    key={`${result.type}-${result.id}`}
+                    result={result}
+                    featured={index === 0}
+                    index={index}
+                  />
+                ))}
               </AnimatePresence>
             </div>
 
