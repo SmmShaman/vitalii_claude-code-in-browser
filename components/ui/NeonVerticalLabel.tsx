@@ -35,9 +35,14 @@ export const NeonVerticalLabel = ({
   const waveOffsetRef = useRef(0);
   const isHoveredRef = useRef(isHovered);
   const svgHeightRef = useRef(svgHeight);
+  const animateFnRef = useRef<() => void>(() => {});
+
+  // Синхронне оновлення refs під час рендеру — 0 затримки
   svgHeightRef.current = svgHeight;
   isHoveredRef.current = isHovered;
+  targetYRef.current = isHovered ? -30 : svgHeight;
 
+  // Анімаційний цикл — mount only
   useEffect(() => {
     const createWave = (y: number): string => {
       const h = svgHeightRef.current;
@@ -60,7 +65,7 @@ export const NeonVerticalLabel = ({
     const animate = () => {
       const target = targetYRef.current;
       const diff = target - currentYRef.current;
-      // Заливка (вгору) повільніша, зливання (вниз) швидше — імітація гравітації
+      // Заливка (вгору) 0.08, зливання (вниз) 0.10 — гравітація
       const speed = diff > 0 ? 0.10 : 0.08;
       currentYRef.current += diff * speed;
 
@@ -87,16 +92,12 @@ export const NeonVerticalLabel = ({
       if (stillMoving || isHoveredRef.current) {
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
-        // Повністю зупиняємо — 0% CPU в idle (не hovered, рідина злита)
+        // Повністю зупиняємо — 0% CPU в idle
         animationFrameRef.current = undefined;
       }
     };
 
-    targetYRef.current = isHovered ? -30 : svgHeight;
-    // Запускаємо тільки якщо ще не працює
-    if (!animationFrameRef.current) {
-      animationFrameRef.current = requestAnimationFrame(animate);
-    }
+    animateFnRef.current = animate;
 
     return () => {
       if (animationFrameRef.current) {
@@ -104,7 +105,15 @@ export const NeonVerticalLabel = ({
         animationFrameRef.current = undefined;
       }
     };
-  }, [isHovered, svgHeight]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Kick — запускає цикл якщо він зупинений (idle → active)
+  useEffect(() => {
+    if (!animationFrameRef.current) {
+      animationFrameRef.current = requestAnimationFrame(animateFnRef.current);
+    }
+  }, [isHovered]);
 
   const uniqueId = useRef(`neon-${Math.random().toString(36).substr(2, 9)}`).current;
 
