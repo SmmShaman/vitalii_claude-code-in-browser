@@ -36,10 +36,17 @@ export const NeonVerticalLabel = ({
   const isHoveredRef = useRef(isHovered);
   const svgHeightRef = useRef(svgHeight);
 
-  // Синхронне оновлення refs (fallback від React props)
+  // Прапорець: чи DOM listener активний (має пріоритет над React props)
+  const hasDomListenerRef = useRef(false);
+
+  // svgHeight завжди оновлюємо
   svgHeightRef.current = svgHeight;
-  isHoveredRef.current = isHovered;
-  targetYRef.current = isHovered ? -30 : svgHeight;
+
+  // Target і isHovered оновлюємо ТІЛЬКИ якщо DOM listener не працює (fallback)
+  if (!hasDomListenerRef.current) {
+    isHoveredRef.current = isHovered;
+    targetYRef.current = isHovered ? -30 : svgHeight;
+  }
 
   // Допоміжна функція для запуску анімації
   const kickAnimation = useRef<() => void>(() => {});
@@ -116,6 +123,7 @@ export const NeonVerticalLabel = ({
         kickAnimation.current();
       };
 
+      hasDomListenerRef.current = true;
       cardEl.addEventListener('mouseenter', onEnter);
       cardEl.addEventListener('mouseleave', onLeave);
 
