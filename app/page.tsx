@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, startTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { sectionNeonColors } from '@/components/sections/BentoGrid'
 import { sectionColors } from '@/components/sections/BentoGridMobile'
@@ -43,10 +43,12 @@ export default function HomePage() {
     }
   }, [isMobile])
 
-  // Update hovered section for background color changes
-  const handleSectionChange = (sectionId: string | null) => {
-    setHoveredSection(sectionId)
-  }
+  // Update hovered section — low priority, не блокує анімації
+  const handleSectionChange = useCallback((sectionId: string | null) => {
+    startTransition(() => {
+      setHoveredSection(sectionId)
+    })
+  }, [])
 
   // Get the current neon color based on hovered section
   // Desktop uses { primary, secondary }, Mobile uses { bg, text, icon }

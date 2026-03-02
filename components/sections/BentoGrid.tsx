@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, startTransition } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { SectionDialog } from '@/components/sections/SectionDialog';
@@ -831,7 +831,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         onClick={() => handleCardClick(section, cardRefs.current[section.id])}
                         onMouseEnter={() => {
                           debugLog(`🐭 MOUSE ENTER: ${section.id}`);
-                          setHoveredSection(section.id);
+                          startTransition(() => setHoveredSection(section.id));
 
                           // Projects: Start 3-second timer for explosion animation
                           if (section.id === 'projects') {
@@ -877,7 +877,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                             selectedBlogId,
                             isProjectsExploding,
                           });
-                          setHoveredSection(null);
+                          startTransition(() => setHoveredSection(null));
 
                           // Projects: Cancel timer and return from explosion
                           if (section.id === 'projects') {
