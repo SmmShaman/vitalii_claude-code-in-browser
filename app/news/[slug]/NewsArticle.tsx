@@ -83,7 +83,9 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
   const description = news?.[`description_${lang}`] || news?.description_en || ''
   const content = news?.[`content_${lang}`] || news?.content_en || description
   const currentSlug = news?.[`slug_${lang}`] || news?.slug_en || slug
-  const heroImage = news?.processed_image_url_wide || news?.processed_image_url || news?.images?.[0] || news?.image_url
+  const heroImagePrimary = news?.processed_image_url_wide || news?.processed_image_url || news?.images?.[0] || news?.image_url
+  const [heroImgFailed, setHeroImgFailed] = useState(false)
+  const heroImage = heroImgFailed ? null : heroImagePrimary
   const originalImage = news?.image_url // Original source image for attribution
   const sourceName = news?.original_url ? (() => { try { return new URL(news.original_url).hostname.replace('www.', '') } catch { return '' } })() : (news?.rss_source_url ? (() => { try { return new URL(news.rss_source_url).hostname.replace('www.', '') } catch { return '' } })() : '')
 
@@ -217,6 +219,8 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
               priority
               sizes="100vw"
               className="object-cover"
+              onError={() => setHeroImgFailed(true)}
+              unoptimized
             />
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />

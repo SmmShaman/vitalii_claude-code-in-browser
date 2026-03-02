@@ -84,7 +84,9 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
   const content = post?.[`content_${lang}`] || post?.content_en || post?.[`description_${lang}`] || post?.description_en || ''
   const currentSlug = post?.[`slug_${lang}`] || post?.slug_en || slug
   const readingTime = post?.reading_time || calculateReadingTime(content)
-  const heroImage = post?.processed_image_url_wide || post?.processed_image_url || post?.images?.[0] || post?.image_url || post?.cover_image_url
+  const heroImagePrimary = post?.processed_image_url_wide || post?.processed_image_url || post?.images?.[0] || post?.image_url || post?.cover_image_url
+  const [heroImgFailed, setHeroImgFailed] = useState(false)
+  const heroImage = heroImgFailed ? null : heroImagePrimary
   const originalImage = post?.image_url || post?.cover_image_url // Original source image for attribution
   const sourceName = post?.source_news_id ? '' : '' // Blog posts usually don't need source attribution
 
@@ -234,6 +236,8 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               priority
               sizes="100vw"
               className="object-cover"
+              onError={() => setHeroImgFailed(true)}
+              unoptimized
             />
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />

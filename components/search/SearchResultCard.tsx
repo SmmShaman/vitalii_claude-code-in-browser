@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, Eye, Video, Newspaper, BookOpen } from 'lucide-react'
@@ -75,11 +76,23 @@ interface SearchResultCardProps {
 }
 
 export function SearchResultCard({ result, size, index }: SearchResultCardProps) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const [fallbackFailed, setFallbackFailed] = useState(false)
+
   const directImage = result.processed_image_url || result.image_url
   const videoThumbnail = result.video_url && result.video_type === 'youtube'
     ? getYouTubeThumbnail(result.video_url)
     : null
-  const imageUrl = directImage || videoThumbnail
+
+  // Fallback chain: primary -> alternate -> video thumbnail -> null
+  const alternateImage = directImage === result.processed_image_url
+    ? result.image_url
+    : result.processed_image_url
+  const primaryImage = directImage || videoThumbnail
+  const displayImage = imgFailed
+    ? (fallbackFailed ? null : (alternateImage || videoThumbnail))
+    : primaryImage
+
   const isVideoThumbnail = !directImage && !!videoThumbnail
   const href = `/${result.type === 'news' ? 'news' : 'blog'}/${result.slug}`
   const isNews = result.type === 'news'
@@ -104,14 +117,19 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
         className="group block h-full rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]"
       >
         {/* Image */}
-        {imageUrl && size !== 'small' && (
+        {displayImage && size !== 'small' && (
           <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} overflow-hidden`}>
             <Image
-              src={imageUrl}
+              src={displayImage}
               alt={result.title}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-500"
               sizes={size === 'large' ? '(max-width: 640px) 100vw, 66vw' : '(max-width: 640px) 100vw, 33vw'}
+              onError={() => {
+                if (!imgFailed) setImgFailed(true)
+                else if (!fallbackFailed) setFallbackFailed(true)
+              }}
+              unoptimized
             />
             {/* Type badge */}
             <div
@@ -139,7 +157,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
         )}
 
         {/* Gradient placeholder for non-YouTube video articles without images */}
-        {!imageUrl && result.video_url && size !== 'small' && (
+        {!displayImage && result.video_url && size !== 'small' && (
           <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} bg-gradient-to-br from-[#352F5A] to-[#3D3768] flex items-center justify-center overflow-hidden`}>
             <Video className="w-10 h-10 text-[#8A84A8]" />
             <div
@@ -167,7 +185,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
 
           <div className="min-w-0 flex-1">
             {/* No-image medium card badge */}
-            {!imageUrl && size !== 'small' && (
+            {!displayImage && size !== 'small' && (
               <div
                 className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2 ${
                   isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
