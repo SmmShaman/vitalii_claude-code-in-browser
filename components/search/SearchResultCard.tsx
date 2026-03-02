@@ -118,7 +118,7 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
       >
         {/* Image */}
         {displayImage && size !== 'small' && (
-          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-36 sm:h-40'} overflow-hidden`}>
+          <div className={`relative w-full ${size === 'large' ? 'h-48 sm:h-56' : 'h-32 sm:h-36'} overflow-hidden`}>
             <Image
               src={displayImage}
               alt={result.title}
@@ -172,15 +172,32 @@ export function SearchResultCard({ result, size, index }: SearchResultCardProps)
 
         {/* Content */}
         <div className={`p-3 ${size === 'small' ? 'flex items-start gap-3' : ''}`}>
-          {/* Small card: inline badge */}
+          {/* Small card: thumbnail or icon */}
           {size === 'small' && (
-            <div className="flex-shrink-0 mt-0.5">
-              {isNews ? (
-                <Newspaper className="w-4 h-4 text-[#818CF8]" />
-              ) : (
-                <BookOpen className="w-4 h-4 text-blue-500" />
-              )}
-            </div>
+            displayImage ? (
+              <div className="relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden">
+                <Image
+                  src={displayImage}
+                  alt={result.title}
+                  fill
+                  className="object-cover"
+                  sizes="64px"
+                  onError={() => {
+                    if (!imgFailed) setImgFailed(true)
+                    else if (!fallbackFailed) setFallbackFailed(true)
+                  }}
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 mt-0.5">
+                {isNews ? (
+                  <Newspaper className="w-4 h-4 text-[#818CF8]" />
+                ) : (
+                  <BookOpen className="w-4 h-4 text-blue-500" />
+                )}
+              </div>
+            )
           )}
 
           <div className="min-w-0 flex-1">
