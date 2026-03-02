@@ -33,14 +33,11 @@ export const NeonVerticalLabel = ({
   const currentYRef = useRef(svgHeight);
   const targetYRef = useRef(svgHeight);
   const waveOffsetRef = useRef(0);
-  const isHoveredRef = useRef(isHovered);
   const svgHeightRef = useRef(svgHeight);
 
-  // Синхронне оновлення refs
   svgHeightRef.current = svgHeight;
-  isHoveredRef.current = isHovered;
 
-  // Анімаційний цикл — завжди біжить, як в оригіналі
+  // Анімаційний цикл + прямий DOM hover — повністю обходить React
   useEffect(() => {
     const createWave = (y: number): string => {
       const h = svgHeightRef.current;
@@ -66,34 +63,40 @@ export const NeonVerticalLabel = ({
       const speed = diff > 0 ? 0.10 : 0.08;
       currentYRef.current += diff * speed;
 
-      // Оновлюємо позицію рівня рідини
       if (liquidLevelRef.current) {
         liquidLevelRef.current.setAttribute('y', currentYRef.current.toString());
       }
 
-      // Хвиля
       waveOffsetRef.current += 0.15;
       if (waveRef.current) {
         waveRef.current.setAttribute('d', createWave(currentYRef.current));
       }
 
-      // Завжди продовжуємо — простота і надійність
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 
     animate();
 
+    // Прямий DOM hover на батьківській картці — миттєва реакція, 0 React ре-рендерів
+    const cardEl = containerRef.current?.parentElement;
+    const onEnter = () => { targetYRef.current = -30; };
+    const onLeave = () => { targetYRef.current = svgHeightRef.current; };
+
+    if (cardEl) {
+      cardEl.addEventListener('mouseenter', onEnter);
+      cardEl.addEventListener('mouseleave', onLeave);
+    }
+
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      if (cardEl) {
+        cardEl.removeEventListener('mouseenter', onEnter);
+        cardEl.removeEventListener('mouseleave', onLeave);
+      }
     };
   }, [svgHeight]);
-
-  // Простий target update — як в оригіналі
-  useEffect(() => {
-    targetYRef.current = isHovered ? -30 : svgHeight;
-  }, [isHovered, svgHeight]);
 
   const uniqueId = useRef(`neon-${Math.random().toString(36).substr(2, 9)}`).current;
 
