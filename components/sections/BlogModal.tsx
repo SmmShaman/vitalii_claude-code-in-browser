@@ -286,12 +286,13 @@ export const BlogModal = ({ isOpen, onClose, selectedPostId }: BlogModalProps) =
                     <div className="flex items-center gap-2 flex-wrap">
                       <Tag className="h-4 w-4" />
                       {selectedPost.tags.map((tag, index) => (
-                        <span
+                        <button
                           key={index}
-                          className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
+                          onClick={() => window.location.href = `/blog?tag=${encodeURIComponent(tag)}`}
+                          className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs hover:bg-primary/20 transition-colors cursor-pointer"
                         >
-                          {tag}
-                        </span>
+                          #{tag}
+                        </button>
                       ))}
                     </div>
                   )}

@@ -167,12 +167,17 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
           {result.tags && result.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {result.tags.slice(0, 3).map((tag) => (
-                <span
+                <button
                   key={tag}
-                  className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA]"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    window.location.href = `/${result.type === 'news' ? 'news' : 'blog'}?tag=${encodeURIComponent(tag)}`
+                  }}
+                  className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580] hover:text-[#818CF8] transition-colors cursor-pointer"
                 >
                   #{tag}
-                </span>
+                </button>
               ))}
             </div>
           )}

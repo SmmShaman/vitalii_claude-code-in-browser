@@ -332,20 +332,13 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
             <ScrollReveal delay={0.3}>
               <div className="flex flex-wrap gap-2 mb-8">
                 {news.tags.map((tag: string) => (
-                  <Link
+                  <button
                     key={tag}
-                    href={`/news?tag=${encodeURIComponent(tag)}`}
-                    onClick={(e) => {
-                      // В модальному контексті soft navigation не закриває модал
-                      if ((e.currentTarget as HTMLElement).closest('[role="dialog"]')) {
-                        e.preventDefault()
-                        window.location.href = `/news?tag=${encodeURIComponent(tag)}`
-                      }
-                    }}
-                    className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#88B04B]/15 hover:text-[#88B04B] transition-colors"
+                    onClick={() => window.location.href = `/news?tag=${encodeURIComponent(tag)}`}
+                    className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#88B04B]/15 hover:text-[#88B04B] transition-colors cursor-pointer"
                   >
                     #{tag}
-                  </Link>
+                  </button>
                 ))}
               </div>
             </ScrollReveal>
