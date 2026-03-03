@@ -231,7 +231,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   className="font-bold text-red-500 font-comfortaa"
                   style={{
                     fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
-                    textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+                    textShadow: '1px 1px 3px rgba(79, 70, 229, 0.3)',
                     lineHeight: '1.2'
                   }}
                 >
