@@ -334,7 +334,7 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
                 {news.tags.map((tag: string) => (
                   <button
                     key={tag}
-                    onClick={() => window.location.href = `/news?tag=${encodeURIComponent(tag)}`}
+                    onClick={() => window.location.href = `/news?tag=${encodeURIComponent(tag.toLowerCase())}`}
                     className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#88B04B]/15 hover:text-[#88B04B] transition-colors cursor-pointer"
                   >
                     #{tag}

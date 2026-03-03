@@ -286,7 +286,7 @@ const BlogSectionComponent = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        window.location.href = `/search?tag=${encodeURIComponent(tag)}`;
+                        window.location.href = `/search?tag=${encodeURIComponent(tag.toLowerCase())}`;
                       }}
                       className="px-2 py-1 bg-[#818CF8]/10 text-[#818CF8] rounded-full text-xs hover:bg-[#818CF8]/25 transition-colors cursor-pointer"
                     >

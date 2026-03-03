@@ -391,7 +391,7 @@ export const NewsModal = ({ isOpen, onClose, selectedNewsId }: NewsModalProps) =
                         {selectedNews.tags.map((tag, index) => (
                           <button
                             key={index}
-                            onClick={() => window.location.href = `/news?tag=${encodeURIComponent(tag)}`}
+                            onClick={() => window.location.href = `/news?tag=${encodeURIComponent(tag.toLowerCase())}`}
                             className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs hover:bg-primary/20 transition-colors cursor-pointer"
                           >
                             #{tag}

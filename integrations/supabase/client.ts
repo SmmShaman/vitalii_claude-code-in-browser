@@ -216,15 +216,15 @@ export const getAllNews = async (filters: NewsFilters = {}) => {
     .eq('is_published', true)
     .order('published_at', { ascending: false });
 
-  // Filter by tags (PostgREST array overlap operator)
+  // Filter by tags (PostgREST array overlap operator, case-insensitive via toLowerCase)
   if (tags && tags.length > 0) {
-    query = query.overlaps('tags', tags);
+    query = query.overlaps('tags', tags.map(t => t.toLowerCase()));
   }
 
   // Exclude articles that contain any of the excluded tags
   if (excludeTags && excludeTags.length > 0) {
     for (const tag of excludeTags) {
-      query = query.not('tags', 'cs', `{${tag}}`);
+      query = query.not('tags', 'cs', `{${tag.toLowerCase()}}`);
     }
   }
 
@@ -385,15 +385,15 @@ export const getAllBlogPosts = async (filters: BlogFilters = {}) => {
     .eq('is_published', true)
     .order('published_at', { ascending: false });
 
-  // Filter by tags (PostgREST array overlap operator)
+  // Filter by tags (PostgREST array overlap operator, case-insensitive via toLowerCase)
   if (tags && tags.length > 0) {
-    query = query.overlaps('tags', tags);
+    query = query.overlaps('tags', tags.map(t => t.toLowerCase()));
   }
 
   // Exclude articles that contain any of the excluded tags
   if (excludeTags && excludeTags.length > 0) {
     for (const tag of excludeTags) {
-      query = query.not('tags', 'cs', `{${tag}}`);
+      query = query.not('tags', 'cs', `{${tag.toLowerCase()}}`);
     }
   }
 

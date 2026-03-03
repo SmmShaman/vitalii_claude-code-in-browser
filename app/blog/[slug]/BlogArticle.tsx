@@ -355,7 +355,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                 {post.tags.map((tag: string) => (
                   <button
                     key={tag}
-                    onClick={() => window.location.href = `/blog?tag=${encodeURIComponent(tag)}`}
+                    onClick={() => window.location.href = `/blog?tag=${encodeURIComponent(tag.toLowerCase())}`}
                     className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#221F3A] hover:text-[#818CF8] transition-colors cursor-pointer"
                   >
                     #{tag}

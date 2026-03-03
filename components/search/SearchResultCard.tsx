@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, Eye, Video, Newspaper, BookOpen } from 'lucide-react'
@@ -63,6 +64,7 @@ interface SearchResultCardProps {
 }
 
 export function SearchResultCard({ result, index }: SearchResultCardProps) {
+  const router = useRouter()
   const [imgFailed, setImgFailed] = useState(false)
   const [fallbackFailed, setFallbackFailed] = useState(false)
 
@@ -172,7 +174,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()
-                    window.location.href = `/${result.type === 'news' ? 'news' : 'blog'}?tag=${encodeURIComponent(tag)}`
+                    router.push(`/${result.type === 'news' ? 'news' : 'blog'}?tag=${encodeURIComponent(tag.toLowerCase())}`)
                   }}
                   className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580] hover:text-[#818CF8] transition-colors cursor-pointer"
                 >

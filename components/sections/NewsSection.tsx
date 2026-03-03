@@ -492,7 +492,7 @@ const NewsSectionComponent = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
-                          window.location.href = `/search?tag=${encodeURIComponent(tag)}`;
+                          window.location.href = `/search?tag=${encodeURIComponent(tag.toLowerCase())}`;
                         }}
                         className="px-2 py-1 bg-[#88B04B]/10 text-[#88B04B] rounded-full text-xs hover:bg-[#88B04B]/25 transition-colors cursor-pointer"
                       >
