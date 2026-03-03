@@ -93,87 +93,87 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
       transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.3) }}
       className="break-inside-avoid mb-4"
     >
-      <Link
-        href={href}
-        className="group block rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]"
-      >
-        {/* Image — natural aspect ratio, no cropping */}
-        {displayImage ? (
-          <div className="relative w-full overflow-hidden">
-            <Image
-              src={displayImage}
-              alt={result.title}
-              width={600}
-              height={400}
-              className="w-full h-auto group-hover:scale-105 transition-transform duration-500"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              onError={() => {
-                if (!imgFailed) setImgFailed(true)
-                else if (!fallbackFailed) setFallbackFailed(true)
-              }}
-              unoptimized
-            />
-            {/* Type badge */}
-            <div
-              className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
-              }`}
-            >
-              {isNews ? 'News' : 'Blog'}
-            </div>
-            {/* Video indicator */}
-            {result.video_url && (
-              <div className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white">
-                <Video className="w-3.5 h-3.5" />
+      <div className="group rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]">
+        <Link href={href} className="block">
+          {/* Image — natural aspect ratio, no cropping */}
+          {displayImage ? (
+            <div className="relative w-full overflow-hidden">
+              <Image
+                src={displayImage}
+                alt={result.title}
+                width={600}
+                height={400}
+                className="w-full h-auto group-hover:scale-105 transition-transform duration-500"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                onError={() => {
+                  if (!imgFailed) setImgFailed(true)
+                  else if (!fallbackFailed) setFallbackFailed(true)
+                }}
+                unoptimized
+              />
+              {/* Type badge */}
+              <div
+                className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
+                  isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
+                }`}
+              >
+                {isNews ? 'News' : 'Blog'}
               </div>
-            )}
-            {/* Play overlay for video thumbnails */}
-            {isVideoThumbnail && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                <div className="w-10 h-10 rounded-full bg-[#352F5A]/90 flex items-center justify-center">
-                  <div className="w-0 h-0 border-l-[14px] border-l-[#352F5A] border-y-[8px] border-y-transparent ml-1" />
+              {/* Video indicator */}
+              {result.video_url && (
+                <div className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white">
+                  <Video className="w-3.5 h-3.5" />
                 </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Gradient placeholder when no image */
-          <div className="relative w-full aspect-video bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden">
-            {result.video_url ? (
-              <Video className="w-10 h-10 text-[#5A5190]" />
-            ) : isNews ? (
-              <Newspaper className="w-10 h-10 text-[#5A5190]" />
-            ) : (
-              <BookOpen className="w-10 h-10 text-[#5A5190]" />
-            )}
-            <div
-              className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
-              }`}
-            >
-              {isNews ? 'News' : 'Blog'}
+              )}
+              {/* Play overlay for video thumbnails */}
+              {isVideoThumbnail && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <div className="w-10 h-10 rounded-full bg-[#352F5A]/90 flex items-center justify-center">
+                    <div className="w-0 h-0 border-l-[14px] border-l-[#352F5A] border-y-[8px] border-y-transparent ml-1" />
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="p-3">
-          <h3 className="text-sm font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors line-clamp-2">
-            {result.title}
-          </h3>
-
-          {result.description && (
-            <p className="text-xs text-[#B0ABCA] mt-1 line-clamp-2">{result.description}</p>
+          ) : (
+            /* Gradient placeholder when no image */
+            <div className="relative w-full aspect-video bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden">
+              {result.video_url ? (
+                <Video className="w-10 h-10 text-[#5A5190]" />
+              ) : isNews ? (
+                <Newspaper className="w-10 h-10 text-[#5A5190]" />
+              ) : (
+                <BookOpen className="w-10 h-10 text-[#5A5190]" />
+              )}
+              <div
+                className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
+                  isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
+                }`}
+              >
+                {isNews ? 'News' : 'Blog'}
+              </div>
+            </div>
           )}
 
+          {/* Title + description — inside Link for article navigation */}
+          <div className="px-3 pt-3">
+            <h3 className="text-sm font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors line-clamp-2">
+              {result.title}
+            </h3>
+
+            {result.description && (
+              <p className="text-xs text-[#B0ABCA] mt-1 line-clamp-2">{result.description}</p>
+            )}
+          </div>
+        </Link>
+
+        {/* Tags + meta — OUTSIDE Link to prevent navigation conflict */}
+        <div className="px-3 pb-3">
           {result.tags && result.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {result.tags.slice(0, 3).map((tag) => (
                 <button
                   key={tag}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    e.preventDefault()
+                  onClick={() => {
                     router.push(`/${result.type === 'news' ? 'news' : 'blog'}?tag=${encodeURIComponent(tag.toLowerCase())}`)
                   }}
                   className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580] hover:text-[#818CF8] transition-colors cursor-pointer"
@@ -202,7 +202,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
             )}
           </div>
         </div>
-      </Link>
+      </div>
     </motion.div>
   )
 }
