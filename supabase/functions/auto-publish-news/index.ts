@@ -16,12 +16,20 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-02-19-v9-pregenerate-teasers'
+const VERSION = '2026-03-05-v10-preset-buttons'
 
 interface AutoPublishRequest {
   newsId: string
-  source: 'telegram' | 'rss'
+  source?: 'telegram' | 'rss'
   telegramMessageId?: number | null
+  preset?: {
+    variantIndex?: number | null  // 1-4 or null=AI auto
+    imageLanguage?: string        // 'en'|'no'|'ua'
+    publicationType?: string      // 'news'|'blog'
+    socialLanguages?: string[]    // override languages
+    socialPlatforms?: string[]    // override platforms
+    skipQueue?: boolean           // true = execute immediately
+  }
 }
 
 /**
@@ -43,13 +51,14 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   let newsId = ''
   let reqMsgId: number | null = null
+  let preset: AutoPublishRequest['preset'] = undefined
 
   try {
     const requestBody: AutoPublishRequest = await req.json()
     newsId = requestBody.newsId
     reqMsgId = requestBody.telegramMessageId || null
-    const source = requestBody.source
-    console.log(`📰 Auto-publishing news: ${newsId} (source: ${source})`)
+    preset = requestBody.preset
+    console.log(`📰 Auto-publishing news: ${newsId}${preset ? ' (PRESET)' : ''}`)
 
     // Entry guard: prevent duplicate/concurrent processing
     const { data: statusCheck } = await supabase
@@ -90,6 +99,10 @@ serve(async (req) => {
     // Resolve telegram message ID for editing (prefer request param, fallback to DB)
     const tgMessageId = reqMsgId || news.telegram_message_id || null
 
+    // Auto-detect source type from news record if not specified
+    const source: 'telegram' | 'rss' = requestBody.source || (news.rss_source_url ? 'rss' : 'telegram')
+    console.log(`📦 Source: ${source}`)
+
     // Lookup source name (source_id FK → news_sources, fallback to domain)
     let sourceName = ''
     if (news.source_id) {
@@ -113,6 +126,18 @@ serve(async (req) => {
     const languages = settings.languages as Array<'en' | 'no' | 'ua'>
     const platforms = settings.platforms
     console.log(`⚙️ Settings: platforms=[${platforms}], languages=[${languages}]`)
+
+    // Apply preset overrides (before Norway detection)
+    if (preset?.socialLanguages && preset.socialLanguages.length > 0) {
+      languages.length = 0
+      languages.push(...(preset.socialLanguages as Array<'en' | 'no' | 'ua'>))
+      console.log(`🚀 Preset languages: [${languages}]`)
+    }
+    if (preset?.socialPlatforms && preset.socialPlatforms.length > 0) {
+      platforms.length = 0
+      platforms.push(...preset.socialPlatforms)
+      console.log(`🚀 Preset platforms: [${platforms}]`)
+    }
 
     // ═══════════════════════════════════════════════════
     // Norway Detection: Override language to Norwegian if article is Norway-related
@@ -163,9 +188,12 @@ serve(async (req) => {
       }
     }
 
-    // AI selects best variant (fallback to article-based variant if none)
+    // Select variant: preset index > AI selection > first variant
     let selectedVariant = variants?.[0] || null
-    if (variants && variants.length > 1) {
+    if (preset?.variantIndex && variants && preset.variantIndex >= 1 && preset.variantIndex <= variants.length) {
+      selectedVariant = variants[preset.variantIndex - 1]
+      console.log(`🚀 Preset variant #${preset.variantIndex}: ${selectedVariant.label}`)
+    } else if (variants && variants.length > 1) {
       const aiChoice = await aiSelectBestVariant(
         news.original_title || '',
         news.original_content || '',
@@ -220,7 +248,7 @@ serve(async (req) => {
     let imageGenSuccess = false
 
     // Generate single image using first available language
-    const primaryLang = languages[0] || 'en'
+    const primaryLang = preset?.imageLanguage || languages[0] || 'en'
     try {
       console.log(`  🖼️ Generating 1:1 image (${primaryLang})...`)
       const imageResponse = await callFunction('process-image', {
@@ -276,7 +304,9 @@ serve(async (req) => {
     const latestImageUrl = freshNews?.processed_image_url || freshNews?.image_url || news.image_url || null
     console.log(`🖼️ Image URL for rewrite: ${latestImageUrl ? 'found' : 'none'}`)
 
-    const processingEndpoint = source === 'rss' ? 'process-rss-news' : 'process-news'
+    const processingEndpoint = preset?.publicationType === 'blog'
+      ? 'process-blog-post'
+      : (source === 'rss' ? 'process-rss-news' : 'process-news')
 
     const rewriteBody: Record<string, any> = {
       newsId,
@@ -455,7 +485,9 @@ serve(async (req) => {
     const score = (news.rss_analysis as any)?.relevance_score || '?'
 
     // Caption for photo (max 1024 chars) — concise format
-    const caption = `🤖 <b>Auto-Published</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)} · ${score}/10 ${imageStatus}${articleLink}\n\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts}`}`
+    const presetLabel = preset ? '🚀' : '🤖'
+    const pubTypeLabel = preset?.publicationType === 'blog' ? ' (Blog)' : ''
+    const caption = `${presetLabel} <b>Auto-Published${pubTypeLabel}</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)} · ${score}/10 ${imageStatus}${articleLink}\n\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts}`}`
 
     if (finalImageUrl) {
       // Delete old text message, send photo with caption (one message)
@@ -468,8 +500,10 @@ serve(async (req) => {
 
     console.log('🎉 Auto-publish pipeline completed successfully!')
 
-    // Chain: trigger next queued article (with 60s gap)
-    await triggerNextInQueue(supabase)
+    // Chain: trigger next queued article (skip for preset runs)
+    if (!preset?.skipQueue) {
+      await triggerNextInQueue(supabase)
+    }
 
     return new Response(
       JSON.stringify({
@@ -524,8 +558,10 @@ serve(async (req) => {
           failMsgId,
           `❌ <b>Auto-Publish Failed</b>\n\n📰 ${failTitle}${failSourceName}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
         )
-        // Chain: trigger next queued article even on failure
-        await triggerNextInQueue(supabase)
+        // Chain: trigger next queued article even on failure (skip for presets)
+        if (!preset?.skipQueue) {
+          await triggerNextInQueue(supabase)
+        }
         return new Response(
           JSON.stringify({ success: false, newsId, error: error.message || 'Unknown error' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -537,8 +573,10 @@ serve(async (req) => {
       `❌ <b>Auto-Publish Failed</b>\n\n📰 ${escapeHtml(errorTitle)}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
     )
 
-    // Chain: trigger next queued article even on failure
-    await triggerNextInQueue(supabase)
+    // Chain: trigger next queued article even on failure (skip for presets)
+    if (!preset?.skipQueue) {
+      await triggerNextInQueue(supabase)
+    }
 
     return new Response(
       JSON.stringify({

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
+import { formatCompactVariants } from '../_shared/telegram-format-helpers.ts'
 
 /**
  * Telegram Webhook Worker
@@ -1164,11 +1165,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ ok: false }))
       }
 
-      const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
-      let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
-      newVariants.forEach((v, i) => {
-        variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
-      })
+      let variantsText = '\n\n🎨 Оберіть концепцію:' + formatCompactVariants(newVariants, escapeHtml)
 
       const variantButtons = [
         [

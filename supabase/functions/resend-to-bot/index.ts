@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { buildPresetKeyboard } from '../_shared/telegram-format-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,36 +69,19 @@ serve(async (req) => {
         const channelUsername = urlMatch ? urlMatch[1] : 'unknown'
         const messageId = urlMatch ? urlMatch[2] : 'unknown'
 
-        const message = `🆕 <b>New Post from Telegram Channel</b>
+        const shortContent = (post.original_content || '').substring(0, 80).replace(/\n/g, ' ')
+        const message = `🆕 <b>TG</b> | @${channelUsername} | #${messageId}
 
-<b>Channel:</b> @${channelUsername}
-<b>Message ID:</b> ${messageId}
+💬 ${shortContent}${(post.original_content?.length || 0) > 80 ? '...' : ''}
 
-<b>Content:</b>
-${post.original_content?.substring(0, 500)}${(post.original_content?.length || 0) > 500 ? '...' : ''}
+<blockquote expandable>${(post.original_content || '').substring(0, 500)}${(post.original_content?.length || 0) > 500 ? '...' : ''}
 
-<b>Original URL:</b> ${post.original_url}
-
-<i>Created:</i> ${post.created_at}
+🔗 ${post.original_url}
+📅 ${post.created_at}</blockquote>
 
 ⏳ <i>Waiting for moderation...</i>`
 
-        const keyboard = {
-          inline_keyboard: [
-            [
-              { text: '📰 В новини', callback_data: `publish_news_${post.id}` },
-              { text: '📝 В блог', callback_data: `publish_blog_${post.id}` }
-            ],
-            [
-              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${post.id}` },
-              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${post.id}` },
-              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${post.id}` }
-            ],
-            [
-              { text: '❌ Reject', callback_data: `reject_${post.id}` }
-            ]
-          ]
-        }
+        const keyboard = buildPresetKeyboard(post.id, 0, false)
 
         const response = await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,

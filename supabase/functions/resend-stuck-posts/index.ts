@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { buildPresetKeyboard } from '../_shared/telegram-format-helpers.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -25,63 +26,21 @@ async function sendToBot(post: StuckPost, channelName: string): Promise<boolean>
     const hasVideo = post.video_url && post.video_type
     const hasImage = post.image_url
 
-    let message = `🆕 <b>New Post (Resent)</b>
+    const content = post.original_content || post.original_title || ''
+    const shortContent = content.substring(0, 80).replace(/\n/g, ' ')
 
-<b>Channel:</b> ${channelName}
+    let message = `🆕 <b>TG</b> | ${channelName} | resent
 
-<b>Content:</b>
-${(post.original_content || post.original_title || '').substring(0, 500)}...
+💬 ${shortContent}${content.length > 80 ? '...' : ''}
 
-<b>Original URL:</b> ${post.original_url || 'N/A'}`
+<blockquote expandable>${content.substring(0, 500)}${content.length > 500 ? '...' : ''}
 
-    if (post.image_generation_prompt) {
-      message += `
-
-🎨 <b>Image Prompt:</b>
-<code>${post.image_generation_prompt}</code>`
-    }
-
-    message += `
+🔗 ${post.original_url || 'N/A'}</blockquote>
 
 ⏳ <i>Waiting for moderation...</i>`
 
-    // Build keyboard based on content type
-    let keyboard: { inline_keyboard: any[][] }
-
-    if (hasVideo) {
-      // Video exists - go straight to publish
-      keyboard = {
-        inline_keyboard: [
-          [
-            { text: '📰 В новини', callback_data: `publish_news_${post.id}` },
-            { text: '📝 В блог', callback_data: `publish_blog_${post.id}` }
-          ],
-          [{ text: '❌ Reject', callback_data: `reject_${post.id}` }]
-        ]
-      }
-    } else if (hasImage) {
-      // Has image - show image workflow
-      keyboard = {
-        inline_keyboard: [
-          [
-            { text: '✅ Залишити зображення', callback_data: `confirm_image_${post.id}` },
-            { text: '📸 Згенерувати своє', callback_data: `create_custom_${post.id}` }
-          ],
-          [{ text: '❌ Reject', callback_data: `reject_${post.id}` }]
-        ]
-      }
-    } else {
-      // No image, no video - go to publish
-      keyboard = {
-        inline_keyboard: [
-          [
-            { text: '📰 В новини', callback_data: `publish_news_${post.id}` },
-            { text: '📝 В блог', callback_data: `publish_blog_${post.id}` }
-          ],
-          [{ text: '❌ Reject', callback_data: `reject_${post.id}` }]
-        ]
-      }
-    }
+    // Build preset keyboard (one-click publishing)
+    const keyboard = buildPresetKeyboard(post.id, 0, false)
 
     const response = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,

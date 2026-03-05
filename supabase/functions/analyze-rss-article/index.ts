@@ -8,6 +8,7 @@ import {
   type DuplicateResult
 } from '../_shared/duplicate-helpers.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
+import { getShortSummary, formatCompactVariants, CATEGORY_SHORT, buildPresetKeyboard } from '../_shared/telegram-format-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -592,134 +593,46 @@ async function sendTelegramNotification(
     return
   }
 
-  // Format key points as bullet list
+  const relevanceEmoji = analysis.relevance_score >= 7 ? '🟢' :
+                         analysis.relevance_score >= 5 ? '🟡' : '🔴'
+
+  const hasVariants = variants && variants.length > 0
+
+  const duplicateWarning = formatDuplicateWarning(duplicates)
+
+  // Short summary (first sentence, max 9 words)
+  const shortSummary = getShortSummary(analysis.summary)
+
+  // Expandable details block
   const keyPointsList = analysis.key_points
     .map(point => `• ${point}`)
     .join('\n')
 
-  // Build message text
-  const relevanceEmoji = analysis.relevance_score >= 7 ? '🟢' :
-                         analysis.relevance_score >= 5 ? '🟡' : '🔴'
+  const expandableContent = `<blockquote expandable>📋 ${escapeHtml(analysis.summary)}
 
-  const categoryLabels: Record<string, string> = {
-    'tech_product': '💻 Tech Product',
-    'marketing_campaign': '📢 Marketing',
-    'ai_research': '🤖 AI Research',
-    'business_news': '💼 Business',
-    'science': '🔬 Science',
-    'lifestyle': '🌟 Lifestyle',
-    'other': '📰 Other'
-  }
-
-  const hasVariants = variants && variants.length > 0
-
-  // Build image status section
-  let imageStatusText = ''
-  if (hasVariants) {
-    const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
-    imageStatusText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
-    variants!.forEach((v, i) => {
-      imageStatusText += `\n${variantEmojis[i] || `${i+1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
-    })
-  } else if (imageUrl) {
-    imageStatusText = `
-
-🖼️ <b>Зображення:</b> ✅ Готове
-${escapeHtml(imageUrl)}`
-  } else {
-    imageStatusText = `
-
-⚠️ <b>Зображення:</b> Не знайдено`
-  }
-
-  const duplicateWarning = formatDuplicateWarning(duplicates)
-
-  const messageText = `📰 <b>RSS Article Analysis</b>
-${duplicateWarning}
-📌 <b>Source:</b> ${sourceName}
-🔗 <a href="${url}">${escapeHtml(title.substring(0, 100))}</a>
-
-📋 <b>Summary:</b>
-${escapeHtml(analysis.summary)}
-
-${relevanceEmoji} <b>Relevance:</b> ${analysis.relevance_score}/10
-📁 <b>Category:</b> ${categoryLabels[analysis.category] || analysis.category}
-
-<b>Key Points:</b>
 ${escapeHtml(keyPointsList)}
 
-🎯 <b>Recommendation:</b> ${analysis.recommended_action.toUpperCase()}
-${analysis.skip_reason ? `ℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}${imageStatusText}
+🎯 ${analysis.recommended_action.toUpperCase()}${analysis.skip_reason ? `\nℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}</blockquote>`
+
+  // Compact variant section
+  let variantsSection = ''
+  if (hasVariants) {
+    variantsSection = '\n\n🎨 Оберіть концепцію:' + formatCompactVariants(variants!, escapeHtml)
+  }
+
+  const messageText = `📰 <b>RSS</b> | 📌 ${escapeHtml(sourceName)} | ${relevanceEmoji} ${analysis.relevance_score}/10 | ${CATEGORY_SHORT[analysis.category] || analysis.category}
+${duplicateWarning}🔗 <a href="${url}">${escapeHtml(title.substring(0, 100))}</a>
+
+💬 ${escapeHtml(shortSummary)}
+
+${expandableContent}${variantsSection}
 
 newsId:${newsId}`
 
-  // Build keyboard
-  let keyboard: { inline_keyboard: any[] }
-
+  // Build preset keyboard (one-click publishing)
   const hasDuplicates = duplicates.length > 0
-  const skipDupButton = hasDuplicates
-    ? [{ text: '🔁 Skip (дубль)', callback_data: `skip_dup_${newsId}` }]
-    : []
-
-  if (hasVariants) {
-    // Has variants → Show variant selection buttons + Creative Builder
-    keyboard = {
-      inline_keyboard: [
-        [
-          { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
-          { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
-          { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
-          { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
-        ],
-        [
-          { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
-          { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
-        ],
-        [
-          ...(imageUrl ? [{ text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` }] : []),
-          { text: '📸 Завантажити', callback_data: `upload_rss_image_${newsId}` }
-        ],
-        [
-          { text: '❌ Skip', callback_data: `reject_${newsId}` }
-        ],
-        ...(hasDuplicates ? [skipDupButton] : [])
-      ]
-    }
-  } else if (imageUrl) {
-    // Has image from RSS → Confirm, regenerate, or upload custom
-    keyboard = {
-      inline_keyboard: [
-        [
-          { text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` },
-          { text: '🔄 Згенерувати AI', callback_data: `regenerate_rss_image_${newsId}` }
-        ],
-        [
-          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
-        ],
-        [
-          { text: '❌ Skip', callback_data: `reject_${newsId}` },
-          ...skipDupButton
-        ]
-      ]
-    }
-  } else {
-    // No image, no variants → Generate variants or upload custom + Creative Builder
-    keyboard = {
-      inline_keyboard: [
-        [
-          { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` },
-          { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
-        ],
-        [
-          { text: '📸 Завантажити своє', callback_data: `upload_rss_image_${newsId}` }
-        ],
-        [
-          { text: '❌ Skip', callback_data: `reject_${newsId}` },
-          ...skipDupButton
-        ]
-      ]
-    }
-  }
+  const variantCount = hasVariants ? variants!.length : 0
+  const keyboard = buildPresetKeyboard(newsId, variantCount, hasDuplicates)
 
   try {
     const response = await fetch(

@@ -18,6 +18,7 @@ import {
   YOUTUBE_HELPERS_VERSION
 } from '../_shared/youtube-helpers.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
+import { formatCompactVariants, buildPresetKeyboard } from '../_shared/telegram-format-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1304,17 +1305,16 @@ async function sendToTelegramBot(
   try {
     const duplicateWarning = formatDuplicateWarning(duplicates)
 
-    let message = `🆕 <b>New Post from Telegram Channel</b>
+    const shortContent = post.text.substring(0, 80).replace(/\n/g, ' ')
+
+    let message = `🆕 <b>TG</b> | @${channelUsername} | #${post.messageId}
 ${duplicateWarning}
-<b>Channel:</b> @${channelUsername}
-<b>Message ID:</b> ${post.messageId}
+💬 ${escapeHtml(shortContent)}${post.text.length > 80 ? '...' : ''}
 
-<b>Content:</b>
-${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
+<blockquote expandable>${escapeHtml(post.text.substring(0, 500))}${post.text.length > 500 ? '...' : ''}
 
-<b>Original URL:</b> ${escapeHtml(post.originalUrl)}
-
-<i>Posted:</i> ${post.date.toISOString()}`
+🔗 ${escapeHtml(post.originalUrl)}
+📅 ${post.date.toISOString()}</blockquote>`
 
     // 🎬 SEQUENTIAL WORKFLOW: Start with variant selection, image selection, OR go straight to publish if video
     const hasVideo = videoUrl && videoType
@@ -1327,18 +1327,9 @@ ${post.text.substring(0, 500)}${post.text.length > 500 ? '...' : ''}
 
 🎥 <b>Відео:</b> ✅ Готове`
     } else if (hasVariants) {
-      // Show 4 concept variants for moderator to choose
-      const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
       message += `
 
-🎨 <b>Оберіть концепцію зображення:</b>
-`
-      variants!.forEach((v, i) => {
-        message += `
-${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>
-<i>${escapeHtml(v.description)}</i>
-`
-      })
+🎨 Оберіть концепцію:` + formatCompactVariants(variants!, escapeHtml)
     } else if (hasImage) {
       message += `
 
@@ -1354,75 +1345,10 @@ ${escapeHtml(uploadedPhotoUrl)}`
 
 ⏳ <i>Waiting for moderation...</i>`
 
-    let keyboard: { inline_keyboard: any[] }
+    // Build preset keyboard (one-click publishing)
     const hasDuplicates = duplicates.length > 0
-    const skipDupButton = hasDuplicates
-      ? [{ text: '🔁 Skip (дубль)', callback_data: `skip_dup_${newsId}` }]
-      : []
-
-    const hasImages = !!hasImage
-
-    if (hasVideo) {
-      // 🎥 Video exists → publish buttons + optional image buttons if images exist
-      keyboard = {
-        inline_keyboard: [
-          [
-            { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
-            { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
-          ],
-          ...(hasImages ? [[
-            { text: '🖼 + Оригінал фото', callback_data: `keep_orig_${newsId}` },
-            { text: '📸 + Своє фото', callback_data: `create_custom_${newsId}` }
-          ]] : []),
-          [
-            { text: '❌ Reject', callback_data: `reject_${newsId}` },
-            ...skipDupButton
-          ]
-        ]
-      }
-    } else if (hasVariants) {
-      // 🎨 Variants available → Show variant selection buttons + Creative Builder
-      keyboard = {
-        inline_keyboard: [
-          [
-            { text: '1️⃣', callback_data: `select_variant_1_${newsId}` },
-            { text: '2️⃣', callback_data: `select_variant_2_${newsId}` },
-            { text: '3️⃣', callback_data: `select_variant_3_${newsId}` },
-            { text: '4️⃣', callback_data: `select_variant_4_${newsId}` }
-          ],
-          [
-            { text: '🔄 Нові варіанти', callback_data: `new_variants_${newsId}` },
-            { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
-          ],
-          [
-            { text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` },
-            { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
-          ],
-          [
-            { text: '❌ Reject', callback_data: `reject_${newsId}` }
-          ],
-          ...(hasDuplicates ? [skipDupButton] : [])
-        ]
-      }
-    } else {
-      // No variants → Show generate/upload options + Creative Builder
-      keyboard = {
-        inline_keyboard: [
-          [
-            { text: '🎲 Random Variants', callback_data: `new_variants_${newsId}` },
-            { text: '🎨 Creative Builder', callback_data: `cb_hub_${newsId}` }
-          ],
-          [
-            ...(hasImages ? [{ text: '🖼 Оригінал', callback_data: `keep_orig_${newsId}` }] : []),
-            { text: '📸 Завантажити', callback_data: `create_custom_${newsId}` }
-          ],
-          [
-            { text: '❌ Reject', callback_data: `reject_${newsId}` },
-            ...skipDupButton
-          ]
-        ]
-      }
-    }
+    const variantCount = hasVariants ? (Array.isArray(variants) ? variants.length : 0) : 0
+    const keyboard = buildPresetKeyboard(newsId, variantCount, hasDuplicates)
 
     const response = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,

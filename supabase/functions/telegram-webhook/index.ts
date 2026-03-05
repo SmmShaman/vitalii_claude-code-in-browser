@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
+import { formatCompactVariants, buildManualKeyboard } from '../_shared/telegram-format-helpers.ts'
 import { dispatchToWorker } from '../_shared/webhook-dispatch.ts'
 
 /**
@@ -930,6 +931,22 @@ serve(async (req) => {
       } else if (callbackData.startsWith('gal_done_')) {
         action = 'gal_done'
         newsId = callbackData.replace('gal_done_', '')
+        // ═══ Preset one-click publishing ═══
+      } else if (callbackData.startsWith('pr_')) {
+        action = 'preset'
+        // Format: pr_VTL_<uuid> where V=variant(a,1-4), T=type(n,b), L=lang(e,n,u)
+        const match = callbackData.match(/^pr_([a1-4])([nb])([enu])_(.+)$/)
+        if (match) {
+          socialLanguage = match[1]  // variant: 'a','1','2','3','4'
+          publicationType = match[2] === 'n' ? 'news' : 'blog'
+          imageLanguage = match[3]   // lang code: 'e','n','u'
+          newsId = match[4]
+        } else {
+          newsId = callbackData.substring(3) // fallback
+        }
+      } else if (callbackData.startsWith('manual_')) {
+        action = 'manual'
+        newsId = callbackData.replace('manual_', '')
       } else {
         // Backward compatibility with old format "publish_<id>"
         const parts = callbackData.split('_')
@@ -1811,11 +1828,7 @@ serve(async (req) => {
 
         if (existingVariants && existingVariants.length > 0) {
           // Show existing variants
-          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
-          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
-          existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
-          })
+          let variantsText = '\n\n🎨 Оберіть концепцію:' + formatCompactVariants(existingVariants, escapeHtml)
 
           const variantKeyboard = {
             inline_keyboard: [
@@ -2131,11 +2144,7 @@ serve(async (req) => {
         )
 
         if (existingVariants && existingVariants.length > 0) {
-          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
-          let variantsText = `\n\n🎨 <b>Додайте зображення</b> (в галереї: ${currentImages.length} фото)\n`
-          existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
-          })
+          let variantsText = `\n\n🎨 Додайте зображення (в галереї: ${currentImages.length})` + formatCompactVariants(existingVariants, escapeHtml)
 
           const variantKeyboard = {
             inline_keyboard: [
@@ -2340,11 +2349,7 @@ serve(async (req) => {
         )
 
         if (existingVariants && existingVariants.length > 0) {
-          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
-          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
-          existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
-          })
+          let variantsText = '\n\n🎨 Оберіть концепцію:' + formatCompactVariants(existingVariants, escapeHtml)
 
           const variantKeyboard = {
             inline_keyboard: [
@@ -2895,7 +2900,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n🎨 <b>Обрано: "${escapeHtml(selectedVariant.label)}"</b>\n<i>${escapeHtml(selectedVariant.description)}</i>\n\n🌐 <b>Оберіть мову для зображення:</b>`),
+              text: truncateForTelegram(messageText, `\n\n🎨 Обрано: "${escapeHtml(selectedVariant.label)}"\n\n🌐 <b>Оберіть мову:</b>`),
               parse_mode: 'HTML',
               reply_markup: langKeyboard
             })
@@ -2994,11 +2999,7 @@ serve(async (req) => {
 
         if (existingVariants && existingVariants.length > 0) {
           // Show existing variants
-          const variantEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
-          let variantsText = '\n\n🎨 <b>Оберіть концепцію зображення:</b>\n'
-          existingVariants.forEach((v, i) => {
-            variantsText += `\n${variantEmojis[i] || `${i + 1}.`} <b>${escapeHtml(v.label)}</b>\n<i>${escapeHtml(v.description)}</i>\n`
-          })
+          let variantsText = '\n\n🎨 Оберіть концепцію:' + formatCompactVariants(existingVariants, escapeHtml)
 
           const variantKeyboard = {
             inline_keyboard: [
@@ -3773,6 +3774,115 @@ serve(async (req) => {
             reply_markup: hubKeyboard
           })
         })
+
+      // ═══ Preset one-click publishing handler ═══
+      } else if (action === 'preset') {
+        console.log(`🚀 Preset triggered: variant=${socialLanguage}, type=${publicationType}, lang=${imageLanguage}, newsId=${newsId}`)
+
+        // Map encoded lang code to full language
+        const langMap: Record<string, string> = { 'e': 'en', 'n': 'no', 'u': 'ua' }
+        const presetLang = langMap[imageLanguage || ''] || 'en'
+        const presetVariant = socialLanguage === 'a' ? null : parseInt(socialLanguage || '1')
+        const presetType = publicationType || 'news'
+
+        // Build toast label
+        const variantLabel = presetVariant ? `V${presetVariant}` : 'AI'
+        const typeLabel = presetType === 'blog' ? 'Blog' : 'News'
+        const langLabel = presetLang.toUpperCase()
+
+        // Answer callback immediately
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            callback_query_id: callbackId,
+            text: `🚀 Пресет: ${variantLabel} → ${typeLabel} → ${langLabel}`,
+            show_alert: false
+          })
+        })
+
+        // Edit message to show processing status
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: messageId,
+            text: truncateForTelegram(messageText, `\n\n🚀 <b>Пресет:</b> ${variantLabel} → ${typeLabel} → ${langLabel}\n⏳ <i>Обробка...</i>`),
+            parse_mode: 'HTML'
+          })
+        })
+
+        // Fire-and-forget: call auto-publish-news with preset params
+        fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            newsId,
+            telegramMessageId: messageId,
+            preset: {
+              variantIndex: presetVariant,
+              imageLanguage: presetLang,
+              publicationType: presetType,
+              socialLanguages: [presetLang],
+              socialPlatforms: ['linkedin', 'facebook', 'instagram'],
+              skipQueue: true
+            }
+          })
+        }).catch(e => console.warn('⚠️ Preset auto-publish fire error:', e))
+
+      // ═══ Manual mode handler ═══
+      } else if (action === 'manual') {
+        console.log(`🔧 Manual mode requested for: ${newsId}`)
+
+        // Load news record to determine content state
+        const { data: manualNews, error: manualError } = await supabase
+          .from('news')
+          .select('id, image_url, processed_image_url, video_url, video_type, image_prompt_variants, source_type, rss_source_url')
+          .eq('id', newsId)
+          .single()
+
+        if (manualError || !manualNews) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '❌ News not found', show_alert: true })
+          })
+        } else {
+          const hasVideo = !!(manualNews.video_url && manualNews.video_type)
+          const variants = manualNews.image_prompt_variants as Array<{ label: string; description: string }> | null
+          const hasVariants = Array.isArray(variants) && variants.length > 0
+          const hasImage = !!(manualNews.processed_image_url || manualNews.image_url)
+          const isRss = !!(manualNews.rss_source_url || manualNews.source_type === 'rss')
+
+          const manualKeyboard = buildManualKeyboard(newsId, {
+            hasVideo,
+            hasVariants,
+            variantCount: variants?.length || 0,
+            hasImage,
+            isRss,
+            hasDuplicates: false
+          })
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '🔧 Ручний режим', show_alert: false })
+          })
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              reply_markup: manualKeyboard
+            })
+          })
+        }
 
       } else if (action === 'skip_dup') {
         // Skip as duplicate - reject with reason
