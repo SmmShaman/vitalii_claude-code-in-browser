@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -42,7 +42,7 @@ function BlogListingInner() {
   const [tags, setTags] = useState<TagFrequency[]>([])
 
   const visibleCount = 7
-  const topTagNames = tags.slice(0, visibleCount).map(t => t.tag_name)
+  const topTagNames = useMemo(() => tags.slice(0, visibleCount).map(t => t.tag_name), [tags])
   const activeTag = tagParam === '__other__' ? '__other__' : (tagParam || null)
 
   useEffect(() => {
