@@ -782,10 +782,10 @@ serve(async (req) => {
                       })
                     }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
 
-                    // Send lightweight info to Telegram
+                    // Send lightweight info to Telegram and save message_id to prevent duplicate sends
                     if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
                       const infoText = `🤖 <b>Auto-publishing in progress...</b>\n\n📰 ${escapeHtml(post.text.substring(0, 150))}\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`
-                      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                      const tgResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -794,6 +794,22 @@ serve(async (req) => {
                           parse_mode: 'HTML'
                         })
                       })
+
+                      try {
+                        const tgResult = await tgResponse.json()
+                        if (tgResult.ok && tgResult.result?.message_id) {
+                          await supabase
+                            .from('news')
+                            .update({
+                              telegram_chat_id: String(TELEGRAM_CHAT_ID),
+                              telegram_message_id: tgResult.result.message_id,
+                            })
+                            .eq('id', newsEntry.id)
+                          console.log(`📝 Auto-publish: saved telegram_message_id=${tgResult.result.message_id} for ${newsEntry.id}`)
+                        }
+                      } catch (e) {
+                        console.warn('⚠️ Failed to save auto-publish telegram_message_id:', e)
+                      }
                     }
 
                     sentToBotCount++
