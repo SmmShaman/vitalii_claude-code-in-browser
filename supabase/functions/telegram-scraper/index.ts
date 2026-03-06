@@ -729,6 +729,13 @@ serve(async (req) => {
 
               console.log(`💾 News entry created with ID: ${newsEntry.id}`)
 
+              // 🔒 Set processing lock to prevent duplicate sends from parallel scraper runs
+              await supabase
+                .from('news')
+                .update({ telegram_message_id: -1 })
+                .eq('id', newsEntry.id)
+                .is('telegram_message_id', null)
+
               // 🤖 AI PRE-MODERATION (check global toggle)
               let moderationResult = {
                 approved: true,
