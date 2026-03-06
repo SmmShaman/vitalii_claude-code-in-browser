@@ -159,14 +159,14 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
               itemType="https://schema.org/ListItem"
               className="flex items-center"
             >
-              <Link
+              <a
                 href="/"
                 itemProp="item"
                 className="flex items-center gap-1.5 hover:text-[#88B04B] transition-colors"
               >
                 <Home className="w-4 h-4" />
                 <span itemProp="name">Home</span>
-              </Link>
+              </a>
               <meta itemProp="position" content="1" />
             </li>
             <ChevronRight className="w-4 h-4 text-[#6B6680]" />
@@ -176,13 +176,13 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
               itemType="https://schema.org/ListItem"
               className="flex items-center"
             >
-              <Link
+              <a
                 href="/news"
                 itemProp="item"
                 className="hover:text-[#88B04B] transition-colors"
               >
                 <span itemProp="name">News</span>
-              </Link>
+              </a>
               <meta itemProp="position" content="2" />
             </li>
             {news.tags?.[0] && (
@@ -194,13 +194,13 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
                   itemType="https://schema.org/ListItem"
                   className="flex items-center"
                 >
-                  <Link
+                  <a
                     href={`/news?tag=${encodeURIComponent(news.tags[0])}`}
                     itemProp="item"
                     className="text-[#88B04B] hover:text-[#A5C85A] transition-colors"
                   >
                     <span itemProp="name">{news.tags[0]}</span>
-                  </Link>
+                  </a>
                   <meta itemProp="position" content="3" />
                 </li>
               </>

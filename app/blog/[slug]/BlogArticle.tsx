@@ -160,14 +160,14 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               itemType="https://schema.org/ListItem"
               className="flex items-center"
             >
-              <Link
+              <a
                 href="/"
                 itemProp="item"
                 className="flex items-center gap-1.5 hover:text-[#818CF8] transition-colors"
               >
                 <Home className="w-4 h-4" />
                 <span itemProp="name">Home</span>
-              </Link>
+              </a>
               <meta itemProp="position" content="1" />
             </li>
             <ChevronRight className="w-4 h-4 text-[#6B6680]" />
@@ -177,13 +177,13 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               itemType="https://schema.org/ListItem"
               className="flex items-center"
             >
-              <Link
+              <a
                 href="/blog"
                 itemProp="item"
                 className="hover:text-[#818CF8] transition-colors"
               >
                 <span itemProp="name">Blog</span>
-              </Link>
+              </a>
               <meta itemProp="position" content="2" />
             </li>
             {post.category && (
@@ -195,13 +195,13 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   itemType="https://schema.org/ListItem"
                   className="flex items-center"
                 >
-                  <Link
+                  <a
                     href={`/blog?tag=${encodeURIComponent(post.category)}`}
                     itemProp="item"
                     className="text-[#818CF8] hover:text-[#A5B4FC] transition-colors"
                   >
                     <span itemProp="name">{post.category}</span>
-                  </Link>
+                  </a>
                   <meta itemProp="position" content="3" />
                 </li>
               </>
