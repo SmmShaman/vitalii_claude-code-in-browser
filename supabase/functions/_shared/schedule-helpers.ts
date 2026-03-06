@@ -66,11 +66,26 @@ export async function loadScheduleConfig(supabase: any): Promise<ScheduleConfig>
 
 /**
  * Get current time in Oslo timezone.
+ * Returns a Date where getHours()/getMinutes() return Oslo local time.
+ * Uses Intl.DateTimeFormat which works reliably on Deno (Supabase Edge Functions).
  */
 function getOsloNow(): Date {
-  // Construct date string in Europe/Oslo timezone
-  const nowStr = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Oslo' })
-  return new Date(nowStr.replace(' ', 'T') + '+01:00')
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Oslo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  })
+  const parts = formatter.formatToParts(now)
+  const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0')
+
+  // Create Date where UTC hours = Oslo local hours (Deno runtime is UTC,
+  // so getHours() === getUTCHours(), giving us Oslo-local values for comparison)
+  return new Date(Date.UTC(
+    get('year'), get('month') - 1, get('day'),
+    get('hour'), get('minute'), get('second')
+  ))
 }
 
 /**

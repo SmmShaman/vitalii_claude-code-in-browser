@@ -3792,10 +3792,13 @@ serve(async (req) => {
         const presetVariant = socialLanguage === 'a' ? null : parseInt(socialLanguage || '1')
         const presetType = publicationType || 'news'
 
-        // Build toast label
-        const variantLabel = presetVariant ? `V${presetVariant}` : 'AI'
-        const typeLabel = presetType === 'blog' ? 'Blog' : 'News'
-        const langLabel = presetLang.toUpperCase()
+        // Build descriptive labels
+        const variantLabel = presetVariant ? `Варіант #${presetVariant}` : 'AI авто-вибір'
+        const variantShort = presetVariant ? `V${presetVariant}` : 'AI'
+        const typeLabel = presetType === 'blog' ? 'Блог' : 'Новини'
+        const typeEmoji = presetType === 'blog' ? '📝' : '📰'
+        const langFlags: Record<string, string> = { 'en': '🇬🇧', 'no': '🇳🇴', 'ua': '🇺🇦' }
+        const langLabel = `${langFlags[presetLang] || ''} ${presetLang.toUpperCase()}`
 
         // Answer callback immediately
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
@@ -3803,7 +3806,7 @@ serve(async (req) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             callback_query_id: callbackId,
-            text: `📅 Планую: ${variantLabel} → ${typeLabel} → ${langLabel}`,
+            text: `📅 ${variantShort} → ${typeLabel} → ${presetLang.toUpperCase()}`,
             show_alert: false
           })
         })
@@ -3848,7 +3851,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n📅 <b>Заплановано на ${timeStr}</b> (${windowLabel})\n🚀 ${variantLabel} → ${typeLabel} → ${langLabel}`),
+              text: truncateForTelegram(messageText, `\n\n📅 <b>Заплановано на ${timeStr}</b> (${windowLabel})\n🎨 ${variantLabel} | ${typeEmoji} ${typeLabel} | ${langLabel}`),
               parse_mode: 'HTML',
               reply_markup: {
                 inline_keyboard: [
@@ -3868,7 +3871,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n🚀 <b>Пресет:</b> ${variantLabel} → ${typeLabel} → ${langLabel}\n⏳ <i>Обробка...</i>`),
+              text: truncateForTelegram(messageText, `\n\n🚀 <b>Публікація:</b> ${variantLabel} | ${typeEmoji} ${typeLabel} | ${langLabel}\n⏳ <i>Обробка...</i>`),
               parse_mode: 'HTML'
             })
           })
