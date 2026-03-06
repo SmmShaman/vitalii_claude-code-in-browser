@@ -758,8 +758,8 @@ STEP 1 — CLASSIFY THE ARTICLE:
 - Key entities: companies, products, technologies, people mentioned
 
 STEP 2 — SELECT 4 DIFFERENT IMAGE TYPES (one per variant, from this list):
-1. INFOGRAPHIC (type: "infographic") — numbers, statistics, processes, comparisons. 3D charts, data visualization, structured layouts.
-2. CONCEPTUAL METAPHOR (type: "metaphor") — serious tone, abstract ideas, transformations. Physical metaphors: vise, bridge, crystal, tectonic shift.
+1. INFOGRAPHIC (type: "infographic") — numbers, statistics, processes, comparisons. Styles: 3D isometric charts, gradient bar/pie charts, timeline with milestones, comparison split-screen (before/after, A vs B), flowchart/process diagram, dashboard with KPI cards, ranked list with icons. Use ACTUAL numbers and data from the article in the visual concept.
+2. CONCEPTUAL METAPHOR (type: "metaphor") — serious tone, abstract ideas, transformations. Choose ONE fresh metaphor from diverse categories: TIME (hourglass, sundial, frozen clock), NATURE (volcano, roots, river fork, avalanche), SCALE (magnifying glass, telescope, ant vs elephant), TENSION (tightrope, balancing scales, stretched elastic), TRANSFORMATION (caterpillar/butterfly, melting ice, seed sprouting). NEVER repeat vise/clamps or bridge — find an original metaphor that fits THIS specific article.
 3. PHOTOREALISTIC SCENE (type: "realistic") — physical products, places, events, lifestyle. Cinematic wide shots, editorial photography quality.
 4. CARICATURE/SATIRE (type: "caricature") — humor, provocation, criticism. Exaggerated features, editorial cartoon style, bold commentary.
 5. STYLIZED PHOTO/MONTAGE (type: "stylized") — emotional content, aesthetic topics. Double exposure, color grading, artistic photo manipulation.
@@ -771,6 +771,7 @@ RULES:
 - Each variant MUST be a DIFFERENT type from the list above
 - Prefer types that match the article's tone, purpose, and content
 - Do NOT pick types randomly — justify each choice based on the article
+- If the article contains numbers, percentages, statistics, rankings, financial data, or quantitative comparisons — one of the 4 variants MUST be INFOGRAPHIC
 - ALL text in "label" and "description" fields MUST be written in Ukrainian language (Українською мовою)
 
 STEP 3 — For each selected type, generate a concrete visual concept:

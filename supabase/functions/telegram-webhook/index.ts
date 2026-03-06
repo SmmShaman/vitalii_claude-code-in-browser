@@ -3811,12 +3811,24 @@ serve(async (req) => {
           })
         })
 
-        // Load news record for content classification
+        // Load news record for content classification + variants
         const { data: presetNews } = await supabase
           .from('news')
-          .select('video_url, original_video_url, original_content, rss_source_url, source_type')
+          .select('video_url, original_video_url, original_content, rss_source_url, source_type, image_prompt_variants')
           .eq('id', newsId)
           .single()
+
+        // Build variants summary line
+        const variants = presetNews?.image_prompt_variants as Array<{label: string}> | null
+        const selectedVariantName = presetVariant && variants?.[presetVariant - 1]?.label
+          ? variants[presetVariant - 1].label
+          : null
+        const variantLabel2 = selectedVariantName
+          ? `Обрано: ${presetVariant}.${selectedVariantName}`
+          : variantLabel
+        const variantsSummary = !presetVariant && variants?.length
+          ? '\n🎨 ' + variants.map((v: {label: string}, i: number) => `${i+1}.${v.label}`).join(' | ')
+          : ''
 
         // Classify content weight & compute scheduled slot
         const weight = classifyContentWeight(presetNews || {})
@@ -3851,7 +3863,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n📅 <b>Заплановано на ${timeStr}</b> (${windowLabel})\n🎨 ${variantLabel} | ${typeEmoji} ${typeLabel} | ${langLabel}`),
+              text: truncateForTelegram(messageText, `\n\n📅 <b>Заплановано на ${timeStr}</b> (${windowLabel})\n🎨 ${variantLabel2} | ${typeEmoji} ${typeLabel} | ${langLabel}${variantsSummary}`),
               parse_mode: 'HTML',
               reply_markup: {
                 inline_keyboard: [
@@ -3871,7 +3883,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n🚀 <b>Публікація:</b> ${variantLabel} | ${typeEmoji} ${typeLabel} | ${langLabel}\n⏳ <i>Обробка...</i>`),
+              text: truncateForTelegram(messageText, `\n\n🚀 <b>Публікація:</b> ${variantLabel2} | ${typeEmoji} ${typeLabel} | ${langLabel}${variantsSummary}\n⏳ <i>Обробка...</i>`),
               parse_mode: 'HTML'
             })
           })
