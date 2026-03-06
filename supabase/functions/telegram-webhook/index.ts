@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
 import { formatCompactVariants, buildManualKeyboard } from '../_shared/telegram-format-helpers.ts'
+import { classifyContentWeight, loadScheduleConfig, computeScheduledTime, formatScheduledTime, countInFlight } from '../_shared/schedule-helpers.ts'
 import { dispatchToWorker } from '../_shared/webhook-dispatch.ts'
 
 /**
@@ -944,6 +945,12 @@ serve(async (req) => {
         } else {
           newsId = callbackData.substring(3) // fallback
         }
+      } else if (callbackData.startsWith('imm_')) {
+        action = 'schedule_immediate'
+        newsId = callbackData.replace('imm_', '')
+      } else if (callbackData.startsWith('cs_')) {
+        action = 'schedule_cancel'
+        newsId = callbackData.replace('cs_', '')
       } else if (callbackData.startsWith('manual_')) {
         action = 'manual'
         newsId = callbackData.replace('manual_', '')
@@ -3775,7 +3782,7 @@ serve(async (req) => {
           })
         })
 
-      // ═══ Preset one-click publishing handler ═══
+      // ═══ Preset one-click publishing handler (scheduled queue) ═══
       } else if (action === 'preset') {
         console.log(`🚀 Preset triggered: variant=${socialLanguage}, type=${publicationType}, lang=${imageLanguage}, newsId=${newsId}`)
 
@@ -3796,43 +3803,179 @@ serve(async (req) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             callback_query_id: callbackId,
-            text: `🚀 Пресет: ${variantLabel} → ${typeLabel} → ${langLabel}`,
+            text: `📅 Планую: ${variantLabel} → ${typeLabel} → ${langLabel}`,
             show_alert: false
           })
         })
 
-        // Edit message to show processing status
+        // Load news record for content classification
+        const { data: presetNews } = await supabase
+          .from('news')
+          .select('video_url, original_video_url, original_content, rss_source_url, source_type')
+          .eq('id', newsId)
+          .single()
+
+        // Classify content weight & compute scheduled slot
+        const weight = classifyContentWeight(presetNews || {})
+        const schedConfig = await loadScheduleConfig(supabase)
+        const presetConfig = {
+          variantIndex: presetVariant,
+          imageLanguage: presetLang,
+          publicationType: presetType,
+          socialLanguages: [presetLang],
+          socialPlatforms: ['linkedin', 'facebook', 'instagram'],
+          skipQueue: false
+        }
+
+        if (schedConfig.enabled) {
+          const { scheduledAt, window: winId, windowLabel } = await computeScheduledTime(weight, schedConfig, supabase)
+          const timeStr = formatScheduledTime(scheduledAt)
+
+          // Store in DB
+          await supabase.from('news').update({
+            auto_publish_status: 'scheduled',
+            scheduled_publish_at: scheduledAt.toISOString(),
+            content_weight: weight,
+            schedule_window: winId,
+            preset_config: presetConfig,
+            telegram_message_id: messageId,
+          }).eq('id', newsId)
+
+          // Edit message: show scheduled time + immediate/cancel buttons
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n📅 <b>Заплановано на ${timeStr}</b> (${windowLabel})\n🚀 ${variantLabel} → ${typeLabel} → ${langLabel}`),
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: '⚡ Негайно', callback_data: `imm_${newsId}` },
+                    { text: '❌ Скасувати', callback_data: `cs_${newsId}` }
+                  ]
+                ]
+              }
+            })
+          })
+        } else {
+          // Schedule disabled — fire immediately (legacy behavior)
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n🚀 <b>Пресет:</b> ${variantLabel} → ${typeLabel} → ${langLabel}\n⏳ <i>Обробка...</i>`),
+              parse_mode: 'HTML'
+            })
+          })
+
+          fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId,
+              telegramMessageId: messageId,
+              preset: { ...presetConfig, skipQueue: true }
+            })
+          }).catch(e => console.warn('⚠️ Preset auto-publish fire error:', e))
+        }
+
+      // ═══ Schedule: Immediate publish ═══
+      } else if (action === 'schedule_immediate') {
+        console.log(`⚡ Immediate publish requested: ${newsId}`)
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '⚡ Публікую зараз...', show_alert: false })
+        })
+
+        // Check no in-flight
+        const inFlightCount = await countInFlight(supabase)
+        if (inFlightCount > 0) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: `⏳ ${inFlightCount} стаття вже обробляється, зачекайте`, show_alert: true })
+          })
+        } else {
+          // Load preset_config from DB
+          const { data: immNews } = await supabase
+            .from('news')
+            .select('preset_config, telegram_message_id')
+            .eq('id', newsId)
+            .single()
+
+          // Update status to queued (auto-publish-news will set 'pending' on entry)
+          await supabase.from('news').update({
+            auto_publish_status: 'queued',
+            auto_publish_started_at: new Date().toISOString(),
+            scheduled_publish_at: null,
+          }).eq('id', newsId)
+
+          // Edit message
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: truncateForTelegram(messageText, `\n\n⚡ <b>Негайна публікація...</b>\n⏳ <i>Обробка...</i>`),
+              parse_mode: 'HTML'
+            })
+          })
+
+          // Fire auto-publish
+          const immPreset = immNews?.preset_config || undefined
+          fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              newsId,
+              telegramMessageId: messageId,
+              preset: immPreset ? { ...immPreset, skipQueue: true } : undefined
+            })
+          }).catch(e => console.warn('⚠️ Immediate publish fire error:', e))
+        }
+
+      // ═══ Schedule: Cancel ═══
+      } else if (action === 'schedule_cancel') {
+        console.log(`❌ Schedule cancelled: ${newsId}`)
+
+        await supabase.from('news').update({
+          auto_publish_status: null,
+          scheduled_publish_at: null,
+          content_weight: null,
+          schedule_window: null,
+          preset_config: null,
+        }).eq('id', newsId)
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId, text: '❌ Публікацію скасовано', show_alert: false })
+        })
+
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
             message_id: messageId,
-            text: truncateForTelegram(messageText, `\n\n🚀 <b>Пресет:</b> ${variantLabel} → ${typeLabel} → ${langLabel}\n⏳ <i>Обробка...</i>`),
+            text: truncateForTelegram(messageText, `\n\n❌ <b>Публікацію скасовано</b>`),
             parse_mode: 'HTML'
           })
         })
-
-        // Fire-and-forget: call auto-publish-news with preset params
-        fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            newsId,
-            telegramMessageId: messageId,
-            preset: {
-              variantIndex: presetVariant,
-              imageLanguage: presetLang,
-              publicationType: presetType,
-              socialLanguages: [presetLang],
-              socialPlatforms: ['linkedin', 'facebook', 'instagram'],
-              skipQueue: true
-            }
-          })
-        }).catch(e => console.warn('⚠️ Preset auto-publish fire error:', e))
 
       // ═══ Manual mode handler ═══
       } else if (action === 'manual') {

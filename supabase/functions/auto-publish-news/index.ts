@@ -16,7 +16,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-03-05-v10-preset-buttons'
+const VERSION = '2026-03-06-v11-scheduled-queue'
 
 interface AutoPublishRequest {
   newsId: string
@@ -58,6 +58,19 @@ serve(async (req) => {
     newsId = requestBody.newsId
     reqMsgId = requestBody.telegramMessageId || null
     preset = requestBody.preset
+
+    // If no preset in request, check if one was stored in DB (scheduled publishing)
+    if (!preset) {
+      const { data: presetCheck } = await supabase
+        .from('news')
+        .select('preset_config')
+        .eq('id', newsId)
+        .single()
+      if (presetCheck?.preset_config) {
+        preset = presetCheck.preset_config
+        console.log('📅 Loaded preset_config from DB (scheduled)')
+      }
+    }
     console.log(`📰 Auto-publishing news: ${newsId}${preset ? ' (PRESET)' : ''}`)
 
     // Entry guard: prevent duplicate/concurrent processing
@@ -500,11 +513,6 @@ serve(async (req) => {
 
     console.log('🎉 Auto-publish pipeline completed successfully!')
 
-    // Chain: trigger next queued article (skip for preset runs)
-    if (!preset?.skipQueue) {
-      await triggerNextInQueue(supabase)
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -558,10 +566,6 @@ serve(async (req) => {
           failMsgId,
           `❌ <b>Auto-Publish Failed</b>\n\n📰 ${failTitle}${failSourceName}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
         )
-        // Chain: trigger next queued article even on failure (skip for presets)
-        if (!preset?.skipQueue) {
-          await triggerNextInQueue(supabase)
-        }
         return new Response(
           JSON.stringify({ success: false, newsId, error: error.message || 'Unknown error' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -572,11 +576,6 @@ serve(async (req) => {
       failMsgId,
       `❌ <b>Auto-Publish Failed</b>\n\n📰 ${escapeHtml(errorTitle)}\n💥 ${escapeHtml(error.message?.substring(0, 200) || 'Unknown error')}\n\n⚠️ <i>Потребує ручної модерації в Telegram боті</i>`
     )
-
-    // Chain: trigger next queued article even on failure (skip for presets)
-    if (!preset?.skipQueue) {
-      await triggerNextInQueue(supabase)
-    }
 
     return new Response(
       JSON.stringify({
@@ -603,42 +602,6 @@ async function updateStatus(supabase: any, newsId: string, status: string) {
   }
   await supabase.from('news').update(update).eq('id', newsId)
   console.log(`📊 Status: ${status}`)
-}
-
-/**
- * Chain trigger: find next queued article and fire auto-publish after 60s gap
- */
-async function triggerNextInQueue(supabase: any) {
-  try {
-    const { data: nextArticle } = await supabase
-      .from('news')
-      .select('id, telegram_message_id')
-      .eq('auto_publish_status', 'queued')
-      .order('auto_publish_queued_at', { ascending: true })
-      .limit(1)
-      .single()
-
-    if (!nextArticle) {
-      console.log('📭 No more articles in queue')
-      return
-    }
-
-    console.log(`⏭️ Firing next queued article: ${nextArticle.id}`)
-    fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        newsId: nextArticle.id,
-        source: 'rss',
-        telegramMessageId: nextArticle.telegram_message_id
-      })
-    }).catch(e => console.warn('⚠️ Next queue item fire error:', e))
-  } catch (e) {
-    console.warn('⚠️ triggerNextInQueue error:', e)
-  }
 }
 
 async function loadAutoPublishSettings(supabase: any) {

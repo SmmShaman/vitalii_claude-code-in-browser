@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff, Zap, ZapOff } from 'lucide-react'
+import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff, Zap, ZapOff, Calendar } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
 const CRON_PRESETS = [
@@ -38,6 +38,26 @@ export const CronScheduleSettings = () => {
   const [autoPublishLanguages, setAutoPublishLanguages] = useState<string[]>(['en', 'no', 'ua'])
   const [savedAutoPublishLanguages, setSavedAutoPublishLanguages] = useState<string[]>(['en', 'no', 'ua'])
 
+  // Publishing schedule state
+  const [scheduleEnabled, setScheduleEnabled] = useState(true)
+  const [savedScheduleEnabled, setSavedScheduleEnabled] = useState(true)
+  const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [scheduleWindows, setScheduleWindows] = useState([
+    { id: 'morning', start: '08:00', end: '10:00', types: ['heavy', 'light'], label: 'Morning' },
+    { id: 'afternoon', start: '17:00', end: '18:00', types: ['light'], label: 'Afternoon' },
+    { id: 'evening', start: '20:00', end: '22:00', types: ['light'], label: 'Evening' },
+  ])
+  const [savedScheduleWindows, setSavedScheduleWindows] = useState(JSON.stringify(scheduleWindows))
+  const [slotMinutes, setSlotMinutes] = useState(7)
+  const [savedSlotMinutes, setSavedSlotMinutes] = useState(7)
+  const [maxPerDay, setMaxPerDay] = useState(20)
+  const [savedMaxPerDay, setSavedMaxPerDay] = useState(20)
+
+  const hasUnsavedScheduleChanges = scheduleEnabled !== savedScheduleEnabled
+    || JSON.stringify(scheduleWindows) !== savedScheduleWindows
+    || slotMinutes !== savedSlotMinutes
+    || maxPerDay !== savedMaxPerDay
+
   // Check if there are unsaved pre-moderation changes
   const hasUnsavedPreModerationChanges = preModerationEnabled !== savedPreModerationValue
 
@@ -67,6 +87,36 @@ export const CronScheduleSettings = () => {
         const isEnabled = preModerationSetting.key_value !== 'false'
         setPreModerationEnabled(isEnabled)
         setSavedPreModerationValue(isEnabled)
+      }
+
+      // Load schedule settings
+      const { data: schedSettings } = await supabase
+        .from('api_settings')
+        .select('key_name, key_value')
+        .in('key_name', ['PUBLISH_SCHEDULE_ENABLED', 'PUBLISH_SCHEDULE_WINDOWS', 'PUBLISH_SCHEDULE_SLOT_MINUTES', 'PUBLISH_SCHEDULE_MAX_PER_DAY'])
+
+      if (schedSettings) {
+        for (const s of schedSettings) {
+          if (s.key_name === 'PUBLISH_SCHEDULE_ENABLED') {
+            const en = s.key_value === 'true'
+            setScheduleEnabled(en)
+            setSavedScheduleEnabled(en)
+          } else if (s.key_name === 'PUBLISH_SCHEDULE_WINDOWS') {
+            try {
+              const parsed = JSON.parse(s.key_value)
+              if (parsed.windows) {
+                setScheduleWindows(parsed.windows)
+                setSavedScheduleWindows(JSON.stringify(parsed.windows))
+              }
+            } catch { /* keep defaults */ }
+          } else if (s.key_name === 'PUBLISH_SCHEDULE_SLOT_MINUTES') {
+            const val = parseInt(s.key_value, 10)
+            if (!isNaN(val)) { setSlotMinutes(val); setSavedSlotMinutes(val) }
+          } else if (s.key_name === 'PUBLISH_SCHEDULE_MAX_PER_DAY') {
+            const val = parseInt(s.key_value, 10)
+            if (!isNaN(val)) { setMaxPerDay(val); setSavedMaxPerDay(val) }
+          }
+        }
       }
 
       // Load auto-publish settings
@@ -236,6 +286,70 @@ export const CronScheduleSettings = () => {
     } finally {
       setAutoPublishLoading(false)
     }
+  }
+
+  const saveScheduleSettings = async () => {
+    try {
+      setScheduleLoading(true)
+      setSaveResult(null)
+
+      const settings = [
+        { key_name: 'PUBLISH_SCHEDULE_ENABLED', key_value: scheduleEnabled.toString(), description: 'Enable scheduled publishing queue' },
+        { key_name: 'PUBLISH_SCHEDULE_WINDOWS', key_value: JSON.stringify({ windows: scheduleWindows }), description: 'Publishing windows config (Oslo time)' },
+        { key_name: 'PUBLISH_SCHEDULE_SLOT_MINUTES', key_value: slotMinutes.toString(), description: 'Minutes between scheduled articles' },
+        { key_name: 'PUBLISH_SCHEDULE_MAX_PER_DAY', key_value: maxPerDay.toString(), description: 'Max articles per day via scheduler' },
+      ]
+
+      for (const setting of settings) {
+        const { data, error } = await supabase
+          .from('api_settings')
+          .update({ key_value: setting.key_value })
+          .eq('key_name', setting.key_name)
+          .select()
+
+        if (error) throw error
+        if (!data || data.length === 0) {
+          const { error: insertError } = await supabase
+            .from('api_settings')
+            .insert({ ...setting, is_active: true })
+            .select()
+          if (insertError) throw insertError
+        }
+      }
+
+      setSavedScheduleEnabled(scheduleEnabled)
+      setSavedScheduleWindows(JSON.stringify(scheduleWindows))
+      setSavedSlotMinutes(slotMinutes)
+      setSavedMaxPerDay(maxPerDay)
+
+      const totalSlots = scheduleWindows.reduce((acc, w) => {
+        const [sh, sm] = w.start.split(':').map(Number)
+        const [eh, em] = w.end.split(':').map(Number)
+        const minutes = (eh * 60 + em) - (sh * 60 + sm)
+        return acc + Math.floor(minutes / slotMinutes)
+      }, 0)
+
+      setSaveResult({
+        success: true,
+        message: scheduleEnabled
+          ? `Schedule saved: ~${totalSlots} slots/day across ${scheduleWindows.length} windows, ${slotMinutes}min intervals`
+          : 'Scheduled publishing disabled. Presets will fire immediately.'
+      })
+    } catch (error: any) {
+      console.error('Failed to save schedule:', error)
+      setSaveResult({ success: false, message: `Failed: ${error.message || 'Unknown error'}` })
+    } finally {
+      setScheduleLoading(false)
+    }
+  }
+
+  const updateWindow = (index: number, field: string, value: string) => {
+    setScheduleWindows(prev => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
+    setSaveResult(null)
   }
 
   const handleUpdateCronSchedule = async (jobName: string, newSchedule: string) => {
@@ -559,6 +673,140 @@ $$);`
             <p className="text-xs text-yellow-400 mt-2 text-center">
               Click to save your changes. Current setting is not saved yet.
             </p>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Publishing Schedule */}
+      <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-lg ${scheduleEnabled ? 'bg-blue-500/20' : 'bg-gray-500/20'}`}>
+              <Calendar className={`h-6 w-6 ${scheduleEnabled ? 'text-blue-400' : 'text-gray-400'}`} />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Publishing Schedule</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {scheduleEnabled
+                  ? 'Articles are queued and published at optimal engagement times'
+                  : 'Presets fire immediately (may cause timeouts with multiple clicks)'}
+              </p>
+            </div>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { setScheduleEnabled(!scheduleEnabled); setSaveResult(null) }}
+            className={`relative w-16 h-8 rounded-full transition-colors duration-300 cursor-pointer ${
+              scheduleEnabled ? 'bg-blue-500' : 'bg-gray-600'
+            } ${hasUnsavedScheduleChanges ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-900' : ''}`}
+          >
+            <motion.div
+              className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
+              animate={{ left: scheduleEnabled ? '2rem' : '0.25rem' }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+          </motion.button>
+        </div>
+
+        {scheduleEnabled && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="mt-4 space-y-4"
+          >
+            {/* Window editor */}
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Publishing Windows (Oslo time):</label>
+              <div className="space-y-2">
+                {scheduleWindows.map((win, i) => (
+                  <div key={win.id} className="flex items-center gap-3 bg-white/5 rounded-lg p-3">
+                    <span className="text-sm text-white font-medium w-20">{win.label}</span>
+                    <input
+                      type="time"
+                      value={win.start}
+                      onChange={(e) => updateWindow(i, 'start', e.target.value)}
+                      className="bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white"
+                    />
+                    <span className="text-gray-400">-</span>
+                    <input
+                      type="time"
+                      value={win.end}
+                      onChange={(e) => updateWindow(i, 'end', e.target.value)}
+                      className="bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white"
+                    />
+                    <span className="text-xs text-gray-500">
+                      {win.types.includes('heavy') ? 'heavy+light' : 'light only'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Slot interval */}
+            <div className="flex items-center gap-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Interval (min):</label>
+                <select
+                  value={slotMinutes}
+                  onChange={(e) => { setSlotMinutes(parseInt(e.target.value)); setSaveResult(null) }}
+                  className="bg-white/10 border border-white/20 rounded px-3 py-1.5 text-sm text-white"
+                >
+                  {[5, 7, 10, 15, 20, 30].map(v => (
+                    <option key={v} value={v} className="bg-gray-800">{v} min</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Max/day:</label>
+                <input
+                  type="number"
+                  value={maxPerDay}
+                  onChange={(e) => { setMaxPerDay(parseInt(e.target.value) || 20); setSaveResult(null) }}
+                  min={1}
+                  max={100}
+                  className="bg-white/10 border border-white/20 rounded px-3 py-1.5 text-sm text-white w-20"
+                />
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="bg-white/5 rounded-lg p-3 text-sm text-gray-300">
+              {(() => {
+                const totalSlots = scheduleWindows.reduce((acc, w) => {
+                  const [sh, sm] = w.start.split(':').map(Number)
+                  const [eh, em] = w.end.split(':').map(Number)
+                  const minutes = (eh * 60 + em) - (sh * 60 + sm)
+                  return acc + Math.floor(minutes / slotMinutes)
+                }, 0)
+                return (
+                  <p>
+                    ~<strong className="text-blue-300">{totalSlots}</strong> slots/day across{' '}
+                    <strong className="text-blue-300">{scheduleWindows.length}</strong> windows,{' '}
+                    <strong className="text-blue-300">{slotMinutes}</strong>min intervals
+                    (max <strong className="text-blue-300">{maxPerDay}</strong>/day)
+                  </p>
+                )
+              })()}
+            </div>
+          </motion.div>
+        )}
+
+        {hasUnsavedScheduleChanges && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={saveScheduleSettings}
+              disabled={scheduleLoading}
+              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {scheduleLoading ? (
+                <><RefreshCw className="h-5 w-5 animate-spin" /> Saving...</>
+              ) : (
+                <><Save className="h-5 w-5" /> Save Schedule Settings</>
+              )}
+            </motion.button>
+            <p className="text-xs text-yellow-400 mt-2 text-center">Click to save. Current setting is not saved yet.</p>
           </motion.div>
         )}
       </div>

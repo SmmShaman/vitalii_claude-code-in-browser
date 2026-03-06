@@ -1,0 +1,25 @@
+name: Schedule Publisher
+
+on:
+  schedule:
+    # Run every 5 minutes during active hours
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger schedule-publisher
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📅 Schedule Publisher — $(date -u '+%H:%M UTC')"
+          RESPONSE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$SUPABASE_URL/functions/v1/schedule-publisher" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            --max-time 15)
+          echo "Response: $RESPONSE"

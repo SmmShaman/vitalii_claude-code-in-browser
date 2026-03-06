@@ -95,6 +95,15 @@ export function useNewsQueue() {
           : supabase.from('social_media_posts').select('*', { count: 'exact', head: true })
               .eq('platform', 'instagram')
               .eq('status', 'posted'),
+
+        // Scheduled today (articles with scheduled status and scheduled_publish_at today)
+        supabase.from('news').select('*', { count: 'exact', head: true })
+          .eq('auto_publish_status', 'scheduled')
+          .gte('scheduled_publish_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
+          .lte('scheduled_publish_at', new Date(new Date().setHours(23,59,59,999)).toISOString()),
+        // Scheduled total
+        supabase.from('news').select('*', { count: 'exact', head: true })
+          .eq('auto_publish_status', 'scheduled'),
       ]
 
       const results = await Promise.all(queries)
@@ -119,6 +128,10 @@ export function useNewsQueue() {
         linkedin: results[9].count || 0,
         facebook: results[10].count || 0,
         instagram: results[11].count || 0,
+
+        // Scheduled
+        scheduledToday: results[12].count || 0,
+        scheduledTotal: results[13].count || 0,
       }
     } catch (error) {
       console.error('Failed to load stats:', error)

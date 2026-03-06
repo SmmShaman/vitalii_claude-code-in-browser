@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
 import { getShortSummary, formatCompactVariants, CATEGORY_SHORT, buildPresetKeyboard } from '../_shared/telegram-format-helpers.ts'
+import { classifyContentWeight, loadScheduleConfig, computeScheduledTime, formatScheduledTime } from '../_shared/schedule-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -135,44 +136,64 @@ serve(async (req) => {
         }
       }
 
-      // Mark as queued (sequential queue — not fire-and-forget)
-      await supabase
-        .from('news')
-        .update({
+      // Schedule via publishing queue
+      const schedConfig = await loadScheduleConfig(supabase)
+      const weight = classifyContentWeight(news)
+
+      if (schedConfig.enabled) {
+        const { scheduledAt, window: winId, windowLabel } = await computeScheduledTime(weight, schedConfig, supabase)
+        const timeStr = formatScheduledTime(scheduledAt)
+        console.log(`📅 Scheduled for ${timeStr} (${windowLabel}), weight=${weight}`)
+
+        await supabase.from('news').update({
+          auto_publish_status: 'scheduled',
+          scheduled_publish_at: scheduledAt.toISOString(),
+          content_weight: weight,
+          schedule_window: winId,
+          telegram_message_id: telegramMessageId,
+        }).eq('id', news.id)
+
+        // Edit Telegram message to show scheduled time
+        if (telegramMessageId && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: TELEGRAM_CHAT_ID,
+              message_id: telegramMessageId,
+              text: `📅 <b>Auto-publish scheduled: ${timeStr}</b> (${windowLabel})\n\n📰 ${escapeHtml((news.original_title || 'Untitled').substring(0, 150))}\n📌 ${escapeHtml(autoSourceName)}\n📊 Score: ${analysis.relevance_score}/10`,
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: '⚡ Негайно', callback_data: `imm_${news.id}` },
+                    { text: '❌ Скасувати', callback_data: `cs_${news.id}` }
+                  ]
+                ]
+              }
+            })
+          })
+        }
+      } else {
+        // Schedule disabled — fire-and-forget (legacy)
+        await supabase.from('news').update({
           auto_publish_status: 'queued',
           auto_publish_queued_at: new Date().toISOString(),
-          telegram_message_id: telegramMessageId
-        })
-        .eq('id', news.id)
+          telegram_message_id: telegramMessageId,
+        }).eq('id', news.id)
 
-      // Check if any article is currently being published
-      const { count: inFlightCount } = await supabase
-        .from('news')
-        .select('id', { count: 'exact', head: true })
-        .in('auto_publish_status', ['pending', 'variant_selection', 'image_generation', 'content_rewrite', 'social_posting'])
-        .neq('id', news.id)
-
-      if (!inFlightCount || inFlightCount === 0) {
-        // No in-flight articles — start publishing this one now
-        console.log('🚀 No queue ahead, firing auto-publish now')
         fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            newsId: news.id,
-            source: 'rss',
-            telegramMessageId
-          })
+          body: JSON.stringify({ newsId: news.id, source: 'rss', telegramMessageId })
         }).catch(e => console.warn('⚠️ Auto-publish fire error:', e))
-      } else {
-        console.log(`⏳ Queue position: ${inFlightCount} article(s) ahead — will be picked up automatically`)
       }
 
       return new Response(
-        JSON.stringify({ success: true, newsId: news.id, autoPublish: true, queued: true, inFlightCount: inFlightCount || 0 }),
+        JSON.stringify({ success: true, newsId: news.id, autoPublish: true, scheduled: schedConfig.enabled }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

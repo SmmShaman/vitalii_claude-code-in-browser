@@ -19,6 +19,15 @@ export function getStatusBadges(item: NewsItem): StatusBadge[] {
     badges.push({ label: '🤖 In Telegram', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' })
   }
 
+  if (item.auto_publish_status === 'scheduled') {
+    const time = item.scheduled_publish_at
+      ? new Date(item.scheduled_publish_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
+      : ''
+    badges.push({ label: `📅 ${time}`, color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' })
+  } else if (['pending', 'variant_selection', 'image_generation', 'content_rewrite', 'social_posting'].includes(item.auto_publish_status || '')) {
+    badges.push({ label: '⚡ Publishing', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
+  }
+
   if (item.is_published) {
     badges.push({ label: '📰 Published', color: 'bg-green-500/20 text-green-400 border-green-500/50' })
   }
@@ -154,6 +163,10 @@ export function filterNews(items: NewsItem[], statusFilter: StatusFilter): NewsI
         return item.pre_moderation_status === 'approved' && !item.is_published
       case 'rejected_ai':
         return item.pre_moderation_status === 'rejected'
+      case 'scheduled':
+        return item.auto_publish_status === 'scheduled'
+      case 'auto_publishing':
+        return ['pending', 'variant_selection', 'image_generation', 'content_rewrite', 'social_posting'].includes(item.auto_publish_status || '')
       case 'published_news':
         return item.is_published
       case 'published_blog':

@@ -38,6 +38,12 @@ export interface NewsItem {
     platform: string
     status: string
   }[]
+  scheduled_publish_at: string | null
+  content_weight: 'heavy' | 'light' | null
+  schedule_window: string | null
+  auto_publish_status: string | null
+  auto_publish_error: string | null
+  preset_config: any | null
 }
 
 export interface NewsStats {
@@ -60,6 +66,10 @@ export interface NewsStats {
   linkedin: number
   facebook: number
   instagram: number
+
+  // Scheduled
+  scheduledToday: number
+  scheduledTotal: number
 }
 
 export type TimeFilter = 'today' | 'week' | 'month' | 'all'
@@ -92,6 +102,8 @@ export type StatusFilter =
   | 'waiting_48h'        // 🕐 Очікує 48г
   | 'waiting_approval'   // 🤖 В боті
   | 'rejected_ai'        // ❌ Відхилено
+  | 'scheduled'          // 📅 Заплановано
+  | 'auto_publishing'    // ⚡ Публікується
   | 'published_news'     // 📰 Новини
   | 'published_blog'     // 📝 Блог
   | 'published_linkedin' // 🔗 LinkedIn
@@ -118,4 +130,8 @@ export const INITIAL_STATS: NewsStats = {
   linkedin: 0,
   facebook: 0,
   instagram: 0,
+
+  // Scheduled
+  scheduledToday: 0,
+  scheduledTotal: 0,
 }
