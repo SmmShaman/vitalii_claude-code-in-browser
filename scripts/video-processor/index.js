@@ -260,9 +260,12 @@ async function enhanceWithRemotion(inputVideoPath, news) {
 
     const headline = (news.title_en || news.original_title || 'News').substring(0, 80);
 
+    // Remotion needs file:// URLs for local files
+    const toFileUrl = (p) => p.startsWith('/') ? `file://${p}` : p;
+
     const props = JSON.stringify({
-      videoSrc: inputVideoPath,
-      voiceoverSrc: voiceover.audioPath,
+      videoSrc: toFileUrl(inputVideoPath),
+      voiceoverSrc: toFileUrl(voiceover.audioPath),
       subtitles: voiceover.subtitles,
       headline: headline,
       originalVideoDurationInSeconds: voiceover.durationSeconds + 2,
