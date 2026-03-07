@@ -58,8 +58,8 @@ jobs:
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             2>/dev/null)
 
-          NEXT_ID=$(echo "$NEXT" | jq -r '.[0].id // empty' 2>/dev/null)
-          NEXT_MSG_ID=$(echo "$NEXT" | jq -r '.[0].telegram_message_id // empty' 2>/dev/null)
+          NEXT_ID=$(echo "$NEXT" | jq -r '.[0].id // ""' 2>/dev/null || echo "")
+          NEXT_MSG_ID=$(echo "$NEXT" | jq -r '.[0].telegram_message_id // ""' 2>/dev/null || echo "")
 
           if [ -n "$NEXT_ID" ] && [ "$IN_FLIGHT_COUNT" = "0" ]; then
             echo "🚀 Backup kickstart for scheduled article: $NEXT_ID"
@@ -81,8 +81,8 @@ jobs:
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             2>/dev/null)
 
-          QUEUED_ID=$(echo "$QUEUED" | jq -r '.[0].id // empty' 2>/dev/null)
-          QUEUED_MSG_ID=$(echo "$QUEUED" | jq -r '.[0].telegram_message_id // empty' 2>/dev/null)
+          QUEUED_ID=$(echo "$QUEUED" | jq -r '.[0].id // ""' 2>/dev/null || echo "")
+          QUEUED_MSG_ID=$(echo "$QUEUED" | jq -r '.[0].telegram_message_id // ""' 2>/dev/null || echo "")
 
           if [ -n "$QUEUED_ID" ] && [ "$IN_FLIGHT_COUNT" = "0" ]; then
             echo "🚀 Kickstarting legacy queued article: $QUEUED_ID"
@@ -93,3 +93,5 @@ jobs:
               --max-time 10 > /dev/null 2>&1 || true
             echo "✅ Legacy queue kickstarted"
           fi
+
+          echo "✅ Watchdog complete"
