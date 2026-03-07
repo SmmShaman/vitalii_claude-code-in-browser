@@ -17,6 +17,12 @@ import {
   interpolate,
   spring,
 } from "remotion";
+import {
+  defaultTheme,
+  getLayoutConfig,
+  subtitleFadeFrames,
+  type SubtitleConfig,
+} from "../design-system";
 
 export interface SubtitleEntry {
   /** The word or short phrase to display */
@@ -30,6 +36,7 @@ export interface SubtitleEntry {
 interface AnimatedSubtitlesProps {
   subtitles: SubtitleEntry[];
   isVertical: boolean;
+  config?: Partial<SubtitleConfig>;
 }
 
 /**
@@ -38,7 +45,7 @@ interface AnimatedSubtitlesProps {
  */
 function groupSubtitles(
   subtitles: SubtitleEntry[],
-  wordsPerGroup: number = 4
+  wordsPerGroup: number,
 ): { text: string; startTime: number; endTime: number }[] {
   const groups: { text: string; startTime: number; endTime: number }[] = [];
 
@@ -57,16 +64,21 @@ function groupSubtitles(
 export const AnimatedSubtitles: React.FC<AnimatedSubtitlesProps> = ({
   subtitles,
   isVertical,
+  config: configOverrides,
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
   const currentTime = frame / fps;
 
-  const groups = groupSubtitles(subtitles, 4);
+  const theme = defaultTheme;
+  const cfg = { ...theme.subtitles, ...configOverrides };
+  const layout = getLayoutConfig(width, height);
+
+  const groups = groupSubtitles(subtitles, cfg.wordsPerGroup);
 
   // Find the currently active group
   const activeGroup = groups.find(
-    (g) => currentTime >= g.startTime && currentTime <= g.endTime
+    (g) => currentTime >= g.startTime && currentTime <= g.endTime,
   );
 
   if (!activeGroup) return null;
@@ -74,18 +86,20 @@ export const AnimatedSubtitles: React.FC<AnimatedSubtitlesProps> = ({
   // Calculate animation progress within this group
   const groupStartFrame = Math.round(activeGroup.startTime * fps);
   const localFrame = frame - groupStartFrame;
+  const groupDurationFrames = (activeGroup.endTime - activeGroup.startTime) * fps;
 
   const scale = spring({
     frame: localFrame,
     fps,
-    config: { damping: 15, stiffness: 200, mass: 0.5 },
+    config: theme.animations.springs.subtitle,
   });
 
+  const fadeFrames = subtitleFadeFrames;
   const opacity = interpolate(
     localFrame,
-    [0, 3, (activeGroup.endTime - activeGroup.startTime) * fps - 3, (activeGroup.endTime - activeGroup.startTime) * fps],
+    [0, fadeFrames, groupDurationFrames - fadeFrames, groupDurationFrames],
     [0, 1, 1, 0],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+    theme.animations.clampBoth,
   );
 
   return (
@@ -93,8 +107,8 @@ export const AnimatedSubtitles: React.FC<AnimatedSubtitlesProps> = ({
       style={{
         display: "flex",
         justifyContent: "center",
-        alignItems: isVertical ? "flex-end" : "flex-end",
-        paddingBottom: isVertical ? "22%" : "10%",
+        alignItems: "flex-end",
+        paddingBottom: layout.subtitle.paddingBottom,
         pointerEvents: "none",
       }}
     >
@@ -102,26 +116,23 @@ export const AnimatedSubtitles: React.FC<AnimatedSubtitlesProps> = ({
         style={{
           transform: `scale(${scale})`,
           opacity,
-          maxWidth: "90%",
+          maxWidth: layout.subtitle.maxWidth,
           textAlign: "center",
         }}
       >
-        {/* Shadow layer for readability */}
         <span
           style={{
             display: "inline-block",
-            color: "#FFFFFF",
-            fontSize: isVertical ? 52 : 56,
-            fontWeight: 900,
-            fontFamily:
-              "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
-            lineHeight: 1.3,
-            textTransform: "uppercase",
-            letterSpacing: -0.5,
-            textShadow:
-              "0 0 10px rgba(0,0,0,0.9), 0 4px 12px rgba(0,0,0,0.7), 0 0 40px rgba(0,0,0,0.5)",
-            WebkitTextStroke: "1.5px rgba(0,0,0,0.3)",
-            padding: "8px 16px",
+            color: theme.colors.text,
+            fontSize: layout.subtitle.fontSize,
+            fontWeight: cfg.fontWeight,
+            fontFamily: theme.typography.fontFamily.fallback,
+            lineHeight: theme.typography.subtitle.lineHeight,
+            textTransform: cfg.textTransform,
+            letterSpacing: cfg.letterSpacing,
+            textShadow: cfg.shadow,
+            WebkitTextStroke: cfg.stroke,
+            padding: layout.subtitle.padding,
           }}
         >
           {activeGroup.text}

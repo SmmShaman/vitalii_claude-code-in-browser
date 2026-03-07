@@ -50,7 +50,9 @@ ga4-credentials.json
 
 # Auto-installed Claude Code skills
 .agent/
+.agents/
 .claude/skills/
+skills-lock.json
 
 # Deno lock (machine-generated)
 deno.lock

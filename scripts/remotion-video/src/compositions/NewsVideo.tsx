@@ -17,11 +17,17 @@ import {
   OffthreadVideo,
   useCurrentFrame,
   useVideoConfig,
-  Sequence,
   interpolate,
   spring,
 } from "remotion";
 import { AnimatedSubtitles, type SubtitleEntry } from "../components/AnimatedSubtitles";
+import {
+  defaultTheme,
+  mergeTheme,
+  getLayoutConfig,
+  headlineKeyframes,
+  type VideoTheme,
+} from "../design-system";
 
 export interface NewsVideoProps {
   /** Absolute path or URL to the source video (downloaded from Telegram) */
@@ -34,6 +40,8 @@ export interface NewsVideoProps {
   headline: string;
   /** Duration of the output video in seconds */
   originalVideoDurationInSeconds: number;
+  /** Optional theme overrides */
+  theme?: Partial<VideoTheme>;
 }
 
 export const NewsVideo: React.FC<NewsVideoProps> = ({
@@ -42,30 +50,35 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
   subtitles,
   headline,
   originalVideoDurationInSeconds,
+  theme: themeOverrides,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
-  const isVertical = height > width; // 9:16 vs 16:9
+  const theme = mergeTheme(themeOverrides);
+  const layout = getLayoutConfig(width, height);
 
   // ── Headline intro animation (first 2 seconds) ──
-  const headlineOpacity = interpolate(frame, [0, 15, fps * 1.5, fps * 2], [0, 1, 1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const hk = headlineKeyframes(fps);
+  const headlineOpacity = interpolate(
+    frame,
+    [...hk.inputRange],
+    [...hk.outputRange],
+    theme.animations.clampBoth,
+  );
 
   const headlineScale = spring({
     frame,
     fps,
-    config: { damping: 12, stiffness: 100 },
+    config: theme.animations.springs.headline,
   });
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "#000" }}>
+    <AbsoluteFill style={{ backgroundColor: theme.colors.background }}>
       {/* ── Layer 1: Background video ── */}
       {videoSrc && (
         <>
           {/* Blurred background (fills entire canvas for vertical crops) */}
-          {isVertical && (
+          {layout.isVertical && (
             <OffthreadVideo
               src={videoSrc}
               style={{
@@ -73,8 +86,8 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                filter: "blur(30px) brightness(0.4)",
-                transform: "scale(1.2)",
+                filter: layout.video.backgroundFilter,
+                transform: `scale(${layout.video.backgroundScale})`,
               }}
               volume={0}
             />
@@ -85,26 +98,26 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
             style={{
               display: "flex",
               justifyContent: "center",
-              alignItems: isVertical ? "center" : "center",
+              alignItems: "center",
             }}
           >
             <OffthreadVideo
               src={videoSrc}
               style={{
-                width: isVertical ? "100%" : "100%",
-                height: isVertical ? "auto" : "100%",
-                maxHeight: isVertical ? "60%" : "100%",
+                width: "100%",
+                height: layout.isVertical ? "auto" : "100%",
+                maxHeight: layout.video.maxHeight,
                 objectFit: "contain",
-                borderRadius: isVertical ? 12 : 0,
+                borderRadius: layout.video.borderRadius,
               }}
-              volume={0.1} // Lower original audio to 10%
+              volume={theme.opacity.backgroundVideoVolume}
             />
           </AbsoluteFill>
         </>
       )}
 
       {/* ── Layer 2: AI Voiceover audio ── */}
-      {voiceoverSrc && <Audio src={voiceoverSrc} volume={1.0} />}
+      {voiceoverSrc && <Audio src={voiceoverSrc} volume={theme.opacity.voiceoverVolume} />}
 
       {/* ── Layer 3: Headline overlay (first 2 seconds) ── */}
       {headline && (
@@ -120,23 +133,22 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
         >
           <div
             style={{
-              background: "rgba(0, 0, 0, 0.7)",
+              background: theme.colors.overlay,
               backdropFilter: "blur(10px)",
-              padding: isVertical ? "20px 32px" : "16px 40px",
-              borderRadius: 16,
-              maxWidth: "85%",
+              padding: layout.headline.padding,
+              borderRadius: layout.headline.borderRadius,
+              maxWidth: layout.headline.maxWidth,
               textAlign: "center",
             }}
           >
             <span
               style={{
-                color: "#fff",
-                fontSize: isVertical ? 42 : 48,
-                fontWeight: 800,
-                fontFamily:
-                  "'Inter', 'SF Pro Display', -apple-system, sans-serif",
-                lineHeight: 1.2,
-                textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                color: theme.colors.text,
+                fontSize: layout.headline.fontSize,
+                fontWeight: theme.typography.headline.fontWeight,
+                fontFamily: theme.typography.fontFamily.fallback,
+                lineHeight: theme.typography.headline.lineHeight,
+                textShadow: theme.shadows.headline,
               }}
             >
               {headline}
@@ -147,24 +159,24 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
 
       {/* ── Layer 4: Animated subtitles ── */}
       {subtitles.length > 0 && (
-        <AnimatedSubtitles subtitles={subtitles} isVertical={isVertical} />
+        <AnimatedSubtitles subtitles={subtitles} isVertical={layout.isVertical} />
       )}
 
       {/* ── Layer 5: Subtle branding watermark (bottom corner) ── */}
       <div
         style={{
           position: "absolute",
-          bottom: isVertical ? 80 : 20,
-          right: 20,
-          opacity: 0.5,
-          fontSize: 14,
-          color: "#fff",
-          fontFamily: "'Inter', sans-serif",
-          fontWeight: 600,
-          letterSpacing: 1,
+          bottom: layout.watermark.bottom,
+          right: layout.watermark.right,
+          opacity: theme.opacity.watermark,
+          fontSize: theme.typography.watermark.fontSize,
+          color: theme.colors.text,
+          fontFamily: theme.typography.fontFamily.fallback,
+          fontWeight: theme.typography.watermark.fontWeight,
+          letterSpacing: theme.typography.watermark.letterSpacing,
         }}
       >
-        vitalii.no
+        {theme.branding.watermarkText}
       </div>
     </AbsoluteFill>
   );
