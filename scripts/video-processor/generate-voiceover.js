@@ -53,72 +53,15 @@ export async function generateVoiceover(scriptText, language = 'en') {
   };
   const voice = voices[language] || 'Brian US HD';
 
-  // ── Step 1: Submit text to /subs endpoint ──
   const BASE = 'https://zvukogram.com/index.php?r=api';
-
   console.log(`🔊 Using voice: ${voice}`);
-  const createResponse = await fetch(`${BASE}/subs`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      token: ZVUKOGRAM_TOKEN,
-      email: ZVUKOGRAM_EMAIL,
-      voice,
-      text: scriptText,
-      format: 'mp3',
-      speed: '1',
-    }).toString(),
-  });
 
-  if (!createResponse.ok) {
-    const err = await createResponse.text();
-    throw new Error(`Zvukogram API error: ${createResponse.status} ${err}`);
-  }
+  // ── Step 1: Try /subs for real timestamps, fall back to /text ──
+  let result = await trySubsEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
 
-  const createData = await createResponse.json();
-  console.log(`📋 Task created: id=${createData.id}, status=${createData.status}`);
-
-  if (createData.status === -1) {
-    throw new Error(`Zvukogram error: ${createData.error || JSON.stringify(createData)}`);
-  }
-
-  // ── Step 2: Poll for result if status=0 ──
-  let result = createData;
-
-  if (result.status === 0) {
-    console.log(`⏳ Processing (${result.parts || '?'} parts)...`);
-    const maxAttempts = 120; // 4 minutes max
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(r => setTimeout(r, 2000));
-
-      const pollResponse = await fetch(`${BASE}/result`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          token: ZVUKOGRAM_TOKEN,
-          email: ZVUKOGRAM_EMAIL,
-          id: String(createData.id),
-        }).toString(),
-      });
-
-      result = await pollResponse.json();
-
-      if (result.status === 1) {
-        console.log(`✅ Processing complete`);
-        break;
-      }
-      if (result.status === -1) {
-        throw new Error(`Zvukogram processing error: ${result.error || JSON.stringify(result)}`);
-      }
-
-      if (i % 5 === 0) {
-        console.log(`   ... waiting (${result.parts_done || 0}/${result.parts || '?'} parts)`);
-      }
-    }
-
-    if (result.status !== 1) {
-      throw new Error('Zvukogram processing timeout');
-    }
+  if (!result) {
+    console.log(`📝 Using /text endpoint (instant mode)`);
+    result = await textEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
   }
 
   // ── Step 3: Download audio file ──
@@ -151,6 +94,79 @@ export async function generateVoiceover(scriptText, language = 'en') {
     subtitles,
     durationSeconds,
   };
+}
+
+/**
+ * Try /subs endpoint for real timestamps. Returns null if unsupported.
+ */
+async function trySubsEndpoint(BASE, token, email, voice, text) {
+  try {
+    // Use a non-HD voice for subs (HD voices may not support it)
+    const subsVoice = 'Matthew plus';
+    console.log(`🎙️ Trying /subs with voice: ${subsVoice}`);
+
+    const resp = await fetch(`${BASE}/subs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token, email, voice: subsVoice, text, format: 'mp3', speed: '1' }).toString(),
+    });
+
+    const data = await resp.json();
+    if (data.status === -1) {
+      console.log(`⚠️ /subs not available: ${data.error || 'unknown error'}`);
+      return null;
+    }
+
+    // Poll if processing
+    let result = data;
+    if (result.status === 0) {
+      console.log(`⏳ Processing subs...`);
+      for (let i = 0; i < 120; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const poll = await fetch(`${BASE}/result`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ token, email, id: String(data.id) }).toString(),
+        });
+        result = await poll.json();
+        if (result.status === 1) break;
+        if (result.status === -1) { console.log(`⚠️ /subs failed: ${result.error}`); return null; }
+      }
+      if (result.status !== 1) return null;
+    }
+
+    console.log(`✅ /subs succeeded with real timestamps`);
+    return result;
+  } catch (e) {
+    console.log(`⚠️ /subs error: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Use /text endpoint for instant TTS (texts <1000 chars).
+ */
+async function textEndpoint(BASE, token, email, voice, text) {
+  const resp = await fetch(`${BASE}/text`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ token, email, voice, text, format: 'mp3', speed: '1' }).toString(),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Zvukogram /text error: ${resp.status} ${await resp.text()}`);
+  }
+
+  const data = await resp.json();
+  if (data.status === -1) {
+    throw new Error(`Zvukogram error: ${data.error || JSON.stringify(data)}`);
+  }
+  if (data.status !== 1) {
+    throw new Error(`Zvukogram unexpected status: ${JSON.stringify(data)}`);
+  }
+
+  console.log(`✅ /text succeeded`);
+  return data;
 }
 
 /**
