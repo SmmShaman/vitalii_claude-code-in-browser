@@ -15,6 +15,7 @@ const DEFAULT_PROPS = {
   subtitles: [] as { text: string; startTime: number; endTime: number }[],
   headline: "Breaking News",
   originalVideoDurationInSeconds: 30,
+  muteOriginalAudio: false,
 };
 
 export const RemotionRoot: React.FC = () => {

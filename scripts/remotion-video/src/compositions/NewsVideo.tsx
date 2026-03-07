@@ -41,6 +41,8 @@ export interface NewsVideoProps {
   headline: string;
   /** Duration of the output video in seconds */
   originalVideoDurationInSeconds: number;
+  /** Mute original video audio when AI voiceover is present */
+  muteOriginalAudio?: boolean;
   /** Optional theme overrides */
   theme?: Partial<VideoTheme>;
 }
@@ -51,6 +53,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
   subtitles,
   headline,
   originalVideoDurationInSeconds,
+  muteOriginalAudio,
   theme: themeOverrides,
 }) => {
   const frame = useCurrentFrame();
@@ -115,7 +118,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
                 objectFit: "contain",
                 borderRadius: layout.video.borderRadius,
               }}
-              volume={theme.opacity.backgroundVideoVolume}
+              volume={muteOriginalAudio ? 0 : theme.opacity.backgroundVideoVolume}
             />
           </AbsoluteFill>
         </>

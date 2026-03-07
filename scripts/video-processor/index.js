@@ -93,11 +93,18 @@ async function downloadTelegramVideo(client, channel, messageId) {
     let fileSize = 0;
     let mimeType = 'video/mp4';
 
+    let videoDuration = 0;
+    let videoWidth = 0;
+    let videoHeight = 0;
+
     if (message.video) {
       fileId = message.video.fileId;
       fileSize = message.video.fileSize || 0;
       mimeType = message.video.mimeType || 'video/mp4';
-      console.log(`🎬 Found video: ${(fileSize / 1024 / 1024).toFixed(2)} MB, ${mimeType}`);
+      videoDuration = message.video.duration || 0;
+      videoWidth = message.video.width || 0;
+      videoHeight = message.video.height || 0;
+      console.log(`🎬 Found video: ${(fileSize / 1024 / 1024).toFixed(2)} MB, ${mimeType}, ${videoDuration}s, ${videoWidth}x${videoHeight}`);
     } else if (message.document) {
       // Check if document is a video
       if (!message.document.mimeType?.startsWith('video/')) {
@@ -158,7 +165,7 @@ async function downloadTelegramVideo(client, channel, messageId) {
     const stats = await fs.stat(tempFile);
     console.log(`✅ Downloaded: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
 
-    return tempFile;
+    return { path: tempFile, duration: videoDuration, width: videoWidth, height: videoHeight };
   } catch (error) {
     console.error(`❌ Download failed: ${error.message}`);
     throw error;
@@ -216,9 +223,10 @@ async function uploadToYouTube(filePath, title, description) {
  *
  * @param {string} inputVideoPath - Path to the downloaded raw video
  * @param {object} news - News record from Supabase
+ * @param {object} videoMeta - Video metadata (duration, width, height)
  * @returns {Promise<{outputPath: string, durationSeconds: number} | null>}
  */
-async function enhanceWithRemotion(inputVideoPath, news) {
+async function enhanceWithRemotion(inputVideoPath, news, videoMeta = {}) {
   const skipRemotion = process.env.SKIP_REMOTION === 'true';
   if (skipRemotion) {
     console.log('⏭️ SKIP_REMOTION=true, skipping Remotion rendering');
@@ -245,8 +253,14 @@ async function enhanceWithRemotion(inputVideoPath, news) {
       return null;
     }
 
+    // Limit voiceover to original video duration (or 30s max if unknown)
+    const maxDuration = videoMeta.videoDuration > 0
+      ? Math.min(videoMeta.videoDuration, 60)
+      : 30;
+    console.log(`📐 Video: ${videoMeta.videoWidth || '?'}x${videoMeta.videoHeight || '?'}, ${videoMeta.videoDuration || '?'}s → voiceover max ${maxDuration}s`);
+
     console.log('\n🤖 Step A: Generating AI script...');
-    const script = await generateScript(articleText, 'en', 45);
+    const script = await generateScript(articleText, 'en', maxDuration);
 
     // ── Step B: Generate voiceover + timestamps ──
     console.log('\n🎙️ Step B: Generating voiceover...');
@@ -269,19 +283,28 @@ async function enhanceWithRemotion(inputVideoPath, news) {
     await fs.copyFile(inputVideoPath, path.join(publicDir, videoFilename));
     await fs.copyFile(voiceover.audioPath, path.join(publicDir, audioFilename));
 
+    // Use actual video duration (fallback to voiceover + 2s if unknown)
+    const actualDuration = videoMeta.videoDuration > 0
+      ? videoMeta.videoDuration
+      : voiceover.durationSeconds + 2;
+
     const props = JSON.stringify({
       videoSrc: videoFilename,
       voiceoverSrc: audioFilename,
       subtitles: voiceover.subtitles,
       headline: headline,
-      originalVideoDurationInSeconds: voiceover.durationSeconds + 2,
+      originalVideoDurationInSeconds: actualDuration,
+      muteOriginalAudio: true, // Mute original audio when AI voiceover is present
     });
 
     // Write props to a temp file (CLI has arg length limits)
     const propsFile = path.join(os.tmpdir(), `remotion_props_${Date.now()}.json`);
     await fs.writeFile(propsFile, props);
 
-    const compositionId = 'NewsVideoVertical'; // 9:16 for Shorts/Reels/TikTok
+    // Choose composition based on video aspect ratio
+    const isLandscape = (videoMeta.videoWidth || 0) > (videoMeta.videoHeight || 0);
+    const compositionId = isLandscape ? 'NewsVideoHorizontal' : 'NewsVideoVertical';
+    console.log(`📐 Composition: ${compositionId} (${isLandscape ? 'landscape' : 'portrait'})`);
 
     const cmd = [
       'npx', 'remotion', 'render',
@@ -341,10 +364,15 @@ async function processNewsItem(client, news) {
 
   try {
     // Step 1: Download from Telegram
-    tempFile = await downloadTelegramVideo(client, parsed.channel, parsed.messageId);
+    const downloaded = await downloadTelegramVideo(client, parsed.channel, parsed.messageId);
+    tempFile = downloaded.path;
 
     // Step 2: Enhance with Remotion (AI script + voiceover + animated subtitles)
-    const enhancement = await enhanceWithRemotion(tempFile, news);
+    const enhancement = await enhanceWithRemotion(tempFile, news, {
+      videoDuration: downloaded.duration,
+      videoWidth: downloaded.width,
+      videoHeight: downloaded.height,
+    });
 
     // Determine which file to upload
     let uploadFile = tempFile;
