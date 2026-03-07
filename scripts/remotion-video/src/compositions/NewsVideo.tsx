@@ -19,6 +19,7 @@ import {
   useVideoConfig,
   interpolate,
   spring,
+  staticFile,
 } from "remotion";
 import { AnimatedSubtitles, type SubtitleEntry } from "../components/AnimatedSubtitles";
 import {
@@ -57,6 +58,10 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
   const theme = mergeTheme(themeOverrides);
   const layout = getLayoutConfig(width, height);
 
+  // Resolve media sources: bare filenames → staticFile(), URLs → as-is
+  const resolvedVideoSrc = videoSrc && !videoSrc.startsWith("http") ? staticFile(videoSrc) : videoSrc;
+  const resolvedVoiceoverSrc = voiceoverSrc && !voiceoverSrc.startsWith("http") ? staticFile(voiceoverSrc) : voiceoverSrc;
+
   // ── Headline intro animation (first 2 seconds) ──
   const hk = headlineKeyframes(fps);
   const headlineOpacity = interpolate(
@@ -75,12 +80,12 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
   return (
     <AbsoluteFill style={{ backgroundColor: theme.colors.background }}>
       {/* ── Layer 1: Background video ── */}
-      {videoSrc && (
+      {resolvedVideoSrc && (
         <>
           {/* Blurred background (fills entire canvas for vertical crops) */}
           {layout.isVertical && (
             <OffthreadVideo
-              src={videoSrc}
+              src={resolvedVideoSrc}
               style={{
                 position: "absolute",
                 width: "100%",
@@ -102,7 +107,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
             }}
           >
             <OffthreadVideo
-              src={videoSrc}
+              src={resolvedVideoSrc}
               style={{
                 width: "100%",
                 height: layout.isVertical ? "auto" : "100%",
@@ -117,7 +122,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
       )}
 
       {/* ── Layer 2: AI Voiceover audio ── */}
-      {voiceoverSrc && <Audio src={voiceoverSrc} volume={theme.opacity.voiceoverVolume} />}
+      {resolvedVoiceoverSrc && <Audio src={resolvedVoiceoverSrc} volume={theme.opacity.voiceoverVolume} />}
 
       {/* ── Layer 3: Headline overlay (first 2 seconds) ── */}
       {headline && (

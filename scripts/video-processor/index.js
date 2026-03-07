@@ -260,12 +260,18 @@ async function enhanceWithRemotion(inputVideoPath, news) {
 
     const headline = (news.title_en || news.original_title || 'News').substring(0, 80);
 
-    // Remotion needs file:// URLs for local files
-    const toFileUrl = (p) => p.startsWith('/') ? `file://${p}` : p;
+    // Copy media files to Remotion's public/ dir so they're served via localhost
+    const publicDir = path.join(remotionProjectDir, 'public');
+    await fs.mkdir(publicDir, { recursive: true });
+
+    const videoFilename = path.basename(inputVideoPath);
+    const audioFilename = path.basename(voiceover.audioPath);
+    await fs.copyFile(inputVideoPath, path.join(publicDir, videoFilename));
+    await fs.copyFile(voiceover.audioPath, path.join(publicDir, audioFilename));
 
     const props = JSON.stringify({
-      videoSrc: toFileUrl(inputVideoPath),
-      voiceoverSrc: toFileUrl(voiceover.audioPath),
+      videoSrc: videoFilename,
+      voiceoverSrc: audioFilename,
       subtitles: voiceover.subtitles,
       headline: headline,
       originalVideoDurationInSeconds: voiceover.durationSeconds + 2,
@@ -298,8 +304,10 @@ async function enhanceWithRemotion(inputVideoPath, news) {
     const outputStats = await fs.stat(outputPath);
     console.log(`✅ Remotion output: ${(outputStats.size / 1024 / 1024).toFixed(2)} MB`);
 
-    // Cleanup props file
+    // Cleanup temp files
     await fs.unlink(propsFile).catch(() => {});
+    await fs.unlink(path.join(publicDir, videoFilename)).catch(() => {});
+    await fs.unlink(path.join(publicDir, audioFilename)).catch(() => {});
 
     return { outputPath, durationSeconds: voiceover.durationSeconds };
 
