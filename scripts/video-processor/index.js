@@ -300,10 +300,10 @@ async function enhanceWithRemotion(inputVideoPath, news, videoMeta = {}) {
     await fs.copyFile(inputVideoPath, path.join(publicDir, videoFilename));
     await fs.copyFile(voiceover.audioPath, path.join(publicDir, audioFilename));
 
-    // Use actual video duration (fallback to voiceover + 2s if unknown)
-    const actualDuration = videoMeta.videoDuration > 0
-      ? videoMeta.videoDuration
-      : voiceover.durationSeconds + 2;
+    // Use the longer of video/voiceover so audio never gets cut mid-word
+    const videoDur = videoMeta.videoDuration > 0 ? videoMeta.videoDuration : 0;
+    const actualDuration = Math.max(videoDur, voiceover.durationSeconds + 1);
+    console.log(`⏱️ Video: ${videoDur}s, Voiceover: ${voiceover.durationSeconds}s → render duration: ${actualDuration}s`);
 
     const props = JSON.stringify({
       videoSrc: videoFilename,
@@ -349,7 +349,7 @@ async function enhanceWithRemotion(inputVideoPath, news, videoMeta = {}) {
     await fs.unlink(path.join(publicDir, videoFilename)).catch(() => {});
     await fs.unlink(path.join(publicDir, audioFilename)).catch(() => {});
 
-    return { outputPath, durationSeconds: voiceover.durationSeconds };
+    return { outputPath, durationSeconds: actualDuration };
 
   } catch (error) {
     console.error(`⚠️ Remotion enhancement failed: ${error.message}`);

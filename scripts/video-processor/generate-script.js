@@ -28,8 +28,8 @@ export async function generateScript(articleText, language = 'en', maxDurationSe
   const languageNames = { en: 'English', no: 'Norwegian', ua: 'Ukrainian' };
   const langName = languageNames[language] || 'English';
 
-  // Approximate: ~2.5 words per second for natural speech
-  const targetWordCount = Math.round(maxDurationSeconds * 2.5);
+  // Approximate: ~2 words per second for natural TTS speech (conservative to avoid overrun)
+  const targetWordCount = Math.round(maxDurationSeconds * 2);
 
   const systemPrompt = `You are a professional newsreader and social media content creator. 
 Your task is to create a voiceover script for a short news video (TikTok / YouTube Shorts / Instagram Reels style).
