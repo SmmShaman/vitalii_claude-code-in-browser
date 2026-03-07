@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff, Zap, ZapOff, Calendar } from 'lucide-react'
+import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff, Zap, ZapOff, Calendar, Video, VideoOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
 const CRON_PRESETS = [
@@ -38,6 +38,11 @@ export const CronScheduleSettings = () => {
   const [autoPublishLanguages, setAutoPublishLanguages] = useState<string[]>(['en', 'no', 'ua'])
   const [savedAutoPublishLanguages, setSavedAutoPublishLanguages] = useState<string[]>(['en', 'no', 'ua'])
 
+  // Video generation toggle state
+  const [videoGenerationEnabled, setVideoGenerationEnabled] = useState(true)
+  const [savedVideoGenerationValue, setSavedVideoGenerationValue] = useState(true)
+  const [videoGenerationLoading, setVideoGenerationLoading] = useState(false)
+
   // Publishing schedule state
   const [scheduleEnabled, setScheduleEnabled] = useState(true)
   const [savedScheduleEnabled, setSavedScheduleEnabled] = useState(true)
@@ -60,6 +65,9 @@ export const CronScheduleSettings = () => {
 
   // Check if there are unsaved pre-moderation changes
   const hasUnsavedPreModerationChanges = preModerationEnabled !== savedPreModerationValue
+
+  // Check if there are unsaved video generation changes
+  const hasUnsavedVideoGenerationChanges = videoGenerationEnabled !== savedVideoGenerationValue
 
   // Check if there are unsaved auto-publish changes
   const hasUnsavedAutoPublishChanges = autoPublishEnabled !== savedAutoPublishValue
@@ -87,6 +95,19 @@ export const CronScheduleSettings = () => {
         const isEnabled = preModerationSetting.key_value !== 'false'
         setPreModerationEnabled(isEnabled)
         setSavedPreModerationValue(isEnabled)
+      }
+
+      // Load video generation setting
+      const { data: videoGenSetting, error: videoGenError } = await supabase
+        .from('api_settings')
+        .select('key_value')
+        .eq('key_name', 'ENABLE_VIDEO_GENERATION')
+        .single()
+
+      if (!videoGenError && videoGenSetting) {
+        const isEnabled = videoGenSetting.key_value !== 'false'
+        setVideoGenerationEnabled(isEnabled)
+        setSavedVideoGenerationValue(isEnabled)
       }
 
       // Load schedule settings
@@ -212,6 +233,58 @@ export const CronScheduleSettings = () => {
       })
     } finally {
       setPreModerationLoading(false)
+    }
+  }
+
+  // Toggle video generation (local state only)
+  const toggleVideoGeneration = () => {
+    setVideoGenerationEnabled(!videoGenerationEnabled)
+    setSaveResult(null)
+  }
+
+  // Save video generation setting to database
+  const saveVideoGeneration = async () => {
+    try {
+      setVideoGenerationLoading(true)
+      setSaveResult(null)
+
+      const { data, error } = await supabase
+        .from('api_settings')
+        .update({ key_value: videoGenerationEnabled.toString() })
+        .eq('key_name', 'ENABLE_VIDEO_GENERATION')
+        .select()
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        const { error: insertError } = await supabase
+          .from('api_settings')
+          .insert({
+            key_name: 'ENABLE_VIDEO_GENERATION',
+            key_value: videoGenerationEnabled.toString(),
+            description: 'Toggle Remotion video enhancement (AI voiceover + subtitles)',
+            is_active: true
+          })
+          .select()
+
+        if (insertError) throw insertError
+      }
+
+      setSavedVideoGenerationValue(videoGenerationEnabled)
+      setSaveResult({
+        success: true,
+        message: videoGenerationEnabled
+          ? 'Video generation enabled. Videos will be enhanced with AI voiceover and subtitles.'
+          : 'Video generation disabled. Raw videos will be uploaded directly to YouTube.'
+      })
+    } catch (error: any) {
+      console.error('Failed to save video generation:', error)
+      setSaveResult({
+        success: false,
+        message: `Failed to update video generation setting: ${error.message || 'Unknown error'}`
+      })
+    } finally {
+      setVideoGenerationLoading(false)
     }
   }
 
@@ -667,6 +740,80 @@ $$);`
                 <>
                   <Save className="h-5 w-5" />
                   Save Auto-Publish Settings
+                </>
+              )}
+            </motion.button>
+            <p className="text-xs text-yellow-400 mt-2 text-center">
+              Click to save your changes. Current setting is not saved yet.
+            </p>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Video Generation Toggle */}
+      <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-lg ${videoGenerationEnabled ? 'bg-violet-500/20' : 'bg-gray-500/20'}`}>
+              {videoGenerationEnabled ? (
+                <Video className="h-6 w-6 text-violet-400" />
+              ) : (
+                <VideoOff className="h-6 w-6 text-gray-400" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Remotion Video Generation</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {videoGenerationEnabled
+                  ? 'Videos are enhanced with AI voiceover, subtitles, and branding'
+                  : 'Raw videos are uploaded directly to YouTube without processing'}
+              </p>
+            </div>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleVideoGeneration}
+            className={`relative w-16 h-8 rounded-full transition-colors duration-300 cursor-pointer ${
+              videoGenerationEnabled ? 'bg-violet-500' : 'bg-gray-600'
+            } ${hasUnsavedVideoGenerationChanges ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-900' : ''}`}
+          >
+            <motion.div
+              className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
+              animate={{ left: videoGenerationEnabled ? '2rem' : '0.25rem' }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+          </motion.button>
+        </div>
+        <div className={`mt-4 p-3 rounded-lg ${videoGenerationEnabled ? 'bg-violet-500/10 border border-violet-500/30' : 'bg-gray-500/10 border border-gray-500/30'}`}>
+          <p className={`text-sm ${videoGenerationEnabled ? 'text-violet-300' : 'text-gray-300'}`}>
+            {videoGenerationEnabled
+              ? 'Pipeline: Telegram video → AI script → TTS voiceover → Remotion render (subtitles + branding) → YouTube upload'
+              : 'Pipeline: Telegram video → YouTube upload (no enhancement)'}
+          </p>
+        </div>
+
+        {hasUnsavedVideoGenerationChanges && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={saveVideoGeneration}
+              disabled={videoGenerationLoading}
+              className="w-full px-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {videoGenerationLoading ? (
+                <>
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  Save Video Generation Setting
                 </>
               )}
             </motion.button>

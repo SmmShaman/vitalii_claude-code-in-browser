@@ -233,6 +233,23 @@ async function enhanceWithRemotion(inputVideoPath, news, videoMeta = {}) {
     return null;
   }
 
+  // Check database toggle (admin dashboard setting)
+  try {
+    const { data: setting } = await supabase
+      .from('api_settings')
+      .select('key_value')
+      .eq('key_name', 'ENABLE_VIDEO_GENERATION')
+      .single();
+
+    if (setting && setting.key_value === 'false') {
+      console.log('⏭️ Video generation disabled in dashboard settings');
+      return null;
+    }
+  } catch (e) {
+    // If setting doesn't exist yet, default to enabled
+    console.log('ℹ️ ENABLE_VIDEO_GENERATION setting not found, defaulting to enabled');
+  }
+
   // Check if AI credentials are available
   const hasAI = process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY;
   const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
