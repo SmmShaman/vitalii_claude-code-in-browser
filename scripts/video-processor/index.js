@@ -227,10 +227,11 @@ async function enhanceWithRemotion(inputVideoPath, news) {
 
   // Check if AI credentials are available
   const hasAI = process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY;
-  const hasTTS = process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_API_KEY;
+  const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
 
   if (!hasAI || !hasTTS) {
     console.log('⚠️ Missing AI/TTS credentials, skipping Remotion enhancement');
+    console.log(`   AI (Azure): ${hasAI ? '✅' : '❌'}, TTS (Zvukogram): ${hasTTS ? '✅' : '❌'}`);
     return null;
   }
 
