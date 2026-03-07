@@ -11,6 +11,7 @@ import { NewsVideo } from "./compositions/NewsVideo";
 
 const DEFAULT_PROPS = {
   videoSrc: "",
+  imageSrc: "",
   voiceoverSrc: "",
   subtitles: [] as { text: string; startTime: number; endTime: number }[],
   headline: "Breaking News",

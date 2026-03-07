@@ -14,6 +14,7 @@ import React from "react";
 import {
   AbsoluteFill,
   Audio,
+  Img,
   OffthreadVideo,
   useCurrentFrame,
   useVideoConfig,
@@ -33,6 +34,8 @@ import {
 export interface NewsVideoProps {
   /** Absolute path or URL to the source video (downloaded from Telegram) */
   videoSrc: string;
+  /** Absolute path or URL to a static image (used when no video available) */
+  imageSrc?: string;
   /** Absolute path or URL to the AI voiceover audio */
   voiceoverSrc: string;
   /** Word-level or sentence-level subtitle entries with timestamps */
@@ -49,6 +52,7 @@ export interface NewsVideoProps {
 
 export const NewsVideo: React.FC<NewsVideoProps> = ({
   videoSrc,
+  imageSrc,
   voiceoverSrc,
   subtitles,
   headline,
@@ -57,13 +61,21 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
   theme: themeOverrides,
 }) => {
   const frame = useCurrentFrame();
-  const { fps, width, height } = useVideoConfig();
+  const { fps, width, height, durationInFrames } = useVideoConfig();
   const theme = mergeTheme(themeOverrides);
   const layout = getLayoutConfig(width, height);
 
   // Resolve media sources: bare filenames → staticFile(), URLs → as-is
-  const resolvedVideoSrc = videoSrc && !videoSrc.startsWith("http") ? staticFile(videoSrc) : videoSrc;
-  const resolvedVoiceoverSrc = voiceoverSrc && !voiceoverSrc.startsWith("http") ? staticFile(voiceoverSrc) : voiceoverSrc;
+  const resolve = (src: string | undefined) =>
+    src ? (src.startsWith("http") ? src : staticFile(src)) : "";
+  const resolvedVideoSrc = resolve(videoSrc);
+  const resolvedImageSrc = resolve(imageSrc);
+  const resolvedVoiceoverSrc = resolve(voiceoverSrc);
+  const hasVideo = !!resolvedVideoSrc;
+
+  // Ken Burns effect for static images (slow zoom + pan)
+  const kenBurnsScale = hasVideo ? 1 : interpolate(frame, [0, durationInFrames], [1, 1.15], { extrapolateRight: "clamp" });
+  const kenBurnsX = hasVideo ? 0 : interpolate(frame, [0, durationInFrames], [0, -3], { extrapolateRight: "clamp" });
 
   // ── Headline intro animation (first 2 seconds) ──
   const hk = headlineKeyframes(fps);
@@ -82,8 +94,8 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.colors.background }}>
-      {/* ── Layer 1: Background video ── */}
-      {resolvedVideoSrc && (
+      {/* ── Layer 1: Background visual (video or image) ── */}
+      {hasVideo ? (
         <>
           {/* Blurred background (fills entire canvas for vertical crops) */}
           {layout.isVertical && (
@@ -122,7 +134,28 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
             />
           </AbsoluteFill>
         </>
-      )}
+      ) : resolvedImageSrc ? (
+        /* Static image with Ken Burns (slow zoom + pan) */
+        <AbsoluteFill>
+          <Img
+            src={resolvedImageSrc}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transform: `scale(${kenBurnsScale}) translateX(${kenBurnsX}%)`,
+            }}
+          />
+          {/* Dark overlay for text readability */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)",
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
 
       {/* ── Layer 2: AI Voiceover audio ── */}
       {resolvedVoiceoverSrc && <Audio src={resolvedVoiceoverSrc} volume={theme.opacity.voiceoverVolume} />}

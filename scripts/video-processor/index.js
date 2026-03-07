@@ -11,7 +11,7 @@
  * - SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  * - AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY (for script generation)
  * - OPENAI_API_KEY (for TTS voiceover)
- * - NEWS_ID (optional), MODE (single/batch), BATCH_LIMIT
+ * - NEWS_ID (optional), MODE (single/batch/text_news), BATCH_LIMIT
  * - SKIP_REMOTION (optional) - set to 'true' to skip Remotion rendering
  */
 
@@ -498,6 +498,194 @@ async function getPendingVideos(limit, specificId = null) {
 }
 
 /**
+ * Get text-only news for video generation (no existing video)
+ */
+async function getTextNewsForVideo(limit, specificId = null) {
+  let query = supabase
+    .from('news')
+    .select('id, original_title, title_en, description_en, original_content, image_url, processed_image_url, video_url, video_type')
+    .eq('is_published', true)
+    .is('video_url', null);  // No video yet
+
+  if (specificId) {
+    query = query.eq('id', specificId);
+  } else {
+    // Only get news that have an image (needed for background)
+    query = query.not('image_url', 'is', null);
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to fetch text news: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Process a text-only news item: image + AI voiceover → video
+ */
+async function processTextNewsItem(news) {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`📰 Processing text news: ${news.id}`);
+  console.log(`📝 Title: ${news.title_en?.substring(0, 60) || news.original_title?.substring(0, 60)}...`);
+
+  const imageUrl = news.processed_image_url || news.image_url;
+  if (!imageUrl) {
+    console.log('⚠️ No image available for this news, skipping');
+    return { success: false, error: 'No image available' };
+  }
+  console.log(`🖼️ Image: ${imageUrl.substring(0, 80)}...`);
+
+  let remotionOutput = null;
+
+  try {
+    // Generate voiceover from article text
+    const articleText = news.original_content || news.title_en || news.original_title || '';
+    if (!articleText || articleText.length < 20) {
+      console.log('⚠️ Article text too short for script generation');
+      return { success: false, error: 'Article text too short' };
+    }
+
+    const hasAI = process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY;
+    const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
+    if (!hasAI || !hasTTS) {
+      console.log('⚠️ Missing AI/TTS credentials');
+      return { success: false, error: 'Missing AI/TTS credentials' };
+    }
+
+    // Check database toggle
+    try {
+      const { data: setting } = await supabase
+        .from('api_settings')
+        .select('key_value')
+        .eq('key_name', 'ENABLE_VIDEO_GENERATION')
+        .single();
+      if (setting && setting.key_value === 'false') {
+        console.log('⏭️ Video generation disabled in dashboard');
+        return { success: false, error: 'Video generation disabled' };
+      }
+    } catch (e) { /* default: enabled */ }
+
+    // Target 20-30 seconds for text news
+    const targetDuration = 25;
+
+    console.log('\n🤖 Step A: Generating AI script...');
+    const script = await generateScript(articleText, 'en', targetDuration);
+
+    console.log('\n🎙️ Step B: Generating voiceover...');
+    const voiceover = await generateVoiceover(script, 'en');
+
+    console.log('\n🎬 Step C: Rendering with Remotion...');
+    const outputPath = path.join(os.tmpdir(), `remotion_text_${Date.now()}.mp4`);
+    const remotionProjectDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../remotion-video');
+    const headline = (news.title_en || news.original_title || 'News').substring(0, 80);
+
+    // Download the image to public/ dir
+    const publicDir = path.join(remotionProjectDir, 'public');
+    await fs.mkdir(publicDir, { recursive: true });
+
+    const imageFilename = `news_image_${Date.now()}.jpg`;
+    const audioFilename = path.basename(voiceover.audioPath);
+
+    // Download image
+    console.log(`📥 Downloading image...`);
+    const imgResp = await fetch(imageUrl);
+    if (!imgResp.ok) throw new Error(`Failed to download image: ${imgResp.status}`);
+    const imgBuffer = Buffer.from(await imgResp.arrayBuffer());
+    await fs.writeFile(path.join(publicDir, imageFilename), imgBuffer);
+    console.log(`✅ Image: ${(imgBuffer.length / 1024).toFixed(0)} KB`);
+
+    // Copy audio
+    await fs.copyFile(voiceover.audioPath, path.join(publicDir, audioFilename));
+
+    const actualDuration = voiceover.durationSeconds + 1;
+    console.log(`⏱️ Voiceover: ${voiceover.durationSeconds}s → render duration: ${actualDuration}s`);
+
+    const props = JSON.stringify({
+      videoSrc: '',          // No video
+      imageSrc: imageFilename,
+      voiceoverSrc: audioFilename,
+      subtitles: voiceover.subtitles,
+      headline: headline,
+      originalVideoDurationInSeconds: actualDuration,
+      muteOriginalAudio: true,
+    });
+
+    const propsFile = path.join(os.tmpdir(), `remotion_props_${Date.now()}.json`);
+    await fs.writeFile(propsFile, props);
+
+    // Always vertical for text news (Shorts/Reels/TikTok)
+    const compositionId = 'NewsVideoVertical';
+    console.log(`📐 Composition: ${compositionId} (text news → vertical)`);
+
+    const cmd = [
+      'npx', 'remotion', 'render',
+      compositionId,
+      outputPath,
+      `--props=${propsFile}`,
+      '--log=warn',
+    ].join(' ');
+
+    console.log(`🖥️ Running: ${cmd}`);
+    execSync(cmd, { cwd: remotionProjectDir, stdio: 'inherit', timeout: 900_000 });
+
+    const outputStats = await fs.stat(outputPath);
+    console.log(`✅ Remotion output: ${(outputStats.size / 1024 / 1024).toFixed(2)} MB`);
+    remotionOutput = outputPath;
+
+    // Cleanup temp files
+    await fs.unlink(propsFile).catch(() => {});
+    await fs.unlink(path.join(publicDir, imageFilename)).catch(() => {});
+    await fs.unlink(path.join(publicDir, audioFilename)).catch(() => {});
+
+    // Upload to YouTube
+    const title = news.title_en || 'News Video';
+    const description = news.description_en || '';
+    const youtubeResult = await uploadToYouTube(remotionOutput, title, description);
+
+    // Update database
+    const { error: updateError } = await supabase
+      .from('news')
+      .update({
+        video_url: youtubeResult.embedUrl,
+        video_type: 'youtube',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', news.id);
+
+    if (updateError) throw new Error(`Database update failed: ${updateError.message}`);
+
+    console.log(`✅ Successfully generated video for text news ${news.id}`);
+    return { success: true, videoId: youtubeResult.videoId, embedUrl: youtubeResult.embedUrl };
+
+  } catch (error) {
+    console.error(`❌ Failed to process text news ${news.id}: ${error.message}`);
+    return { success: false, error: error.message };
+  } finally {
+    if (remotionOutput) {
+      await fs.unlink(remotionOutput).catch(() => {});
+      console.log(`🗑️ Cleaned up: ${path.basename(remotionOutput)}`);
+    }
+  }
+}
+
+function printSummary(results) {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log('📊 Processing Summary:');
+  console.log(`   Total: ${results.total}`);
+  console.log(`   Success: ${results.success}`);
+  console.log(`   Failed: ${results.failed}`);
+  if (results.errors.length > 0) {
+    console.log('\n❌ Errors:');
+    results.errors.forEach(e => console.log(`   - ${e.id}: ${e.error}`));
+  }
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -505,10 +693,6 @@ async function main() {
   console.log(`📋 Mode: ${config.mode}`);
   console.log(`📊 Batch limit: ${config.batchLimit}`);
 
-  // Validate configuration
-  if (!config.telegram.apiId || !config.telegram.apiHash || !config.telegram.botToken) {
-    throw new Error('Missing Telegram credentials');
-  }
   if (!config.youtube.clientId || !config.youtube.clientSecret || !config.youtube.refreshToken) {
     throw new Error('Missing YouTube credentials');
   }
@@ -516,7 +700,36 @@ async function main() {
     throw new Error('Missing Supabase credentials');
   }
 
-  // Initialize MTKruto client
+  // ── Text news mode: no Telegram needed ──
+  if (config.mode === 'text_news') {
+    const items = await getTextNewsForVideo(
+      config.newsId ? 1 : config.batchLimit,
+      config.newsId || null
+    );
+
+    console.log(`📝 Found ${items.length} text news for video generation`);
+    if (items.length === 0) {
+      console.log('✅ No text news to process');
+      return;
+    }
+
+    const results = { total: items.length, success: 0, failed: 0, errors: [] };
+    for (const item of items) {
+      const result = await processTextNewsItem(item);
+      if (result.success) { results.success++; }
+      else { results.failed++; results.errors.push({ id: item.id, error: result.error }); }
+      if (items.length > 1) await new Promise(r => setTimeout(r, 2000));
+    }
+
+    printSummary(results);
+    return;
+  }
+
+  // ── Telegram video modes (single/batch): need Telegram client ──
+  if (!config.telegram.apiId || !config.telegram.apiHash || !config.telegram.botToken) {
+    throw new Error('Missing Telegram credentials');
+  }
+
   console.log('🔌 Connecting to Telegram...');
   const client = new Client({
     storage: new StorageMemory(),
@@ -528,57 +741,28 @@ async function main() {
   console.log('✅ Connected to Telegram');
 
   try {
-    // Get videos to process
     const videos = await getPendingVideos(
       config.mode === 'single' ? 1 : config.batchLimit,
       config.mode === 'single' ? config.newsId : null
     );
 
     console.log(`📹 Found ${videos.length} video(s) to process`);
-
     if (videos.length === 0) {
       console.log('✅ No pending videos to process');
       return;
     }
 
-    // Process each video
-    const results = {
-      total: videos.length,
-      success: 0,
-      failed: 0,
-      errors: [],
-    };
-
+    const results = { total: videos.length, success: 0, failed: 0, errors: [] };
     for (const video of videos) {
       const result = await processNewsItem(client, video);
-
-      if (result.success) {
-        results.success++;
-      } else {
-        results.failed++;
-        results.errors.push({ id: video.id, error: result.error });
-      }
-
-      // Small delay between videos to avoid rate limits
-      if (videos.length > 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
+      if (result.success) { results.success++; }
+      else { results.failed++; results.errors.push({ id: video.id, error: result.error }); }
+      if (videos.length > 1) await new Promise(r => setTimeout(r, 2000));
     }
 
-    // Print summary
-    console.log(`\n${'='.repeat(60)}`);
-    console.log('📊 Processing Summary:');
-    console.log(`   Total: ${results.total}`);
-    console.log(`   Success: ${results.success}`);
-    console.log(`   Failed: ${results.failed}`);
-
-    if (results.errors.length > 0) {
-      console.log('\n❌ Errors:');
-      results.errors.forEach(e => console.log(`   - ${e.id}: ${e.error}`));
-    }
+    printSummary(results);
 
   } finally {
-    // Disconnect MTKruto client
     await client.disconnect();
     console.log('🔌 Disconnected from Telegram');
   }

@@ -14,8 +14,9 @@ on:
         default: 'single'
         type: choice
         options:
-          - single    # Process single news by ID
-          - batch     # Process batch of pending videos
+          - single      # Process single news by ID
+          - batch       # Process batch of pending videos
+          - text_news   # Generate video from text+image news
       batch_limit:
         description: 'Number of videos to process in batch mode'
         required: false
