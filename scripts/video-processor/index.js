@@ -297,7 +297,7 @@ async function enhanceWithRemotion(inputVideoPath, news) {
     execSync(cmd, {
       cwd: remotionProjectDir,
       stdio: 'inherit',
-      timeout: 300_000, // 5 min timeout
+      timeout: 900_000, // 15 min timeout
     });
 
     // Verify output exists
