@@ -28,23 +28,30 @@ export async function generateScript(articleText, language = 'en', maxDurationSe
   const languageNames = { en: 'English', no: 'Norwegian', ua: 'Ukrainian' };
   const langName = languageNames[language] || 'English';
 
-  // Approximate: ~2 words per second for natural TTS speech (conservative to avoid overrun)
+  // ~2 words/sec for TTS. Reserve 3s for intro hook + 3s for outro
   const targetWordCount = Math.round(maxDurationSeconds * 2);
+  const hookSeconds = Math.min(3, Math.round(maxDurationSeconds * 0.15));
+  const outroSeconds = Math.min(3, Math.round(maxDurationSeconds * 0.15));
+  const bodySeconds = maxDurationSeconds - hookSeconds - outroSeconds;
 
-  const systemPrompt = `You are a professional newsreader and social media content creator. 
-Your task is to create a voiceover script for a short news video (TikTok / YouTube Shorts / Instagram Reels style).
+  const systemPrompt = `You are a professional newsreader creating a voiceover for a ${Math.round(maxDurationSeconds)}-second news video.
 
-Rules:
+The video is EXACTLY ${Math.round(maxDurationSeconds)} seconds long. Your script must tell a COMPLETE story that fits this duration — with a beginning, middle, and end. Do NOT cut off mid-thought.
+
+STRUCTURE (${Math.round(maxDurationSeconds)}s total):
+1. HOOK (first ~${hookSeconds}s): One punchy sentence that grabs attention immediately
+2. BODY (~${bodySeconds}s): The core story — what happened, why it matters. 2-4 short sentences.
+3. OUTRO (~${outroSeconds}s): A concluding thought, takeaway, or call-to-action. One sentence.
+
+RULES:
 - Write in ${langName}
-- The script must be EXACTLY the spoken text — no stage directions, no timestamps, no [brackets]
-- Target length: approximately ${targetWordCount} words (~${maxDurationSeconds} seconds when spoken)
-- Start with a hook that grabs attention in the first 3 seconds
-- Use short, punchy sentences
-- End with a brief call-to-action or thought-provoking statement
-- Keep the tone informative but engaging, not robotic
-- Do NOT include any formatting, just plain spoken text`;
+- Output ONLY the spoken text — no stage directions, no timestamps, no [brackets], no labels
+- STRICTLY ${targetWordCount} words maximum (this is critical — TTS will speak at ~2 words/sec)
+- Short, punchy sentences. Conversational tone, not robotic.
+- The story must feel COMPLETE — never end mid-sentence or mid-thought
+- Do NOT try to cover every detail from the article — pick the most compelling angle`;
 
-  const userPrompt = `Create a voiceover script for this news article:\n\n${articleText.substring(0, 3000)}`;
+  const userPrompt = `Write a ${Math.round(maxDurationSeconds)}-second voiceover script (max ${targetWordCount} words) for this news:\n\n${articleText.substring(0, 3000)}`;
 
   const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
 
@@ -76,7 +83,7 @@ Rules:
     throw new Error('Azure OpenAI returned empty script');
   }
 
-  console.log(`📝 Generated script (${script.split(/\s+/).length} words, ~${Math.round(script.split(/\s+/).length / 2.5)}s):`);
+  console.log(`📝 Generated script (${script.split(/\s+/).length} words, ~${Math.round(script.split(/\s+/).length / 2)}s for ${Math.round(maxDurationSeconds)}s video):`);
   console.log(`   "${script.substring(0, 100)}..."`);
 
   return script;
