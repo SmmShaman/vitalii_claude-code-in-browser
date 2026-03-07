@@ -167,3 +167,81 @@ AZURE_OPENAI_API_KEY=your_key
 - [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
 
 ---
+
+## Remotion Enhancement Pipeline (березень 2025)
+
+### Опис
+
+Автоматичне покращення відео перед завантаженням на YouTube: AI-cценарій, озвучка та анімовані субтитри. Працює як додатковий крок у GitHub Actions `process-video.yml`.
+
+### Workflow
+
+```
+1. Download video from Telegram (MTKruto)
+   ↓
+2. Azure OpenAI генерує сценарій з тексту новини
+   ↓
+3. OpenAI TTS створює voiceover.mp3 + таймінги слів
+   ↓
+4. Remotion CLI рендерить фінальне відео:
+   - Оригінальне відео з розмитим фоном (для вертикального формату)
+   - Озвучка замість оригінального звуку
+   - Анімовані субтитри (TikTok-стиль)
+   - Заголовок з анімацією та брендинг
+   ↓
+5. Upload на YouTube
+```
+
+### Два шаблони
+
+| Template | Розмір | Формат | Використання |
+|----------|--------|--------|-------------|
+| `NewsVideoVertical` | 1080×1920 | 9:16 | TikTok, Reels, Shorts |
+| `NewsVideoHorizontal` | 1920×1080 | 16:9 | YouTube, LinkedIn, Facebook |
+
+### Файли
+
+```
+├── scripts/remotion-video/                    # Remotion React проєкт
+│   ├── src/
+│   │   ├── index.ts                           # Entry point
+│   │   ├── Root.tsx                           # Реєстрація композицій
+│   │   ├── compositions/NewsVideo.tsx         # Головна композиція
+│   │   └── components/AnimatedSubtitles.tsx   # Анімовані субтитри
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── remotion.config.ts
+│
+├── scripts/video-processor/
+│   ├── generate-script.js                     # AI сценарій (Azure OpenAI)
+│   ├── generate-voiceover.js                  # TTS озвучка (OpenAI)
+│   └── index.js                               # Оновлений процесор
+```
+
+### Environment Variables (нові)
+
+```env
+# OpenAI TTS (для озвучки)
+OPENAI_API_KEY=sk-...
+
+# Azure OpenAI (вже існують, використовуються для сценарію)
+AZURE_OPENAI_ENDPOINT=https://...
+AZURE_OPENAI_API_KEY=...
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+
+# Опціональний прапорець
+SKIP_REMOTION=false  # Встановити 'true' для пропуску Remotion
+```
+
+### Fallback стратегія
+
+```
+Remotion pipeline failed?
+├─ ТАК → Завантажити оригінальне відео (як раніше)
+└─ НІ → Завантажити покращене відео з Remotion
+```
+
+Якщо відсутні AI/TTS credentials або текст новини занадто короткий — Remotion автоматично пропускається, і відео завантажується в оригінальному вигляді.
+
+---
+

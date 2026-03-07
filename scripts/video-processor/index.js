@@ -1,14 +1,18 @@
 /**
  * Video Processor for GitHub Actions
  *
- * Downloads videos from Telegram channels using MTKruto (MTProto)
- * and uploads them to YouTube, then updates Supabase database.
+ * Downloads videos from Telegram channels using MTKruto (MTProto),
+ * enhances them with Remotion (AI script + voiceover + animated subtitles),
+ * and uploads to YouTube, then updates Supabase database.
  *
  * Environment variables:
  * - TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN
  * - YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
  * - SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * - AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY (for script generation)
+ * - OPENAI_API_KEY (for TTS voiceover)
  * - NEWS_ID (optional), MODE (single/batch), BATCH_LIMIT
+ * - SKIP_REMOTION (optional) - set to 'true' to skip Remotion rendering
  */
 
 import { Client, StorageMemory } from '@mtkruto/node';
@@ -17,6 +21,9 @@ import { google } from 'googleapis';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { execSync } from 'child_process';
+import { generateScript } from './generate-script.js';
+import { generateVoiceover } from './generate-voiceover.js';
 
 // Configuration
 const config = {
@@ -204,6 +211,104 @@ async function uploadToYouTube(filePath, title, description) {
 }
 
 /**
+ * Render the downloaded video through Remotion with AI-generated
+ * voiceover and animated subtitles.
+ *
+ * @param {string} inputVideoPath - Path to the downloaded raw video
+ * @param {object} news - News record from Supabase
+ * @returns {Promise<{outputPath: string, durationSeconds: number} | null>}
+ */
+async function enhanceWithRemotion(inputVideoPath, news) {
+  const skipRemotion = process.env.SKIP_REMOTION === 'true';
+  if (skipRemotion) {
+    console.log('⏭️ SKIP_REMOTION=true, skipping Remotion rendering');
+    return null;
+  }
+
+  // Check if AI credentials are available
+  const hasAI = process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY;
+  const hasTTS = process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_API_KEY;
+
+  if (!hasAI || !hasTTS) {
+    console.log('⚠️ Missing AI/TTS credentials, skipping Remotion enhancement');
+    return null;
+  }
+
+  let voiceoverPath = null;
+
+  try {
+    // ── Step A: Generate AI script ──
+    const articleText = news.original_content || news.original_title || '';
+    if (!articleText || articleText.length < 20) {
+      console.log('⚠️ Article text too short for script generation, skipping');
+      return null;
+    }
+
+    console.log('\n🤖 Step A: Generating AI script...');
+    const script = await generateScript(articleText, 'en', 45);
+
+    // ── Step B: Generate voiceover + timestamps ──
+    console.log('\n🎙️ Step B: Generating voiceover...');
+    const voiceover = await generateVoiceover(script, 'en');
+    voiceoverPath = voiceover.audioPath;
+
+    // ── Step C: Render with Remotion CLI ──
+    console.log('\n🎬 Step C: Rendering with Remotion...');
+    const outputPath = path.join(os.tmpdir(), `remotion_output_${Date.now()}.mp4`);
+    const remotionProjectDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../remotion-video');
+
+    const headline = (news.title_en || news.original_title || 'News').substring(0, 80);
+
+    const props = JSON.stringify({
+      videoSrc: inputVideoPath,
+      voiceoverSrc: voiceover.audioPath,
+      subtitles: voiceover.subtitles,
+      headline: headline,
+      originalVideoDurationInSeconds: voiceover.durationSeconds + 2,
+    });
+
+    // Write props to a temp file (CLI has arg length limits)
+    const propsFile = path.join(os.tmpdir(), `remotion_props_${Date.now()}.json`);
+    await fs.writeFile(propsFile, props);
+
+    const compositionId = 'NewsVideoVertical'; // 9:16 for Shorts/Reels/TikTok
+
+    const cmd = [
+      'npx', 'remotion', 'render',
+      compositionId,
+      outputPath,
+      `--props=${propsFile}`,
+      '--log=warning',
+    ].join(' ');
+
+    console.log(`🖥️ Running: ${cmd}`);
+    console.log(`📂 CWD: ${remotionProjectDir}`);
+
+    execSync(cmd, {
+      cwd: remotionProjectDir,
+      stdio: 'inherit',
+      timeout: 300_000, // 5 min timeout
+    });
+
+    // Verify output exists
+    const outputStats = await fs.stat(outputPath);
+    console.log(`✅ Remotion output: ${(outputStats.size / 1024 / 1024).toFixed(2)} MB`);
+
+    // Cleanup props file
+    await fs.unlink(propsFile).catch(() => {});
+
+    return { outputPath, durationSeconds: voiceover.durationSeconds };
+
+  } catch (error) {
+    console.error(`⚠️ Remotion enhancement failed: ${error.message}`);
+    console.log('↩️ Falling back to raw video upload');
+    // Cleanup voiceover on failure
+    if (voiceoverPath) await fs.unlink(voiceoverPath).catch(() => {});
+    return null;
+  }
+}
+
+/**
  * Process a single news item
  */
 async function processNewsItem(client, news) {
@@ -219,18 +324,33 @@ async function processNewsItem(client, news) {
   }
 
   let tempFile = null;
+  let remotionOutput = null;
+  let voiceoverFile = null;
 
   try {
     // Step 1: Download from Telegram
     tempFile = await downloadTelegramVideo(client, parsed.channel, parsed.messageId);
 
-    // Step 2: Upload to YouTube (ALWAYS English title)
+    // Step 2: Enhance with Remotion (AI script + voiceover + animated subtitles)
+    const enhancement = await enhanceWithRemotion(tempFile, news);
+
+    // Determine which file to upload
+    let uploadFile = tempFile;
+    if (enhancement) {
+      remotionOutput = enhancement.outputPath;
+      uploadFile = remotionOutput;
+      console.log('🎬 Uploading Remotion-enhanced video');
+    } else {
+      console.log('📹 Uploading raw video (no Remotion enhancement)');
+    }
+
+    // Step 3: Upload to YouTube (ALWAYS English title)
     const title = news.title_en || 'News Video';
     const description = news.description_en || '';
 
-    const youtubeResult = await uploadToYouTube(tempFile, title, description);
+    const youtubeResult = await uploadToYouTube(uploadFile, title, description);
 
-    // Step 3: Update database (save original Telegram URL for LinkedIn)
+    // Step 4: Update database (save original Telegram URL for LinkedIn)
     const { error: updateError } = await supabase
       .from('news')
       .update({
@@ -279,13 +399,15 @@ async function processNewsItem(client, news) {
     return { success: false, error: error.message };
 
   } finally {
-    // Cleanup temp file
-    if (tempFile) {
-      try {
-        await fs.unlink(tempFile);
-        console.log(`🗑️ Cleaned up temp file`);
-      } catch (e) {
-        // Ignore cleanup errors
+    // Cleanup temp files
+    for (const f of [tempFile, remotionOutput, voiceoverFile]) {
+      if (f) {
+        try {
+          await fs.unlink(f);
+          console.log(`🗑️ Cleaned up: ${path.basename(f)}`);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
     }
   }

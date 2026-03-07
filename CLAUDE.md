@@ -90,7 +90,14 @@ npm run lint            # ESLint
 │   └── sessions/                 # Query history
 │
 └── scripts/                      # GitHub Actions scripts
-    ├── video-processor/          # Telegram → YouTube
+    ├── video-processor/          # Telegram → Remotion → YouTube
+    │   ├── index.js              # Main processor
+    │   ├── generate-script.js    # AI script generation (Azure OpenAI)
+    │   └── generate-voiceover.js # TTS voiceover + timestamps (OpenAI)
+    ├── remotion-video/           # Remotion project (video templates)
+    │   └── src/
+    │       ├── compositions/     # NewsVideo (vertical + horizontal)
+    │       └── components/       # AnimatedSubtitles
     └── linkedin-video/           # LinkedIn native video
 ```
 
@@ -257,6 +264,13 @@ supabase functions deploy <function-name> --no-verify-jwt
 - MTKruto bypasses Telegram Bot API 20MB limit (supports up to 2GB)
 - GitHub Actions workflows for heavy processing
 - YouTube upload for site embeds (unlisted videos)
+- **Remotion Enhancement Pipeline (March 2025):**
+  - AI script generation from article text (Azure OpenAI)
+  - TTS voiceover with word-level timestamps (OpenAI TTS)
+  - Remotion renders final video: blurred background, voiceover, animated subtitles
+  - Two templates: Vertical (1080×1920, 9:16) and Horizontal (1920×1080, 16:9)
+  - Graceful fallback to raw video if any step fails
+  - Toggle: `SKIP_REMOTION=true` to bypass
 
 ### Social Media Integration
 
@@ -395,6 +409,9 @@ ADMIN_EMAIL=berbeha@vitalii.no
 
 # GitHub Actions
 GH_PAT=ghp_... (for triggering workflows)
+
+# OpenAI (TTS voiceover for Remotion)
+OPENAI_API_KEY=sk-...
 ```
 
 ---
@@ -488,7 +505,9 @@ supabase functions serve <function-name>
 ### Video Processing
 - MTKruto (MTProto) bypasses Telegram Bot API 20MB limit
 - GitHub Actions used for heavy video processing (LinkedIn, Instagram, YouTube)
-- Fallback to Telegram embed if processing fails
+- Remotion renders enhanced videos with AI voiceover + animated subtitles
+- Fallback to raw video upload if Remotion/AI steps fail
+- Fallback to Telegram embed if YouTube upload fails
 
 ### Social Media Posting
 - Duplicate prevention via `social_media_posts` table (status: pending/posted/failed)
@@ -622,5 +641,5 @@ cd docs/byterover-context && ./curate-all.sh
 
 ---
 
-**Last Updated:** January 28, 2025
+**Last Updated:** March 7, 2025
 **Maintained By:** Vitalii Berbeha (@SmmShaman)
