@@ -1,0 +1,86 @@
+name: Daily News Video
+
+on:
+  # Every day at 07:00 CET (06:00 UTC)
+  schedule:
+    - cron: '0 6 * * *'
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      language:
+        description: 'Video language'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'no'    # Norwegian
+          - 'en'    # English
+      format:
+        description: 'Video format'
+        required: true
+        default: 'vertical'
+        type: choice
+        options:
+          - vertical    # 1080x1920 (Shorts/Reels/TikTok)
+          - horizontal  # 1920x1080 (YouTube/LinkedIn)
+
+jobs:
+  daily-compilation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Chrome dependencies (for Remotion)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64
+
+      - name: Install video-processor dependencies
+        working-directory: ./scripts/video-processor
+        run: npm ci
+
+      - name: Install Remotion project dependencies
+        working-directory: ./scripts/remotion-video
+        run: npm ci
+
+      - name: Generate daily news compilation
+        working-directory: ./scripts/video-processor
+        env:
+          # YouTube
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+
+          # Supabase
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          # Azure OpenAI (video director + script generation)
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+
+          # TTS (Zvukogram)
+          ZVUKOGRAM_TOKEN: ${{ secrets.ZVUKOGRAM_TOKEN }}
+          ZVUKOGRAM_EMAIL: ${{ secrets.ZVUKOGRAM_EMAIL }}
+
+          # Video settings
+          LANGUAGE: ${{ github.event.inputs.language || 'no' }}
+          FORMAT: ${{ github.event.inputs.format || 'vertical' }}
+        run: node daily-compilation.js
+
+      - name: Report results
+        if: always()
+        run: |
+          echo "Daily news video generation completed"
+          echo "Language: ${{ github.event.inputs.language || 'no' }}"
+          echo "Format: ${{ github.event.inputs.format || 'vertical' }}"

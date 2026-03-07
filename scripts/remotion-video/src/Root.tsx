@@ -1,15 +1,19 @@
 /**
- * Remotion Root — registers all available compositions.
+ * Remotion Root -- registers all available compositions.
  *
- * We register two templates:
- *  - NewsVideoVertical  (1080x1920, 9:16 — for TikTok / Reels / Shorts)
- *  - NewsVideoHorizontal (1920x1080, 16:9 — for YouTube / LinkedIn / Facebook)
+ * Templates:
+ *  - NewsVideoVertical   (1080x1920, 9:16)  -- static image + voiceover
+ *  - NewsVideoHorizontal (1920x1080, 16:9)  -- static image + voiceover
+ *  - DirectedVertical    (1080x1920, 9:16)  -- multi-scene, Claude-directed
+ *  - DirectedHorizontal  (1920x1080, 16:9)  -- multi-scene, Claude-directed
  */
 import React from "react";
 import { Composition } from "remotion";
 import { NewsVideo } from "./compositions/NewsVideo";
+import { DirectedNewsVideo } from "./compositions/DirectedNewsVideo";
+import { DailyNewsShow } from "./compositions/DailyNewsShow";
 
-const DEFAULT_PROPS = {
+const LEGACY_PROPS = {
   videoSrc: "",
   imageSrc: "",
   voiceoverSrc: "",
@@ -19,10 +23,31 @@ const DEFAULT_PROPS = {
   muteOriginalAudio: false,
 };
 
+const DIRECTED_PROPS = {
+  scenes: [] as any[],
+  voiceoverSrc: "",
+  subtitles: [] as { text: string; startTime: number; endTime: number }[],
+  totalDurationSeconds: 30,
+};
+
+const DAILY_SHOW_PROPS = {
+  date: "",
+  showTitle: "Daglig Nyhetsoppdatering",
+  language: "no",
+  segments: [] as any[],
+  voiceoverSrc: "",
+  subtitles: [] as { text: string; startTime: number; endTime: number }[],
+  totalDurationSeconds: 120,
+  introDurationSeconds: 4,
+  outroDurationSeconds: 4,
+  dividerDurationSeconds: 2,
+  accentColor: "#667eea",
+};
+
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      {/* Vertical format for TikTok / Reels / Shorts */}
+      {/* ── Legacy: single-scene templates ── */}
       <Composition
         id="NewsVideoVertical"
         component={NewsVideo as React.FC}
@@ -30,17 +55,15 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1080}
         height={1920}
-        defaultProps={DEFAULT_PROPS}
+        defaultProps={LEGACY_PROPS}
         calculateMetadata={({ props }) => {
           const seconds = Math.max(
-            (props as typeof DEFAULT_PROPS).originalVideoDurationInSeconds,
+            (props as typeof LEGACY_PROPS).originalVideoDurationInSeconds,
             10,
           );
           return { durationInFrames: Math.ceil(seconds * 30) };
         }}
       />
-
-      {/* Horizontal format for YouTube / LinkedIn / Facebook */}
       <Composition
         id="NewsVideoHorizontal"
         component={NewsVideo as React.FC}
@@ -48,10 +71,77 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1920}
         height={1080}
-        defaultProps={DEFAULT_PROPS}
+        defaultProps={LEGACY_PROPS}
         calculateMetadata={({ props }) => {
           const seconds = Math.max(
-            (props as typeof DEFAULT_PROPS).originalVideoDurationInSeconds,
+            (props as typeof LEGACY_PROPS).originalVideoDurationInSeconds,
+            10,
+          );
+          return { durationInFrames: Math.ceil(seconds * 30) };
+        }}
+      />
+
+      {/* ── Multi-scene: Claude-directed templates ── */}
+      <Composition
+        id="DirectedVertical"
+        component={DirectedNewsVideo as React.FC}
+        durationInFrames={30 * 30}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={DIRECTED_PROPS}
+        calculateMetadata={({ props }) => {
+          const seconds = Math.max(
+            (props as typeof DIRECTED_PROPS).totalDurationSeconds,
+            10,
+          );
+          return { durationInFrames: Math.ceil(seconds * 30) };
+        }}
+      />
+      <Composition
+        id="DirectedHorizontal"
+        component={DirectedNewsVideo as React.FC}
+        durationInFrames={30 * 30}
+        fps={30}
+        width={1920}
+        height={1080}
+        defaultProps={DIRECTED_PROPS}
+        calculateMetadata={({ props }) => {
+          const seconds = Math.max(
+            (props as typeof DIRECTED_PROPS).totalDurationSeconds,
+            10,
+          );
+          return { durationInFrames: Math.ceil(seconds * 30) };
+        }}
+      />
+      {/* ── Daily News Show ── */}
+      <Composition
+        id="DailyNewsShowVertical"
+        component={DailyNewsShow as React.FC}
+        durationInFrames={120 * 30}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={DAILY_SHOW_PROPS}
+        calculateMetadata={({ props }) => {
+          const seconds = Math.max(
+            (props as typeof DAILY_SHOW_PROPS).totalDurationSeconds,
+            10,
+          );
+          return { durationInFrames: Math.ceil(seconds * 30) };
+        }}
+      />
+      <Composition
+        id="DailyNewsShowHorizontal"
+        component={DailyNewsShow as React.FC}
+        durationInFrames={120 * 30}
+        fps={30}
+        width={1920}
+        height={1080}
+        defaultProps={DAILY_SHOW_PROPS}
+        calculateMetadata={({ props }) => {
+          const seconds = Math.max(
+            (props as typeof DAILY_SHOW_PROPS).totalDurationSeconds,
             10,
           );
           return { durationInFrames: Math.ceil(seconds * 30) };

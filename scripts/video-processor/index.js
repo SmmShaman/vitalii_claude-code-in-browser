@@ -24,6 +24,7 @@ import os from 'os';
 import { execSync } from 'child_process';
 import { generateScript } from './generate-script.js';
 import { generateVoiceover } from './generate-voiceover.js';
+import { directVideo } from './direct-video.js';
 
 // Configuration
 const config = {
@@ -527,6 +528,9 @@ async function getTextNewsForVideo(limit, specificId = null) {
 
 /**
  * Process a text-only news item: image + AI voiceover → video
+ * Supports two modes:
+ *  - "directed" (default): Claude AI directs multi-scene video
+ *  - "simple": legacy single-scene (image + voiceover)
  */
 async function processTextNewsItem(news) {
   console.log(`\n${'='.repeat(60)}`);
@@ -543,18 +547,16 @@ async function processTextNewsItem(news) {
   let remotionOutput = null;
 
   try {
-    // Generate voiceover from article text
     const articleText = news.original_content || news.title_en || news.original_title || '';
     if (!articleText || articleText.length < 20) {
       console.log('⚠️ Article text too short for script generation');
       return { success: false, error: 'Article text too short' };
     }
 
-    const hasAI = process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY;
     const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
-    if (!hasAI || !hasTTS) {
-      console.log('⚠️ Missing AI/TTS credentials');
-      return { success: false, error: 'Missing AI/TTS credentials' };
+    if (!hasTTS) {
+      console.log('⚠️ Missing TTS credentials');
+      return { success: false, error: 'Missing TTS credentials' };
     }
 
     // Check database toggle
@@ -570,28 +572,14 @@ async function processTextNewsItem(news) {
       }
     } catch (e) { /* default: enabled */ }
 
-    // Target 20-30 seconds for text news
     const targetDuration = 25;
-
-    console.log('\n🤖 Step A: Generating AI script...');
-    const script = await generateScript(articleText, 'en', targetDuration);
-
-    console.log('\n🎙️ Step B: Generating voiceover...');
-    const voiceover = await generateVoiceover(script, 'en');
-
-    console.log('\n🎬 Step C: Rendering with Remotion...');
-    const outputPath = path.join(os.tmpdir(), `remotion_text_${Date.now()}.mp4`);
-    const remotionProjectDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../remotion-video');
     const headline = (news.title_en || news.original_title || 'News').substring(0, 80);
-
-    // Download the image to public/ dir
+    const remotionProjectDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../remotion-video');
     const publicDir = path.join(remotionProjectDir, 'public');
     await fs.mkdir(publicDir, { recursive: true });
 
+    // Download image to public/
     const imageFilename = `news_image_${Date.now()}.jpg`;
-    const audioFilename = path.basename(voiceover.audioPath);
-
-    // Download image
     console.log(`📥 Downloading image...`);
     const imgResp = await fetch(imageUrl);
     if (!imgResp.ok) throw new Error(`Failed to download image: ${imgResp.status}`);
@@ -599,28 +587,44 @@ async function processTextNewsItem(news) {
     await fs.writeFile(path.join(publicDir, imageFilename), imgBuffer);
     console.log(`✅ Image: ${(imgBuffer.length / 1024).toFixed(0)} KB`);
 
-    // Copy audio
+    // ── Step A: Claude Director generates scene plan ──
+    console.log('\n🎬 Step A: Claude Director...');
+    const plan = await directVideo(articleText, headline, targetDuration);
+
+    // Fill imageSrc in scenes that need it
+    for (const scene of plan.scenes) {
+      if (scene.type === 'content' || scene.type === 'headline') {
+        scene.imageSrc = imageFilename;
+      }
+    }
+
+    // ── Step B: Generate voiceover from director's script ──
+    console.log('\n🎙️ Step B: Generating voiceover...');
+    const voiceover = await generateVoiceover(plan.voiceoverScript, 'en');
+
+    // Copy audio to public/
+    const audioFilename = path.basename(voiceover.audioPath);
     await fs.copyFile(voiceover.audioPath, path.join(publicDir, audioFilename));
 
-    const actualDuration = voiceover.durationSeconds + 1;
+    const actualDuration = Math.max(targetDuration, voiceover.durationSeconds + 1);
     console.log(`⏱️ Voiceover: ${voiceover.durationSeconds}s → render duration: ${actualDuration}s`);
 
+    // ── Step C: Render with Remotion (multi-scene) ──
+    console.log('\n🎬 Step C: Rendering with Remotion (directed)...');
+    const outputPath = path.join(os.tmpdir(), `remotion_directed_${Date.now()}.mp4`);
+
     const props = JSON.stringify({
-      videoSrc: '',          // No video
-      imageSrc: imageFilename,
+      scenes: plan.scenes,
       voiceoverSrc: audioFilename,
       subtitles: voiceover.subtitles,
-      headline: headline,
-      originalVideoDurationInSeconds: actualDuration,
-      muteOriginalAudio: true,
+      totalDurationSeconds: actualDuration,
     });
 
     const propsFile = path.join(os.tmpdir(), `remotion_props_${Date.now()}.json`);
     await fs.writeFile(propsFile, props);
 
-    // Always vertical for text news (Shorts/Reels/TikTok)
-    const compositionId = 'NewsVideoVertical';
-    console.log(`📐 Composition: ${compositionId} (text news → vertical)`);
+    const compositionId = 'DirectedVertical';
+    console.log(`📐 Composition: ${compositionId} (multi-scene directed)`);
 
     const cmd = [
       'npx', 'remotion', 'render',
@@ -659,7 +663,7 @@ async function processTextNewsItem(news) {
 
     if (updateError) throw new Error(`Database update failed: ${updateError.message}`);
 
-    console.log(`✅ Successfully generated video for text news ${news.id}`);
+    console.log(`✅ Successfully generated directed video for text news ${news.id}`);
     return { success: true, videoId: youtubeResult.videoId, embedUrl: youtubeResult.embedUrl };
 
   } catch (error) {
