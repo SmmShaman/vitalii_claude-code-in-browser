@@ -279,7 +279,7 @@ async function enhanceWithRemotion(inputVideoPath, news) {
       compositionId,
       outputPath,
       `--props=${propsFile}`,
-      '--log=warning',
+      '--log=warn',
     ].join(' ');
 
     console.log(`🖥️ Running: ${cmd}`);
