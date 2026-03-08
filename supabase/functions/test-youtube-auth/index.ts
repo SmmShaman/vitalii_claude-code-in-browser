@@ -1,31 +1,79 @@
-// Test YouTube OAuth credentials
+// Test YouTube OAuth credentials + OAuth callback handler
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 serve(async (req) => {
   try {
-    // Read secrets from environment
     const CLIENT_ID = Deno.env.get('YOUTUBE_CLIENT_ID')
     const CLIENT_SECRET = Deno.env.get('YOUTUBE_CLIENT_SECRET')
     const REFRESH_TOKEN = Deno.env.get('YOUTUBE_REFRESH_TOKEN')
 
-    // Check if secrets exist
+    const url = new URL(req.url)
+    const code = url.searchParams.get('code')
+
+    // ── OAuth callback: exchange code for refresh token ──
+    if (code && CLIENT_ID && CLIENT_SECRET) {
+      const REDIRECT_URI = `${url.origin}${url.pathname}`
+
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          redirect_uri: REDIRECT_URI,
+          grant_type: 'authorization_code',
+        }),
+      })
+
+      const data = await tokenResponse.json()
+
+      if (data.refresh_token) {
+        return new Response(
+          `<html><body style="font-family:monospace;padding:40px;background:#1a1a2e;color:#e0e0e0;">
+            <h1 style="color:#4ecca3;">✅ OAuth Success!</h1>
+            <p><b>Refresh Token:</b></p>
+            <textarea style="width:100%;height:100px;background:#16213e;color:#4ecca3;border:1px solid #4ecca3;padding:10px;font-size:14px;" readonly onclick="this.select()">${data.refresh_token}</textarea>
+            <p style="color:#e74c3c;"><b>⚠️ Скопіюй цей токен і надішли мені в чат. Після цього закрий цю сторінку.</b></p>
+            <hr style="border-color:#333;">
+            <details><summary>Full response</summary><pre>${JSON.stringify(data, null, 2)}</pre></details>
+          </body></html>`,
+          { headers: { 'Content-Type': 'text/html' }, status: 200 }
+        )
+      } else {
+        return new Response(
+          `<html><body style="font-family:monospace;padding:40px;background:#1a1a2e;color:#e74c3c;">
+            <h1>❌ OAuth Error</h1>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          </body></html>`,
+          { headers: { 'Content-Type': 'text/html' }, status: 200 }
+        )
+      }
+    }
+
+    // ── Generate auth URL ──
+    if (url.searchParams.get('action') === 'auth_url' && CLIENT_ID) {
+      const REDIRECT_URI = `${url.origin}${url.pathname}`
+      const SCOPE = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly'
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent`
+
+      return new Response(JSON.stringify({ auth_url: authUrl }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      })
+    }
+
+    // ── Test existing refresh token ──
     const secretsStatus = {
       YOUTUBE_CLIENT_ID: CLIENT_ID ? `✅ Exists (${CLIENT_ID.substring(0, 20)}...)` : '❌ Missing',
       YOUTUBE_CLIENT_SECRET: CLIENT_SECRET ? `✅ Exists (${CLIENT_SECRET.substring(0, 15)}...)` : '❌ Missing',
       YOUTUBE_REFRESH_TOKEN: REFRESH_TOKEN ? `✅ Exists (${REFRESH_TOKEN.substring(0, 15)}...)` : '❌ Missing',
     }
 
-    console.log('📋 Secrets status:', secretsStatus)
-
-    // If all secrets exist, test OAuth
     if (CLIENT_ID && CLIENT_SECRET && REFRESH_TOKEN) {
-      console.log('🔐 Testing OAuth with Google...')
-
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           client_id: CLIENT_ID,
           client_secret: CLIENT_SECRET,
@@ -35,8 +83,6 @@ serve(async (req) => {
       })
 
       const responseText = await tokenResponse.text()
-      console.log('📡 Google OAuth response status:', tokenResponse.status)
-      console.log('📄 Google OAuth response:', responseText)
 
       if (tokenResponse.ok) {
         const data = JSON.parse(responseText)
@@ -51,63 +97,32 @@ serve(async (req) => {
               expires_in: data.expires_in,
             },
           }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          }
+          { headers: { 'Content-Type': 'application/json' }, status: 200 }
         )
       } else {
-        // OAuth error
         let errorData
-        try {
-          errorData = JSON.parse(responseText)
-        } catch {
-          errorData = { raw: responseText }
-        }
-
+        try { errorData = JSON.parse(responseText) } catch { errorData = { raw: responseText } }
         return new Response(
           JSON.stringify({
             success: false,
             message: '❌ Помилка OAuth! Перевірте ключі.',
             secretsStatus,
-            oauth: {
-              status: 'error',
-              statusCode: tokenResponse.status,
-              error: errorData,
-            },
+            oauth: { status: 'error', statusCode: tokenResponse.status, error: errorData },
           }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200, // Return 200 so we see the error details
-          }
+          { headers: { 'Content-Type': 'application/json' }, status: 200 }
         )
       }
     } else {
-      // Missing secrets
       return new Response(
-        JSON.stringify({
-          success: false,
-          message: '❌ Не всі секрети налаштовані!',
-          secretsStatus,
-        }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-          status: 200,
-        }
+        JSON.stringify({ success: false, message: '❌ Не всі секрети налаштовані!', secretsStatus }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 }
       )
     }
   } catch (error) {
     console.error('❌ Test error:', error)
     return new Response(
-      JSON.stringify({
-        success: false,
-        message: '❌ Помилка тесту',
-        error: error.message,
-      }),
-      {
-        headers: { 'Content-Type': 'application/json' },
-        status: 500,
-      }
+      JSON.stringify({ success: false, message: '❌ Помилка тесту', error: error.message }),
+      { headers: { 'Content-Type': 'text/html' }, status: 500 }
     )
   }
 })
