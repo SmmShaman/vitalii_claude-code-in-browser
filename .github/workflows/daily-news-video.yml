@@ -19,11 +19,15 @@ on:
       format:
         description: 'Video format'
         required: true
-        default: 'vertical'
+        default: 'horizontal'
         type: choice
         options:
-          - vertical    # 1080x1920 (Shorts/Reels/TikTok)
           - horizontal  # 1920x1080 (YouTube/LinkedIn)
+          - vertical    # 1080x1920 (Shorts/Reels/TikTok)
+      target_date:
+        description: 'Target date (YYYY-MM-DD), default: yesterday'
+        required: false
+        type: string
 
 jobs:
   daily-compilation:
@@ -75,7 +79,8 @@ jobs:
 
           # Video settings
           LANGUAGE: ${{ github.event.inputs.language || 'no' }}
-          FORMAT: ${{ github.event.inputs.format || 'vertical' }}
+          FORMAT: ${{ github.event.inputs.format || 'horizontal' }}
+          TARGET_DATE: ${{ github.event.inputs.target_date || '' }}
         run: node daily-compilation.js
 
       - name: Report results

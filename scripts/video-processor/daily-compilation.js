@@ -47,20 +47,28 @@ const FORMAT = process.env.FORMAT || 'horizontal'; // vertical or horizontal
 // ── Helpers ──
 
 /**
- * Get yesterday's date boundaries in UTC.
+ * Get target date boundaries in UTC.
+ * Uses TARGET_DATE env var if set, otherwise defaults to yesterday.
  */
-function getYesterdayRange() {
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
+function getTargetDateRange() {
+  const targetDateEnv = process.env.TARGET_DATE;
+  let target;
 
-  const start = new Date(yesterday);
+  if (targetDateEnv && /^\d{4}-\d{2}-\d{2}$/.test(targetDateEnv)) {
+    target = new Date(targetDateEnv + 'T00:00:00Z');
+    console.log(`📅 Using custom target date: ${targetDateEnv}`);
+  } else {
+    target = new Date();
+    target.setDate(target.getDate() - 1);
+  }
+
+  const start = new Date(target);
   start.setUTCHours(0, 0, 0, 0);
 
-  const end = new Date(yesterday);
+  const end = new Date(target);
   end.setUTCHours(23, 59, 59, 999);
 
-  return { start: start.toISOString(), end: end.toISOString(), dateStr: yesterday.toISOString().split('T')[0] };
+  return { start: start.toISOString(), end: end.toISOString(), dateStr: target.toISOString().split('T')[0] };
 }
 
 /**
@@ -79,7 +87,7 @@ function formatDateNorwegian(dateStr) {
  * Fetch yesterday's published news from Supabase.
  */
 async function fetchYesterdayNews() {
-  const { start, end, dateStr } = getYesterdayRange();
+  const { start, end, dateStr } = getTargetDateRange();
   console.log(`📅 Fetching news from ${dateStr} (${start} → ${end})`);
 
   const { data, error } = await supabase
@@ -315,7 +323,7 @@ async function main() {
     return;
   }
 
-  const { dateStr } = getYesterdayRange();
+  const { dateStr } = getTargetDateRange();
   const displayDate = formatDateNorwegian(dateStr);
 
   // Step 2: Claude directs the show
