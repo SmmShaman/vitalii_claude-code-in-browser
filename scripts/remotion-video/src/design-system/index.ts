@@ -15,6 +15,9 @@ export {
   opacity,
   shadows,
   video,
+  lowerThird,
+  progressBar,
+  logo,
   branding,
 } from "./tokens";
 

@@ -5,7 +5,8 @@
  * Structure: ShowIntro → [Divider → Headline → Content] × N → Outro
  *
  * Each news story is a "segment" with its own visuals,
- * while one continuous voiceover narrates the entire show.
+ * Each segment has its own voiceover audio and subtitles
+ * for precise sync between narration and visuals.
  */
 import React from "react";
 import {
@@ -21,8 +22,10 @@ import { HeadlineScene } from "../components/HeadlineScene";
 import { ContentScene } from "../components/ContentScene";
 import { StatsScene } from "../components/StatsScene";
 import { OutroScene } from "../components/OutroScene";
-import { AnimatedSubtitles, type SubtitleEntry } from "../components/AnimatedSubtitles";
-import { colors, typography, opacity, branding, spacing } from "../design-system";
+import { AnimatedLogo } from "../components/AnimatedLogo";
+import { ProgressBar } from "../components/ProgressBar";
+import { type SubtitleEntry } from "../components/AnimatedSubtitles";
+import { colors } from "../design-system";
 
 // ── Segment Types ──
 
@@ -33,6 +36,10 @@ export interface NewsSegment {
   category?: string;
   accentColor?: string;
   durationSeconds: number;
+  /** Per-segment voiceover audio file */
+  voiceoverSrc?: string;
+  /** Per-segment subtitles (local timestamps, starting from 0) */
+  subtitles?: SubtitleEntry[];
   /** Optional stats for this segment */
   facts?: { value: string; label: string }[];
 }
@@ -145,19 +152,18 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       });
       currentFrame += headlineFrames;
 
-      const contentStartSec = currentFrame / fps;
       sequences.push({
         component: (
           <ContentScene
             imageSrc={segment.imageSrc}
+            voiceoverSrc={segment.voiceoverSrc}
             keyQuote={segment.keyQuote}
             accentColor={segColor}
-            subtitleOffset={contentStartSec}
-            subtitles={subtitles.filter(
-              (s) =>
-                s.startTime >= contentStartSec &&
-                s.endTime <= contentStartSec + contentFrames / fps,
-            )}
+            subtitles={segment.subtitles || []}
+            headline={segment.headline}
+            category={segment.category}
+            segmentNumber={i + 1}
+            totalSegments={segments.length}
           />
         ),
         startFrame: currentFrame,
@@ -194,19 +200,18 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       });
       currentFrame += headlineFrames;
 
-      const contentStartSec = currentFrame / fps;
       sequences.push({
         component: (
           <ContentScene
             imageSrc={segment.imageSrc}
+            voiceoverSrc={segment.voiceoverSrc}
             keyQuote={segment.keyQuote}
             accentColor={segColor}
-            subtitleOffset={contentStartSec}
-            subtitles={subtitles.filter(
-              (s) =>
-                s.startTime >= contentStartSec &&
-                s.endTime <= contentStartSec + contentFrames / fps,
-            )}
+            subtitles={segment.subtitles || []}
+            headline={segment.headline}
+            category={segment.category}
+            segmentNumber={i + 1}
+            totalSegments={segments.length}
           />
         ),
         startFrame: currentFrame,
@@ -238,34 +243,14 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
         </Sequence>
       ))}
 
-      {/* Global voiceover */}
-      {voiceoverSrc && (
+      {/* Global voiceover fallback (only when no per-segment audio) */}
+      {voiceoverSrc && !segments.some((s) => s.voiceoverSrc) && (
         <Audio src={resolve(voiceoverSrc)} volume={1} />
       )}
 
-      {/* Global subtitles */}
-      {subtitles.length > 0 && (
-        <AbsoluteFill style={{ pointerEvents: "none" }}>
-          <AnimatedSubtitles subtitles={subtitles} isVertical={isVertical} />
-        </AbsoluteFill>
-      )}
-
-      {/* Persistent watermark */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: isVertical ? spacing.watermark.bottom.vertical : spacing.watermark.bottom.horizontal,
-          right: spacing.watermark.right,
-          opacity: opacity.watermark,
-          fontSize: typography.watermark.fontSize,
-          color: colors.text,
-          fontFamily: typography.fontFamily.primary,
-          fontWeight: typography.watermark.fontWeight,
-          letterSpacing: typography.watermark.letterSpacing,
-        }}
-      >
-        {branding.watermarkText}
-      </div>
+      {/* Persistent broadcast graphics */}
+      <ProgressBar accentColor={accentColor} />
+      <AnimatedLogo accentColor={accentColor} />
     </AbsoluteFill>
   );
 };

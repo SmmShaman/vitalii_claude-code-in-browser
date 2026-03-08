@@ -129,44 +129,46 @@ async function directDailyShow(articles, dateStr) {
   const targetDuration = Math.min(articles.length * 12 + 8, 300);
   const wordTarget = Math.round(targetDuration * 2);
 
+  const wordsPerArticle = Math.round(wordTarget / (articles.length + 2)); // +2 for intro/outro
+
   const systemPrompt = `You are a professional Norwegian news anchor writing a daily news summary video script.
 
 The video is a compilation of ${articles.length} news stories from ${dateStr}.
 Total video duration: ~${targetDuration} seconds.
 
-You must write:
-1. A "showScript" — the COMPLETE voiceover narration in Norwegian (Bokmål)
-2. A "segments" array — visual metadata for each news story
+You must write SEPARATE scripts for each part of the show:
+1. "introScript" — opening greeting (~3 seconds, ~${wordsPerArticle} words)
+2. "segmentScripts" — one narration script PER article (~10-15 seconds each, ~${wordsPerArticle * 2} words each)
+3. "outroScript" — closing (~3 seconds, ~${wordsPerArticle} words)
+4. "segments" — visual metadata for each news story
 
-SCRIPT STRUCTURE:
-- Opening greeting (~3s): "God morgen! Her er dagens nyhetsoppdatering fra vitalii.no..."
-- For each article (~10-15s each):
-  - Brief transition phrase ("La oss se på neste sak...", "Videre til...", etc.)
-  - 2-4 sentences covering the key points
-  - Natural conversational tone, not robotic
-- Closing (~3s): "Det var dagens nyheter. Følg oss på vitalii.no for mer."
+SCRIPT RULES:
+- introScript: "God morgen! Her er dagens nyhetsoppdatering fra vitalii.no..." (Norwegian Bokmål)
+- Each segmentScript: transition + 2-4 sentences covering key points. Natural conversational tone.
+- outroScript: "Det var dagens nyheter. Følg oss på vitalii.no for mer."
+- Each script is a SEPARATE voiceover audio — they must stand alone (no references to "previous" or "next")
 
 SEGMENTS array — one object per article:
 {
   "headline": "Norwegian headline (5-10 words)",
-  "keyQuote": "Most impactful sentence from your script about this article (Norwegian)",
+  "keyQuote": "Most impactful sentence from the CORRESPONDING segmentScript (Norwegian)",
   "category": "tech|business|ai|startup|science|politics|crypto|health|news",
   "accentColor": "#hex (warm orange tones preferred: #FF7A00, #FF8C42, #FF6B35; match category mood)"
 }
 
 RULES:
 - Write in Norwegian Bokmål (NOT Nynorsk)
-- showScript must be exactly one continuous text (no scene markers, no timestamps)
-- Word count for showScript: ~${wordTarget} words
-- Each segment's keyQuote must be a sentence that actually appears in your showScript
+- Each script must be plain text — no [brackets], timestamps, or stage directions
+- segmentScripts array length MUST equal ${articles.length} (one per article, same order)
 - Be engaging, professional, conversational — like a modern news podcast
 - If an article has notable numbers/stats, mention them
-- Do NOT add [brackets], timestamps, or stage directions
 
 Return valid JSON with this structure:
 {
-  "showScript": "Full Norwegian voiceover text...",
-  "segments": [{...}, ...],
+  "introScript": "God morgen...",
+  "segmentScripts": ["La oss starte med...", "Videre til...", ...],
+  "outroScript": "Det var dagens nyheter...",
+  "segments": [{headline, keyQuote, category, accentColor}, ...],
   "showTitle": "Daglig Nyhetsoppdatering"
 }`;
 
@@ -201,16 +203,20 @@ Return valid JSON with this structure:
 
     const plan = JSON.parse(content);
 
-    if (!plan.showScript || !plan.segments || plan.segments.length === 0) {
+    if (!plan.segmentScripts || !plan.segments || plan.segments.length === 0) {
       throw new Error('Invalid show plan structure');
     }
+
+    // Backward compat: build showScript from parts for fallback
+    plan.showScript = [plan.introScript, ...plan.segmentScripts, plan.outroScript].filter(Boolean).join(' ');
 
     const usage = data.usage;
     if (usage) {
       console.log(`💰 Tokens: ${usage.prompt_tokens} in + ${usage.completion_tokens} out`);
     }
 
-    console.log(`📝 Script: ${plan.showScript.split(/\s+/).length} words`);
+    const totalWords = plan.showScript.split(/\s+/).length;
+    console.log(`📝 Script: ${totalWords} words (${plan.segmentScripts.length} segments)`);
     console.log(`📊 Segments: ${plan.segments.length}`);
 
     return plan;
@@ -237,18 +243,20 @@ function templateShowScript(articles, dateStr) {
     };
   });
 
-  // Build simple Norwegian script
-  const intro = `God morgen. Her er dagens nyhetsoppdatering fra vitalii punkt no, ${formatDateNorwegian(dateStr)}.`;
-  const articleTexts = articles.map((a, i) => {
+  const introScript = `God morgen. Her er dagens nyhetsoppdatering fra vitalii punkt no, ${formatDateNorwegian(dateStr)}.`;
+  const segmentScripts = articles.map((a, i) => {
     const title = a.title_no || a.title_en || a.original_title || '';
     const desc = a.description_no || a.description_en || '';
     return `Sak nummer ${i + 1}. ${title}. ${desc}`;
   });
-  const outro = 'Det var dagens nyheter. Følg oss på vitalii punkt no for flere oppdateringer.';
+  const outroScript = 'Det var dagens nyheter. Følg oss på vitalii punkt no for flere oppdateringer.';
 
-  const showScript = [intro, ...articleTexts, outro].join(' ');
+  const showScript = [introScript, ...segmentScripts, outroScript].join(' ');
 
   return {
+    introScript,
+    segmentScripts,
+    outroScript,
     showScript,
     segments,
     showTitle: 'Daglig Nyhetsoppdatering',
@@ -330,12 +338,19 @@ async function main() {
   console.log('\n🎬 Step 1: Directing the show...');
   const plan = await directDailyShow(articles, displayDate);
 
-  // Step 3: Generate voiceover (Norwegian)
-  console.log('\n🎙️ Step 2: Generating voiceover...');
+  // Step 3: Generate per-article voiceovers (Norwegian)
+  console.log('\n🎙️ Step 2: Generating per-segment voiceovers...');
   const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
   if (!hasTTS) throw new Error('Missing TTS credentials');
 
-  const voiceover = await generateVoiceover(plan.showScript, LANGUAGE);
+  // Generate TTS for each segment script separately
+  const segmentVoiceovers = [];
+  const segmentScripts = plan.segmentScripts || [];
+  for (let i = 0; i < segmentScripts.length; i++) {
+    console.log(`\n  🎙️ Segment ${i + 1}/${segmentScripts.length}...`);
+    const vo = await generateVoiceover(segmentScripts[i], LANGUAGE);
+    segmentVoiceovers.push(vo);
+  }
 
   // Step 4: Download images + prepare Remotion assets
   console.log('\n📥 Step 3: Downloading images...');
@@ -343,9 +358,15 @@ async function main() {
   const publicDir = path.join(remotionProjectDir, 'public');
   await fs.mkdir(publicDir, { recursive: true });
 
-  // Copy audio
-  const audioFilename = `daily_voiceover_${Date.now()}.mp3`;
-  await fs.copyFile(voiceover.audioPath, path.join(publicDir, audioFilename));
+  // Track all audio files for cleanup
+  const audioFiles = [];
+
+  // Copy per-segment audio files
+  for (let i = 0; i < segmentVoiceovers.length; i++) {
+    const audioFilename = `daily_vo_seg${i}_${Date.now()}.mp3`;
+    await fs.copyFile(segmentVoiceovers[i].audioPath, path.join(publicDir, audioFilename));
+    audioFiles.push(audioFilename);
+  }
 
   // Download images for each segment
   const segments = [];
@@ -367,8 +388,9 @@ async function main() {
       }
     }
 
-    // ~12 seconds per segment
-    const segDuration = Math.max(8, Math.min(15, Math.round(plan.showScript.split(/\s+/).length / articles.length / 2)));
+    // Duration from actual TTS audio (not heuristic!)
+    const vo = segmentVoiceovers[i];
+    const segDuration = vo ? Math.max(vo.durationSeconds + 1, 8) : 10;
 
     segments.push({
       headline: segment.headline || article.title_no || article.title_en || '',
@@ -377,23 +399,23 @@ async function main() {
       category: segment.category || 'news',
       accentColor: segment.accentColor || '#FF7A00',
       durationSeconds: segDuration,
+      voiceoverSrc: audioFiles[i] || '',
+      subtitles: vo ? vo.subtitles : [],
     });
   }
 
-  // Calculate total duration
+  // Calculate total duration from actual segment durations
   const introDuration = 4;
   const outroDuration = 4;
   const dividerDuration = 2;
   const segmentsTotalDuration = segments.reduce((sum, s) => sum + s.durationSeconds, 0);
   const dividersTotalDuration = segments.length * dividerDuration;
-  const totalDuration = Math.max(
-    introDuration + dividersTotalDuration + segmentsTotalDuration + outroDuration,
-    voiceover.durationSeconds + 2,
-  );
+  const totalDuration = introDuration + dividersTotalDuration + segmentsTotalDuration + outroDuration;
 
+  const voiceoverTotalDuration = segmentVoiceovers.reduce((sum, vo) => sum + vo.durationSeconds, 0);
   console.log(`\n⏱️ Total duration: ${totalDuration}s`);
   console.log(`   Intro: ${introDuration}s, Segments: ${segmentsTotalDuration}s, Dividers: ${dividersTotalDuration}s, Outro: ${outroDuration}s`);
-  console.log(`   Voiceover: ${voiceover.durationSeconds}s`);
+  console.log(`   Voiceover total: ${voiceoverTotalDuration.toFixed(1)}s (${segmentVoiceovers.length} clips)`);
 
   // Step 5: Render with Remotion
   console.log('\n🎬 Step 4: Rendering with Remotion...');
@@ -404,8 +426,8 @@ async function main() {
     showTitle: plan.showTitle || 'Daglig Nyhetsoppdatering',
     language: LANGUAGE,
     segments,
-    voiceoverSrc: audioFilename,
-    subtitles: voiceover.subtitles,
+    voiceoverSrc: '',
+    subtitles: [],
     totalDurationSeconds: totalDuration,
     introDurationSeconds: introDuration,
     outroDurationSeconds: outroDuration,
@@ -451,8 +473,13 @@ async function main() {
     if (seg.imageSrc) {
       await fs.unlink(path.join(publicDir, seg.imageSrc)).catch(() => {});
     }
+    if (seg.voiceoverSrc) {
+      await fs.unlink(path.join(publicDir, seg.voiceoverSrc)).catch(() => {});
+    }
   }
-  await fs.unlink(path.join(publicDir, audioFilename)).catch(() => {});
+  for (const vo of segmentVoiceovers) {
+    await fs.unlink(vo.audioPath).catch(() => {});
+  }
 
   console.log(`\n🎉 Daily compilation complete!`);
   console.log(`📺 ${result.watchUrl}`);

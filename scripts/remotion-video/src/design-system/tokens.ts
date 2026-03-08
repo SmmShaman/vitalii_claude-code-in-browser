@@ -224,6 +224,34 @@ export const video = {
   },
 } as const;
 
+// ── Lower Third ──
+
+export const lowerThird = {
+  height: 100,
+  padding: { x: 32, y: 16 },
+  blur: 20,
+  gap: 12,
+  borderRadius: 12,
+  bottomOffset: { vertical: 160, horizontal: 80 },
+} as const;
+
+// ── Progress Bar ──
+
+export const progressBar = {
+  height: 3,
+  top: 0,
+} as const;
+
+// ── Logo ──
+
+export const logo = {
+  top: { vertical: 40, horizontal: 20 },
+  right: { vertical: 32, horizontal: 24 },
+  fontSize: 18,
+  fontWeight: 700 as const,
+  letterSpacing: 1.5,
+} as const;
+
 // ── Branding ──
 
 export const branding = {

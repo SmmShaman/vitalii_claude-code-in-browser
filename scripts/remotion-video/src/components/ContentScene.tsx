@@ -17,6 +17,8 @@ import {
   staticFile,
 } from "remotion";
 import { AnimatedSubtitles, type SubtitleEntry } from "./AnimatedSubtitles";
+import { LowerThird } from "./LowerThird";
+import { CategoryBadge } from "./CategoryBadge";
 import {
   colors,
   gradients,
@@ -36,6 +38,11 @@ export interface ContentSceneProps {
   accentColor?: string;
   /** Time offset in seconds for subtitle sync (relative to full video) */
   subtitleOffset?: number;
+  /** Broadcast graphics */
+  headline?: string;
+  category?: string;
+  segmentNumber?: number;
+  totalSegments?: number;
 }
 
 export const ContentScene: React.FC<ContentSceneProps> = ({
@@ -45,6 +52,10 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   keyQuote,
   accentColor = colors.brand,
   subtitleOffset = 0,
+  headline,
+  category,
+  segmentNumber,
+  totalSegments,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
@@ -73,14 +84,31 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
     { extrapolateRight: "clamp" },
   );
 
-  // Key quote animation
+  // Time-based separation: keyQuote first 40%, subtitles remaining 60%
+  const quoteEndFrame = keyQuote ? Math.round(durationInFrames * 0.4) : 0;
+  const showQuote = keyQuote && frame < quoteEndFrame;
+  const showSubtitles = !keyQuote || frame >= Math.round(durationInFrames * 0.38);
+
+  // Key quote animation (only when visible)
   const quoteDelay = Math.round(fps * 0.5);
   const quoteScale = spring({
     frame: frame - quoteDelay,
     fps,
     config: springs.quoteReveal,
   });
-  const quoteOpacity = interpolate(frame, [quoteDelay, quoteDelay + 10], [0, 1], clampBoth);
+  const quoteIn = interpolate(frame, [quoteDelay, quoteDelay + 10], [0, 1], clampBoth);
+  const quoteOut = interpolate(
+    frame,
+    [quoteEndFrame - 10, quoteEndFrame],
+    [1, 0],
+    clampBoth,
+  );
+  const quoteOpacity = quoteIn * quoteOut;
+
+  // Subtitle fade-in (delayed start after quote disappears)
+  const subtitleFadeIn = keyQuote
+    ? interpolate(frame, [Math.round(durationInFrames * 0.38), Math.round(durationInFrames * 0.42)], [0, 1], clampBoth)
+    : 1;
 
   // Fade transitions
   const fadeIn = interpolate(
@@ -130,14 +158,15 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
       {/* Voiceover audio */}
       {voiceoverSrc && <Audio src={resolve(voiceoverSrc)} volume={1} />}
 
-      {/* Key quote overlay */}
-      {keyQuote && (
+      {/* Key quote overlay (first 40% of scene) */}
+      {showQuote && (
         <AbsoluteFill
           style={{
             display: "flex",
             justifyContent: "center",
-            alignItems: isVertical ? "center" : "flex-end",
-            padding: isVertical ? "20% 8%" : "5% 10%",
+            alignItems: "center",
+            padding: "10% 8%",
+            zIndex: 5,
           }}
         >
           <div
@@ -174,9 +203,27 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
         </AbsoluteFill>
       )}
 
-      {/* Animated subtitles */}
-      {offsetSubtitles.length > 0 && (
-        <AnimatedSubtitles subtitles={offsetSubtitles} isVertical={isVertical} />
+      {/* Animated subtitles (last 60% of scene, or always if no quote) */}
+      {showSubtitles && offsetSubtitles.length > 0 && (
+        <div style={{ position: "absolute", inset: 0, opacity: subtitleFadeIn, zIndex: 10 }}>
+          <AnimatedSubtitles subtitles={offsetSubtitles} isVertical={isVertical} />
+        </div>
+      )}
+
+      {/* Category badge (top-left) */}
+      {category && (
+        <CategoryBadge category={category} accentColor={accentColor} />
+      )}
+
+      {/* Lower third (bottom bar with headline + segment counter) */}
+      {headline && segmentNumber != null && totalSegments != null && (
+        <LowerThird
+          headline={headline}
+          category={category}
+          segmentNumber={segmentNumber}
+          totalSegments={totalSegments}
+          accentColor={accentColor}
+        />
       )}
     </AbsoluteFill>
   );

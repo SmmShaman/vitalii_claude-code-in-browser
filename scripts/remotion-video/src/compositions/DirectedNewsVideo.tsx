@@ -20,7 +20,7 @@ import { HeadlineScene, type HeadlineSceneProps } from "../components/HeadlineSc
 import { ContentScene, type ContentSceneProps } from "../components/ContentScene";
 import { StatsScene, type StatsSceneProps } from "../components/StatsScene";
 import { OutroScene, type OutroSceneProps } from "../components/OutroScene";
-import { AnimatedSubtitles, type SubtitleEntry } from "../components/AnimatedSubtitles";
+import { type SubtitleEntry } from "../components/AnimatedSubtitles";
 import { defaultTheme } from "../design-system";
 
 // ── Scene Plan Types ──
@@ -48,6 +48,8 @@ interface ContentScenePlan extends BaseScene {
   imageSrc: string;
   keyQuote?: string;
   accentColor?: string;
+  voiceoverSrc?: string;
+  subtitles?: SubtitleEntry[];
 }
 
 interface StatsScenePlan extends BaseScene {
@@ -135,14 +137,15 @@ export const DirectedNewsVideo: React.FC<DirectedNewsVideoProps> = ({
             content = (
               <ContentScene
                 imageSrc={scene.imageSrc}
+                voiceoverSrc={scene.voiceoverSrc}
                 keyQuote={scene.keyQuote}
                 accentColor={scene.accentColor}
-                subtitleOffset={sceneStartSeconds}
-                subtitles={subtitles.filter(
+                subtitles={scene.subtitles || subtitles.filter(
                   (s) =>
                     s.startTime >= sceneStartSeconds &&
                     s.endTime <= sceneStartSeconds + scene.durationSeconds,
                 )}
+                subtitleOffset={scene.subtitles ? 0 : sceneStartSeconds}
               />
             );
             break;
@@ -180,13 +183,6 @@ export const DirectedNewsVideo: React.FC<DirectedNewsVideoProps> = ({
           src={resolve(voiceoverSrc)}
           volume={defaultTheme.opacity.voiceoverVolume}
         />
-      )}
-
-      {/* Global subtitles layer (for scenes without their own) */}
-      {subtitles.length > 0 && (
-        <AbsoluteFill style={{ pointerEvents: "none" }}>
-          <AnimatedSubtitles subtitles={subtitles} isVertical={isVertical} />
-        </AbsoluteFill>
       )}
 
       {/* Watermark */}

@@ -20,6 +20,9 @@ export const springs = {
   badgePop: { damping: 10, stiffness: 120 },
   numberScale: { damping: 8, stiffness: 100, mass: 0.6 },
   staggerItem: { damping: 12, stiffness: 100 },
+  lowerThirdSlide: { damping: 14, stiffness: 100 },
+  categoryBadgePop: { damping: 10, stiffness: 140 },
+  logoFade: { damping: 12, stiffness: 80 },
 } as const;
 
 // ── Fade Timing ──
