@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-08-v3";
+const VERSION = "2026-03-08-v4";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -117,6 +117,74 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
   return data.choices?.[0]?.message?.content?.trim() || "";
 }
 
+// ── Digest Helpers ──
+
+function buildDigestMessage(
+  headlines: any[],
+  excludedIds: string[],
+  date: string,
+): string {
+  const displayDate = formatDateNorwegian(date);
+  const excludedSet = new Set(excludedIds);
+  const selectedCount = headlines.filter((h: any) => !excludedSet.has(h.id)).length;
+
+  let msg = `📺 <b>Щоденне відео — ${displayDate}</b>\n\n`;
+  msg += `Знайдено <b>${headlines.length}</b> статей (обрано: <b>${selectedCount}</b>):\n\n`;
+
+  headlines.forEach((h: any, i: number) => {
+    const isExcluded = excludedSet.has(h.id);
+    const marker = isExcluded ? "⬜" : "✅";
+    const imgIcon = h.hasImage ? "🖼" : "⚠️";
+    const tags = h.tags.length > 0 ? ` <i>${h.tags.slice(0, 3).join(", ")}</i>` : "";
+    msg += `${i + 1}. ${marker} ${imgIcon} <b>${escapeHtml(h.title)}</b>${tags}\n`;
+    if (h.description && !isExcluded) {
+      msg += `   <i>${escapeHtml(h.description.substring(0, 100))}${h.description.length > 100 ? "..." : ""}</i>\n`;
+    }
+    msg += "\n";
+  });
+
+  if (selectedCount > MAX_DETAILED) {
+    msg += `⚠️ <b>Більше ${MAX_DETAILED} статей</b> — перші ${MAX_DETAILED} детально, решта ${selectedCount - MAX_DETAILED} як згадка.\n\n`;
+  }
+  msg += `Створити відео з обраних <b>${selectedCount}</b> статей?`;
+  return msg;
+}
+
+function buildDigestKeyboard(
+  headlines: any[],
+  excludedIds: string[],
+  date: string,
+): { inline_keyboard: any[][] } {
+  const excludedSet = new Set(excludedIds);
+  const selectedCount = headlines.filter((h: any) => !excludedSet.has(h.id)).length;
+
+  // Toggle buttons: 4 per row
+  const toggleRows: any[][] = [];
+  let currentRow: any[] = [];
+  headlines.forEach((_h: any, i: number) => {
+    const idx = i + 1;
+    const isExcluded = excludedSet.has(_h.id);
+    const icon = isExcluded ? "⬜" : "✅";
+    currentRow.push({
+      text: `${icon}${idx}`,
+      callback_data: `dv_t_${idx}_${date}`,
+    });
+    if (currentRow.length === 4) {
+      toggleRows.push(currentRow);
+      currentRow = [];
+    }
+  });
+  if (currentRow.length > 0) toggleRows.push(currentRow);
+
+  // Action row
+  const actionRow = [
+    { text: `✅ Підтвердити (${selectedCount})`, callback_data: `dv_ok_${date}` },
+    { text: "❌ Пропустити", callback_data: `dv_skip_${date}` },
+  ];
+
+  return { inline_keyboard: [...toggleRows, actionRow] };
+}
+
 // ══════════════════════════════════════════════════════════════
 // STEP 1: Initiate Digest
 // ══════════════════════════════════════════════════════════════
@@ -165,6 +233,7 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
       status: "pending_digest",
       article_ids: articles.map((a: any) => a.id),
       article_headlines: headlines,
+      excluded_article_ids: [],
       telegram_chat_id: Number(TELEGRAM_CHAT_ID),
     }, { onConflict: "target_date" })
     .select()
@@ -172,34 +241,9 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
 
   if (upsertError) throw new Error(`Draft upsert: ${upsertError.message}`);
 
-  // Send digest to Telegram
-  const displayDate = formatDateNorwegian(date);
-  let msg = `📺 <b>Щоденне відео — ${displayDate}</b>\n\n`;
-  msg += `Знайдено <b>${articles.length}</b> статей:\n\n`;
-
-  headlines.forEach((h: any, i: number) => {
-    const imgIcon = h.hasImage ? "🖼" : "⚠️";
-    const tags = h.tags.length > 0 ? ` <i>${h.tags.slice(0, 3).join(", ")}</i>` : "";
-    msg += `${i + 1}. ${imgIcon} <b>${escapeHtml(h.title)}</b>${tags}\n`;
-    if (h.description) {
-      msg += `   <i>${escapeHtml(h.description.substring(0, 100))}${h.description.length > 100 ? "..." : ""}</i>\n`;
-    }
-    msg += "\n";
-  });
-
-  if (articles.length > MAX_DETAILED) {
-    msg += `⚠️ <b>Більше ${MAX_DETAILED} статей</b> — перші ${MAX_DETAILED} детально, решта ${articles.length - MAX_DETAILED} як згадка у Headlines Roundup + посилання.\n\n`;
-  }
-  msg += `Створити відео з цих статей?`;
-
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: "✅ Підтвердити", callback_data: `dv_ok_${date}` },
-        { text: "❌ Пропустити", callback_data: `dv_skip_${date}` },
-      ],
-    ],
-  };
+  // Send digest to Telegram with toggle buttons
+  const msg = buildDigestMessage(headlines, [], date);
+  const keyboard = buildDigestKeyboard(headlines, [], date);
 
   const msgId = await sendMessage(TELEGRAM_CHAT_ID, msg, { reply_markup: keyboard });
 
@@ -211,6 +255,79 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
 
   console.log(`✅ Digest sent (${articles.length} articles)`);
   return json({ ok: true, draftId: draft.id, articles: articles.length });
+}
+
+// ══════════════════════════════════════════════════════════════
+// STEP 1.5: Toggle Article (exclude/include)
+// ══════════════════════════════════════════════════════════════
+
+async function toggleArticle(
+  targetDate: string,
+  articleIndex: number,
+  chatId: number,
+  messageId: number,
+): Promise<Response> {
+  console.log(`🔀 Toggle article ${articleIndex} for ${targetDate}`);
+
+  const { data: draft, error } = await supabase
+    .from("daily_video_drafts")
+    .select("article_ids, article_headlines, excluded_article_ids")
+    .eq("target_date", targetDate)
+    .single();
+
+  if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
+
+  const articleIds: string[] = draft.article_ids || [];
+  const headlines: any[] = draft.article_headlines || [];
+  const excluded: string[] = draft.excluded_article_ids || [];
+
+  // 1-based index
+  if (articleIndex < 1 || articleIndex > articleIds.length) {
+    return json({ ok: false, error: "Invalid article index" }, 400);
+  }
+
+  const articleId = articleIds[articleIndex - 1];
+  const excludedSet = new Set(excluded);
+
+  if (excludedSet.has(articleId)) {
+    // Re-include
+    excludedSet.delete(articleId);
+  } else {
+    // Exclude — but guard minimum 2 selected
+    const currentSelected = articleIds.filter((id) => !excludedSet.has(id)).length;
+    if (currentSelected <= 2) {
+      // Answer with alert
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callback_query_id: "", // will be handled by webhook
+          text: "⚠️ Мінімум 2 статті!",
+          show_alert: true,
+        }),
+      }).catch(() => {});
+      return json({ ok: false, error: "Minimum 2 articles required" });
+    }
+    excludedSet.add(articleId);
+  }
+
+  const newExcluded = Array.from(excludedSet);
+
+  // Update DB
+  await supabase
+    .from("daily_video_drafts")
+    .update({ excluded_article_ids: newExcluded })
+    .eq("target_date", targetDate);
+
+  // Update message
+  const msg = buildDigestMessage(headlines, newExcluded, targetDate);
+  const keyboard = buildDigestKeyboard(headlines, newExcluded, targetDate);
+
+  await editMessage(chatId, messageId, msg, { reply_markup: keyboard });
+
+  const selectedCount = articleIds.length - newExcluded.length;
+  console.log(`✅ Toggled article ${articleIndex}, selected: ${selectedCount}/${articleIds.length}`);
+  return json({ ok: true, selected: selectedCount, total: articleIds.length });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -239,6 +356,24 @@ async function generateScript(targetDate: string, chatId?: number, messageId?: n
     .single();
 
   if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
+
+  // Filter out excluded articles before script generation
+  const excluded = new Set(draft.excluded_article_ids || []);
+  if (excluded.size > 0) {
+    const filteredIds = draft.article_ids.filter((id: string) => !excluded.has(id));
+    const filteredHeadlines = (draft.article_headlines || []).filter((h: any) => !excluded.has(h.id));
+    await supabase
+      .from("daily_video_drafts")
+      .update({
+        article_ids: filteredIds,
+        article_headlines: filteredHeadlines,
+        excluded_article_ids: [],
+      })
+      .eq("target_date", targetDate);
+    draft.article_ids = filteredIds;
+    draft.article_headlines = filteredHeadlines;
+    console.log(`🔀 Filtered ${excluded.size} excluded articles, ${filteredIds.length} remaining`);
+  }
 
   // Fetch full articles
   const { data: articles, error: artError } = await supabase
@@ -758,6 +893,10 @@ Deno.serve(async (req) => {
     switch (action || body.action) {
       case "initiate_digest":
         return await initiateDigest(targetDate || undefined);
+
+      case "toggle_article":
+        if (!targetDate || !body.article_index) return json({ error: "target_date and article_index required" }, 400);
+        return await toggleArticle(targetDate, Number(body.article_index), chatId || Number(TELEGRAM_CHAT_ID), messageId || 0);
 
       case "generate_script":
         if (!targetDate) return json({ error: "target_date required" }, 400);

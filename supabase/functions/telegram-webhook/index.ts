@@ -849,6 +849,13 @@ serve(async (req) => {
         action = 'skip_dup'
         newsId = callbackData.replace('skip_dup_', '')
       // ── Daily Video callbacks (dv_*) — newsId = target_date (YYYY-MM-DD) ──
+      } else if (callbackData.startsWith('dv_t_')) {
+        // Toggle article: dv_t_N_YYYY-MM-DD (N = 1-based index)
+        action = 'dv_toggle'
+        const rest = callbackData.substring(5) // "N_YYYY-MM-DD"
+        const idx = rest.indexOf('_')
+        socialLanguage = rest.substring(0, idx)  // article index as string
+        newsId = rest.substring(idx + 1)          // YYYY-MM-DD
       } else if (callbackData.startsWith('dv_ok_')) {
         action = 'dv_ok'
         newsId = callbackData.replace('dv_ok_', '')
@@ -4126,6 +4133,7 @@ serve(async (req) => {
           'dv_srg': 'regenerate_script',   // Regenerate script
           'dv_ren': 'trigger_render',      // Scenario approved → render
           'dv_vrg': 'regenerate_scenario', // Regenerate scenario
+          'dv_toggle': 'toggle_article',   // Toggle article inclusion
         }
 
         const dvAction = dvActionMap[action] || action
@@ -4156,6 +4164,7 @@ serve(async (req) => {
             target_date: targetDate,
             chat_id: chatId,
             message_id: messageId,
+            ...(action === 'dv_toggle' ? { article_index: Number(socialLanguage) } : {}),
           })
         }).catch(err => console.error('❌ Daily video bot dispatch failed:', err))
 
