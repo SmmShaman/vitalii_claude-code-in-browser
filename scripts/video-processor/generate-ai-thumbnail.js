@@ -1,8 +1,9 @@
 /**
  * generate-ai-thumbnail.js
  *
- * AI-powered YouTube thumbnail generator using Gemini (nanobanana style).
- * Generates 1280x720 PNG thumbnails with bold text, news aesthetic, and vitalii.no branding.
+ * AI-powered YouTube thumbnail generator using Gemini.
+ * Uses REAL article images as base + Gemini composition for text overlays.
+ * Generates 1280x720 PNG thumbnails with bold text, news aesthetic, vitalii.no branding.
  *
  * Exports:
  *   generateAIThumbnail(articles, clickbaitTitle, dateStr) → single thumbnail path
@@ -17,28 +18,28 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 const MODELS = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
 const TIMEOUT_MS = 60_000;
 
-// ── 4 Visual Styles for Variant Generation ──
+// ── 4 Overlay Styles (applied on real article images) ──
 
 const VISUAL_STYLES = [
   {
-    id: 'minimal',
-    name: 'Мінімалістичний',
-    desc: 'Single tech object (glowing laptop or smartphone) on the right third of the frame. Ultra-clean composition with vast negative space. Title text dominates the left 60%. Background: smooth dark gradient. One soft orange accent glow behind the object.',
+    id: 'dark_overlay',
+    name: 'Темне затемнення',
+    prompt: 'Darken the entire image to approximately 35-40% of its original brightness. Apply a smooth dark gradient overlay that is darkest on the left side (for text readability) and slightly lighter on the right. Keep the main subject still recognizable.',
   },
   {
-    id: 'dashboard',
-    name: 'Дашборд / Дані',
-    desc: 'Data visualization style: a holographic floating bar chart or line graph on the right side with glowing data points in orange. HUD-style thin grid overlay at 5% opacity. Title text on the left with a subtle frosted glass panel behind it. Futuristic analytics aesthetic.',
+    id: 'blur_glass',
+    name: 'Blur + Glass',
+    prompt: 'Apply a moderate Gaussian blur to the entire image. Then add a semi-transparent frosted glass panel (dark, 70% opacity) covering the left 60% where text will be placed. The right 40% shows the blurred photo more clearly. The glass panel has a subtle border glow in orange (#FF7A00).',
   },
   {
-    id: 'geometric',
-    name: 'Геометричний',
-    desc: 'Abstract geometric composition: interconnected hexagons and circuit trace lines forming a network pattern across the background at 15% opacity. Bold diagonal orange accent line cutting across the lower-right area. Title text in the upper-left with strong perspective depth effect.',
+    id: 'zoom_vignette',
+    name: 'Zoom + Vignette',
+    prompt: 'Crop and zoom into the most visually interesting part of the image to fill the 1280x720 frame. Apply a strong vignette effect — dark corners fading to near-black at edges. Center-right remains brightest. Add slight warm color grading.',
   },
   {
-    id: 'blocks',
-    name: 'Кольорові блоки',
-    desc: 'Bold angular color blocks: a large diagonal division — dark navy on the left (with title text) and deep purple on the right (with a collage of small abstract news icons). The diagonal cut line is bright orange (#FF7A00) with a glow effect. High contrast, editorial magazine layout style.',
+    id: 'split_layout',
+    name: 'Split Layout',
+    prompt: 'Create a split composition: LEFT half is solid dark navy (#0a1628) to purple (#1a0a3e) gradient (for text). RIGHT half shows the original image, slightly darkened with cinematic color grade. Add a bright orange (#FF7A00) diagonal line (3px with glow) as divider at ~80 degrees.',
   },
 ];
 
@@ -51,11 +52,61 @@ function formatDateNorwegian(dateStr) {
   return `${d.getUTCDate()}. ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
+// ── Image helpers ──
+
+async function downloadImageAsBase64(url) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!resp.ok) return null;
+    const buffer = await resp.arrayBuffer();
+    return Buffer.from(buffer).toString('base64');
+  } catch {
+    return null;
+  }
+}
+
+function getPngDimensions(buffer) {
+  if (buffer.length < 24 || buffer[0] !== 137 || buffer[1] !== 80) return null;
+  const width = (buffer[16] << 24) | (buffer[17] << 16) | (buffer[18] << 8) | buffer[19];
+  const height = (buffer[20] << 24) | (buffer[21] << 16) | (buffer[22] << 8) | buffer[23];
+  return { width, height };
+}
+
+async function ensureSize(buffer) {
+  const dims = getPngDimensions(buffer);
+  if (dims) {
+    console.log(`📐 Output: ${dims.width}×${dims.height}`);
+    if (dims.width !== 1280 || dims.height !== 720) {
+      console.log(`🔧 Resizing to 1280×720...`);
+      try {
+        const sharp = (await import('sharp')).default;
+        return await sharp(buffer).resize(1280, 720, { fit: 'cover' }).png().toBuffer();
+      } catch (e) {
+        console.warn(`⚠️ sharp resize failed: ${e.message}, using original`);
+      }
+    }
+  }
+  return buffer;
+}
+
 // ── Core Gemini API call ──
 
-async function callGeminiImage(prompt, apiKey) {
+async function callGeminiImage(prompt, apiKey, inputImageBase64) {
+  const parts = [{ text: prompt }];
+  if (inputImageBase64) {
+    parts.push({
+      inline_data: {
+        mime_type: 'image/jpeg',
+        data: inputImageBase64,
+      },
+    });
+  }
+
   const requestBody = {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts }],
     generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
   };
 
@@ -73,17 +124,14 @@ async function callGeminiImage(prompt, apiKey) {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ ${model} error: ${response.status} - ${errorText.substring(0, 200)}`);
+        console.error(`❌ ${model}: ${response.status}`);
         clearTimeout(timeout);
         continue;
       }
 
       const result = await response.json();
       const candidate = result.candidates?.[0];
-
       if (candidate?.finishReason === 'IMAGE_OTHER') {
-        console.warn(`⚠️ ${model} content policy blocked`);
         clearTimeout(timeout);
         continue;
       }
@@ -97,27 +145,62 @@ async function callGeminiImage(prompt, apiKey) {
           }
         }
       }
-
-      console.warn(`⚠️ ${model}: no image in response`);
       clearTimeout(timeout);
     } catch (error) {
       clearTimeout(timeout);
       if (error.name === 'AbortError') {
-        console.error(`⏱️ ${model} timed out after ${TIMEOUT_MS / 1000}s`);
+        console.error(`⏱️ ${model} timed out`);
       } else {
-        console.error(`❌ ${model} error:`, error.message);
+        console.error(`❌ ${model}: ${error.message}`);
       }
     }
   }
-
   return null;
+}
+
+// ── Prompt Builder ──
+
+function buildThumbnailPrompt(title, displayDate, articleCount, style, hasImage) {
+  const shortTitle = title.split(/\s+/).slice(0, 5).join(' ');
+
+  const imageInstruction = hasImage
+    ? `Take the provided news article image and transform it into a YouTube thumbnail.
+
+IMAGE PROCESSING:
+${style.prompt}`
+    : `Generate a professional YouTube thumbnail with a dark gradient background (navy #0a1628 to purple #1a0a3e).
+${style.prompt}`;
+
+  return `${imageInstruction}
+
+OUTPUT: Exactly 1280×720 pixels (16:9 landscape). This is critical — the image MUST be 1280 wide and 720 tall.
+
+TEXT OVERLAYS TO ADD ON TOP:
+
+1. PRIMARY TITLE (large, 150-200px font height, upper-left safe zone):
+"${shortTitle}"
+- Bold sans-serif font (Impact or Montserrat ExtraBold)
+- Bright white (#FFFFFF) with 2-3px black outline/stroke and dark drop shadow
+- Maximum 2 lines, left-aligned
+
+2. BADGE (top-left corner):
+"${articleCount} SAKER" — bold white text on orange (#FF7A00) rounded pill shape
+
+3. BRANDING (bottom-left, small):
+"vitalii.no" in white + "${displayDate}" next to it
+
+SAFE ZONES:
+- NEVER place text in bottom-right corner (YouTube duration badge)
+- All text within center 84% of frame
+- Avoid bottom 150px for important elements
+
+COLORS: max 3 — dark background, orange #FF7A00 accent, white text.
+TEXT LANGUAGE: Norwegian Bokmaal ONLY.
+OUTPUT: Image only, no text response. Exactly 1280×720 pixels.`;
 }
 
 // ── Single Thumbnail (backward compat) ──
 
-/**
- * Generate a single AI thumbnail (picks best of first successful variant).
- */
 export async function generateAIThumbnail(articles, clickbaitTitle, dateStr) {
   if (!GOOGLE_API_KEY) {
     console.log('⚠️ GOOGLE_API_KEY not set, skipping AI thumbnail');
@@ -125,33 +208,35 @@ export async function generateAIThumbnail(articles, clickbaitTitle, dateStr) {
   }
 
   const displayDate = formatDateNorwegian(dateStr);
-  const prompt = buildThumbnailPrompt(clickbaitTitle, displayDate, articles.length, VISUAL_STYLES[0]);
 
-  console.log(`🖼️ Generating AI thumbnail via Gemini...`);
-  const buffer = await callGeminiImage(prompt, GOOGLE_API_KEY);
-
-  if (buffer) {
-    const outputPath = join(tmpdir(), `yt_thumb_${dateStr}_${Date.now()}.png`);
-    await writeFile(outputPath, buffer);
-    console.log(`✅ AI thumbnail saved: ${outputPath} (${(buffer.length / 1024).toFixed(0)} KB)`);
-    return outputPath;
+  // Try to use the first article's image
+  let imageBase64 = null;
+  for (const a of articles) {
+    const imgUrl = a.processed_image_url || a.image_url;
+    if (imgUrl) {
+      imageBase64 = await downloadImageAsBase64(imgUrl);
+      if (imageBase64) break;
+    }
   }
 
-  console.warn('⚠️ All Gemini models failed for thumbnail');
-  return null;
+  const prompt = buildThumbnailPrompt(clickbaitTitle, displayDate, articles.length, VISUAL_STYLES[0], !!imageBase64);
+  console.log(`🖼️ Generating thumbnail (${imageBase64 ? 'with article image' : 'text-only'})...`);
+
+  let buffer = await callGeminiImage(prompt, GOOGLE_API_KEY, imageBase64);
+  if (!buffer) {
+    console.warn('⚠️ All Gemini models failed for thumbnail');
+    return null;
+  }
+
+  buffer = await ensureSize(buffer);
+  const outputPath = join(tmpdir(), `yt_thumb_${dateStr}_${Date.now()}.png`);
+  await writeFile(outputPath, buffer);
+  console.log(`✅ AI thumbnail saved: ${outputPath} (${(buffer.length / 1024).toFixed(0)} KB)`);
+  return outputPath;
 }
 
 // ── 4 Variant Generation ──
 
-/**
- * Generate multiple thumbnail variants with different visual styles.
- *
- * @param {Array} articles - News articles
- * @param {string} clickbaitTitle - AI-generated clickbait title
- * @param {string} dateStr - Target date (YYYY-MM-DD)
- * @param {number} count - Number of variants (default 4)
- * @returns {Promise<Array<{style: string, styleName: string, buffer: Buffer}>>}
- */
 export async function generateThumbnailVariants(articles, clickbaitTitle, dateStr, count = 4) {
   const apiKey = GOOGLE_API_KEY;
   if (!apiKey) {
@@ -162,102 +247,39 @@ export async function generateThumbnailVariants(articles, clickbaitTitle, dateSt
   const displayDate = formatDateNorwegian(dateStr);
   const styles = VISUAL_STYLES.slice(0, count);
 
-  console.log(`🖼️ Generating ${styles.length} thumbnail variants in parallel...`);
+  // Collect article images
+  const articleImages = [];
+  for (const a of articles) {
+    const imgUrl = a.processed_image_url || a.image_url;
+    if (imgUrl) {
+      articleImages.push(imgUrl);
+      if (articleImages.length >= count) break;
+    }
+  }
 
+  // Download images in parallel
+  console.log(`📥 Downloading ${articleImages.length} article images...`);
+  const imageBase64List = await Promise.all(articleImages.map(downloadImageAsBase64));
+  const validImages = imageBase64List.filter(Boolean);
+  console.log(`✅ Downloaded ${validImages.length}/${articleImages.length} images`);
+
+  console.log(`🖼️ Generating ${styles.length} variants in parallel...`);
   const results = await Promise.allSettled(
-    styles.map(async (style) => {
-      console.log(`  🎨 Style: ${style.name}`);
-      const prompt = buildThumbnailPrompt(clickbaitTitle, displayDate, articles.length, style);
-      const buffer = await callGeminiImage(prompt, apiKey);
+    styles.map(async (style, i) => {
+      const img = validImages.length > 0 ? validImages[i % validImages.length] : null;
+      console.log(`  🎨 ${style.name} (${img ? 'with image' : 'text-only'})`);
+      const prompt = buildThumbnailPrompt(clickbaitTitle, displayDate, articles.length, style, !!img);
+      let buffer = await callGeminiImage(prompt, apiKey, img);
       if (!buffer) throw new Error(`Failed for style ${style.id}`);
+      buffer = await ensureSize(buffer);
       console.log(`  ✅ ${style.name}: ${(buffer.length / 1024).toFixed(0)} KB`);
       return { style: style.id, styleName: style.name, buffer };
     }),
   );
 
-  const variants = results
-    .filter(r => r.status === 'fulfilled')
-    .map(r => r.value);
-
+  const variants = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   console.log(`✅ Generated ${variants.length}/${styles.length} variants`);
   return variants;
-}
-
-/**
- * Generate variants using a custom API key (for Edge Functions).
- */
-export async function generateThumbnailVariantsWithKey(apiKey, articles, clickbaitTitle, dateStr, count = 4) {
-  const displayDate = formatDateNorwegian(dateStr);
-  const styles = VISUAL_STYLES.slice(0, count);
-
-  const results = await Promise.allSettled(
-    styles.map(async (style) => {
-      const prompt = buildThumbnailPrompt(clickbaitTitle, displayDate, articles.length, style);
-      const buffer = await callGeminiImage(prompt, apiKey);
-      if (!buffer) throw new Error(`Failed for style ${style.id}`);
-      return { style: style.id, styleName: style.name, buffer };
-    }),
-  );
-
-  return results
-    .filter(r => r.status === 'fulfilled')
-    .map(r => r.value);
-}
-
-// ── Prompt Builder ──
-
-function buildThumbnailPrompt(title, displayDate, articleCount, style) {
-  const shortTitle = title.split(/\s+/).slice(0, 5).join(' ');
-
-  return `Generate a professional YouTube thumbnail image at exactly 1280x720 pixels (16:9 landscape).
-
-CONTEXT: Thumbnail for a Norwegian daily tech news show "vitalii.no" — a faceless automated channel. No human faces.
-
-═══ VISUAL STYLE: ${style.id.toUpperCase()} ═══
-
-${style.desc}
-
-═══ COMPOSITION (2-3 elements max) ═══
-
-- Title text fills 40-60% of frame, positioned in safe zone (not in corners)
-- Clean composition with 30-40% negative space
-- Rule of thirds layout
-
-═══ TEXT ON IMAGE (readable at 120x68px mobile) ═══
-
-PRIMARY TEXT (150-200px font height):
-"${shortTitle}"
-- Bold sans-serif (Impact / Montserrat ExtraBold)
-- Bright white with 2-3px black outline/stroke and dark drop shadow
-- Maximum 2 lines, left-aligned, upper-left safe zone
-
-BADGE (top-left corner):
-"${articleCount} SAKER" — bold white text on orange (#FF7A00) rounded pill
-
-BRANDING (bottom-left, small):
-"vitalii.no" white + "${displayDate}" next to it
-
-═══ SAFE ZONES ═══
-
-- NEVER place text in bottom-right (YouTube duration badge)
-- All text within center 84% (102px margin sides, 72px top/bottom)
-- Avoid bottom 150px for critical elements
-
-═══ COLORS (max 3) ═══
-
-- Background: Dark gradient navy (#0a1628) to purple (#1a0a3e)
-- Accent: Orange #FF7A00
-- Text: White #FFFFFF with black outline
-- Avoid YouTube red (#FF0000), pure white backgrounds
-
-═══ QUALITY ═══
-
-- Sharp focus, studio lighting, cinematic
-- Must work on light AND dark YouTube backgrounds
-- 1-SECOND TEST: viewer on phone must instantly get topic + energy
-
-TEXT LANGUAGE: Norwegian Bokmaal ONLY.
-IMAGE ONLY — no text response.`;
 }
 
 export { VISUAL_STYLES };
