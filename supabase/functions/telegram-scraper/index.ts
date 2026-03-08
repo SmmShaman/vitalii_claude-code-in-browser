@@ -274,7 +274,7 @@ serve(async (req) => {
       .eq('key_name', 'ENABLE_AUTO_PUBLISH')
       .single()
 
-    const isAutoPublishEnabled = autoPublishSetting?.key_value === 'true'
+    const isAutoPublishEnabled = autoPublishSetting?.key_value !== 'false'
     log(`🤖 Auto-publish enabled: ${isAutoPublishEnabled}`)
 
     // Get active Telegram sources from database
