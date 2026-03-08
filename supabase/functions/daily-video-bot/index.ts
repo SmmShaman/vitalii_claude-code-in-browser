@@ -14,7 +14,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-08-v2";
+const VERSION = "2026-03-08-v3";
+const MAX_DETAILED = 10;
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -186,6 +187,9 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
     msg += "\n";
   });
 
+  if (articles.length > MAX_DETAILED) {
+    msg += `⚠️ <b>Більше ${MAX_DETAILED} статей</b> — перші ${MAX_DETAILED} детально, решта ${articles.length - MAX_DETAILED} як згадка у Headlines Roundup + посилання.\n\n`;
+  }
   msg += `Створити відео з цих статей?`;
 
   const keyboard = {
@@ -251,27 +255,40 @@ async function generateScript(targetDate: string, chatId?: number, messageId?: n
 
   const displayDate = formatDateNorwegian(targetDate);
 
+  const hasOverflow = orderedArticles.length > MAX_DETAILED;
+  const detailedCount = Math.min(orderedArticles.length, MAX_DETAILED);
+  const overflowCount = hasOverflow ? orderedArticles.length - MAX_DETAILED : 0;
+
   // Build AI prompt
   const articleSummaries = orderedArticles.map((a: any, i: number) => {
     const title = a.title_no || a.title_en || a.original_title || "";
     const content = a.content_no || a.content_en || a.original_content || "";
-    return `ARTICLE ${i + 1}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
+    const marker = i >= MAX_DETAILED ? " [OVERFLOW]" : "";
+    return `ARTICLE ${i + 1}${marker}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
   }).join("\n\n");
 
-  const targetDuration = orderedArticles.length * 15 + 12;
+  const targetDuration = detailedCount * 15 + 12 + (hasOverflow ? 25 : 0);
   const wordTarget = Math.round(targetDuration * 2);
-  const wordsPerArticle = Math.round(wordTarget / (orderedArticles.length + 2));
+  const wordsPerArticle = Math.round(wordTarget / (detailedCount + 2));
+
+  const roundupPromptBlock = hasOverflow ? `
+2. "roundupScript" — quick teaser listing ALL ${orderedArticles.length} headlines (~20s). Format: "I dag dekker vi ${orderedArticles.length} nyheter. Blant annet: [topic 1], [topic 2], ..." Name each story in 3-5 words. Fast-paced cold open.
+2b. "roundupTranslation" — Ukrainian translation of roundupScript` : "";
+
+  const overflowPromptBlock = hasOverflow ? `
+5. "overflowScript" — brief CTA mentioning ${overflowCount} more stories on the website (~4s).
+5b. "overflowTranslation" — Ukrainian translation` : "";
 
   const systemPrompt = `You are a professional Norwegian news anchor writing a daily news summary video script.
 
-The video is a compilation of ${orderedArticles.length} news stories from ${displayDate}.
+The video is a compilation of ${orderedArticles.length} news stories from ${displayDate}.${hasOverflow ? ` Only the first ${detailedCount} get detailed coverage.` : ""}
 Target duration: ~${targetDuration} seconds. There is NO maximum length — take the time needed for each story.
 
 Write SEPARATE scripts for each part:
-1. "introScript" — personal opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Hei, jeg er Vitalii fra vitalii punkt no." then mention today's news count.
-2. "segmentScripts" — one narration per article (~12-18s each, ~${wordsPerArticle * 2} words each). 3-5 sentences each.
-3. "outroScript" — closing with subscribe CTA (~4-5s, ~${wordsPerArticle} words). MUST include "Abonner på kanalen og trykk liker-knappen!"
-4. "segmentTranslations" — Ukrainian translations of each segmentScript (for moderator review)
+1. "introScript" — personal opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Hei, jeg er Vitalii fra vitalii punkt no." then mention today's news count (${orderedArticles.length} saker).${roundupPromptBlock}
+${hasOverflow ? "3" : "2"}. "segmentScripts" — one narration for each of the ${detailedCount} detailed articles (~12-18s each, ~${wordsPerArticle * 2} words each). 3-5 sentences each.
+${hasOverflow ? "4" : "3"}. "outroScript" — closing with subscribe CTA (~4-5s, ~${wordsPerArticle} words). MUST include "Abonner på kanalen og trykk liker-knappen!"${overflowPromptBlock}
+- "segmentTranslations" — Ukrainian translations of each segmentScript (for moderator review)
 
 Write at a calm, natural pace — ikke hastverk. Use natural pauses between sentences.
 
@@ -284,15 +301,15 @@ LANGUAGE QUALITY:
 
 RULES:
 - Each segmentScript stands alone (no references to other segments)
-- segmentScripts.length MUST equal ${orderedArticles.length}
-- segmentTranslations.length MUST equal ${orderedArticles.length}
+- segmentScripts.length MUST equal ${detailedCount}
+- segmentTranslations.length MUST equal ${detailedCount}
 - Be engaging, professional, conversational
 
 Return JSON:
 {
-  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",
+  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",${hasOverflow ? '\n  "roundupScript": "I dag dekker vi N nyheter...",' : ""}${hasOverflow ? '\n  "roundupTranslation": "Сьогодні ми розглянемо...",' : ""}
   "segmentScripts": ["...", ...],
-  "outroScript": "Det var alt for i dag. Abonner på kanalen...",
+  "outroScript": "Det var alt for i dag. Abonner på kanalen...",${hasOverflow ? '\n  "overflowScript": "Du finner N flere nyheter på vitalii punkt no.",' : ""}${hasOverflow ? '\n  "overflowTranslation": "Ще N новин читайте на...",' : ""}
   "segmentTranslations": ["Почнімо з...", ...],
   "introTranslation": "Привіт, я Віталій...",
   "outroTranslation": "На сьогодні все..."
@@ -310,11 +327,13 @@ Return JSON:
     .from("daily_video_drafts")
     .update({
       intro_script: plan.introScript,
+      roundup_script: plan.roundupScript || null,
       segment_scripts: plan.segmentScripts.map((script: string, i: number) => ({
         articleId: draft.article_ids[i],
         scriptNo: script,
         scriptUa: plan.segmentTranslations?.[i] || "",
       })),
+      overflow_script: plan.overflowScript || null,
       outro_script: plan.outroScript,
       status: "pending_script",
     })
@@ -322,7 +341,11 @@ Return JSON:
 
   // Send script to Telegram for approval
   const headlines = draft.article_headlines || [];
-  let msg = `📝 <b>Сценарій озвучки — ${displayDate}</b>\n\n`;
+  let msg = `📝 <b>Сценарій озвучки — ${displayDate}</b>\n`;
+  if (hasOverflow) {
+    msg += `📋 ${orderedArticles.length} статей: ${detailedCount} детально + ${overflowCount} у згадці\n`;
+  }
+  msg += "\n";
 
   // Intro
   msg += `🎬 <b>Інтро (NO):</b>\n<i>${escapeHtml(plan.introScript || "")}</i>\n`;
@@ -331,7 +354,16 @@ Return JSON:
   }
   msg += "\n";
 
-  // Segments
+  // Roundup (if >10 articles)
+  if (plan.roundupScript) {
+    msg += `📋 <b>Headlines Roundup (NO):</b>\n<i>${escapeHtml(plan.roundupScript)}</i>\n`;
+    if (plan.roundupTranslation) {
+      msg += `🇺🇦 ${escapeHtml(plan.roundupTranslation)}\n`;
+    }
+    msg += "\n";
+  }
+
+  // Segments (only detailed ones)
   plan.segmentScripts.forEach((script: string, i: number) => {
     const title = headlines[i]?.title || `Article ${i + 1}`;
     msg += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>\n`;
@@ -341,6 +373,15 @@ Return JSON:
     }
     msg += "\n";
   });
+
+  // Overflow CTA
+  if (plan.overflowScript) {
+    msg += `🔗 <b>Overflow CTA (NO):</b>\n<i>${escapeHtml(plan.overflowScript)}</i>\n`;
+    if (plan.overflowTranslation) {
+      msg += `🇺🇦 ${escapeHtml(plan.overflowTranslation)}\n`;
+    }
+    msg += "\n";
+  }
 
   // Outro
   msg += `🎬 <b>Аутро (NO):</b>\n<i>${escapeHtml(plan.outroScript || "")}</i>\n`;
@@ -435,9 +476,13 @@ async function generateScenario(targetDate: string, chatId?: number, messageId?:
   const scripts = draft.segment_scripts || [];
   const displayDate = formatDateNorwegian(targetDate);
 
+  // Only generate visuals for detailed segments (max MAX_DETAILED)
+  const detailedScripts = scripts.slice(0, MAX_DETAILED);
+  const detailedHeadlines = headlines.slice(0, MAX_DETAILED);
+
   // AI generates visual scenario
-  const articleInfo = scripts.map((s: any, i: number) => {
-    const h = headlines[i] || {};
+  const articleInfo = detailedScripts.map((s: any, i: number) => {
+    const h = detailedHeadlines[i] || {};
     return `Article ${i + 1}: "${h.title || ""}"\nScript: ${s.scriptNo || ""}\nTags: ${(h.tags || []).join(", ")}`;
   }).join("\n\n");
 
@@ -509,7 +554,7 @@ Return JSON:
 
   const aiResponse = await callAI(
     systemPrompt,
-    `Create visual scenario for ${displayDate} (${scripts.length} articles):\n\n${articleInfo}`,
+    `Create visual scenario for ${displayDate} (${detailedScripts.length} detailed articles):\n\n${articleInfo}`,
   );
   const scenario = JSON.parse(aiResponse);
 

@@ -106,6 +106,8 @@ async function fetchYesterdayNews() {
  * AI directs the daily show — writes a full Norwegian script
  * and plans the visual structure using Azure OpenAI.
  */
+const MAX_DETAILED = 10;
+
 async function directDailyShow(articles, dateStr) {
   const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
   const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
@@ -118,34 +120,52 @@ async function directDailyShow(articles, dateStr) {
 
   console.log('🎬 AI Director: planning daily show...');
 
+  const hasOverflow = articles.length > MAX_DETAILED;
+  const detailedCount = Math.min(articles.length, MAX_DETAILED);
+  const overflowCount = hasOverflow ? articles.length - MAX_DETAILED : 0;
+
   // Build article summaries
   const articleSummaries = articles.map((a, i) => {
     const title = a.title_no || a.title_en || a.original_title || '';
     const content = a.content_no || a.content_en || a.original_content || '';
-    return `ARTICLE ${i + 1}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
+    const marker = i >= MAX_DETAILED ? ' [OVERFLOW — no detailed segment needed]' : '';
+    return `ARTICLE ${i + 1}${marker}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
   }).join('\n\n');
 
-  // ~15 seconds per article + 12s intro/outro (no cap — video is as long as needed)
-  const targetDuration = articles.length * 15 + 12;
+  // ~15 seconds per detailed article + 12s intro/outro + roundup if needed
+  const roundupDuration = hasOverflow ? Math.min(articles.length * 1.5, 25) : 0;
+  const overflowDurationEst = hasOverflow ? 4 : 0;
+  const targetDuration = detailedCount * 15 + 12 + roundupDuration + overflowDurationEst;
   const wordTarget = Math.round(targetDuration * 2);
 
-  const wordsPerArticle = Math.round(wordTarget / (articles.length + 2)); // +2 for intro/outro
+  const wordsPerArticle = Math.round(wordTarget / (detailedCount + 2)); // +2 for intro/outro
+
+  const roundupPromptBlock = hasOverflow ? `
+2. "roundupScript" — quick teaser listing ALL ${articles.length} headlines (~${Math.round(roundupDuration)} seconds). Format: "I dag dekker vi ${articles.length} nyheter. Blant annet: [headline 1], [headline 2], ..." Name each story in 3-5 words. This is a FAST-PACED cold open preview.` : '';
+
+  const overflowPromptBlock = hasOverflow ? `
+${hasOverflow ? '5' : '4'}. "overflowScript" — brief CTA mentioning ${overflowCount} additional stories (~4 seconds). Example: "Du finner ${overflowCount} flere nyheter på vitalii punkt no."` : '';
+
+  const segmentCountNote = hasOverflow
+    ? `Write detailed scripts ONLY for the first ${detailedCount} articles. Articles ${detailedCount + 1}-${articles.length} are overflow — mention them briefly in the roundupScript only.`
+    : '';
 
   const systemPrompt = `You are a professional Norwegian news anchor writing a daily news summary video script.
 
-The video is a compilation of ${articles.length} news stories from ${dateStr}.
-Target duration: ~${targetDuration} seconds. There is NO maximum length — take the time needed to cover each story properly.
+The video is a compilation of ${articles.length} news stories from ${dateStr}.${hasOverflow ? ` Only the first ${detailedCount} get detailed coverage; the rest are mentioned in the headlines roundup.` : ''}
+Target duration: ~${Math.round(targetDuration)} seconds. There is NO maximum length — take the time needed to cover each story properly.
+${segmentCountNote}
 
 You must write SEPARATE scripts for each part of the show:
-1. "introScript" — personal opening greeting (~4-5 seconds, ~${wordsPerArticle} words). Start with "Hei, jeg er Vitalii fra vitalii punkt no." then a brief mention of today's news count.
-2. "segmentScripts" — one narration script PER article (~12-18 seconds each, ~${wordsPerArticle * 2} words each)
-3. "outroScript" — closing with subscribe CTA (~4-5 seconds, ~${wordsPerArticle} words). End with "Abonner på kanalen og trykk liker-knappen! Vi ses i morgen."
-4. "segments" — visual metadata for each news story
+1. "introScript" — personal opening greeting (~4-5 seconds, ~${wordsPerArticle} words). Start with "Hei, jeg er Vitalii fra vitalii punkt no." then a brief mention of today's news count (${articles.length} saker).${roundupPromptBlock}
+${hasOverflow ? '3' : '2'}. "segmentScripts" — one narration script for each of the ${detailedCount} detailed articles (~12-18 seconds each, ~${wordsPerArticle * 2} words each)
+${hasOverflow ? '4' : '3'}. "outroScript" — closing with subscribe CTA (~4-5 seconds, ~${wordsPerArticle} words). End with "Abonner på kanalen og trykk liker-knappen! Vi ses i morgen."${overflowPromptBlock}
+${hasOverflow ? '6' : '4'}. "segments" — visual metadata for each of the ${detailedCount} detailed stories
 
 SCRIPT RULES:
-- introScript: Must start with "Hei, jeg er Vitalii fra vitalii punkt no." followed by greeting and news count.
+- introScript: Must start with "Hei, jeg er Vitalii fra vitalii punkt no." followed by greeting and news count.${hasOverflow ? '\n- roundupScript: Quick-fire listing of ALL headlines. Each story name 3-5 words. Fast pace, building anticipation.' : ''}
 - Each segmentScript: transition + 3-5 sentences covering key points. Natural conversational tone. Don't rush.
-- outroScript: Must include "Abonner på kanalen og trykk liker-knappen!" (subscribe and like CTA).
+- outroScript: Must include "Abonner på kanalen og trykk liker-knappen!" (subscribe and like CTA).${hasOverflow ? '\n- overflowScript: Brief mention that more stories are on the website.' : ''}
 - Each script is a SEPARATE voiceover audio — they must stand alone (no references to "previous" or "next")
 - Write at a calm, natural pace — ikke hastverk. Use natural pauses between sentences.
 
@@ -193,7 +213,8 @@ TEXT REVEAL GUIDE (how headline text appears):
 RULES:
 - Write in clean Norwegian Bokmål (NOT Nynorsk), avoid unnecessary anglicisms
 - Each script must be plain text — no [brackets], timestamps, or stage directions
-- segmentScripts array length MUST equal ${articles.length} (one per article, same order)
+- segmentScripts array length MUST equal ${detailedCount} (one per detailed article, same order)
+- segments array length MUST equal ${detailedCount}
 - Be engaging, professional, conversational — like a modern news podcast
 - If an article has notable numbers/stats, mention them
 - Each segment MUST include mood, transition, and textReveal fields
@@ -201,9 +222,9 @@ RULES:
 
 Return valid JSON with this structure:
 {
-  "introScript": "God morgen...",
+  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",${hasOverflow ? '\n  "roundupScript": "I dag dekker vi N nyheter. Blant annet: ...",' : ''}
   "segmentScripts": ["La oss starte med...", "Videre til...", ...],
-  "outroScript": "Det var dagens nyheter...",
+  "outroScript": "Det var dagens nyheter...",${hasOverflow ? '\n  "overflowScript": "Du finner N flere nyheter på vitalii punkt no.",' : ''}
   "segments": [{headline, keyQuote, category, accentColor, mood, transition, textReveal}, ...],
   "showTitle": "Daglig Nyhetsoppdatering"
 }`;
@@ -244,7 +265,9 @@ Return valid JSON with this structure:
     }
 
     // Backward compat: build showScript from parts for fallback
-    plan.showScript = [plan.introScript, ...plan.segmentScripts, plan.outroScript].filter(Boolean).join(' ');
+    plan.showScript = [plan.introScript, plan.roundupScript, ...plan.segmentScripts, plan.overflowScript, plan.outroScript].filter(Boolean).join(' ');
+    plan.hasOverflow = hasOverflow;
+    plan.overflowCount = overflowCount;
 
     const usage = data.usage;
     if (usage) {
@@ -253,7 +276,9 @@ Return valid JSON with this structure:
 
     const totalWords = plan.showScript.split(/\s+/).length;
     console.log(`📝 Script: ${totalWords} words (${plan.segmentScripts.length} segments)`);
-    console.log(`📊 Segments: ${plan.segments.length}`);
+    console.log(`📊 Segments: ${plan.segments.length}${hasOverflow ? ` + ${overflowCount} overflow` : ''}`);
+    if (plan.roundupScript) console.log(`📋 Roundup script: ${plan.roundupScript.split(/\s+/).length} words`);
+    if (plan.overflowScript) console.log(`📋 Overflow script: ${plan.overflowScript.split(/\s+/).length} words`);
 
     return plan;
 
@@ -269,7 +294,11 @@ Return valid JSON with this structure:
 function templateShowScript(articles, dateStr) {
   console.log('📋 Using template show script');
 
-  const segments = articles.map((a) => {
+  const hasOverflow = articles.length > MAX_DETAILED;
+  const detailedArticles = articles.slice(0, MAX_DETAILED);
+  const overflowCount = hasOverflow ? articles.length - MAX_DETAILED : 0;
+
+  const segments = detailedArticles.map((a) => {
     const title = a.title_no || a.title_en || a.original_title || '';
     return {
       headline: title.substring(0, 60),
@@ -282,23 +311,37 @@ function templateShowScript(articles, dateStr) {
     };
   });
 
-  const introScript = `Hei, jeg er Vitalii fra vitalii punkt no. Her er dagens nyhetsoppdatering for ${formatDateNorwegian(dateStr)}.`;
-  const segmentScripts = articles.map((a, i) => {
+  const introScript = `Hei, jeg er Vitalii fra vitalii punkt no. Her er dagens nyhetsoppdatering for ${formatDateNorwegian(dateStr)}. Vi har ${articles.length} saker i dag.`;
+
+  const roundupScript = hasOverflow
+    ? `I dag dekker vi ${articles.length} nyheter. Blant annet: ${articles.map(a => (a.title_no || a.title_en || '').substring(0, 40)).join(', ')}.`
+    : '';
+
+  const segmentScripts = detailedArticles.map((a, i) => {
     const title = a.title_no || a.title_en || a.original_title || '';
     const desc = a.description_no || a.description_en || '';
     return `Sak nummer ${i + 1}. ${title}. ${desc}`;
   });
+
+  const overflowScript = hasOverflow
+    ? `Du finner ${overflowCount} flere nyheter på vitalii punkt no.`
+    : '';
+
   const outroScript = 'Det var alt for i dag. Abonner på kanalen og trykk liker-knappen! Vi ses i morgen.';
 
-  const showScript = [introScript, ...segmentScripts, outroScript].join(' ');
+  const showScript = [introScript, roundupScript, ...segmentScripts, overflowScript, outroScript].filter(Boolean).join(' ');
 
   return {
     introScript,
+    roundupScript,
     segmentScripts,
+    overflowScript,
     outroScript,
     showScript,
     segments,
     showTitle: 'Daglig Nyhetsoppdatering',
+    hasOverflow,
+    overflowCount,
   };
 }
 
@@ -381,20 +424,27 @@ async function loadFromDraft(draftId) {
   const segmentScripts = (draft.segment_scripts || []).map(s => s.scriptNo || s);
   const visualSegments = draft.visual_scenario || [];
 
+  const hasOverflow = articles.length > MAX_DETAILED;
+  const overflowCount = hasOverflow ? articles.length - MAX_DETAILED : 0;
+
   const plan = {
     introScript: draft.intro_script || '',
+    roundupScript: draft.roundup_script || '',
     segmentScripts,
+    overflowScript: draft.overflow_script || '',
     outroScript: draft.outro_script || '',
-    showScript: [draft.intro_script, ...segmentScripts, draft.outro_script].filter(Boolean).join(' '),
+    showScript: [draft.intro_script, draft.roundup_script, ...segmentScripts, draft.overflow_script, draft.outro_script].filter(Boolean).join(' '),
     segments: visualSegments.length > 0
       ? visualSegments
-      : articles.map(a => ({
+      : articles.slice(0, MAX_DETAILED).map(a => ({
           headline: a.title_no || a.title_en || '',
           keyQuote: '',
           category: 'news',
           accentColor: '#FF7A00',
         })),
     showTitle: 'Daglig Nyhetsoppdatering',
+    hasOverflow,
+    overflowCount,
   };
 
   console.log(`✅ Draft loaded: ${articles.length} articles, ${segmentScripts.length} scripts`);
@@ -477,6 +527,13 @@ async function main() {
     introVoiceover = await generateVoiceover(plan.introScript, LANGUAGE);
   }
 
+  // Generate TTS for roundup script (cold open)
+  let roundupVoiceover = null;
+  if (plan.roundupScript) {
+    console.log('\n  🎙️ Roundup voiceover...');
+    roundupVoiceover = await generateVoiceover(plan.roundupScript, LANGUAGE);
+  }
+
   // Generate TTS for each segment script separately
   const segmentVoiceovers = [];
   const segmentScripts = plan.segmentScripts || [];
@@ -484,6 +541,13 @@ async function main() {
     console.log(`\n  🎙️ Segment ${i + 1}/${segmentScripts.length}...`);
     const vo = await generateVoiceover(segmentScripts[i], LANGUAGE);
     segmentVoiceovers.push(vo);
+  }
+
+  // Generate TTS for overflow script
+  let overflowVoiceover = null;
+  if (plan.overflowScript) {
+    console.log('\n  🎙️ Overflow voiceover...');
+    overflowVoiceover = await generateVoiceover(plan.overflowScript, LANGUAGE);
   }
 
   // Generate TTS for outro script
@@ -509,11 +573,25 @@ async function main() {
     await fs.copyFile(introVoiceover.audioPath, path.join(publicDir, introAudioFilename));
   }
 
+  // Copy roundup audio file
+  let roundupAudioFilename = '';
+  if (roundupVoiceover) {
+    roundupAudioFilename = `daily_vo_roundup_${Date.now()}.mp3`;
+    await fs.copyFile(roundupVoiceover.audioPath, path.join(publicDir, roundupAudioFilename));
+  }
+
   // Copy per-segment audio files
   for (let i = 0; i < segmentVoiceovers.length; i++) {
     const audioFilename = `daily_vo_seg${i}_${Date.now()}.mp3`;
     await fs.copyFile(segmentVoiceovers[i].audioPath, path.join(publicDir, audioFilename));
     audioFiles.push(audioFilename);
+  }
+
+  // Copy overflow audio file
+  let overflowAudioFilename = '';
+  if (overflowVoiceover) {
+    overflowAudioFilename = `daily_vo_overflow_${Date.now()}.mp3`;
+    await fs.copyFile(overflowVoiceover.audioPath, path.join(publicDir, overflowAudioFilename));
   }
 
   // Copy outro audio file
@@ -523,10 +601,11 @@ async function main() {
     await fs.copyFile(outroVoiceover.audioPath, path.join(publicDir, outroAudioFilename));
   }
 
-  // Download images for each segment
+  // Download images for detailed segments only (max MAX_DETAILED)
+  const detailedArticles = articles.slice(0, MAX_DETAILED);
   const segments = [];
-  for (let i = 0; i < articles.length; i++) {
-    const article = articles[i];
+  for (let i = 0; i < detailedArticles.length; i++) {
+    const article = detailedArticles[i];
     const segment = plan.segments[i] || { headline: article.title_no || article.title_en || '', category: 'news', accentColor: '#FF7A00' };
 
     const imageUrl = article.processed_image_url || article.image_url;
@@ -567,26 +646,43 @@ async function main() {
   // Calculate total duration from actual segment durations
   // Dynamic intro/outro duration based on TTS (minimum 4s)
   const introDuration = introVoiceover ? Math.max(introVoiceover.durationSeconds + 1, 4) : 4;
+  const roundupDuration = roundupVoiceover ? Math.max(roundupVoiceover.durationSeconds + 1, 5) : 0;
   const outroDuration = outroVoiceover ? Math.max(outroVoiceover.durationSeconds + 1, 4) : 4;
+  const overflowDuration = overflowVoiceover ? Math.max(overflowVoiceover.durationSeconds + 1, 4) : 0;
   const dividerDuration = 3.5;
   const segmentsTotalDuration = segments.reduce((sum, s) => sum + s.durationSeconds, 0);
   const dividersTotalDuration = segments.length * dividerDuration;
-  const totalDuration = introDuration + dividersTotalDuration + segmentsTotalDuration + outroDuration;
+  const totalDuration = introDuration + roundupDuration + dividersTotalDuration + segmentsTotalDuration + overflowDuration + outroDuration;
 
   const voiceoverTotalDuration = segmentVoiceovers.reduce((sum, vo) => sum + vo.durationSeconds, 0);
   console.log(`\n⏱️ Total duration: ${totalDuration}s`);
-  console.log(`   Intro: ${introDuration}s, Segments: ${segmentsTotalDuration}s, Dividers: ${dividersTotalDuration}s, Outro: ${outroDuration}s`);
+  console.log(`   Intro: ${introDuration}s${roundupDuration ? `, Roundup: ${roundupDuration}s` : ''}, Segments: ${segmentsTotalDuration}s, Dividers: ${dividersTotalDuration}s${overflowDuration ? `, Overflow: ${overflowDuration}s` : ''}, Outro: ${outroDuration}s`);
   console.log(`   Voiceover total: ${voiceoverTotalDuration.toFixed(1)}s (${segmentVoiceovers.length} clips)`);
+  if (plan.hasOverflow) console.log(`   📋 ${plan.overflowCount} overflow articles (mentioned in roundup, linked in description)`);
+
+  // Build roundup headlines for Remotion props
+  const roundupHeadlines = articles.map((a, i) => ({
+    text: a.title_no || a.title_en || '',
+    category: (plan.segments[i] || {}).category || 'news',
+  }));
 
   // Calculate YouTube chapter timecodes
   const timecodes = [];
   let cumTime = 0;
   timecodes.push({ time: 0, label: 'Intro' });
   cumTime += introDuration;
+  if (roundupDuration > 0) {
+    timecodes.push({ time: Math.round(cumTime), label: 'Dagens overskrifter' });
+    cumTime += roundupDuration;
+  }
   for (let i = 0; i < segments.length; i++) {
     cumTime += dividerDuration;
     timecodes.push({ time: Math.round(cumTime), label: segments[i].headline });
     cumTime += segments[i].durationSeconds;
+  }
+  if (overflowDuration > 0) {
+    timecodes.push({ time: Math.round(cumTime), label: 'Flere nyheter' });
+    cumTime += overflowDuration;
   }
   timecodes.push({ time: Math.round(cumTime), label: 'Outro' });
 
@@ -616,6 +712,14 @@ async function main() {
     accentColor: '#FF7A00',
     introVoiceoverSrc: introAudioFilename || undefined,
     outroVoiceoverSrc: outroAudioFilename || undefined,
+    // Roundup (cold open with all headlines)
+    roundupHeadlines: roundupDuration > 0 ? roundupHeadlines : undefined,
+    roundupVoiceoverSrc: roundupAudioFilename || undefined,
+    roundupDurationSeconds: roundupDuration,
+    // Overflow CTA
+    overflowCount: plan.overflowCount || 0,
+    overflowVoiceoverSrc: overflowAudioFilename || undefined,
+    overflowDurationSeconds: overflowDuration,
   });
 
   const propsFile = path.join(os.tmpdir(), `daily_props_${Date.now()}.json`);
@@ -634,18 +738,34 @@ async function main() {
   // Step 6: Upload to YouTube
   console.log('\n📤 Step 5: Uploading to YouTube...');
   const title = `Daglig Nyhetsoppdatering — ${displayDate}`;
+  // Build overflow article links for YouTube description
+  const overflowArticles = articles.slice(MAX_DETAILED);
+  const overflowLinks = overflowArticles.length > 0
+    ? [
+        '',
+        `Andre nyheter i dag (${overflowArticles.length}):`,
+        ...overflowArticles.map((a, i) => {
+          const title = a.title_no || a.title_en || '';
+          const url = a.slug_en ? `https://vitalii.no/news/${a.slug_en}` : '';
+          return url ? `• ${title} — ${url}` : `• ${title}`;
+        }),
+      ]
+    : [];
+
   const description = [
     `Daglig nyhetssammendrag fra vitalii.no — ${displayDate}`,
     '',
     // YouTube chapters (timecodes)
     ...timecodes.map(tc => `${formatTimestamp(tc.time)} ${tc.label}`),
     '',
-    // Article links
-    `${articles.length} saker dekket i denne utgaven:`,
+    // Detailed article links
+    `${segments.length} saker dekket i detalj:`,
     ...segments.map((s, i) => {
       const url = s.slug ? `https://vitalii.no/news/${s.slug}` : '';
       return url ? `${i + 1}. ${s.headline} — ${url}` : `${i + 1}. ${s.headline}`;
     }),
+    // Overflow article links
+    ...overflowLinks,
     '',
     'Abonner for daglige oppdateringer!',
     'https://vitalii.no',
@@ -670,10 +790,16 @@ async function main() {
   if (introAudioFilename) {
     await fs.unlink(path.join(publicDir, introAudioFilename)).catch(() => {});
   }
+  if (roundupAudioFilename) {
+    await fs.unlink(path.join(publicDir, roundupAudioFilename)).catch(() => {});
+  }
+  if (overflowAudioFilename) {
+    await fs.unlink(path.join(publicDir, overflowAudioFilename)).catch(() => {});
+  }
   if (outroAudioFilename) {
     await fs.unlink(path.join(publicDir, outroAudioFilename)).catch(() => {});
   }
-  for (const vo of [...segmentVoiceovers, introVoiceover, outroVoiceover].filter(Boolean)) {
+  for (const vo of [...segmentVoiceovers, introVoiceover, roundupVoiceover, overflowVoiceover, outroVoiceover].filter(Boolean)) {
     await fs.unlink(vo.audioPath).catch(() => {});
   }
 

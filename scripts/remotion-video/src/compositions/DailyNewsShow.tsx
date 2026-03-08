@@ -22,6 +22,7 @@ import { HeadlineScene } from "../components/HeadlineScene";
 import { ContentScene } from "../components/ContentScene";
 import { StatsScene } from "../components/StatsScene";
 import { OutroScene } from "../components/OutroScene";
+import { HeadlinesRoundupScene, type RoundupHeadline } from "../components/HeadlinesRoundupScene";
 import { SceneTransition } from "../components/SceneTransition";
 import { AnimatedLogo } from "../components/AnimatedLogo";
 import { ProgressBar } from "../components/ProgressBar";
@@ -87,6 +88,18 @@ export interface DailyNewsShowProps {
   introVoiceoverSrc?: string;
   /** Outro voiceover audio file */
   outroVoiceoverSrc?: string;
+  /** Headlines for cold-open roundup scene (all articles) */
+  roundupHeadlines?: RoundupHeadline[];
+  /** Roundup voiceover audio file */
+  roundupVoiceoverSrc?: string;
+  /** Roundup scene duration in seconds */
+  roundupDurationSeconds?: number;
+  /** Number of overflow articles (beyond max 10 detailed) */
+  overflowCount?: number;
+  /** Overflow CTA voiceover audio file */
+  overflowVoiceoverSrc?: string;
+  /** Overflow CTA duration in seconds */
+  overflowDurationSeconds?: number;
 }
 
 export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
@@ -102,6 +115,12 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   accentColor = colors.brand,
   introVoiceoverSrc,
   outroVoiceoverSrc,
+  roundupHeadlines,
+  roundupVoiceoverSrc,
+  roundupDurationSeconds = 0,
+  overflowCount = 0,
+  overflowVoiceoverSrc,
+  overflowDurationSeconds = 0,
 }) => {
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
@@ -151,6 +170,31 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   }
 
   currentFrame += introFrames;
+
+  // ── Headlines Roundup (cold open) ──
+  if (roundupHeadlines && roundupHeadlines.length > 0 && roundupDurationSeconds > 0) {
+    const roundupFrames = Math.ceil(roundupDurationSeconds * fps);
+    sequences.push({
+      component: (
+        <HeadlinesRoundupScene
+          headlines={roundupHeadlines}
+          accentColor={accentColor}
+        />
+      ),
+      startFrame: currentFrame,
+      durationFrames: roundupFrames,
+    });
+
+    if (roundupVoiceoverSrc) {
+      audioSequences.push({
+        src: roundupVoiceoverSrc,
+        startFrame: currentFrame,
+        durationFrames: roundupFrames,
+      });
+    }
+
+    currentFrame += roundupFrames;
+  }
 
   // ── News Segments ──
   segments.forEach((segment, i) => {
@@ -287,6 +331,35 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       });
     }
   });
+
+  // ── Overflow CTA (if >10 articles) ──
+  if (overflowCount > 0 && overflowDurationSeconds > 0) {
+    const overflowFrames = Math.ceil(overflowDurationSeconds * fps);
+    sequences.push({
+      component: (
+        <OutroScene
+          message={
+            language === "no"
+              ? `${overflowCount} nyheter til på`
+              : `${overflowCount} more stories on`
+          }
+          accentColor={accentColor}
+        />
+      ),
+      startFrame: currentFrame,
+      durationFrames: overflowFrames,
+    });
+
+    if (overflowVoiceoverSrc) {
+      audioSequences.push({
+        src: overflowVoiceoverSrc,
+        startFrame: currentFrame,
+        durationFrames: overflowFrames,
+      });
+    }
+
+    currentFrame += overflowFrames;
+  }
 
   // ── Show Outro ──
   const outroFrames = Math.ceil(outroDurationSeconds * fps);

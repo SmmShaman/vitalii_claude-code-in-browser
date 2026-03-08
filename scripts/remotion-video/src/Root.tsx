@@ -48,6 +48,12 @@ const DAILY_SHOW_PROPS = {
   outroDurationSeconds: 4,
   dividerDurationSeconds: 3.5,
   accentColor: "#FF7A00",
+  roundupHeadlines: [] as { text: string; category: string }[],
+  roundupVoiceoverSrc: "",
+  roundupDurationSeconds: 0,
+  overflowCount: 0,
+  overflowVoiceoverSrc: "",
+  overflowDurationSeconds: 0,
 };
 
 export const RemotionRoot: React.FC = () => {
