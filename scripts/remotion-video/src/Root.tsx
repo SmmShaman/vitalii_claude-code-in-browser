@@ -46,7 +46,7 @@ const DAILY_SHOW_PROPS = {
   totalDurationSeconds: 120,
   introDurationSeconds: 4,
   outroDurationSeconds: 4,
-  dividerDurationSeconds: 2,
+  dividerDurationSeconds: 3.5,
   accentColor: "#FF7A00",
 };
 

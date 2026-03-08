@@ -98,7 +98,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   subtitles,
   introDurationSeconds = 4,
   outroDurationSeconds = 4,
-  dividerDurationSeconds = 2,
+  dividerDurationSeconds = 3.5,
   accentColor = colors.brand,
   introVoiceoverSrc,
   outroVoiceoverSrc,

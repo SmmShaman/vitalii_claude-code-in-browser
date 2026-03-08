@@ -92,7 +92,7 @@ async function fetchYesterdayNews() {
 
   const { data, error } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, tags, created_at')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, tags, created_at, slug_en')
     .eq('is_published', true)
     .gte('created_at', start)
     .lte('created_at', end)
@@ -125,8 +125,8 @@ async function directDailyShow(articles, dateStr) {
     return `ARTICLE ${i + 1}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
   }).join('\n\n');
 
-  // ~12 seconds per article + 8s intro/outro
-  const targetDuration = Math.min(articles.length * 12 + 8, 300);
+  // ~15 seconds per article + 12s intro/outro (no cap — video is as long as needed)
+  const targetDuration = articles.length * 15 + 12;
   const wordTarget = Math.round(targetDuration * 2);
 
   const wordsPerArticle = Math.round(wordTarget / (articles.length + 2)); // +2 for intro/outro
@@ -134,19 +134,27 @@ async function directDailyShow(articles, dateStr) {
   const systemPrompt = `You are a professional Norwegian news anchor writing a daily news summary video script.
 
 The video is a compilation of ${articles.length} news stories from ${dateStr}.
-Total video duration: ~${targetDuration} seconds.
+Target duration: ~${targetDuration} seconds. There is NO maximum length — take the time needed to cover each story properly.
 
 You must write SEPARATE scripts for each part of the show:
-1. "introScript" — opening greeting (~3 seconds, ~${wordsPerArticle} words)
-2. "segmentScripts" — one narration script PER article (~10-15 seconds each, ~${wordsPerArticle * 2} words each)
-3. "outroScript" — closing (~3 seconds, ~${wordsPerArticle} words)
+1. "introScript" — personal opening greeting (~4-5 seconds, ~${wordsPerArticle} words). Start with "Hei, jeg er Vitalii fra vitalii punkt no." then a brief mention of today's news count.
+2. "segmentScripts" — one narration script PER article (~12-18 seconds each, ~${wordsPerArticle * 2} words each)
+3. "outroScript" — closing with subscribe CTA (~4-5 seconds, ~${wordsPerArticle} words). End with "Abonner på kanalen og trykk liker-knappen! Vi ses i morgen."
 4. "segments" — visual metadata for each news story
 
 SCRIPT RULES:
-- introScript: "God morgen! Her er dagens nyhetsoppdatering fra vitalii.no..." (Norwegian Bokmål)
-- Each segmentScript: transition + 2-4 sentences covering key points. Natural conversational tone.
-- outroScript: "Det var dagens nyheter. Følg oss på vitalii.no for mer."
+- introScript: Must start with "Hei, jeg er Vitalii fra vitalii punkt no." followed by greeting and news count.
+- Each segmentScript: transition + 3-5 sentences covering key points. Natural conversational tone. Don't rush.
+- outroScript: Must include "Abonner på kanalen og trykk liker-knappen!" (subscribe and like CTA).
 - Each script is a SEPARATE voiceover audio — they must stand alone (no references to "previous" or "next")
+- Write at a calm, natural pace — ikke hastverk. Use natural pauses between sentences.
+
+LANGUAGE QUALITY:
+- Write in clean Norwegian Bokmål (NOT Nynorsk). AVOID English loanwords when a Norwegian equivalent exists.
+- Use "kunstig intelligens" not "AI", "programvare" not "software", "nettside" not "website", "bruker" not "user", "oppdatering" not "update", "selskap" not "company" (when contextually appropriate).
+- Technical terms with no established Norwegian equivalent (like "blockchain", "API", "GPU") may remain in English.
+- The text will be read aloud by TTS — write phonetically clear Norwegian that sounds natural when spoken.
+- Avoid complex compound sentences. Use short, clear sentences with natural pauses.
 
 SEGMENTS array — one object per article with VISUAL DIRECTIVES:
 {
@@ -183,12 +191,13 @@ TEXT REVEAL GUIDE (how headline text appears):
 - "splitScale": words scale in (energetic, startup news)
 
 RULES:
-- Write in Norwegian Bokmål (NOT Nynorsk)
+- Write in clean Norwegian Bokmål (NOT Nynorsk), avoid unnecessary anglicisms
 - Each script must be plain text — no [brackets], timestamps, or stage directions
 - segmentScripts array length MUST equal ${articles.length} (one per article, same order)
 - Be engaging, professional, conversational — like a modern news podcast
 - If an article has notable numbers/stats, mention them
 - Each segment MUST include mood, transition, and textReveal fields
+- Take your time with each story — don't compress information unnecessarily
 
 Return valid JSON with this structure:
 {
@@ -273,13 +282,13 @@ function templateShowScript(articles, dateStr) {
     };
   });
 
-  const introScript = `God morgen. Her er dagens nyhetsoppdatering fra vitalii punkt no, ${formatDateNorwegian(dateStr)}.`;
+  const introScript = `Hei, jeg er Vitalii fra vitalii punkt no. Her er dagens nyhetsoppdatering for ${formatDateNorwegian(dateStr)}.`;
   const segmentScripts = articles.map((a, i) => {
     const title = a.title_no || a.title_en || a.original_title || '';
     const desc = a.description_no || a.description_en || '';
     return `Sak nummer ${i + 1}. ${title}. ${desc}`;
   });
-  const outroScript = 'Det var dagens nyheter. Følg oss på vitalii punkt no for flere oppdateringer.';
+  const outroScript = 'Det var alt for i dag. Abonner på kanalen og trykk liker-knappen! Vi ses i morgen.';
 
   const showScript = [introScript, ...segmentScripts, outroScript].join(' ');
 
@@ -362,7 +371,7 @@ async function loadFromDraft(draftId) {
   // Fetch articles
   const { data: articles, error: artError } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, tags, created_at')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, tags, created_at, slug_en')
     .in('id', draft.article_ids)
     .order('created_at', { ascending: true });
 
@@ -547,6 +556,7 @@ async function main() {
       durationSeconds: segDuration,
       voiceoverSrc: audioFiles[i] || '',
       subtitles: vo ? vo.subtitles : [],
+      slug: article.slug_en || '',
       // Visual directives from AI director
       mood: segment.mood || 'positive',
       transition: segment.transition || 'fade',
@@ -558,7 +568,7 @@ async function main() {
   // Dynamic intro/outro duration based on TTS (minimum 4s)
   const introDuration = introVoiceover ? Math.max(introVoiceover.durationSeconds + 1, 4) : 4;
   const outroDuration = outroVoiceover ? Math.max(outroVoiceover.durationSeconds + 1, 4) : 4;
-  const dividerDuration = 2;
+  const dividerDuration = 3.5;
   const segmentsTotalDuration = segments.reduce((sum, s) => sum + s.durationSeconds, 0);
   const dividersTotalDuration = segments.length * dividerDuration;
   const totalDuration = introDuration + dividersTotalDuration + segmentsTotalDuration + outroDuration;
@@ -567,6 +577,26 @@ async function main() {
   console.log(`\n⏱️ Total duration: ${totalDuration}s`);
   console.log(`   Intro: ${introDuration}s, Segments: ${segmentsTotalDuration}s, Dividers: ${dividersTotalDuration}s, Outro: ${outroDuration}s`);
   console.log(`   Voiceover total: ${voiceoverTotalDuration.toFixed(1)}s (${segmentVoiceovers.length} clips)`);
+
+  // Calculate YouTube chapter timecodes
+  const timecodes = [];
+  let cumTime = 0;
+  timecodes.push({ time: 0, label: 'Intro' });
+  cumTime += introDuration;
+  for (let i = 0; i < segments.length; i++) {
+    cumTime += dividerDuration;
+    timecodes.push({ time: Math.round(cumTime), label: segments[i].headline });
+    cumTime += segments[i].durationSeconds;
+  }
+  timecodes.push({ time: Math.round(cumTime), label: 'Outro' });
+
+  function formatTimestamp(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  console.log(`📑 Timecodes: ${timecodes.map(tc => `${formatTimestamp(tc.time)} ${tc.label}`).join(' | ')}`);
 
   // Step 5: Render with Remotion
   console.log('\n🎬 Step 4: Rendering with Remotion...');
@@ -607,10 +637,17 @@ async function main() {
   const description = [
     `Daglig nyhetssammendrag fra vitalii.no — ${displayDate}`,
     '',
-    `${articles.length} saker dekket i denne utgaven:`,
-    ...segments.map((s, i) => `${i + 1}. ${s.headline}`),
+    // YouTube chapters (timecodes)
+    ...timecodes.map(tc => `${formatTimestamp(tc.time)} ${tc.label}`),
     '',
-    'Følg oss for daglige oppdateringer!',
+    // Article links
+    `${articles.length} saker dekket i denne utgaven:`,
+    ...segments.map((s, i) => {
+      const url = s.slug ? `https://vitalii.no/news/${s.slug}` : '';
+      return url ? `${i + 1}. ${s.headline} — ${url}` : `${i + 1}. ${s.headline}`;
+    }),
+    '',
+    'Abonner for daglige oppdateringer!',
     'https://vitalii.no',
     '',
     '#nyheter #norge #teknologi #dagligoppdatering',

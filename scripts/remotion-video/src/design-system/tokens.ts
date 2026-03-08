@@ -77,9 +77,9 @@ export const gradients = {
 
   // Overlays for text readability
   contentOverlay:
-    "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.7) 100%)",
+    "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.55) 100%)",
   contentOverlayLight:
-    "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6) 100%)",
+    "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.45) 100%)",
   imageOverlay:
     "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)",
 
@@ -185,7 +185,7 @@ export const kenBurns = {
   panX: { start: 0, end: -2 },
   panY: { start: 0, end: -1 },
   backgroundScale: { start: 1.1, end: 1.2 },
-  backgroundBlur: "blur(20px) brightness(0.3)",
+  backgroundBlur: "brightness(0.5)",
 } as const;
 
 // ── Opacity ──

@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-08-v1";
+const VERSION = "2026-03-08-v2";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -130,7 +130,7 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
   // Fetch published news
   const { data: articles, error } = await supabase
     .from("news")
-    .select("id, title_no, title_en, original_title, description_no, description_en, image_url, processed_image_url, tags")
+    .select("id, title_no, title_en, original_title, description_no, description_en, image_url, processed_image_url, tags, slug_en")
     .eq("is_published", true)
     .gte("created_at", start)
     .lte("created_at", end)
@@ -154,6 +154,7 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
     description: a.description_no || a.description_en || "",
     hasImage: !!(a.processed_image_url || a.image_url),
     tags: a.tags || [],
+    slug_en: a.slug_en || "",
   }));
 
   const { data: draft, error: upsertError } = await supabase
@@ -257,23 +258,31 @@ async function generateScript(targetDate: string, chatId?: number, messageId?: n
     return `ARTICLE ${i + 1}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
   }).join("\n\n");
 
-  const targetDuration = Math.min(orderedArticles.length * 12 + 8, 300);
+  const targetDuration = orderedArticles.length * 15 + 12;
   const wordTarget = Math.round(targetDuration * 2);
   const wordsPerArticle = Math.round(wordTarget / (orderedArticles.length + 2));
 
   const systemPrompt = `You are a professional Norwegian news anchor writing a daily news summary video script.
 
 The video is a compilation of ${orderedArticles.length} news stories from ${displayDate}.
-Target duration: ~${targetDuration} seconds.
+Target duration: ~${targetDuration} seconds. There is NO maximum length — take the time needed for each story.
 
 Write SEPARATE scripts for each part:
-1. "introScript" — opening greeting (~3s, ~${wordsPerArticle} words)
-2. "segmentScripts" — one narration per article (~10-15s each, ~${wordsPerArticle * 2} words each)
-3. "outroScript" — closing (~3s, ~${wordsPerArticle} words)
+1. "introScript" — personal opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Hei, jeg er Vitalii fra vitalii punkt no." then mention today's news count.
+2. "segmentScripts" — one narration per article (~12-18s each, ~${wordsPerArticle * 2} words each). 3-5 sentences each.
+3. "outroScript" — closing with subscribe CTA (~4-5s, ~${wordsPerArticle} words). MUST include "Abonner på kanalen og trykk liker-knappen!"
 4. "segmentTranslations" — Ukrainian translations of each segmentScript (for moderator review)
 
+Write at a calm, natural pace — ikke hastverk. Use natural pauses between sentences.
+
+LANGUAGE QUALITY:
+- Write in clean Norwegian Bokmål (NOT Nynorsk). AVOID English loanwords when a Norwegian equivalent exists.
+- Use "kunstig intelligens" not "AI", "programvare" not "software", "nettside" not "website", "bruker" not "user", "oppdatering" not "update", "selskap" not "company" (when contextually appropriate).
+- Technical terms with no established Norwegian equivalent (like "blockchain", "API", "GPU") may remain in English.
+- The text will be read aloud by TTS — write phonetically clear Norwegian that sounds natural when spoken.
+- Avoid complex compound sentences. Use short, clear sentences.
+
 RULES:
-- Write in Norwegian Bokmål
 - Each segmentScript stands alone (no references to other segments)
 - segmentScripts.length MUST equal ${orderedArticles.length}
 - segmentTranslations.length MUST equal ${orderedArticles.length}
@@ -281,12 +290,12 @@ RULES:
 
 Return JSON:
 {
-  "introScript": "God morgen...",
+  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",
   "segmentScripts": ["...", ...],
-  "outroScript": "Det var dagens nyheter...",
+  "outroScript": "Det var alt for i dag. Abonner på kanalen...",
   "segmentTranslations": ["Почнімо з...", ...],
-  "introTranslation": "Доброго ранку...",
-  "outroTranslation": "Це були новини дня..."
+  "introTranslation": "Привіт, я Віталій...",
+  "outroTranslation": "На сьогодні все..."
 }`;
 
   const aiResponse = await callAI(systemPrompt, `Write the script for ${displayDate}:\n\n${articleSummaries}`);
@@ -469,6 +478,7 @@ For each article segment, specify ALL of these fields:
   * "bars" — horizontal bar chart (for comparisons, percentages)
 
 VISUAL DIRECTION RULES:
+- Headlines and keyQuotes in clean Norwegian Bokmål — avoid unnecessary anglicisms
 - Match mood to story content (don't use "urgent" for lifestyle stories)
 - Vary transitions — don't use the same one for every segment
 - Use "typewriter" textReveal sparingly (1-2 per show max, for most dramatic stories)

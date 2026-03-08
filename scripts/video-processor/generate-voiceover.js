@@ -108,7 +108,7 @@ async function trySubsEndpoint(BASE, token, email, voice, text) {
     const resp = await fetch(`${BASE}/subs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ token, email, voice: subsVoice, text, format: 'mp3', speed: '1' }).toString(),
+      body: new URLSearchParams({ token, email, voice: subsVoice, text, format: 'mp3', speed: '0.9' }).toString(),
     });
 
     const data = await resp.json();
@@ -150,7 +150,7 @@ async function textEndpoint(BASE, token, email, voice, text) {
   const resp = await fetch(`${BASE}/text`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ token, email, voice, text, format: 'mp3', speed: '1' }).toString(),
+    body: new URLSearchParams({ token, email, voice, text, format: 'mp3', speed: '0.9' }).toString(),
   });
 
   if (!resp.ok) {
