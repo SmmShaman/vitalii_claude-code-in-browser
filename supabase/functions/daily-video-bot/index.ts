@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-08-v5";
+const VERSION = "2026-03-08-v12";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -818,7 +818,7 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
 // ══════════════════════════════════════════════════════════════
 
 const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
-const GEMINI_MODELS = ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"];
+const GEMINI_MODELS = ["gemini-3-pro-image-preview", "gemini-2.5-pro-image", "gemini-2.5-flash-image"];
 const GEMINI_TIMEOUT = 60_000;
 
 // 4 overlay styles applied on top of real article images
@@ -873,6 +873,65 @@ function getPngDimensions(data: Uint8Array): { width: number; height: number } |
   return { width, height };
 }
 
+async function resizeImage(buffer: Uint8Array, targetW: number, targetH: number): Promise<Uint8Array> {
+  // Detect format
+  const isJpeg = buffer[0] === 0xFF && buffer[1] === 0xD8;
+  if (isJpeg) {
+    // JPEG: can't resize in Deno Deploy without heavy deps, YouTube handles resize
+    console.log(`📐 JPEG ${(buffer.length / 1024).toFixed(0)} KB — YouTube will resize to ${targetW}×${targetH}`);
+    return buffer;
+  }
+
+  // PNG: check if already correct size
+  const dims = getPngDimensions(buffer);
+  if (!dims || (dims.width === targetW && dims.height === targetH)) return buffer;
+
+  console.log(`🔧 Resizing PNG ${dims.width}×${dims.height} → ${targetW}×${targetH}...`);
+  try {
+    const UPNG = (await import("https://esm.sh/upng-js@2.1.0")).default;
+    const decoded = UPNG.decode(buffer.buffer);
+    const rgba = new Uint8Array(UPNG.toRGBA8(decoded)[0]);
+    const srcW = decoded.width;
+    const srcH = decoded.height;
+
+    // Bilinear interpolation resize
+    const dst = new Uint8Array(targetW * targetH * 4);
+    const xRatio = (srcW - 1) / (targetW - 1);
+    const yRatio = (srcH - 1) / (targetH - 1);
+
+    for (let y = 0; y < targetH; y++) {
+      const srcY = y * yRatio;
+      const y0 = Math.floor(srcY);
+      const y1 = Math.min(y0 + 1, srcH - 1);
+      const yF = srcY - y0;
+
+      for (let x = 0; x < targetW; x++) {
+        const srcX = x * xRatio;
+        const x0 = Math.floor(srcX);
+        const x1 = Math.min(x0 + 1, srcW - 1);
+        const xF = srcX - x0;
+
+        const di = (y * targetW + x) * 4;
+        for (let c = 0; c < 4; c++) {
+          const tl = rgba[(y0 * srcW + x0) * 4 + c];
+          const tr = rgba[(y0 * srcW + x1) * 4 + c];
+          const bl = rgba[(y1 * srcW + x0) * 4 + c];
+          const br = rgba[(y1 * srcW + x1) * 4 + c];
+          dst[di + c] = Math.round(tl + (tr - tl) * xF + (bl + (br - bl) * xF - (tl + (tr - tl) * xF)) * yF);
+        }
+      }
+    }
+
+    const encoded = UPNG.encode([dst.buffer], targetW, targetH, 0);
+    const result = new Uint8Array(encoded);
+    console.log(`✅ Resized to ${targetW}×${targetH} (${(result.length / 1024).toFixed(0)} KB)`);
+    return result;
+  } catch (err: any) {
+    console.warn(`⚠️ Resize failed: ${err.message}, using ${dims.width}×${dims.height}`);
+    return buffer;
+  }
+}
+
 async function convertToJpegViaGemini(pngBuffer: Uint8Array): Promise<Uint8Array | null> {
   try {
     let binary = "";
@@ -886,7 +945,10 @@ async function convertToJpegViaGemini(pngBuffer: Uint8Array): Promise<Uint8Array
           { inline_data: { mime_type: "image/png", data: base64 } },
         ],
       }],
-      generationConfig: { responseModalities: ["IMAGE"] },
+      generationConfig: {
+        responseModalities: ["IMAGE"],
+        imageConfig: { aspectRatio: "16:9", imageSize: "1K" },
+      },
     };
 
     for (const model of GEMINI_MODELS) {
@@ -929,7 +991,13 @@ async function callGeminiImage(prompt: string, inputImageBase64?: string): Promi
 
   const requestBody = {
     contents: [{ parts }],
-    generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+    generationConfig: {
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        aspectRatio: "16:9",
+        imageSize: "1K",
+      },
+    },
   };
 
   for (const model of GEMINI_MODELS) {
@@ -967,13 +1035,14 @@ async function callGeminiImage(prompt: string, inputImageBase64?: string): Promi
             const bytes = new Uint8Array(binaryStr.length);
             for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
 
-            // Check dimensions
-            const dims = getPngDimensions(bytes);
-            if (dims) {
-              console.log(`📐 Output: ${dims.width}×${dims.height}`);
-              if (dims.width !== 1280 || dims.height !== 720) {
-                console.warn(`⚠️ Expected 1280×720, got ${dims.width}×${dims.height}`);
-              }
+            // Check dimensions (PNG or JPEG)
+            const isPng = bytes[0] === 137 && bytes[1] === 80;
+            const isJpg = bytes[0] === 0xFF && bytes[1] === 0xD8;
+            if (isPng) {
+              const dims = getPngDimensions(bytes);
+              if (dims) console.log(`📐 PNG output: ${dims.width}×${dims.height}`);
+            } else if (isJpg) {
+              console.log(`📐 JPEG output (${(bytes.length / 1024).toFixed(0)} KB)`);
             }
 
             return bytes;
@@ -989,15 +1058,91 @@ async function callGeminiImage(prompt: string, inputImageBase64?: string): Promi
   return null;
 }
 
+// Generate a punchy 2-4 word headline for thumbnail overlay via Azure OpenAI
+async function generateThumbnailHeadline(articles: any[]): Promise<string> {
+  if (!AZURE_ENDPOINT || !AZURE_KEY) return "";
+
+  const headlines = articles
+    .slice(0, 6)
+    .map((a: any) => a.title_no || a.title_en || a.original_title || "")
+    .filter(Boolean)
+    .join("\n- ");
+
+  const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
+
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "api-key": AZURE_KEY },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: `Du er en YouTube-thumbnail-tekstforfatter for en norsk tech-nyhetskanal.
+
+OPPGAVE: Lag EN kort, slagkraftig overskrift for thumbnail (2-4 ord).
+
+REGLER:
+- Maks 4 ord, helst 2-3
+- STORE BOKSTAVER (UPPERCASE)
+- Norsk bokmal
+- INGEN emojier, INGEN tall, INGEN tegnsetting
+- Fokuser pa den mest sjokerende/spennende nyheten
+- Bruk sterke verb og folelsesord
+- Skap nysgjerrighet — la noe vare usagt
+
+GODE EKSEMPLER:
+- DETTE ENDRER ALT
+- AI OVERTAR NORGE
+- APPLE SJOKKER ALLE
+- NY TECH REVOLUSJON
+- INGEN SA DETTE KOMME
+- NORSK GJENNOMBRUDD
+- FREMTIDEN ER HER
+- MARKEDET KOLLAPSER
+
+DARLIGE EKSEMPLER (IKKE bruk):
+- 7 TECH-NYHETER (kjedelig, med tall)
+- DAGLIG OPPDATERING (generisk)
+- SE DETTE (vagt)
+
+Svar med KUN overskriften, ingenting annet.`,
+          },
+          {
+            role: "user",
+            content: `Dagens nyheter:\n- ${headlines}\n\nLag thumbnail-overskrift:`,
+          },
+        ],
+        temperature: 0.9,
+        max_tokens: 30,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!resp.ok) {
+      console.warn(`⚠️ Headline generation failed: ${resp.status}`);
+      return "";
+    }
+
+    const data = await resp.json();
+    let headline = (data.choices?.[0]?.message?.content || "").trim();
+    // Clean: remove quotes, emojis, ensure uppercase
+    headline = headline.replace(/["""'']/g, "").replace(/[\u{1F000}-\u{1FFFF}]/gu, "").trim().toUpperCase();
+    console.log(`📝 Thumbnail headline: "${headline}"`);
+    return headline;
+  } catch (err: any) {
+    console.warn(`⚠️ Headline generation error: ${err.message}`);
+    return "";
+  }
+}
+
 function buildThumbPrompt(
-  title: string,
+  headline: string,
   displayDate: string,
   articleCount: number,
   style: typeof THUMBNAIL_STYLES[0],
   hasImage: boolean,
 ): string {
-  const shortTitle = title.split(/\s+/).slice(0, 5).join(" ");
-
   const imageInstruction = hasImage
     ? `Take the provided news article image and transform it into a YouTube thumbnail.
 
@@ -1008,30 +1153,35 @@ ${style.prompt}`;
 
   return `${imageInstruction}
 
-OUTPUT: Exactly 1280×720 pixels (16:9 landscape). This is critical — the image MUST be 1280 wide and 720 tall.
+OUTPUT: 16:9 landscape image.
 
-TEXT OVERLAYS TO ADD ON TOP:
+TEXT OVERLAYS — render these EXACTLY as specified:
 
-1. PRIMARY TITLE (large, 150-200px font height, upper-left safe zone):
-"${shortTitle}"
-- Bold sans-serif font (Impact or Montserrat ExtraBold)
-- Bright white (#FFFFFF) with 2-3px black outline/stroke and dark drop shadow
+1. MAIN HEADLINE (dominant element, upper-left area):
+"${headline}"
+- Font: Impact or Montserrat ExtraBold, 160-220px height
+- Color: pure white (#FFFFFF)
+- Add thick black outline (3-4px stroke) AND strong drop shadow for readability
 - Maximum 2 lines, left-aligned
+- This is the MOST important visual element — it must DOMINATE the thumbnail
 
-2. BADGE (top-left corner):
-"${articleCount} SAKER" — bold white text on orange (#FF7A00) rounded pill shape
+2. ARTICLE COUNT BADGE (top-right corner):
+"${articleCount}" inside an orange (#FF7A00) circle or rounded square
+- Number should be large and bold (80-100px)
+- White text on solid orange background
 
-3. BRANDING (bottom-left, small):
-"vitalii.no" in white + "${displayDate}" next to it
+3. CHANNEL BRANDING (bottom-left, subtle):
+"vitalii.no" — small white text (24-28px), semi-transparent
 
-SAFE ZONES:
-- NEVER place text in bottom-right corner (YouTube duration badge)
-- All text within center 84% of frame
-- Avoid bottom 150px for important elements
+COMPOSITION RULES:
+- Text in LEFT 60% of frame, image detail visible in RIGHT 40%
+- Bottom-right corner MUST be empty (YouTube duration badge zone)
+- All text within center 84% safe area
+- Strong visual hierarchy: headline > badge > branding
+- Maximum 3 colors: dark background, orange #FF7A00 accent, white text
 
-COLORS: max 3 — dark background, orange #FF7A00 accent, white text.
-TEXT LANGUAGE: Norwegian Bokmaal ONLY.
-OUTPUT: Image only, no text response. Exactly 1280×720 pixels.`;
+TEXT LANGUAGE: Norwegian Bokmal ONLY. No emojis anywhere.
+OUTPUT: Image only, no text response.`;
 }
 
 async function generateThumbnails(targetDate: string, chatId?: number): Promise<Response> {
@@ -1065,14 +1215,15 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
 
   const ordered = articleIds.map((id: string) => articles?.find((a: any) => a.id === id)).filter(Boolean);
 
-  // Get or generate clickbait title
-  let clickbaitTitle = draft.clickbait_title || "";
-  if (!clickbaitTitle) {
-    const displayDate = formatDateNorwegian(targetDate);
-    clickbaitTitle = `🔥 ${ordered.length} tech-nyheter — ${displayDate}`;
-  }
-
   const displayDate = formatDateNorwegian(targetDate);
+
+  // Generate punchy thumbnail headline via Azure OpenAI
+  let thumbnailHeadline = await generateThumbnailHeadline(ordered);
+  if (!thumbnailHeadline) {
+    // Fallback: use first article's title, uppercase, no emojis
+    const fallbackTitle = (ordered[0]?.title_no || ordered[0]?.title_en || "TECH-NYHETER").toUpperCase();
+    thumbnailHeadline = fallbackTitle.split(/\s+/).slice(0, 3).join(" ");
+  }
 
   // Collect article images (up to 4)
   const articleImages: { url: string; title: string }[] = [];
@@ -1087,7 +1238,7 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
   const hasImages = articleImages.length > 0;
   console.log(`📸 Found ${articleImages.length} article images`);
 
-  await sendMessage(theChatId, `🖼️ <b>Генерую 4 варіанти превью...</b>\n\n📅 ${displayDate}\n📝 ${escapeHtml(clickbaitTitle)}\n📸 Зображень з статей: ${articleImages.length}\n\n⏳ Це може зайняти 1-2 хвилини`);
+  await sendMessage(theChatId, `🖼️ <b>Генерую 4 варіанти превью...</b>\n\n📅 ${displayDate}\n📝 ${escapeHtml(thumbnailHeadline)}\n📸 Зображень з статей: ${articleImages.length}\n\n⏳ Це може зайняти 1-2 хвилини`);
 
   // Download article images as base64 (parallel)
   let imageBase64List: (string | null)[] = [];
@@ -1113,7 +1264,7 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
       const img = variantImages[i];
       const imgLabel = img ? `📸 image ${(i % validImages.length) + 1}` : "🎨 text-only";
       console.log(`🎨 Variant ${i + 1}: ${style.name} (${imgLabel})`);
-      const prompt = buildThumbPrompt(clickbaitTitle, displayDate, ordered.length, style, !!img);
+      const prompt = buildThumbPrompt(thumbnailHeadline, displayDate, ordered.length, style, !!img);
       const buffer = await callGeminiImage(prompt, img || undefined);
       if (!buffer) throw new Error(`Failed: ${style.id}`);
       return { style, buffer };
@@ -1137,11 +1288,13 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
   for (let i = 0; i < variants.length; i++) {
     const v = variants[i];
     let uploadBuffer = v.buffer;
-    let mimeType = "image/png";
-    let ext = "png";
+    // Detect actual format from header bytes (Gemini 3 Pro returns JPEG, others return PNG)
+    const isJpeg = uploadBuffer[0] === 0xFF && uploadBuffer[1] === 0xD8;
+    let mimeType = isJpeg ? "image/jpeg" : "image/png";
+    let ext = isJpeg ? "jpg" : "png";
 
     // If PNG is too large, try re-requesting as JPEG via Gemini passthrough
-    if (uploadBuffer.length > MAX_SIZE) {
+    if (!isJpeg && uploadBuffer.length > MAX_SIZE) {
       console.log(`📐 Variant ${i}: ${(uploadBuffer.length / 1024 / 1024).toFixed(2)} MB > 1.5MB, requesting JPEG...`);
       const jpegBuffer = await convertToJpegViaGemini(uploadBuffer);
       if (jpegBuffer && jpegBuffer.length < uploadBuffer.length) {
@@ -1183,7 +1336,7 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
     .from("daily_video_drafts")
     .update({
       thumbnail_variants: variantData,
-      clickbait_title: clickbaitTitle,
+      clickbait_title: thumbnailHeadline,
     })
     .eq("target_date", targetDate);
 
@@ -1267,10 +1420,10 @@ async function selectThumbnail(targetDate: string, variantIndex: number, chatId?
       if (ytConfig) {
         const accessToken = await getYouTubeAccessToken(ytConfig);
 
-        // Download the thumbnail image
+        // Download the thumbnail image and ensure exact 1280×720
         const imgResp = await fetch(variant.url);
         if (!imgResp.ok) throw new Error(`Failed to download thumbnail: ${imgResp.status}`);
-        let imgBuffer = new Uint8Array(await imgResp.arrayBuffer());
+        let imgBuffer = await resizeImage(new Uint8Array(await imgResp.arrayBuffer()), 1280, 720);
         let contentType = variant.url.endsWith(".jpg") ? "image/jpeg" : "image/png";
 
         // Safety check: if still over 2MB, try JPEG conversion on the fly

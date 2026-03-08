@@ -15,7 +15,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
-const MODELS = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
+const MODELS = ['gemini-3-pro-image-preview', 'gemini-2.5-pro-image', 'gemini-2.5-flash-image'];
 const TIMEOUT_MS = 60_000;
 
 // ── 4 Overlay Styles (applied on real article images) ──
@@ -107,7 +107,13 @@ async function callGeminiImage(prompt, apiKey, inputImageBase64) {
 
   const requestBody = {
     contents: [{ parts }],
-    generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE'],
+      imageConfig: {
+        aspectRatio: '16:9',
+        imageSize: '1K',
+      },
+    },
   };
 
   for (const model of MODELS) {
@@ -160,9 +166,7 @@ async function callGeminiImage(prompt, apiKey, inputImageBase64) {
 
 // ── Prompt Builder ──
 
-function buildThumbnailPrompt(title, displayDate, articleCount, style, hasImage) {
-  const shortTitle = title.split(/\s+/).slice(0, 5).join(' ');
-
+function buildThumbnailPrompt(headline, displayDate, articleCount, style, hasImage) {
   const imageInstruction = hasImage
     ? `Take the provided news article image and transform it into a YouTube thumbnail.
 
@@ -173,30 +177,35 @@ ${style.prompt}`;
 
   return `${imageInstruction}
 
-OUTPUT: Exactly 1280×720 pixels (16:9 landscape). This is critical — the image MUST be 1280 wide and 720 tall.
+OUTPUT: 16:9 landscape image.
 
-TEXT OVERLAYS TO ADD ON TOP:
+TEXT OVERLAYS — render these EXACTLY as specified:
 
-1. PRIMARY TITLE (large, 150-200px font height, upper-left safe zone):
-"${shortTitle}"
-- Bold sans-serif font (Impact or Montserrat ExtraBold)
-- Bright white (#FFFFFF) with 2-3px black outline/stroke and dark drop shadow
+1. MAIN HEADLINE (dominant element, upper-left area):
+"${headline}"
+- Font: Impact or Montserrat ExtraBold, 160-220px height
+- Color: pure white (#FFFFFF)
+- Add thick black outline (3-4px stroke) AND strong drop shadow for readability
 - Maximum 2 lines, left-aligned
+- This is the MOST important visual element — it must DOMINATE the thumbnail
 
-2. BADGE (top-left corner):
-"${articleCount} SAKER" — bold white text on orange (#FF7A00) rounded pill shape
+2. ARTICLE COUNT BADGE (top-right corner):
+"${articleCount}" inside an orange (#FF7A00) circle or rounded square
+- Number should be large and bold (80-100px)
+- White text on solid orange background
 
-3. BRANDING (bottom-left, small):
-"vitalii.no" in white + "${displayDate}" next to it
+3. CHANNEL BRANDING (bottom-left, subtle):
+"vitalii.no" — small white text (24-28px), semi-transparent
 
-SAFE ZONES:
-- NEVER place text in bottom-right corner (YouTube duration badge)
-- All text within center 84% of frame
-- Avoid bottom 150px for important elements
+COMPOSITION RULES:
+- Text in LEFT 60% of frame, image detail visible in RIGHT 40%
+- Bottom-right corner MUST be empty (YouTube duration badge zone)
+- All text within center 84% safe area
+- Strong visual hierarchy: headline > badge > branding
+- Maximum 3 colors: dark background, orange #FF7A00 accent, white text
 
-COLORS: max 3 — dark background, orange #FF7A00 accent, white text.
-TEXT LANGUAGE: Norwegian Bokmaal ONLY.
-OUTPUT: Image only, no text response. Exactly 1280×720 pixels.`;
+TEXT LANGUAGE: Norwegian Bokmal ONLY. No emojis anywhere.
+OUTPUT: Image only, no text response.`;
 }
 
 // ── Single Thumbnail (backward compat) ──
