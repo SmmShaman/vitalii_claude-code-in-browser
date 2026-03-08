@@ -694,6 +694,12 @@ async function main() {
 
   console.log(`📑 Timecodes: ${timecodes.map(tc => `${formatTimestamp(tc.time)} ${tc.label}`).join(' | ')}`);
 
+  // Check for BGM and SFX files in public/
+  let bgmFileExists = false;
+  let sfxFileExists = false;
+  try { await fs.access(path.join(publicDir, 'bgm.mp3')); bgmFileExists = true; console.log('🎵 Background music found: bgm.mp3'); } catch {}
+  try { await fs.access(path.join(publicDir, 'whoosh.mp3')); sfxFileExists = true; console.log('🔊 Transition SFX found: whoosh.mp3'); } catch {}
+
   // Step 5: Render with Remotion
   console.log('\n🎬 Step 4: Rendering with Remotion...');
   const outputPath = path.join(os.tmpdir(), `daily_show_${Date.now()}.mp4`);
@@ -720,6 +726,11 @@ async function main() {
     overflowCount: plan.overflowCount || 0,
     overflowVoiceoverSrc: overflowAudioFilename || undefined,
     overflowDurationSeconds: overflowDuration,
+    // Background music + SFX
+    bgmSrc: bgmFileExists ? 'bgm.mp3' : undefined,
+    bgmVolume: 0.3,
+    bgmDuckVolume: 0.1,
+    transitionSfxSrc: sfxFileExists ? 'whoosh.mp3' : undefined,
   });
 
   const propsFile = path.join(os.tmpdir(), `daily_props_${Date.now()}.json`);
@@ -734,6 +745,30 @@ async function main() {
 
   const outputStats = await fs.stat(outputPath);
   console.log(`✅ Rendered: ${(outputStats.size / 1024 / 1024).toFixed(2)} MB`);
+
+  // Step 5b: Render thumbnail
+  console.log('\n🖼️ Step 4b: Rendering thumbnail...');
+  const thumbnailPath = path.join(os.tmpdir(), `daily_thumb_${Date.now()}.png`);
+  const thumbPropsFile = path.join(os.tmpdir(), `daily_thumb_props_${Date.now()}.json`);
+  let thumbnailReady = false;
+
+  try {
+    const thumbnailProps = JSON.stringify({
+      date: displayDate,
+      headlines: segments.slice(0, 3).map(s => ({ text: s.headline, category: s.category })),
+      articleCount: articles.length,
+      accentColor: '#FF7A00',
+    });
+    await fs.writeFile(thumbPropsFile, thumbnailProps);
+
+    const thumbCmd = `npx remotion still ThumbnailHorizontal ${thumbnailPath} --props=${thumbPropsFile} --log=warn`;
+    console.log(`🖥️ Running: ${thumbCmd}`);
+    execSync(thumbCmd, { cwd: remotionProjectDir, stdio: 'inherit', timeout: 120_000 });
+    thumbnailReady = true;
+    console.log(`✅ Thumbnail rendered`);
+  } catch (e) {
+    console.log(`⚠️ Thumbnail render failed: ${e.message}`);
+  }
 
   // Step 6: Upload to YouTube
   console.log('\n📤 Step 5: Uploading to YouTube...');
@@ -775,10 +810,29 @@ async function main() {
 
   const result = await uploadToYouTube(outputPath, title, description);
 
+  // Set custom YouTube thumbnail
+  if (result.videoId && thumbnailReady) {
+    try {
+      console.log('🖼️ Setting custom thumbnail...');
+      await youtube.thumbnails.set({
+        videoId: result.videoId,
+        media: {
+          mimeType: 'image/png',
+          body: (await import('fs')).createReadStream(thumbnailPath),
+        },
+      });
+      console.log('✅ Custom thumbnail set');
+    } catch (e) {
+      console.log(`⚠️ Thumbnail upload failed: ${e.message}`);
+    }
+  }
+
   // Cleanup
   console.log('\n🧹 Cleaning up...');
   await fs.unlink(propsFile).catch(() => {});
   await fs.unlink(outputPath).catch(() => {});
+  await fs.unlink(thumbnailPath).catch(() => {});
+  await fs.unlink(thumbPropsFile).catch(() => {});
   for (const seg of segments) {
     if (seg.imageSrc) {
       await fs.unlink(path.join(publicDir, seg.imageSrc)).catch(() => {});

@@ -257,3 +257,43 @@ export const logo = {
 export const branding = {
   watermarkText: "vitalii.no",
 } as const;
+
+// ── Audio ──
+
+export const audio = {
+  bgm: {
+    baseVolume: 0.3,
+    duckVolume: 0.1,
+    rampFrames: 15,
+    fadeInFrames: 30,
+    fadeOutFrames: 45,
+  },
+  sfx: {
+    transitionVolume: 0.25,
+  },
+} as const;
+
+// ── Thumbnail ──
+
+export const thumbnail = {
+  width: 1280,
+  height: 720,
+  padding: { x: 60, y: 50 },
+  headline: {
+    fontSize: 32,
+    fontWeight: 700 as const,
+    lineHeight: 1.25,
+  },
+  date: {
+    fontSize: 22,
+    fontWeight: 600 as const,
+  },
+  articleCount: {
+    fontSize: 64,
+    fontWeight: 900 as const,
+  },
+  brand: {
+    fontSize: 28,
+    fontWeight: 800 as const,
+  },
+} as const;

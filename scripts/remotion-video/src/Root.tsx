@@ -8,11 +8,12 @@
  *  - DirectedHorizontal  (1920x1080, 16:9)  -- multi-scene, Claude-directed
  */
 import React from "react";
-import { Composition } from "remotion";
+import { Composition, Still } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Comfortaa";
 import { NewsVideo } from "./compositions/NewsVideo";
 import { DirectedNewsVideo } from "./compositions/DirectedNewsVideo";
 import { DailyNewsShow } from "./compositions/DailyNewsShow";
+import { ThumbnailHorizontal } from "./compositions/ThumbnailHorizontal";
 
 // Load Comfortaa globally — must happen at module level before any render
 const { fontFamily } = loadFont();
@@ -54,6 +55,17 @@ const DAILY_SHOW_PROPS = {
   overflowCount: 0,
   overflowVoiceoverSrc: "",
   overflowDurationSeconds: 0,
+  bgmSrc: "",
+  bgmVolume: 0.3,
+  bgmDuckVolume: 0.1,
+  transitionSfxSrc: "",
+};
+
+const THUMBNAIL_PROPS = {
+  date: "",
+  headlines: [] as { text: string; category: string }[],
+  articleCount: 0,
+  accentColor: "#FF7A00",
 };
 
 export const RemotionRoot: React.FC = () => {
@@ -158,6 +170,14 @@ export const RemotionRoot: React.FC = () => {
           );
           return { durationInFrames: Math.ceil(seconds * 30) };
         }}
+      />
+      {/* ── Thumbnail (Still) ── */}
+      <Still
+        id="ThumbnailHorizontal"
+        component={ThumbnailHorizontal as React.FC}
+        width={1280}
+        height={720}
+        defaultProps={THUMBNAIL_PROPS}
       />
     </>
   );

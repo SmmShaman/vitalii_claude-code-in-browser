@@ -23,11 +23,12 @@ import { ContentScene } from "../components/ContentScene";
 import { StatsScene } from "../components/StatsScene";
 import { OutroScene } from "../components/OutroScene";
 import { HeadlinesRoundupScene, type RoundupHeadline } from "../components/HeadlinesRoundupScene";
+import { BackgroundMusic } from "../components/BackgroundMusic";
 import { SceneTransition } from "../components/SceneTransition";
 import { AnimatedLogo } from "../components/AnimatedLogo";
 import { ProgressBar } from "../components/ProgressBar";
 import { type SubtitleEntry } from "../components/AnimatedSubtitles";
-import { colors } from "../design-system";
+import { colors, audio as audioTokens } from "../design-system";
 import type { TransitionType } from "../design-system/transitions";
 
 // ── Segment Types ──
@@ -100,6 +101,14 @@ export interface DailyNewsShowProps {
   overflowVoiceoverSrc?: string;
   /** Overflow CTA duration in seconds */
   overflowDurationSeconds?: number;
+  /** Background music file path */
+  bgmSrc?: string;
+  /** Base BGM volume (no voiceover) */
+  bgmVolume?: number;
+  /** Ducked BGM volume (voiceover active) */
+  bgmDuckVolume?: number;
+  /** Transition SFX file path */
+  transitionSfxSrc?: string;
 }
 
 export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
@@ -121,6 +130,10 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   overflowCount = 0,
   overflowVoiceoverSrc,
   overflowDurationSeconds = 0,
+  bgmSrc,
+  bgmVolume,
+  bgmDuckVolume,
+  transitionSfxSrc,
 }) => {
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
@@ -137,6 +150,13 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
 
   // Separate list for segment-level audio (spans Headline + Content + Stats)
   const audioSequences: {
+    src: string;
+    startFrame: number;
+    durationFrames: number;
+  }[] = [];
+
+  // SFX sequences (transition sounds at dividers)
+  const sfxSequences: {
     src: string;
     startFrame: number;
     durationFrames: number;
@@ -214,6 +234,16 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       startFrame: currentFrame,
       durationFrames: dividerFrames,
     });
+
+    // Transition SFX at divider
+    if (transitionSfxSrc) {
+      sfxSequences.push({
+        src: transitionSfxSrc,
+        startFrame: currentFrame,
+        durationFrames: Math.min(dividerFrames, Math.ceil(1.5 * fps)),
+      });
+    }
+
     currentFrame += dividerFrames;
 
     // Split segment time: 30% headline, 70% content (or 25/50/25 if stats)
@@ -383,6 +413,12 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
     });
   }
 
+  // Build voiceover activity map for BGM ducking
+  const voiceoverRanges = audioSequences.map((a) => ({
+    startFrame: a.startFrame,
+    endFrame: a.startFrame + a.durationFrames,
+  }));
+
   return (
     <AbsoluteFill style={{ backgroundColor: colors.background }}>
       {/* Render all visual sequences */}
@@ -393,11 +429,28 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       ))}
 
       {/* Segment-level audio sequences (span full segment: Headline + Content + Stats) */}
-      {audioSequences.map((audio, i) => (
-        <Sequence key={`audio-${i}`} from={audio.startFrame} durationInFrames={audio.durationFrames}>
-          <Audio src={resolve(audio.src)} volume={1} />
+      {audioSequences.map((aud, i) => (
+        <Sequence key={`audio-${i}`} from={aud.startFrame} durationInFrames={aud.durationFrames}>
+          <Audio src={resolve(aud.src)} volume={1} />
         </Sequence>
       ))}
+
+      {/* Transition SFX */}
+      {sfxSequences.map((sfx, i) => (
+        <Sequence key={`sfx-${i}`} from={sfx.startFrame} durationInFrames={sfx.durationFrames}>
+          <Audio src={resolve(sfx.src)} volume={audioTokens.sfx.transitionVolume} />
+        </Sequence>
+      ))}
+
+      {/* Background music with ducking */}
+      {bgmSrc && (
+        <BackgroundMusic
+          src={resolve(bgmSrc)}
+          voiceoverRanges={voiceoverRanges}
+          baseVolume={bgmVolume}
+          duckVolume={bgmDuckVolume}
+        />
+      )}
 
       {/* Global voiceover fallback (only when no per-segment audio) */}
       {voiceoverSrc && !segments.some((s) => s.voiceoverSrc) && (

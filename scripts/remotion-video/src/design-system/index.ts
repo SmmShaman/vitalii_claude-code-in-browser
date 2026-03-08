@@ -19,6 +19,8 @@ export {
   progressBar,
   logo,
   branding,
+  audio,
+  thumbnail,
 } from "./tokens";
 
 // Animations
