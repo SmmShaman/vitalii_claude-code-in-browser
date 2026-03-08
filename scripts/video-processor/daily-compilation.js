@@ -454,6 +454,45 @@ async function loadFromDraft(draftId) {
 }
 
 /**
+ * Dispatch 4-variant thumbnail generation to the Telegram bot.
+ */
+async function dispatchThumbnailGeneration(dateStr, clickbaitTitle) {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL) throw new Error('SUPABASE_URL not set');
+
+  // Save clickbait title to draft for the bot to use
+  const supabaseResp = await fetch(`${SUPABASE_URL}/rest/v1/daily_video_drafts?target_date=eq.${dateStr}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify({ clickbait_title: clickbaitTitle }),
+  });
+  if (!supabaseResp.ok) {
+    console.log(`⚠️ Failed to save clickbait title: ${supabaseResp.status}`);
+  }
+
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/daily-video-bot?action=generate_thumbnails`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ target_date: dateStr }),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Bot dispatch failed: ${resp.status} ${errText.substring(0, 200)}`);
+  }
+  console.log('📺 Thumbnail generation dispatched to bot');
+}
+
+/**
  * Notify the daily-video-bot that rendering is complete.
  */
 async function notifyBotComplete(dateStr, youtubeUrl) {
@@ -800,63 +839,34 @@ async function main() {
     ].join('\n');
   }
 
-  // Step 5c: Generate thumbnail (AI first, Remotion fallback)
-  console.log('\n🖼️ Step 4c: Generating thumbnail...');
-  let thumbnailPath = null;
-  let thumbnailReady = false;
-
-  if (process.env.GOOGLE_API_KEY) {
-    try {
-      thumbnailPath = await generateAIThumbnail(articles, title, dateStr);
-      if (thumbnailPath) {
-        thumbnailReady = true;
-        console.log('✅ AI thumbnail generated');
-      }
-    } catch (e) {
-      console.log(`⚠️ AI thumbnail failed: ${e.message}`);
-    }
-  }
-
-  if (!thumbnailReady) {
-    try {
-      thumbnailPath = path.join(os.tmpdir(), `daily_thumb_${Date.now()}.png`);
-      const thumbPropsFile = path.join(os.tmpdir(), `daily_thumb_props_${Date.now()}.json`);
-      const thumbnailProps = JSON.stringify({
-        date: displayDate,
-        headlines: segments.slice(0, 3).map(s => ({ text: s.headline, category: s.category })),
-        articleCount: articles.length,
-        accentColor: '#FF7A00',
-      });
-      await fs.writeFile(thumbPropsFile, thumbnailProps);
-
-      const thumbCmd = `npx remotion still ThumbnailHorizontal ${thumbnailPath} --props=${thumbPropsFile} --log=warn`;
-      console.log(`🖥️ Fallback: ${thumbCmd}`);
-      execSync(thumbCmd, { cwd: remotionProjectDir, stdio: 'inherit', timeout: 120_000 });
-      thumbnailReady = true;
-      console.log(`✅ Remotion thumbnail rendered`);
-    } catch (e) {
-      console.log(`⚠️ Remotion thumbnail also failed: ${e.message}`);
-    }
-  }
-
-  // Step 6: Upload to YouTube
+  // Step 5c: Upload to YouTube (thumbnail is handled separately via Telegram approval)
   console.log('\n📤 Step 5: Uploading to YouTube...');
   const result = await uploadToYouTube(outputPath, title, description, ytTags);
 
-  // Set custom YouTube thumbnail
-  if (result.videoId && thumbnailReady) {
+  // Step 5d: Dispatch thumbnail generation to Telegram bot (4 variants for approval)
+  if (result.videoId) {
+    console.log('\n🖼️ Step 5d: Dispatching thumbnail generation to bot...');
     try {
-      console.log('🖼️ Setting custom thumbnail...');
-      await youtube.thumbnails.set({
-        videoId: result.videoId,
-        media: {
-          mimeType: 'image/png',
-          body: (await import('fs')).createReadStream(thumbnailPath),
-        },
-      });
-      console.log('✅ Custom thumbnail set');
+      await dispatchThumbnailGeneration(dateStr, title);
+      console.log('✅ Thumbnail generation dispatched — check Telegram for 4 variants');
     } catch (e) {
-      console.log(`⚠️ Thumbnail upload failed: ${e.message}`);
+      console.log(`⚠️ Thumbnail dispatch failed: ${e.message}`);
+      // Fallback: try to set a single AI thumbnail directly
+      if (process.env.GOOGLE_API_KEY) {
+        try {
+          const thumbnailPath = await generateAIThumbnail(articles, title, dateStr);
+          if (thumbnailPath && result.videoId) {
+            await youtube.thumbnails.set({
+              videoId: result.videoId,
+              media: { mimeType: 'image/png', body: (await import('fs')).createReadStream(thumbnailPath) },
+            });
+            console.log('✅ Fallback thumbnail set');
+            await fs.unlink(thumbnailPath).catch(() => {});
+          }
+        } catch (e2) {
+          console.log(`⚠️ Fallback thumbnail also failed: ${e2.message}`);
+        }
+      }
     }
   }
 
@@ -864,8 +874,7 @@ async function main() {
   console.log('\n🧹 Cleaning up...');
   await fs.unlink(propsFile).catch(() => {});
   await fs.unlink(outputPath).catch(() => {});
-  await fs.unlink(thumbnailPath).catch(() => {});
-  await fs.unlink(thumbPropsFile).catch(() => {});
+  // thumbnailPath removed — thumbnails now handled via Telegram bot approval
   for (const seg of segments) {
     if (seg.imageSrc) {
       await fs.unlink(path.join(publicDir, seg.imageSrc)).catch(() => {});

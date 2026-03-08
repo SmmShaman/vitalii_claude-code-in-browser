@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-08-v4";
+const VERSION = "2026-03-08-v5";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -814,6 +814,367 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
 }
 
 // ══════════════════════════════════════════════════════════════
+// THUMBNAIL GENERATION + SELECTION (4 variants via Gemini)
+// ══════════════════════════════════════════════════════════════
+
+const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
+const GEMINI_MODELS = ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"];
+const GEMINI_TIMEOUT = 60_000;
+
+const THUMBNAIL_STYLES = [
+  {
+    id: "minimal",
+    name: "Мінімалістичний",
+    emoji: "🔲",
+    desc: "Single tech object (glowing laptop or smartphone) on the right third. Ultra-clean with vast negative space. Title dominates the left 60%. Smooth dark gradient. One soft orange accent glow behind the object.",
+  },
+  {
+    id: "dashboard",
+    name: "Дашборд / Дані",
+    emoji: "📊",
+    desc: "Data visualization: holographic floating bar chart or line graph on the right with glowing data points in orange. HUD-style thin grid overlay at 5% opacity. Title on left with subtle frosted glass panel. Futuristic analytics aesthetic.",
+  },
+  {
+    id: "geometric",
+    name: "Геометричний",
+    emoji: "🔷",
+    desc: "Abstract geometric: interconnected hexagons and circuit traces forming a network at 15% opacity. Bold diagonal orange accent line across lower-right. Title in upper-left with strong perspective depth.",
+  },
+  {
+    id: "blocks",
+    name: "Кольорові блоки",
+    emoji: "🎨",
+    desc: "Bold angular color blocks: diagonal division — dark navy left (title) and deep purple right (abstract news icons collage). Orange (#FF7A00) diagonal cut line with glow. Editorial magazine layout.",
+  },
+];
+
+async function callGeminiImage(prompt: string): Promise<Uint8Array | null> {
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+  };
+
+  for (const model of GEMINI_MODELS) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GOOGLE_API_KEY },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        clearTimeout(timeout);
+        console.error(`❌ ${model}: ${response.status}`);
+        continue;
+      }
+
+      const result = await response.json();
+      const candidate = result.candidates?.[0];
+      if (candidate?.finishReason === "IMAGE_OTHER") {
+        clearTimeout(timeout);
+        continue;
+      }
+
+      if (candidate?.content?.parts) {
+        for (const part of candidate.content.parts) {
+          const imageData = part.inline_data || part.inlineData;
+          if (imageData?.data) {
+            clearTimeout(timeout);
+            // Decode base64 to Uint8Array
+            const binaryStr = atob(imageData.data);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+            return bytes;
+          }
+        }
+      }
+      clearTimeout(timeout);
+    } catch (err: any) {
+      clearTimeout(timeout);
+      console.error(`❌ ${model}: ${err.message}`);
+    }
+  }
+  return null;
+}
+
+function buildThumbPrompt(title: string, displayDate: string, articleCount: number, style: typeof THUMBNAIL_STYLES[0]): string {
+  const shortTitle = title.split(/\s+/).slice(0, 5).join(" ");
+  return `Generate a professional YouTube thumbnail image at exactly 1280x720 pixels (16:9 landscape).
+
+CONTEXT: Thumbnail for a Norwegian daily tech news show "vitalii.no" — faceless automated channel. No human faces.
+
+═══ VISUAL STYLE: ${style.id.toUpperCase()} ═══
+${style.desc}
+
+═══ COMPOSITION (2-3 elements max) ═══
+- Title text fills 40-60% of frame, positioned in safe zone
+- Clean composition with 30-40% negative space, rule of thirds
+
+═══ TEXT ON IMAGE (readable at 120x68px mobile) ═══
+PRIMARY TEXT (150-200px font height):
+"${shortTitle}"
+- Bold sans-serif (Impact / Montserrat ExtraBold), white with black outline + shadow
+- Maximum 2 lines, left-aligned, upper-left safe zone
+
+BADGE (top-left): "${articleCount} SAKER" — white on orange (#FF7A00) pill
+BRANDING (bottom-left): "vitalii.no" + "${displayDate}"
+
+═══ SAFE ZONES ═══
+- NEVER place text in bottom-right (YouTube duration badge)
+- All text within center 84%, avoid bottom 150px
+
+═══ COLORS (max 3) ═══
+- Background: dark navy (#0a1628) to purple (#1a0a3e) gradient
+- Accent: orange #FF7A00
+- Text: white #FFFFFF with black outline
+
+Sharp focus, studio lighting, cinematic. Norwegian Bokmaal text ONLY.
+IMAGE ONLY — no text response.`;
+}
+
+async function generateThumbnails(targetDate: string, chatId?: number): Promise<Response> {
+  if (!GOOGLE_API_KEY) {
+    return json({ error: "GOOGLE_API_KEY not set" }, 500);
+  }
+
+  const theChatId = chatId || Number(TELEGRAM_CHAT_ID);
+
+  // Fetch draft + articles
+  const { data: draft, error: draftErr } = await supabase
+    .from("daily_video_drafts")
+    .select("*")
+    .eq("target_date", targetDate)
+    .single();
+
+  if (draftErr || !draft) {
+    await sendMessage(theChatId, `❌ Драфт не знайдено для ${targetDate}`);
+    return json({ error: "Draft not found" }, 404);
+  }
+
+  // Get articles for title generation
+  const articleIds = (draft.article_ids || []).filter(
+    (id: string) => !(draft.excluded_article_ids || []).includes(id),
+  );
+
+  const { data: articles } = await supabase
+    .from("news")
+    .select("id, title_en, title_no, original_title, tags")
+    .in("id", articleIds);
+
+  const ordered = articleIds.map((id: string) => articles?.find((a: any) => a.id === id)).filter(Boolean);
+
+  // Get or generate clickbait title
+  let clickbaitTitle = draft.clickbait_title || "";
+  if (!clickbaitTitle) {
+    const displayDate = formatDateNorwegian(targetDate);
+    clickbaitTitle = `🔥 ${ordered.length} tech-nyheter — ${displayDate}`;
+  }
+
+  const displayDate = formatDateNorwegian(targetDate);
+
+  await sendMessage(theChatId, `🖼️ <b>Генерую 4 варіанти превью...</b>\n\n📅 ${displayDate}\n📝 ${escapeHtml(clickbaitTitle)}\n\n⏳ Це може зайняти 1-2 хвилини`);
+
+  // Generate 4 variants in parallel
+  const results = await Promise.allSettled(
+    THUMBNAIL_STYLES.map(async (style) => {
+      console.log(`🎨 Generating: ${style.name}`);
+      const prompt = buildThumbPrompt(clickbaitTitle, displayDate, ordered.length, style);
+      const buffer = await callGeminiImage(prompt);
+      if (!buffer) throw new Error(`Failed: ${style.id}`);
+      return { style, buffer };
+    }),
+  );
+
+  const variants: { style: typeof THUMBNAIL_STYLES[0]; buffer: Uint8Array }[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled") variants.push(r.value);
+  }
+
+  if (variants.length === 0) {
+    await sendMessage(theChatId, "❌ Не вдалось згенерувати жоден варіант превью. Спробуйте ще раз.");
+    return json({ error: "All variants failed" }, 500);
+  }
+
+  // Upload variants to Supabase Storage
+  const variantData: { index: number; style: string; styleName: string; url: string }[] = [];
+
+  for (let i = 0; i < variants.length; i++) {
+    const v = variants[i];
+    const storagePath = `thumbnails/${targetDate}/variant_${i}_${v.style.id}.png`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from("daily-videos")
+      .upload(storagePath, v.buffer, {
+        contentType: "image/png",
+        upsert: true,
+        cacheControl: "3600",
+      });
+
+    if (uploadErr) {
+      console.error(`❌ Storage upload failed for ${v.style.id}: ${uploadErr.message}`);
+      continue;
+    }
+
+    const { data: urlData } = supabase.storage.from("daily-videos").getPublicUrl(storagePath);
+    variantData.push({
+      index: i,
+      style: v.style.id,
+      styleName: v.style.name,
+      url: urlData.publicUrl,
+    });
+  }
+
+  // Save variants to draft
+  await supabase
+    .from("daily_video_drafts")
+    .update({
+      thumbnail_variants: variantData,
+      clickbait_title: clickbaitTitle,
+    })
+    .eq("target_date", targetDate);
+
+  // Send each variant as a photo with caption
+  for (const v of variantData) {
+    const style = THUMBNAIL_STYLES[v.index] || THUMBNAIL_STYLES[0];
+    const caption = `${style.emoji} <b>Варіант #${v.index + 1}: ${v.styleName}</b>`;
+
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: theChatId,
+        photo: v.url,
+        caption,
+        parse_mode: "HTML",
+      }),
+    });
+  }
+
+  // Send selection keyboard
+  const buttons = variantData.map((v) => {
+    const style = THUMBNAIL_STYLES[v.index] || THUMBNAIL_STYLES[0];
+    return { text: `${style.emoji} #${v.index + 1}`, callback_data: `dv_th_${v.index}_${targetDate}` };
+  });
+
+  // 2 buttons per row
+  const keyboard: any[][] = [];
+  for (let i = 0; i < buttons.length; i += 2) {
+    keyboard.push(buttons.slice(i, i + 2));
+  }
+  keyboard.push([{ text: "🔄 Перегенерувати", callback_data: `dv_thr_${targetDate}` }]);
+
+  await sendMessage(
+    theChatId,
+    `🖼️ <b>Оберіть превью для ${displayDate}:</b>\n\nЗгенеровано ${variantData.length} варіантів. Натисніть щоб обрати:`,
+    { reply_markup: { inline_keyboard: keyboard } },
+  );
+
+  console.log(`✅ Sent ${variantData.length} thumbnail variants to Telegram`);
+  return json({ ok: true, variants: variantData.length });
+}
+
+async function selectThumbnail(targetDate: string, variantIndex: number, chatId?: number, messageId?: number): Promise<Response> {
+  const theChatId = chatId || Number(TELEGRAM_CHAT_ID);
+
+  const { data: draft } = await supabase
+    .from("daily_video_drafts")
+    .select("thumbnail_variants, youtube_video_id")
+    .eq("target_date", targetDate)
+    .single();
+
+  if (!draft?.thumbnail_variants?.length) {
+    await sendMessage(theChatId, "❌ Варіанти превью не знайдено");
+    return json({ error: "No variants" }, 404);
+  }
+
+  const variant = draft.thumbnail_variants[variantIndex];
+  if (!variant) {
+    await sendMessage(theChatId, `❌ Варіант #${variantIndex + 1} не знайдено`);
+    return json({ error: "Variant not found" }, 404);
+  }
+
+  // Update message with selection
+  if (messageId) {
+    await editMessage(theChatId, messageId, `✅ <b>Обрано превью #${variantIndex + 1}: ${variant.styleName}</b>\n\n⏳ Встановлюю на YouTube...`);
+  }
+
+  // Save selected URL
+  await supabase
+    .from("daily_video_drafts")
+    .update({ selected_thumbnail_url: variant.url })
+    .eq("target_date", targetDate);
+
+  // Set on YouTube if video exists
+  if (draft.youtube_video_id) {
+    try {
+      const { getYouTubeConfig, getYouTubeAccessToken } = await import("../_shared/youtube-helpers.ts");
+      const ytConfig = getYouTubeConfig();
+
+      if (ytConfig) {
+        const accessToken = await getYouTubeAccessToken(ytConfig);
+
+        // Download the thumbnail image
+        const imgResp = await fetch(variant.url);
+        if (!imgResp.ok) throw new Error(`Failed to download thumbnail: ${imgResp.status}`);
+        const imgBuffer = await imgResp.arrayBuffer();
+
+        // Upload to YouTube
+        const ytResp = await fetch(
+          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${draft.youtube_video_id}&uploadType=media`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "image/png",
+            },
+            body: imgBuffer,
+          },
+        );
+
+        if (ytResp.ok) {
+          console.log(`✅ YouTube thumbnail set for ${draft.youtube_video_id}`);
+          if (messageId) {
+            await editMessage(theChatId, messageId, `✅ <b>Превью #${variantIndex + 1} встановлено!</b>\n\n🎨 ${variant.styleName}\n📺 youtube.com/watch?v=${draft.youtube_video_id}`);
+          } else {
+            await sendMessage(theChatId, `✅ <b>Превью #${variantIndex + 1} встановлено!</b>\n\n🎨 ${variant.styleName}\n📺 youtube.com/watch?v=${draft.youtube_video_id}`);
+          }
+          return json({ ok: true, youtube_set: true });
+        } else {
+          const errText = await ytResp.text();
+          console.error(`❌ YouTube thumbnail failed: ${errText.substring(0, 200)}`);
+          throw new Error(`YouTube API: ${ytResp.status}`);
+        }
+      } else {
+        throw new Error("YouTube credentials not configured");
+      }
+    } catch (err: any) {
+      console.error(`❌ YouTube thumbnail error: ${err.message}`);
+      const msg = `⚠️ <b>Превью #${variantIndex + 1} обрано</b>, але не вдалось встановити на YouTube:\n${escapeHtml(err.message)}\n\n🔗 URL: ${variant.url}`;
+      if (messageId) {
+        await editMessage(theChatId, messageId, msg);
+      } else {
+        await sendMessage(theChatId, msg);
+      }
+      return json({ ok: true, youtube_set: false, error: err.message });
+    }
+  } else {
+    // No YouTube video yet — just save selection
+    const msg = `✅ <b>Превью #${variantIndex + 1} обрано</b>\n\n🎨 ${variant.styleName}\n💾 Буде встановлено після завантаження відео на YouTube`;
+    if (messageId) {
+      await editMessage(theChatId, messageId, msg);
+    } else {
+      await sendMessage(theChatId, msg);
+    }
+    return json({ ok: true, youtube_set: false, reason: "no video yet" });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // SKIP
 // ══════════════════════════════════════════════════════════════
 
@@ -929,6 +1290,18 @@ Deno.serve(async (req) => {
       case "notify_complete":
         if (!targetDate || !body.youtube_url) return json({ error: "target_date and youtube_url required" }, 400);
         return await notifyComplete(targetDate, body.youtube_url);
+
+      case "generate_thumbnails":
+        if (!targetDate) return json({ error: "target_date required" }, 400);
+        return await generateThumbnails(targetDate, chatId);
+
+      case "select_thumbnail":
+        if (!targetDate || body.variant_index === undefined) return json({ error: "target_date and variant_index required" }, 400);
+        return await selectThumbnail(targetDate, Number(body.variant_index), chatId, messageId);
+
+      case "regenerate_thumbnails":
+        if (!targetDate) return json({ error: "target_date required" }, 400);
+        return await generateThumbnails(targetDate, chatId);
 
       default:
         return json({ error: `Unknown action: ${action || body.action}`, version: VERSION }, 400);

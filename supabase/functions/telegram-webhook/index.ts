@@ -856,6 +856,17 @@ serve(async (req) => {
         const idx = rest.indexOf('_')
         socialLanguage = rest.substring(0, idx)  // article index as string
         newsId = rest.substring(idx + 1)          // YYYY-MM-DD
+      } else if (callbackData.startsWith('dv_th_')) {
+        // Select thumbnail variant: dv_th_N_YYYY-MM-DD
+        action = 'dv_th'
+        const rest = callbackData.substring(6) // "N_YYYY-MM-DD"
+        const idx = rest.indexOf('_')
+        socialLanguage = rest.substring(0, idx)  // variant index as string
+        newsId = rest.substring(idx + 1)          // YYYY-MM-DD
+      } else if (callbackData.startsWith('dv_thr_')) {
+        // Regenerate thumbnails: dv_thr_YYYY-MM-DD
+        action = 'dv_thr'
+        newsId = callbackData.replace('dv_thr_', '')
       } else if (callbackData.startsWith('dv_ok_')) {
         action = 'dv_ok'
         newsId = callbackData.replace('dv_ok_', '')
@@ -4134,6 +4145,8 @@ serve(async (req) => {
           'dv_ren': 'trigger_render',      // Scenario approved → render
           'dv_vrg': 'regenerate_scenario', // Regenerate scenario
           'dv_toggle': 'toggle_article',   // Toggle article inclusion
+          'dv_th': 'select_thumbnail',     // Select thumbnail variant
+          'dv_thr': 'regenerate_thumbnails', // Regenerate all thumbnail variants
         }
 
         const dvAction = dvActionMap[action] || action
@@ -4165,6 +4178,7 @@ serve(async (req) => {
             chat_id: chatId,
             message_id: messageId,
             ...(action === 'dv_toggle' ? { article_index: Number(socialLanguage) } : {}),
+            ...(action === 'dv_th' ? { variant_index: Number(socialLanguage) } : {}),
           })
         }).catch(err => console.error('❌ Daily video bot dispatch failed:', err))
 

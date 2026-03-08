@@ -274,26 +274,49 @@ export const audio = {
 } as const;
 
 // ── Thumbnail ──
+// See thumbnail-design.md for full YouTube thumbnail design system reference.
+// Key rules: max 3 colors, max 5 words of text, 120px mobile test, safe zones.
 
 export const thumbnail = {
   width: 1280,
   height: 720,
+  // Safe zone: 102px (8%) side margins, 72px (10%) top/bottom margins
+  safeZone: { marginX: 102, marginY: 72, bottomAvoid: 150 },
   padding: { x: 60, y: 50 },
   headline: {
-    fontSize: 32,
-    fontWeight: 700 as const,
-    lineHeight: 1.25,
+    fontSize: 48,           // Increased: must be readable at 120x68px mobile
+    fontWeight: 900 as const, // ExtraBold for max readability
+    lineHeight: 1.2,
+    maxWords: 5,            // Research: 3-5 words max for thumbnail text
+    strokeWidth: 3,         // Black outline for contrast
+    shadowBlur: 8,          // Drop shadow for depth
   },
   date: {
-    fontSize: 22,
+    fontSize: 18,           // Smaller — secondary info
     fontWeight: 600 as const,
+  },
+  badge: {
+    fontSize: 22,
+    fontWeight: 800 as const,
+    bgColor: '#FF7A00',     // Brand orange
+    textColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: { x: 12, y: 6 },
   },
   articleCount: {
     fontSize: 64,
     fontWeight: 900 as const,
   },
   brand: {
-    fontSize: 28,
-    fontWeight: 800 as const,
+    fontSize: 20,           // Subtle watermark
+    fontWeight: 700 as const,
   },
+  colors: {
+    bgGradientStart: '#0a1628',  // Deep navy
+    bgGradientEnd: '#1a0a3e',    // Dark purple
+    accent: '#FF7A00',           // Brand orange
+    text: '#FFFFFF',             // Pure white
+    textStroke: '#000000',       // Black outline
+  },
+  maxElements: 3,               // >3 visual elements drops CTR by 23%
 } as const;
