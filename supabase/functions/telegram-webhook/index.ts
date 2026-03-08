@@ -848,6 +848,25 @@ serve(async (req) => {
       } else if (callbackData.startsWith('skip_dup_')) {
         action = 'skip_dup'
         newsId = callbackData.replace('skip_dup_', '')
+      // ── Daily Video callbacks (dv_*) — newsId = target_date (YYYY-MM-DD) ──
+      } else if (callbackData.startsWith('dv_ok_')) {
+        action = 'dv_ok'
+        newsId = callbackData.replace('dv_ok_', '')
+      } else if (callbackData.startsWith('dv_skip_')) {
+        action = 'dv_skip'
+        newsId = callbackData.replace('dv_skip_', '')
+      } else if (callbackData.startsWith('dv_sok_')) {
+        action = 'dv_sok'
+        newsId = callbackData.replace('dv_sok_', '')
+      } else if (callbackData.startsWith('dv_srg_')) {
+        action = 'dv_srg'
+        newsId = callbackData.replace('dv_srg_', '')
+      } else if (callbackData.startsWith('dv_ren_')) {
+        action = 'dv_ren'
+        newsId = callbackData.replace('dv_ren_', '')
+      } else if (callbackData.startsWith('dv_vrg_')) {
+        action = 'dv_vrg'
+        newsId = callbackData.replace('dv_vrg_', '')
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
@@ -4084,6 +4103,54 @@ serve(async (req) => {
             })
           }
         )
+
+      // ── Daily Video action handlers ──
+      // newsId contains target_date (YYYY-MM-DD) for all dv_* actions
+      } else if (action.startsWith('dv_')) {
+        const targetDate = newsId  // In dv_* callbacks, newsId = target_date
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+        const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
+
+        // Map action to daily-video-bot action
+        const dvActionMap: Record<string, string> = {
+          'dv_ok': 'generate_script',      // Digest approved → generate script
+          'dv_skip': 'skip',               // Skip this day
+          'dv_sok': 'generate_scenario',   // Script approved → generate scenario
+          'dv_srg': 'regenerate_script',   // Regenerate script
+          'dv_ren': 'trigger_render',      // Scenario approved → render
+          'dv_vrg': 'regenerate_scenario', // Regenerate scenario
+        }
+
+        const dvAction = dvActionMap[action] || action
+        console.log(`📺 Daily Video: ${action} → ${dvAction} for ${targetDate}`)
+
+        // Answer callback immediately
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: callbackId,
+              text: '⏳ Обробляю...',
+              show_alert: false
+            })
+          }
+        )
+
+        // Fire-and-forget dispatch to daily-video-bot
+        fetch(`${SUPABASE_URL}/functions/v1/daily-video-bot?action=${dvAction}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            target_date: targetDate,
+            chat_id: chatId,
+            message_id: messageId,
+          })
+        }).catch(err => console.error('❌ Daily video bot dispatch failed:', err))
 
       } else if (action === 'reject') {
         console.log('News rejected by user, ID:', newsId)

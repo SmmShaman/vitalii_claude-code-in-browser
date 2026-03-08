@@ -1,9 +1,9 @@
 name: Daily News Video
 
 on:
-  # Every day at 07:00 CET (06:00 UTC)
-  schedule:
-    - cron: '0 6 * * *'
+  # Telegram bot triggers render via repository_dispatch
+  repository_dispatch:
+    types: [daily-video-render]
 
   # Manual trigger
   workflow_dispatch:
@@ -78,9 +78,10 @@ jobs:
           ZVUKOGRAM_EMAIL: ${{ secrets.ZVUKOGRAM_EMAIL }}
 
           # Video settings
-          LANGUAGE: ${{ github.event.inputs.language || 'no' }}
-          FORMAT: ${{ github.event.inputs.format || 'horizontal' }}
-          TARGET_DATE: ${{ github.event.inputs.target_date || '' }}
+          LANGUAGE: ${{ github.event.client_payload.language || github.event.inputs.language || 'no' }}
+          FORMAT: ${{ github.event.client_payload.format || github.event.inputs.format || 'horizontal' }}
+          TARGET_DATE: ${{ github.event.client_payload.target_date || github.event.inputs.target_date || '' }}
+          DRAFT_ID: ${{ github.event.client_payload.draft_id || '' }}
         run: node daily-compilation.js
 
       - name: Report results

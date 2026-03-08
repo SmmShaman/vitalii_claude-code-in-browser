@@ -310,6 +310,81 @@ async function uploadToYouTube(filePath, title, description) {
   return { videoId, watchUrl: `https://youtube.com/watch?v=${videoId}` };
 }
 
+/**
+ * Load an approved draft from the database (3-step Telegram flow).
+ * Returns { articles, plan, dateStr, displayDate } in the same format
+ * as the regular pipeline would produce.
+ */
+async function loadFromDraft(draftId) {
+  console.log(`📋 Loading draft: ${draftId}`);
+
+  const { data: draft, error } = await supabase
+    .from('daily_video_drafts')
+    .select('*')
+    .eq('id', draftId)
+    .single();
+
+  if (error || !draft) throw new Error(`Draft not found: ${draftId}`);
+
+  const dateStr = draft.target_date;
+  const displayDate = formatDateNorwegian(dateStr);
+
+  // Fetch articles
+  const { data: articles, error: artError } = await supabase
+    .from('news')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, tags, created_at')
+    .in('id', draft.article_ids)
+    .order('created_at', { ascending: true });
+
+  if (artError || !articles) throw new Error(`Failed to fetch articles: ${artError?.message}`);
+
+  // Build plan from draft data
+  const segmentScripts = (draft.segment_scripts || []).map(s => s.scriptNo || s);
+  const visualSegments = draft.visual_scenario || [];
+
+  const plan = {
+    introScript: draft.intro_script || '',
+    segmentScripts,
+    outroScript: draft.outro_script || '',
+    showScript: [draft.intro_script, ...segmentScripts, draft.outro_script].filter(Boolean).join(' '),
+    segments: visualSegments.length > 0
+      ? visualSegments
+      : articles.map(a => ({
+          headline: a.title_no || a.title_en || '',
+          keyQuote: '',
+          category: 'news',
+          accentColor: '#FF7A00',
+        })),
+    showTitle: 'Daglig Nyhetsoppdatering',
+  };
+
+  console.log(`✅ Draft loaded: ${articles.length} articles, ${segmentScripts.length} scripts`);
+  return { articles, plan, dateStr, displayDate };
+}
+
+/**
+ * Notify the daily-video-bot that rendering is complete.
+ */
+async function notifyBotComplete(dateStr, youtubeUrl) {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL) return;
+
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/daily-video-bot?action=notify_complete`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ target_date: dateStr, youtube_url: youtubeUrl }),
+    });
+    console.log('📺 Bot notified of completion');
+  } catch (e) {
+    console.log(`⚠️ Failed to notify bot: ${e.message}`);
+  }
+}
+
 // ── Main ──
 
 async function main() {
@@ -317,26 +392,39 @@ async function main() {
   console.log(`🌐 Language: ${LANGUAGE}`);
   console.log(`📐 Format: ${FORMAT}`);
 
-  // Step 1: Fetch yesterday's news
-  const articles = await fetchYesterdayNews();
-  console.log(`📰 Found ${articles.length} articles from yesterday`);
+  const DRAFT_ID = process.env.DRAFT_ID;
+  let articles, plan, dateStr, displayDate;
 
-  if (articles.length === 0) {
-    console.log('✅ No articles yesterday, skipping video generation');
-    return;
+  if (DRAFT_ID) {
+    // ── Draft mode: load from 3-step Telegram approval flow ──
+    console.log(`📋 Draft mode: ${DRAFT_ID}`);
+    const draft = await loadFromDraft(DRAFT_ID);
+    articles = draft.articles;
+    plan = draft.plan;
+    dateStr = draft.dateStr;
+    displayDate = draft.displayDate;
+  } else {
+    // ── Normal mode: fetch + AI ──
+    articles = await fetchYesterdayNews();
+    console.log(`📰 Found ${articles.length} articles from yesterday`);
+
+    if (articles.length === 0) {
+      console.log('✅ No articles yesterday, skipping video generation');
+      return;
+    }
+
+    if (articles.length < 2) {
+      console.log('⚠️ Only 1 article, need at least 2 for a compilation');
+      return;
+    }
+
+    const range = getTargetDateRange();
+    dateStr = range.dateStr;
+    displayDate = formatDateNorwegian(dateStr);
+
+    console.log('\n🎬 Step 1: Directing the show...');
+    plan = await directDailyShow(articles, displayDate);
   }
-
-  if (articles.length < 2) {
-    console.log('⚠️ Only 1 article, need at least 2 for a compilation');
-    return;
-  }
-
-  const { dateStr } = getTargetDateRange();
-  const displayDate = formatDateNorwegian(dateStr);
-
-  // Step 2: Claude directs the show
-  console.log('\n🎬 Step 1: Directing the show...');
-  const plan = await directDailyShow(articles, displayDate);
 
   // Step 3: Generate per-article voiceovers (Norwegian)
   console.log('\n🎙️ Step 2: Generating per-segment voiceovers...');
@@ -479,6 +567,11 @@ async function main() {
   }
   for (const vo of segmentVoiceovers) {
     await fs.unlink(vo.audioPath).catch(() => {});
+  }
+
+  // Notify Telegram bot if in draft mode
+  if (DRAFT_ID) {
+    await notifyBotComplete(dateStr, result.watchUrl);
   }
 
   console.log(`\n🎉 Daily compilation complete!`);

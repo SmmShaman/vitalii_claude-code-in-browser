@@ -271,3 +271,69 @@ export async function triggerInstagramVideo(
     return { success: false, error: error.message };
   }
 }
+
+interface TriggerDailyVideoRenderOptions {
+  draftId: string;
+  targetDate: string;
+  format?: 'horizontal' | 'vertical';
+  language?: string;
+}
+
+/**
+ * Trigger the daily news video render GitHub Action.
+ * Uses repository_dispatch to pass draft ID from Telegram approval flow.
+ */
+export async function triggerDailyVideoRender(
+  options: TriggerDailyVideoRenderOptions
+): Promise<{ success: boolean; error?: string }> {
+  const ghPat = Deno.env.get('GH_PAT');
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+
+  if (!ghPat) {
+    console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');
+    return { success: false, error: 'GitHub PAT not configured' };
+  }
+
+  const { draftId, targetDate, format = 'horizontal', language = 'no' } = options;
+
+  console.log(`🚀 Triggering GitHub Action: daily-video-render`);
+  console.log(`   Draft ID: ${draftId}`);
+  console.log(`   Target date: ${targetDate}`);
+  console.log(`   Format: ${format}`);
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${ghRepo}/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${ghPat}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event_type: 'daily-video-render',
+          client_payload: {
+            draft_id: draftId,
+            target_date: targetDate,
+            format: format,
+            language: language,
+          },
+        }),
+      }
+    );
+
+    if (response.status === 204) {
+      console.log('✅ Daily video render GitHub Action triggered successfully');
+      return { success: true };
+    }
+
+    const errorText = await response.text();
+    console.error(`❌ GitHub Action trigger failed: ${response.status} ${errorText}`);
+    return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+
+  } catch (error: any) {
+    console.error('❌ Failed to trigger daily video render Action:', error.message);
+    return { success: false, error: error.message };
+  }
+}

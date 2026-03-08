@@ -1,0 +1,50 @@
+name: Daily Video Init (Digest)
+
+on:
+  # Every day at 07:00 CET (06:00 UTC)
+  schedule:
+    - cron: '0 6 * * *'
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'Target date (YYYY-MM-DD), default: yesterday'
+        required: false
+        type: string
+
+jobs:
+  initiate-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Initiate daily video digest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          TARGET_DATE="${{ github.event.inputs.target_date || '' }}"
+          QUERY_PARAM=""
+          if [ -n "$TARGET_DATE" ]; then
+            QUERY_PARAM="&target_date=$TARGET_DATE"
+          fi
+
+          echo "🎬 Initiating daily video digest..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${SUPABASE_URL}/functions/v1/daily-video-bot?action=initiate_digest${QUERY_PARAM}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"target_date\": \"${TARGET_DATE}\"}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response ($HTTP_CODE): $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "❌ Failed to initiate digest"
+            exit 1
+          fi
+
+          echo "✅ Digest initiated successfully"
