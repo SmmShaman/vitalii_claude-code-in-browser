@@ -3865,8 +3865,9 @@ serve(async (req) => {
           const { scheduledAt, window: winId, windowLabel } = await computeScheduledTime(weight, schedConfig, supabase)
           const timeStr = formatScheduledTime(scheduledAt)
 
-          // Store in DB
+          // Store in DB (preset click = approve + schedule)
           await supabase.from('news').update({
+            pre_moderation_status: 'approved',
             auto_publish_status: 'scheduled',
             scheduled_publish_at: scheduledAt.toISOString(),
             content_weight: weight,
@@ -3895,7 +3896,12 @@ serve(async (req) => {
             })
           })
         } else {
-          // Schedule disabled — fire immediately (legacy behavior)
+          // Schedule disabled — fire immediately (preset click = approve + publish)
+          await supabase.from('news').update({
+            pre_moderation_status: 'approved',
+            telegram_message_id: messageId,
+          }).eq('id', newsId)
+
           await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3947,8 +3953,9 @@ serve(async (req) => {
             .eq('id', newsId)
             .single()
 
-          // Update status to queued (auto-publish-news will set 'pending' on entry)
+          // Update status to queued + approve (auto-publish-news will set 'pending' on entry)
           await supabase.from('news').update({
+            pre_moderation_status: 'approved',
             auto_publish_status: 'queued',
             auto_publish_started_at: new Date().toISOString(),
             scheduled_publish_at: null,
