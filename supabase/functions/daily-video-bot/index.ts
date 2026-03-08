@@ -873,6 +873,49 @@ function getPngDimensions(data: Uint8Array): { width: number; height: number } |
   return { width, height };
 }
 
+async function convertToJpegViaGemini(pngBuffer: Uint8Array): Promise<Uint8Array | null> {
+  try {
+    let binary = "";
+    for (let i = 0; i < pngBuffer.length; i++) binary += String.fromCharCode(pngBuffer[i]);
+    const base64 = btoa(binary);
+
+    const requestBody = {
+      contents: [{
+        parts: [
+          { text: "Convert this image to JPEG format. Output the exact same image without any modifications — same content, same dimensions. Just change the format to JPEG." },
+          { inline_data: { mime_type: "image/png", data: base64 } },
+        ],
+      }],
+      generationConfig: { responseModalities: ["IMAGE"] },
+    };
+
+    for (const model of GEMINI_MODELS) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GOOGLE_API_KEY },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!resp.ok) continue;
+      const result = await resp.json();
+      const part = result.candidates?.[0]?.content?.parts?.find(
+        (p: any) => (p.inline_data || p.inlineData)?.data,
+      );
+      const imgData = part?.inline_data || part?.inlineData;
+      if (imgData?.data) {
+        const bStr = atob(imgData.data);
+        const bytes = new Uint8Array(bStr.length);
+        for (let j = 0; j < bStr.length; j++) bytes[j] = bStr.charCodeAt(j);
+        return bytes;
+      }
+    }
+  } catch (err: any) {
+    console.error(`❌ JPEG conversion error: ${err.message}`);
+  }
+  return null;
+}
+
 async function callGeminiImage(prompt: string, inputImageBase64?: string): Promise<Uint8Array | null> {
   const parts: any[] = [{ text: prompt }];
   if (inputImageBase64) {
@@ -1087,17 +1130,36 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
     return json({ error: "All variants failed" }, 500);
   }
 
-  // Upload variants to Supabase Storage
+  // Upload variants to Supabase Storage (JPEG if > 1.5MB to stay under YouTube 2MB limit)
   const variantData: { index: number; style: string; styleName: string; url: string }[] = [];
+  const MAX_SIZE = 1_500_000; // 1.5MB threshold (leave margin for YouTube's 2MB limit)
 
   for (let i = 0; i < variants.length; i++) {
     const v = variants[i];
-    const storagePath = `thumbnails/${targetDate}/variant_${i}_${v.style.id}.png`;
+    let uploadBuffer = v.buffer;
+    let mimeType = "image/png";
+    let ext = "png";
+
+    // If PNG is too large, try re-requesting as JPEG via Gemini passthrough
+    if (uploadBuffer.length > MAX_SIZE) {
+      console.log(`📐 Variant ${i}: ${(uploadBuffer.length / 1024 / 1024).toFixed(2)} MB > 1.5MB, requesting JPEG...`);
+      const jpegBuffer = await convertToJpegViaGemini(uploadBuffer);
+      if (jpegBuffer && jpegBuffer.length < uploadBuffer.length) {
+        uploadBuffer = jpegBuffer;
+        mimeType = "image/jpeg";
+        ext = "jpg";
+        console.log(`✅ Compressed: ${(uploadBuffer.length / 1024).toFixed(0)} KB`);
+      } else {
+        console.log(`⚠️ JPEG conversion failed, keeping PNG`);
+      }
+    }
+
+    const storagePath = `thumbnails/${targetDate}/variant_${i}_${v.style.id}.${ext}`;
 
     const { error: uploadErr } = await supabase.storage
       .from("daily-videos")
-      .upload(storagePath, v.buffer, {
-        contentType: "image/png",
+      .upload(storagePath, uploadBuffer, {
+        contentType: mimeType,
         upsert: true,
         cacheControl: "3600",
       });
@@ -1208,7 +1270,24 @@ async function selectThumbnail(targetDate: string, variantIndex: number, chatId?
         // Download the thumbnail image
         const imgResp = await fetch(variant.url);
         if (!imgResp.ok) throw new Error(`Failed to download thumbnail: ${imgResp.status}`);
-        const imgBuffer = await imgResp.arrayBuffer();
+        let imgBuffer = new Uint8Array(await imgResp.arrayBuffer());
+        let contentType = variant.url.endsWith(".jpg") ? "image/jpeg" : "image/png";
+
+        // Safety check: if still over 2MB, try JPEG conversion on the fly
+        const MAX_YT_SIZE = 2 * 1024 * 1024;
+        if (imgBuffer.length > MAX_YT_SIZE) {
+          console.log(`📐 Image ${(imgBuffer.length / 1024 / 1024).toFixed(2)} MB > 2MB, converting to JPEG...`);
+          const jpegBuffer = await convertToJpegViaGemini(imgBuffer);
+          if (jpegBuffer && jpegBuffer.length < MAX_YT_SIZE) {
+            imgBuffer = jpegBuffer;
+            contentType = "image/jpeg";
+            console.log(`✅ Compressed to ${(imgBuffer.length / 1024).toFixed(0)} KB`);
+          } else {
+            console.warn(`⚠️ Could not compress below 2MB (${(imgBuffer.length / 1024).toFixed(0)} KB)`);
+          }
+        }
+
+        console.log(`📤 Uploading ${(imgBuffer.length / 1024).toFixed(0)} KB to YouTube...`);
 
         // Upload to YouTube
         const ytResp = await fetch(
@@ -1217,7 +1296,7 @@ async function selectThumbnail(targetDate: string, variantIndex: number, chatId?
             method: "POST",
             headers: {
               Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "image/png",
+              "Content-Type": contentType,
             },
             body: imgBuffer,
           },
