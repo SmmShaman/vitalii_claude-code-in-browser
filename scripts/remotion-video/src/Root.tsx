@@ -9,9 +9,15 @@
  */
 import React from "react";
 import { Composition } from "remotion";
+import { loadFont } from "@remotion/google-fonts/Comfortaa";
 import { NewsVideo } from "./compositions/NewsVideo";
 import { DirectedNewsVideo } from "./compositions/DirectedNewsVideo";
 import { DailyNewsShow } from "./compositions/DailyNewsShow";
+
+// Load Comfortaa globally — must happen at module level before any render
+const { fontFamily } = loadFont();
+// Re-export so components can reference if needed
+export { fontFamily };
 
 const LEGACY_PROPS = {
   videoSrc: "",
@@ -41,7 +47,7 @@ const DAILY_SHOW_PROPS = {
   introDurationSeconds: 4,
   outroDurationSeconds: 4,
   dividerDurationSeconds: 2,
-  accentColor: "#667eea",
+  accentColor: "#FF7A00",
 };
 
 export const RemotionRoot: React.FC = () => {

@@ -126,7 +126,7 @@ export const AnimatedSubtitles: React.FC<AnimatedSubtitlesProps> = ({
             color: theme.colors.text,
             fontSize: layout.subtitle.fontSize,
             fontWeight: cfg.fontWeight,
-            fontFamily: theme.typography.fontFamily.fallback,
+            fontFamily: theme.typography.fontFamily.primary,
             lineHeight: theme.typography.subtitle.lineHeight,
             textTransform: cfg.textTransform,
             letterSpacing: cfg.letterSpacing,

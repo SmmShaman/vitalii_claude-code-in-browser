@@ -74,7 +74,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
   const hasVideo = !!resolvedVideoSrc;
 
   // Ken Burns effect for static images (slow zoom + pan)
-  const kenBurnsScale = hasVideo ? 1 : interpolate(frame, [0, durationInFrames], [1, 1.15], { extrapolateRight: "clamp" });
+  const kenBurnsScale = hasVideo ? 1 : interpolate(frame, [0, durationInFrames], [theme.kenBurns.scaleRange.start, theme.kenBurns.scaleRange.end], { extrapolateRight: "clamp" });
   const kenBurnsX = hasVideo ? 0 : interpolate(frame, [0, durationInFrames], [0, -3], { extrapolateRight: "clamp" });
 
   // ── Headline intro animation (first 2 seconds) ──
@@ -151,7 +151,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
             style={{
               position: "absolute",
               inset: 0,
-              background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%)",
+              background: theme.gradients.imageOverlay,
             }}
           />
         </AbsoluteFill>
@@ -187,7 +187,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
                 color: theme.colors.text,
                 fontSize: layout.headline.fontSize,
                 fontWeight: theme.typography.headline.fontWeight,
-                fontFamily: theme.typography.fontFamily.fallback,
+                fontFamily: theme.typography.fontFamily.primary,
                 lineHeight: theme.typography.headline.lineHeight,
                 textShadow: theme.shadows.headline,
               }}
@@ -212,7 +212,7 @@ export const NewsVideo: React.FC<NewsVideoProps> = ({
           opacity: theme.opacity.watermark,
           fontSize: theme.typography.watermark.fontSize,
           color: theme.colors.text,
-          fontFamily: theme.typography.fontFamily.fallback,
+          fontFamily: theme.typography.fontFamily.primary,
           fontWeight: theme.typography.watermark.fontWeight,
           letterSpacing: theme.typography.watermark.letterSpacing,
         }}

@@ -198,7 +198,7 @@ export const DirectedNewsVideo: React.FC<DirectedNewsVideoProps> = ({
           opacity: defaultTheme.opacity.watermark,
           fontSize: defaultTheme.typography.watermark.fontSize,
           color: defaultTheme.colors.text,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          fontFamily: defaultTheme.typography.fontFamily.primary,
           fontWeight: defaultTheme.typography.watermark.fontWeight,
           letterSpacing: defaultTheme.typography.watermark.letterSpacing,
         }}

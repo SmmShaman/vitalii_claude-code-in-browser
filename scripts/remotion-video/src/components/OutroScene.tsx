@@ -11,7 +11,15 @@ import {
   interpolate,
   spring,
 } from "remotion";
-import { defaultTheme } from "../design-system";
+import {
+  colors,
+  gradients,
+  typography,
+  accentLine,
+  springs,
+  fadeTiming,
+  clampBoth,
+} from "../design-system";
 
 export interface OutroSceneProps {
   message?: string;
@@ -22,7 +30,7 @@ export interface OutroSceneProps {
 export const OutroScene: React.FC<OutroSceneProps> = ({
   message = "Read more on",
   url = "vitalii.no",
-  accentColor = "#667eea",
+  accentColor = colors.brand,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -31,40 +39,40 @@ export const OutroScene: React.FC<OutroSceneProps> = ({
   const msgScale = spring({
     frame,
     fps,
-    config: { damping: 10, stiffness: 80 },
+    config: springs.gentleScale,
   });
-  const msgOpacity = interpolate(frame, [0, 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const msgOpacity = interpolate(
+    frame,
+    [0, fadeTiming.titleRevealFrames],
+    [0, 1],
+    clampBoth,
+  );
 
   // URL slides up with delay
   const urlDelay = 12;
-  const urlY = interpolate(frame - urlDelay, [0, 15], [30, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const urlOpacity = interpolate(frame - urlDelay, [0, 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const urlY = interpolate(frame - urlDelay, [0, 15], [30, 0], clampBoth);
+  const urlOpacity = interpolate(frame - urlDelay, [0, 15], [0, 1], clampBoth);
 
   // Line expands
-  const lineWidth = interpolate(frame, [8, 25], [0, 80], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const lineWidth = interpolate(
+    frame,
+    [8, 25],
+    [0, accentLine.width.long],
+    clampBoth,
+  );
 
   // Fade out at very end
-  const fadeOut = interpolate(frame, [durationInFrames - 6, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeOut = interpolate(
+    frame,
+    [durationInFrames - fadeTiming.fadeOutFrames.short, durationInFrames],
+    [1, 0],
+    clampBoth,
+  );
 
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(135deg, #0a0a0a 0%, ${accentColor}18 100%)`,
+        background: gradients.sceneDark(accentColor),
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -77,10 +85,10 @@ export const OutroScene: React.FC<OutroSceneProps> = ({
         style={{
           transform: `scale(${msgScale})`,
           opacity: msgOpacity,
-          fontSize: 28,
+          fontSize: typography.scale.body,
           fontWeight: 500,
-          color: "rgba(255,255,255,0.7)",
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          color: colors.textMuted,
+          fontFamily: typography.fontFamily.primary,
         }}
       >
         {message}
@@ -90,9 +98,9 @@ export const OutroScene: React.FC<OutroSceneProps> = ({
       <div
         style={{
           width: lineWidth,
-          height: 3,
+          height: accentLine.height,
           backgroundColor: accentColor,
-          borderRadius: 2,
+          borderRadius: accentLine.borderRadius,
           margin: "20px 0",
         }}
       />
@@ -102,10 +110,10 @@ export const OutroScene: React.FC<OutroSceneProps> = ({
         style={{
           transform: `translateY(${urlY}px)`,
           opacity: urlOpacity,
-          fontSize: 52,
+          fontSize: typography.scale.h1,
           fontWeight: 800,
-          color: defaultTheme.colors.text,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          color: colors.text,
+          fontFamily: typography.fontFamily.primary,
           letterSpacing: -1,
         }}
       >

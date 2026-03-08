@@ -12,7 +12,14 @@ import {
   interpolate,
   spring,
 } from "remotion";
-import { defaultTheme } from "../design-system";
+import {
+  colors,
+  typography,
+  accentLine,
+  springs,
+  fadeTiming,
+  clampBoth,
+} from "../design-system";
 
 export interface SegmentDividerSceneProps {
   segmentNumber: number;
@@ -25,7 +32,7 @@ export const SegmentDividerScene: React.FC<SegmentDividerSceneProps> = ({
   segmentNumber,
   totalSegments,
   category,
-  accentColor = "#667eea",
+  accentColor = colors.brand,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -34,32 +41,28 @@ export const SegmentDividerScene: React.FC<SegmentDividerSceneProps> = ({
   const numScale = spring({
     frame,
     fps,
-    config: { damping: 8, stiffness: 100, mass: 0.6 },
+    config: springs.numberScale,
   });
 
   // Progress bar
   const progress = segmentNumber / totalSegments;
-  const barWidth = interpolate(frame, [5, 20], [0, progress * 100], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const barWidth = interpolate(frame, [5, 20], [0, progress * 100], clampBoth);
 
   // Category fades in
-  const catOpacity = interpolate(frame, [10, 18], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const catOpacity = interpolate(frame, [10, 18], [0, 1], clampBoth);
 
   // Fade out
-  const fadeOut = interpolate(frame, [durationInFrames - 6, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeOut = interpolate(
+    frame,
+    [durationInFrames - fadeTiming.fadeOutFrames.short, durationInFrames],
+    [1, 0],
+    clampBoth,
+  );
 
   return (
     <AbsoluteFill
       style={{
-        backgroundColor: "#0a0a0a",
+        backgroundColor: colors.background,
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -71,10 +74,10 @@ export const SegmentDividerScene: React.FC<SegmentDividerSceneProps> = ({
       <div
         style={{
           transform: `scale(${numScale})`,
-          fontSize: 120,
+          fontSize: typography.scale.display,
           fontWeight: 900,
           color: accentColor,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          fontFamily: typography.fontFamily.primary,
           lineHeight: 1,
         }}
       >
@@ -84,10 +87,10 @@ export const SegmentDividerScene: React.FC<SegmentDividerSceneProps> = ({
       {/* "of N" */}
       <div
         style={{
-          fontSize: 20,
+          fontSize: typography.scale.small,
           fontWeight: 500,
-          color: "rgba(255,255,255,0.4)",
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          color: colors.textGhost,
+          fontFamily: typography.fontFamily.primary,
           marginTop: 8,
         }}
       >
@@ -100,10 +103,10 @@ export const SegmentDividerScene: React.FC<SegmentDividerSceneProps> = ({
           style={{
             marginTop: 20,
             opacity: catOpacity,
-            fontSize: 18,
+            fontSize: typography.scale.xs,
             fontWeight: 600,
-            color: "rgba(255,255,255,0.5)",
-            fontFamily: defaultTheme.typography.fontFamily.fallback,
+            color: colors.textFaint,
+            fontFamily: typography.fontFamily.primary,
             textTransform: "uppercase",
             letterSpacing: 3,
           }}
@@ -118,9 +121,9 @@ export const SegmentDividerScene: React.FC<SegmentDividerSceneProps> = ({
           position: "absolute",
           bottom: 120,
           width: "70%",
-          height: 3,
-          backgroundColor: "rgba(255,255,255,0.1)",
-          borderRadius: 2,
+          height: accentLine.height,
+          backgroundColor: colors.textTrack,
+          borderRadius: accentLine.borderRadius,
         }}
       >
         <div
@@ -128,7 +131,7 @@ export const SegmentDividerScene: React.FC<SegmentDividerSceneProps> = ({
             width: `${barWidth}%`,
             height: "100%",
             backgroundColor: accentColor,
-            borderRadius: 2,
+            borderRadius: accentLine.borderRadius,
           }}
         />
       </div>

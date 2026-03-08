@@ -17,7 +17,16 @@ import {
   staticFile,
 } from "remotion";
 import { AnimatedSubtitles, type SubtitleEntry } from "./AnimatedSubtitles";
-import { defaultTheme } from "../design-system";
+import {
+  colors,
+  gradients,
+  typography,
+  kenBurns,
+  accentLine,
+  springs,
+  fadeTiming,
+  clampBoth,
+} from "../design-system";
 
 export interface ContentSceneProps {
   imageSrc: string;
@@ -34,7 +43,7 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   voiceoverSrc,
   subtitles = [],
   keyQuote,
-  accentColor = "#667eea",
+  accentColor = colors.brand,
   subtitleOffset = 0,
 }) => {
   const frame = useCurrentFrame();
@@ -45,31 +54,47 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
     src ? (src.startsWith("http") ? src : staticFile(src)) : "";
 
   // Ken Burns
-  const scale = interpolate(frame, [0, durationInFrames], [1.0, 1.15], { extrapolateRight: "clamp" });
-  const panX = interpolate(frame, [0, durationInFrames], [0, -2], { extrapolateRight: "clamp" });
-  const panY = interpolate(frame, [0, durationInFrames], [0, -1], { extrapolateRight: "clamp" });
+  const scale = interpolate(
+    frame,
+    [0, durationInFrames],
+    [kenBurns.scaleRange.start, kenBurns.scaleRange.end],
+    { extrapolateRight: "clamp" },
+  );
+  const panX = interpolate(
+    frame,
+    [0, durationInFrames],
+    [kenBurns.panX.start, kenBurns.panX.end],
+    { extrapolateRight: "clamp" },
+  );
+  const panY = interpolate(
+    frame,
+    [0, durationInFrames],
+    [kenBurns.panY.start, kenBurns.panY.end],
+    { extrapolateRight: "clamp" },
+  );
 
   // Key quote animation
   const quoteDelay = Math.round(fps * 0.5);
   const quoteScale = spring({
     frame: frame - quoteDelay,
     fps,
-    config: { damping: 14, stiffness: 120 },
+    config: springs.quoteReveal,
   });
-  const quoteOpacity = interpolate(frame, [quoteDelay, quoteDelay + 10], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const quoteOpacity = interpolate(frame, [quoteDelay, quoteDelay + 10], [0, 1], clampBoth);
 
   // Fade transitions
-  const fadeIn = interpolate(frame, [0, 8], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const fadeOut = interpolate(frame, [durationInFrames - 8, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeIn = interpolate(
+    frame,
+    [0, fadeTiming.fadeInFrames],
+    [0, 1],
+    clampBoth,
+  );
+  const fadeOut = interpolate(
+    frame,
+    [durationInFrames - fadeTiming.fadeOutFrames.standard, durationInFrames],
+    [1, 0],
+    clampBoth,
+  );
 
   // Offset subtitles to be relative to this scene
   const offsetSubtitles = subtitles.map((s) => ({
@@ -97,8 +122,8 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
           position: "absolute",
           inset: 0,
           background: keyQuote
-            ? "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.7) 100%)"
-            : "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6) 100%)",
+            ? gradients.contentOverlay
+            : gradients.contentOverlayLight,
         }}
       />
 
@@ -126,19 +151,19 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
             {/* Accent bar */}
             <div
               style={{
-                width: 40,
-                height: 3,
+                width: accentLine.width.short,
+                height: accentLine.height,
                 backgroundColor: accentColor,
                 margin: "0 auto 16px",
-                borderRadius: 2,
+                borderRadius: accentLine.borderRadius,
               }}
             />
             <span
               style={{
-                fontSize: isVertical ? 36 : 40,
+                fontSize: isVertical ? typography.scale.h5 : typography.scale.h4,
                 fontWeight: 700,
-                color: "#fff",
-                fontFamily: defaultTheme.typography.fontFamily.fallback,
+                color: colors.text,
+                fontFamily: typography.fontFamily.primary,
                 lineHeight: 1.3,
                 textShadow: "0 2px 12px rgba(0,0,0,0.8)",
               }}

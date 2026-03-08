@@ -12,7 +12,17 @@ import {
   interpolate,
   spring,
 } from "remotion";
-import { defaultTheme } from "../design-system";
+import {
+  colors,
+  glass,
+  gradients,
+  typography,
+  accentLine,
+  badge,
+  springs,
+  fadeTiming,
+  clampBoth,
+} from "../design-system";
 
 export interface ShowIntroSceneProps {
   date: string;
@@ -26,64 +36,52 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
   date,
   articleCount,
   showTitle = "Daglig Nyhetsoppdatering",
-  accentColor = "#667eea",
+  accentColor = colors.brand,
   language = "no",
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
   // Line sweep from left
-  const lineWidth = interpolate(frame, [0, 20], [0, 100], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const lineWidth = interpolate(frame, [0, 20], [0, 100], clampBoth);
 
   // Title drops in
   const titleScale = spring({
     frame: frame - 5,
     fps,
-    config: { damping: 12, stiffness: 80 },
+    config: springs.titleDrop,
   });
-  const titleOpacity = interpolate(frame, [5, 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const titleOpacity = interpolate(frame, [5, 15], [0, 1], clampBoth);
 
   // Date fades up
-  const dateY = interpolate(frame, [18, 32], [20, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const dateOpacity = interpolate(frame, [18, 28], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const dateY = interpolate(frame, [18, 32], [20, 0], clampBoth);
+  const dateOpacity = interpolate(frame, [18, 28], [0, 1], clampBoth);
 
   // Article count badge pops
   const badgeScale = spring({
     frame: frame - 30,
     fps,
-    config: { damping: 10, stiffness: 120 },
+    config: springs.badgePop,
   });
-  const badgeOpacity = interpolate(frame, [30, 38], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const badgeOpacity = interpolate(frame, [30, 38], [0, 1], clampBoth);
 
   // Fade out
-  const fadeOut = interpolate(frame, [durationInFrames - 12, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeOut = interpolate(
+    frame,
+    [durationInFrames - fadeTiming.fadeOutFrames.intro, durationInFrames],
+    [1, 0],
+    clampBoth,
+  );
 
-  const countLabel = language === "no"
-    ? `${articleCount} ${articleCount === 1 ? "sak" : "saker"} i dag`
-    : `${articleCount} ${articleCount === 1 ? "story" : "stories"} today`;
+  const countLabel =
+    language === "no"
+      ? `${articleCount} ${articleCount === 1 ? "sak" : "saker"} i dag`
+      : `${articleCount} ${articleCount === 1 ? "story" : "stories"} today`;
 
   return (
     <AbsoluteFill
       style={{
-        background: `radial-gradient(ellipse at 30% 40%, ${accentColor}20 0%, #0a0a0a 70%)`,
+        background: gradients.sceneRadial(accentColor),
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -95,11 +93,11 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
       <div
         style={{
           width: `${lineWidth}%`,
-          height: 3,
+          height: accentLine.height,
           backgroundColor: accentColor,
           marginBottom: 40,
-          borderRadius: 2,
-          maxWidth: 200,
+          borderRadius: accentLine.borderRadius,
+          maxWidth: accentLine.width.full,
         }}
       />
 
@@ -108,10 +106,10 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
         style={{
           transform: `scale(${titleScale})`,
           opacity: titleOpacity,
-          fontSize: 52,
+          fontSize: typography.scale.h1,
           fontWeight: 800,
-          color: defaultTheme.colors.text,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          color: colors.text,
+          fontFamily: typography.fontFamily.primary,
           textAlign: "center",
           lineHeight: 1.2,
           maxWidth: "85%",
@@ -126,29 +124,30 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
           marginTop: 20,
           transform: `translateY(${dateY}px)`,
           opacity: dateOpacity,
-          fontSize: 28,
+          fontSize: typography.scale.body,
           fontWeight: 500,
-          color: "rgba(255,255,255,0.6)",
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          color: colors.textSubtle,
+          fontFamily: typography.fontFamily.primary,
         }}
       >
         {date}
       </div>
 
-      {/* Article count badge */}
+      {/* Article count badge (glass effect) */}
       <div
         style={{
           marginTop: 32,
           transform: `scale(${badgeScale})`,
           opacity: badgeOpacity,
-          background: `${accentColor}30`,
-          border: `1px solid ${accentColor}60`,
-          padding: "10px 28px",
-          borderRadius: 24,
-          fontSize: 20,
+          background: glass.background,
+          border: `1px solid ${glass.border}`,
+          backdropFilter: `blur(${glass.blur}px)`,
+          padding: `${badge.paddingLarge.y}px ${badge.paddingLarge.x}px`,
+          borderRadius: badge.borderRadiusLarge,
+          fontSize: typography.scale.small,
           fontWeight: 600,
           color: accentColor,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          fontFamily: typography.fontFamily.primary,
         }}
       >
         {countLabel}
@@ -159,10 +158,10 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
         style={{
           position: "absolute",
           bottom: 80,
-          fontSize: 18,
+          fontSize: typography.scale.xs,
           fontWeight: 600,
-          color: "rgba(255,255,255,0.3)",
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          color: colors.textWhisper,
+          fontFamily: typography.fontFamily.primary,
           letterSpacing: 2,
         }}
       >

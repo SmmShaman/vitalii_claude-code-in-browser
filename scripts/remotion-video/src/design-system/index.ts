@@ -3,10 +3,29 @@
  */
 
 // Tokens
-export { colors, typography, spacing, opacity, shadows, video, branding } from "./tokens";
+export {
+  colors,
+  glass,
+  gradients,
+  typography,
+  spacing,
+  accentLine,
+  badge,
+  kenBurns,
+  opacity,
+  shadows,
+  video,
+  branding,
+} from "./tokens";
 
 // Animations
-export { springs, headlineKeyframes, subtitleFadeFrames, clampBoth } from "./animations";
+export {
+  springs,
+  fadeTiming,
+  headlineKeyframes,
+  subtitleFadeFrames,
+  clampBoth,
+} from "./animations";
 
 // Layouts
 export { getLayoutConfig, aspectRatios } from "./layouts";

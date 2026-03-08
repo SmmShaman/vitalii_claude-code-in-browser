@@ -12,7 +12,14 @@ import {
   interpolate,
   spring,
 } from "remotion";
-import { defaultTheme } from "../design-system";
+import {
+  colors,
+  gradients,
+  typography,
+  springs,
+  fadeTiming,
+  clampBoth,
+} from "../design-system";
 
 export interface StatItem {
   value: string;
@@ -27,32 +34,28 @@ export interface StatsSceneProps {
 
 export const StatsScene: React.FC<StatsSceneProps> = ({
   facts,
-  accentColor = "#667eea",
+  accentColor = colors.brand,
   title = "Key Facts",
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
   // Title animation
-  const titleOpacity = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const titleY = interpolate(frame, [0, 12], [20, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const titleOpacity = interpolate(frame, [0, 12], [0, 1], clampBoth);
+  const titleY = interpolate(frame, [0, 12], [20, 0], clampBoth);
 
   // Fade out
-  const fadeOut = interpolate(frame, [durationInFrames - 8, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeOut = interpolate(
+    frame,
+    [durationInFrames - fadeTiming.fadeOutFrames.standard, durationInFrames],
+    [1, 0],
+    clampBoth,
+  );
 
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(160deg, #0a0a0a 0%, ${accentColor}15 100%)`,
+        background: gradients.sceneSubtle(accentColor),
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -66,10 +69,10 @@ export const StatsScene: React.FC<StatsSceneProps> = ({
         style={{
           opacity: titleOpacity,
           transform: `translateY(${titleY}px)`,
-          fontSize: 24,
+          fontSize: typography.scale.bodySmall,
           fontWeight: 600,
           color: accentColor,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          fontFamily: typography.fontFamily.primary,
           textTransform: "uppercase",
           letterSpacing: 3,
           marginBottom: 48,
@@ -89,16 +92,18 @@ export const StatsScene: React.FC<StatsSceneProps> = ({
         }}
       >
         {facts.map((fact, i) => {
-          const stagger = 15 + i * 12;
+          const stagger = fadeTiming.staggerBaseDelay + i * fadeTiming.staggerIncrement;
           const itemScale = spring({
             frame: frame - stagger,
             fps,
-            config: { damping: 12, stiffness: 100 },
+            config: springs.staggerItem,
           });
-          const itemOpacity = interpolate(frame - stagger, [0, 8], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          });
+          const itemOpacity = interpolate(
+            frame - stagger,
+            [0, fadeTiming.fadeInFrames],
+            [0, 1],
+            clampBoth,
+          );
 
           return (
             <div
@@ -126,10 +131,10 @@ export const StatsScene: React.FC<StatsSceneProps> = ({
                 {/* Value */}
                 <div
                   style={{
-                    fontSize: 44,
+                    fontSize: typography.scale.h3,
                     fontWeight: 800,
-                    color: defaultTheme.colors.text,
-                    fontFamily: defaultTheme.typography.fontFamily.fallback,
+                    color: colors.text,
+                    fontFamily: typography.fontFamily.primary,
                     lineHeight: 1.1,
                   }}
                 >
@@ -138,10 +143,10 @@ export const StatsScene: React.FC<StatsSceneProps> = ({
                 {/* Label */}
                 <div
                   style={{
-                    fontSize: 20,
+                    fontSize: typography.scale.small,
                     fontWeight: 500,
-                    color: "rgba(255,255,255,0.6)",
-                    fontFamily: defaultTheme.typography.fontFamily.fallback,
+                    color: colors.textSubtle,
+                    fontFamily: typography.fontFamily.primary,
                     marginTop: 4,
                   }}
                 >

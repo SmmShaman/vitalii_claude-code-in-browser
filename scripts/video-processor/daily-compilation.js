@@ -42,7 +42,7 @@ oauth2Client.setCredentials({
 const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
 
 const LANGUAGE = process.env.LANGUAGE || 'no';
-const FORMAT = process.env.FORMAT || 'vertical'; // vertical or horizontal
+const FORMAT = process.env.FORMAT || 'horizontal'; // vertical or horizontal
 
 // ── Helpers ──
 
@@ -143,7 +143,7 @@ SEGMENTS array — one object per article:
   "headline": "Norwegian headline (5-10 words)",
   "keyQuote": "Most impactful sentence from your script about this article (Norwegian)",
   "category": "tech|business|ai|startup|science|politics|crypto|health|news",
-  "accentColor": "#hex (match the category mood)"
+  "accentColor": "#hex (warm orange tones preferred: #FF7A00, #FF8C42, #FF6B35; match category mood)"
 }
 
 RULES:
@@ -225,7 +225,7 @@ function templateShowScript(articles, dateStr) {
       headline: title.substring(0, 60),
       keyQuote: '',
       category: 'news',
-      accentColor: '#667eea',
+      accentColor: '#FF7A00',
     };
   });
 
@@ -343,7 +343,7 @@ async function main() {
   const segments = [];
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    const segment = plan.segments[i] || { headline: article.title_no || article.title_en || '', category: 'news', accentColor: '#667eea' };
+    const segment = plan.segments[i] || { headline: article.title_no || article.title_en || '', category: 'news', accentColor: '#FF7A00' };
 
     const imageUrl = article.processed_image_url || article.image_url;
     let imageFilename = '';
@@ -367,7 +367,7 @@ async function main() {
       imageSrc: imageFilename,
       keyQuote: segment.keyQuote || '',
       category: segment.category || 'news',
-      accentColor: segment.accentColor || '#667eea',
+      accentColor: segment.accentColor || '#FF7A00',
       durationSeconds: segDuration,
     });
   }
@@ -402,7 +402,7 @@ async function main() {
     introDurationSeconds: introDuration,
     outroDurationSeconds: outroDuration,
     dividerDurationSeconds: dividerDuration,
-    accentColor: '#667eea',
+    accentColor: '#FF7A00',
   });
 
   const propsFile = path.join(os.tmpdir(), `daily_props_${Date.now()}.json`);

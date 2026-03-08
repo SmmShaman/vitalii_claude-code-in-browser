@@ -14,7 +14,15 @@ import {
   spring,
   staticFile,
 } from "remotion";
-import { defaultTheme } from "../design-system";
+import {
+  colors,
+  typography,
+  kenBurns,
+  accentLine,
+  springs,
+  fadeTiming,
+  clampBoth,
+} from "../design-system";
 
 export interface HeadlineSceneProps {
   text: string;
@@ -25,7 +33,7 @@ export interface HeadlineSceneProps {
 export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
   text,
   imageSrc,
-  accentColor = "#667eea",
+  accentColor = colors.brand,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -38,16 +46,31 @@ export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
   const framesPerWord = Math.max(3, Math.floor((durationInFrames * 0.6) / words.length));
 
   // Fade out
-  const fadeOut = interpolate(frame, [durationInFrames - 8, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeOut = interpolate(
+    frame,
+    [durationInFrames - fadeTiming.fadeOutFrames.standard, durationInFrames],
+    [1, 0],
+    clampBoth,
+  );
 
   // Background Ken Burns
-  const bgScale = interpolate(frame, [0, durationInFrames], [1.1, 1.2], { extrapolateRight: "clamp" });
+  const bgScale = interpolate(
+    frame,
+    [0, durationInFrames],
+    [kenBurns.backgroundScale.start, kenBurns.backgroundScale.end],
+    { extrapolateRight: "clamp" },
+  );
+
+  // Accent line reveal
+  const lineW = interpolate(
+    frame,
+    [0, fadeTiming.titleRevealFrames],
+    [0, accentLine.width.medium],
+    { extrapolateRight: "clamp" },
+  );
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "#0a0a0a", opacity: fadeOut }}>
+    <AbsoluteFill style={{ backgroundColor: colors.background, opacity: fadeOut }}>
       {/* Background image (dimmed) */}
       {resolvedImage && (
         <AbsoluteFill>
@@ -58,7 +81,7 @@ export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
               height: "100%",
               objectFit: "cover",
               transform: `scale(${bgScale})`,
-              filter: "blur(20px) brightness(0.3)",
+              filter: kenBurns.backgroundBlur,
             }}
           />
         </AbsoluteFill>
@@ -70,10 +93,10 @@ export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
           position: "absolute",
           top: "15%",
           left: "8%",
-          width: interpolate(frame, [0, 15], [0, 60], { extrapolateRight: "clamp" }),
-          height: 4,
+          width: lineW,
+          height: accentLine.height,
           backgroundColor: accentColor,
-          borderRadius: 2,
+          borderRadius: accentLine.borderRadius,
         }}
       />
 
@@ -100,12 +123,9 @@ export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
             const scale = spring({
               frame: frame - wordStart,
               fps,
-              config: { damping: 12, stiffness: 150, mass: 0.5 },
+              config: springs.wordPunch,
             });
-            const opacity = interpolate(frame - wordStart, [0, 3], [0, 1], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            });
+            const opacity = interpolate(frame - wordStart, [0, 3], [0, 1], clampBoth);
 
             return (
               <span
@@ -114,10 +134,10 @@ export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
                   display: "inline-block",
                   transform: `scale(${scale})`,
                   opacity,
-                  fontSize: words.length > 8 ? 48 : 56,
+                  fontSize: words.length > 8 ? typography.scale.h2 : typography.scale.h1,
                   fontWeight: 800,
-                  color: defaultTheme.colors.text,
-                  fontFamily: defaultTheme.typography.fontFamily.fallback,
+                  color: colors.text,
+                  fontFamily: typography.fontFamily.primary,
                   lineHeight: 1.2,
                 }}
               >

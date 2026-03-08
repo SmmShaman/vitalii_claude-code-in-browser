@@ -120,7 +120,7 @@ RULES:
 - The voiceoverScript must be a COMPLETE story (hook + body + conclusion) that fits the duration
 - voiceoverScript word count: ~${targetDuration * 2} words (TTS speaks at ~2 words/sec)
 - Choose accentColor based on the article mood/category:
-  - Tech/AI: blue-purple (#667eea, #9b59b6)
+  - Tech/AI: orange-purple (#FF7A00, #9b59b6)
   - Business/Startup: green-gold (#2ecc71, #f5a623)
   - Science: teal (#4ecdc4)
   - Politics/Breaking: red (#e74c3c)
@@ -198,7 +198,7 @@ function templateDirector(articleText, headline, targetDuration) {
 
   const text = (articleText + ' ' + headline).toLowerCase();
   let category = 'news';
-  let accentColor = '#667eea';
+  let accentColor = '#FF7A00';
 
   if (text.match(/\b(ai|artificial intelligence|machine learning|gpt|llm|neural)\b/)) {
     category = 'ai'; accentColor = '#9b59b6';
@@ -207,7 +207,7 @@ function templateDirector(articleText, headline, targetDuration) {
   } else if (text.match(/\b(crypto|bitcoin|blockchain|ethereum|web3|defi)\b/)) {
     category = 'crypto'; accentColor = '#f39c12';
   } else if (text.match(/\b(tech|software|app|platform|saas|cloud|api)\b/)) {
-    category = 'tech'; accentColor = '#667eea';
+    category = 'tech'; accentColor = '#FF7A00';
   } else if (text.match(/\b(science|research|study|discovery|university)\b/)) {
     category = 'science'; accentColor = '#4ecdc4';
   } else if (text.match(/\b(business|company|market|revenue|profit|ceo)\b/)) {

@@ -12,25 +12,21 @@ import {
   interpolate,
   spring,
 } from "remotion";
-import { defaultTheme } from "../design-system";
+import {
+  colors,
+  gradients,
+  typography,
+  badge,
+  springs,
+  fadeTiming,
+  clampBoth,
+} from "../design-system";
 
 export interface IntroSceneProps {
   category: string;
   brandName?: string;
   accentColor?: string;
 }
-
-const categoryColors: Record<string, string> = {
-  tech: "#667eea",
-  business: "#f5a623",
-  science: "#4ecdc4",
-  politics: "#e74c3c",
-  ai: "#9b59b6",
-  startup: "#2ecc71",
-  crypto: "#f39c12",
-  health: "#1abc9c",
-  default: "#667eea",
-};
 
 export const IntroScene: React.FC<IntroSceneProps> = ({
   category,
@@ -40,20 +36,25 @@ export const IntroScene: React.FC<IntroSceneProps> = ({
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  const color = accentColor || categoryColors[category.toLowerCase()] || categoryColors.default;
+  const color =
+    accentColor ||
+    colors.categories[category.toLowerCase()] ||
+    colors.brand;
 
   // Logo scale spring
-  const logoScale = spring({ frame, fps, config: { damping: 10, stiffness: 80, mass: 0.8 } });
+  const logoScale = spring({ frame, fps, config: springs.logoEntrance });
 
   // Category badge slides up
-  const badgeY = interpolate(frame, [10, 25], [40, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const badgeOpacity = interpolate(frame, [10, 20], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const badgeY = interpolate(frame, [10, 25], [40, 0], clampBoth);
+  const badgeOpacity = interpolate(frame, [10, 20], [0, 1], clampBoth);
 
   // Fade out at end
-  const fadeOut = interpolate(frame, [durationInFrames - 10, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeOut = interpolate(
+    frame,
+    [durationInFrames - fadeTiming.fadeOutFrames.intro, durationInFrames],
+    [1, 0],
+    clampBoth,
+  );
 
   // Gradient rotation
   const gradientAngle = interpolate(frame, [0, durationInFrames], [135, 180]);
@@ -61,7 +62,7 @@ export const IntroScene: React.FC<IntroSceneProps> = ({
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(${gradientAngle}deg, #0a0a0a 0%, ${color}22 50%, #0a0a0a 100%)`,
+        background: gradients.introRotating(color, gradientAngle),
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -76,7 +77,7 @@ export const IntroScene: React.FC<IntroSceneProps> = ({
           width: 300,
           height: 300,
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${color}40 0%, transparent 70%)`,
+          background: gradients.glow(color),
           filter: "blur(60px)",
         }}
       />
@@ -85,10 +86,10 @@ export const IntroScene: React.FC<IntroSceneProps> = ({
       <div
         style={{
           transform: `scale(${logoScale})`,
-          fontSize: 64,
+          fontSize: typography.scale.hero,
           fontWeight: 800,
-          color: defaultTheme.colors.text,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          color: colors.text,
+          fontFamily: typography.fontFamily.primary,
           letterSpacing: -1,
         }}
       >
@@ -102,14 +103,14 @@ export const IntroScene: React.FC<IntroSceneProps> = ({
           transform: `translateY(${badgeY}px)`,
           opacity: badgeOpacity,
           background: color,
-          padding: "8px 24px",
-          borderRadius: 20,
-          fontSize: 22,
-          fontWeight: 700,
+          padding: `${badge.padding.y}px ${badge.padding.x}px`,
+          borderRadius: badge.borderRadius,
+          fontSize: badge.fontSize,
+          fontWeight: badge.fontWeight,
           color: "#fff",
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
+          fontFamily: typography.fontFamily.primary,
           textTransform: "uppercase",
-          letterSpacing: 2,
+          letterSpacing: badge.letterSpacing,
         }}
       >
         {category}

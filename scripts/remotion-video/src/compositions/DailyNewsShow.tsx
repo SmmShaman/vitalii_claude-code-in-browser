@@ -22,7 +22,7 @@ import { ContentScene } from "../components/ContentScene";
 import { StatsScene } from "../components/StatsScene";
 import { OutroScene } from "../components/OutroScene";
 import { AnimatedSubtitles, type SubtitleEntry } from "../components/AnimatedSubtitles";
-import { defaultTheme } from "../design-system";
+import { colors, typography, opacity, branding, spacing } from "../design-system";
 
 // ── Segment Types ──
 
@@ -69,7 +69,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   introDurationSeconds = 4,
   outroDurationSeconds = 4,
   dividerDurationSeconds = 2,
-  accentColor = "#667eea",
+  accentColor = colors.brand,
 }) => {
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
@@ -230,7 +230,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   });
 
   return (
-    <AbsoluteFill style={{ backgroundColor: defaultTheme.colors.background }}>
+    <AbsoluteFill style={{ backgroundColor: colors.background }}>
       {/* Render all sequences */}
       {sequences.map((seq, i) => (
         <Sequence key={i} from={seq.startFrame} durationInFrames={seq.durationFrames}>
@@ -254,17 +254,17 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       <div
         style={{
           position: "absolute",
-          bottom: isVertical ? 80 : 20,
-          right: 20,
-          opacity: 0.4,
-          fontSize: 14,
-          color: defaultTheme.colors.text,
-          fontFamily: defaultTheme.typography.fontFamily.fallback,
-          fontWeight: 600,
-          letterSpacing: 1,
+          bottom: isVertical ? spacing.watermark.bottom.vertical : spacing.watermark.bottom.horizontal,
+          right: spacing.watermark.right,
+          opacity: opacity.watermark,
+          fontSize: typography.watermark.fontSize,
+          color: colors.text,
+          fontFamily: typography.fontFamily.primary,
+          fontWeight: typography.watermark.fontWeight,
+          letterSpacing: typography.watermark.letterSpacing,
         }}
       >
-        vitalii.no
+        {branding.watermarkText}
       </div>
     </AbsoluteFill>
   );
