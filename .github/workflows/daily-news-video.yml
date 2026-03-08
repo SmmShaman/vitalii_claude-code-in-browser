@@ -73,6 +73,9 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
 
+          # Google AI (Gemini thumbnail)
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
           # TTS (Zvukogram)
           ZVUKOGRAM_TOKEN: ${{ secrets.ZVUKOGRAM_TOKEN }}
           ZVUKOGRAM_EMAIL: ${{ secrets.ZVUKOGRAM_EMAIL }}

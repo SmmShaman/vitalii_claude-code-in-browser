@@ -24,6 +24,8 @@ import path from 'path';
 import os from 'os';
 import { execSync } from 'child_process';
 import { generateVoiceover } from './generate-voiceover.js';
+import { generateClickbaitMeta } from './generate-clickbait.js';
+import { generateAIThumbnail } from './generate-ai-thumbnail.js';
 
 // ── Config ──
 
@@ -359,7 +361,7 @@ async function downloadImage(url, destPath) {
 /**
  * Upload video to YouTube.
  */
-async function uploadToYouTube(filePath, title, description) {
+async function uploadToYouTube(filePath, title, description, tags) {
   console.log(`📤 Uploading to YouTube: ${title}`);
 
   const fileSize = (await fs.stat(filePath)).size;
@@ -373,7 +375,7 @@ async function uploadToYouTube(filePath, title, description) {
         description: description || '',
         categoryId: '25', // News & Politics
         defaultLanguage: 'no',
-        tags: ['nyheter', 'norge', 'daglig oppdatering', 'tech', 'vitalii.no'],
+        tags: tags || ['nyheter', 'norge', 'daglig oppdatering', 'tech', 'vitalii.no'],
       },
       status: {
         privacyStatus: 'public',
@@ -746,69 +748,100 @@ async function main() {
   const outputStats = await fs.stat(outputPath);
   console.log(`✅ Rendered: ${(outputStats.size / 1024 / 1024).toFixed(2)} MB`);
 
-  // Step 5b: Render thumbnail
-  console.log('\n🖼️ Step 4b: Rendering thumbnail...');
-  const thumbnailPath = path.join(os.tmpdir(), `daily_thumb_${Date.now()}.png`);
-  const thumbPropsFile = path.join(os.tmpdir(), `daily_thumb_props_${Date.now()}.json`);
+  // Step 5b: Generate AI clickbait title + description (before thumbnail, since thumbnail uses title)
+  console.log('\n🎯 Step 4b: Generating AI title & description...');
+  let title, description, ytTags;
+  try {
+    const meta = await generateClickbaitMeta(articles, dateStr, {
+      segment_scripts: plan.segmentScripts?.map?.((s, i) => ({ scriptNo: s })) || [],
+      article_headlines: articles.map(a => ({
+        title: a.title_no || a.title_en || '',
+        tags: a.tags || [],
+      })),
+    });
+    title = meta.title;
+    description = meta.description;
+    ytTags = meta.tags;
+    console.log(`✅ AI title: ${title}`);
+  } catch (e) {
+    console.log(`⚠️ Clickbait generation failed: ${e.message}, using default`);
+    title = `Daglig Nyhetsoppdatering — ${displayDate}`;
+    ytTags = ['nyheter', 'norge', 'daglig oppdatering', 'tech', 'vitalii.no'];
+
+    const overflowArticles = articles.slice(MAX_DETAILED);
+    const overflowLinks = overflowArticles.length > 0
+      ? [
+          '',
+          `Andre nyheter i dag (${overflowArticles.length}):`,
+          ...overflowArticles.map((a, i) => {
+            const t = a.title_no || a.title_en || '';
+            const url = a.slug_en ? `https://vitalii.no/news/${a.slug_en}` : '';
+            return url ? `• ${t} — ${url}` : `• ${t}`;
+          }),
+        ]
+      : [];
+
+    description = [
+      `Daglig nyhetssammendrag fra vitalii.no — ${displayDate}`,
+      '',
+      ...timecodes.map(tc => `${formatTimestamp(tc.time)} ${tc.label}`),
+      '',
+      `${segments.length} saker dekket i detalj:`,
+      ...segments.map((s, i) => {
+        const url = s.slug ? `https://vitalii.no/news/${s.slug}` : '';
+        return url ? `${i + 1}. ${s.headline} — ${url}` : `${i + 1}. ${s.headline}`;
+      }),
+      ...overflowLinks,
+      '',
+      'Abonner for daglige oppdateringer!',
+      'https://vitalii.no',
+      '',
+      '#nyheter #norge #teknologi #dagligoppdatering',
+    ].join('\n');
+  }
+
+  // Step 5c: Generate thumbnail (AI first, Remotion fallback)
+  console.log('\n🖼️ Step 4c: Generating thumbnail...');
+  let thumbnailPath = null;
   let thumbnailReady = false;
 
-  try {
-    const thumbnailProps = JSON.stringify({
-      date: displayDate,
-      headlines: segments.slice(0, 3).map(s => ({ text: s.headline, category: s.category })),
-      articleCount: articles.length,
-      accentColor: '#FF7A00',
-    });
-    await fs.writeFile(thumbPropsFile, thumbnailProps);
+  if (process.env.GOOGLE_API_KEY) {
+    try {
+      thumbnailPath = await generateAIThumbnail(articles, title, dateStr);
+      if (thumbnailPath) {
+        thumbnailReady = true;
+        console.log('✅ AI thumbnail generated');
+      }
+    } catch (e) {
+      console.log(`⚠️ AI thumbnail failed: ${e.message}`);
+    }
+  }
 
-    const thumbCmd = `npx remotion still ThumbnailHorizontal ${thumbnailPath} --props=${thumbPropsFile} --log=warn`;
-    console.log(`🖥️ Running: ${thumbCmd}`);
-    execSync(thumbCmd, { cwd: remotionProjectDir, stdio: 'inherit', timeout: 120_000 });
-    thumbnailReady = true;
-    console.log(`✅ Thumbnail rendered`);
-  } catch (e) {
-    console.log(`⚠️ Thumbnail render failed: ${e.message}`);
+  if (!thumbnailReady) {
+    try {
+      thumbnailPath = path.join(os.tmpdir(), `daily_thumb_${Date.now()}.png`);
+      const thumbPropsFile = path.join(os.tmpdir(), `daily_thumb_props_${Date.now()}.json`);
+      const thumbnailProps = JSON.stringify({
+        date: displayDate,
+        headlines: segments.slice(0, 3).map(s => ({ text: s.headline, category: s.category })),
+        articleCount: articles.length,
+        accentColor: '#FF7A00',
+      });
+      await fs.writeFile(thumbPropsFile, thumbnailProps);
+
+      const thumbCmd = `npx remotion still ThumbnailHorizontal ${thumbnailPath} --props=${thumbPropsFile} --log=warn`;
+      console.log(`🖥️ Fallback: ${thumbCmd}`);
+      execSync(thumbCmd, { cwd: remotionProjectDir, stdio: 'inherit', timeout: 120_000 });
+      thumbnailReady = true;
+      console.log(`✅ Remotion thumbnail rendered`);
+    } catch (e) {
+      console.log(`⚠️ Remotion thumbnail also failed: ${e.message}`);
+    }
   }
 
   // Step 6: Upload to YouTube
   console.log('\n📤 Step 5: Uploading to YouTube...');
-  const title = `Daglig Nyhetsoppdatering — ${displayDate}`;
-  // Build overflow article links for YouTube description
-  const overflowArticles = articles.slice(MAX_DETAILED);
-  const overflowLinks = overflowArticles.length > 0
-    ? [
-        '',
-        `Andre nyheter i dag (${overflowArticles.length}):`,
-        ...overflowArticles.map((a, i) => {
-          const title = a.title_no || a.title_en || '';
-          const url = a.slug_en ? `https://vitalii.no/news/${a.slug_en}` : '';
-          return url ? `• ${title} — ${url}` : `• ${title}`;
-        }),
-      ]
-    : [];
-
-  const description = [
-    `Daglig nyhetssammendrag fra vitalii.no — ${displayDate}`,
-    '',
-    // YouTube chapters (timecodes)
-    ...timecodes.map(tc => `${formatTimestamp(tc.time)} ${tc.label}`),
-    '',
-    // Detailed article links
-    `${segments.length} saker dekket i detalj:`,
-    ...segments.map((s, i) => {
-      const url = s.slug ? `https://vitalii.no/news/${s.slug}` : '';
-      return url ? `${i + 1}. ${s.headline} — ${url}` : `${i + 1}. ${s.headline}`;
-    }),
-    // Overflow article links
-    ...overflowLinks,
-    '',
-    'Abonner for daglige oppdateringer!',
-    'https://vitalii.no',
-    '',
-    '#nyheter #norge #teknologi #dagligoppdatering',
-  ].join('\n');
-
-  const result = await uploadToYouTube(outputPath, title, description);
+  const result = await uploadToYouTube(outputPath, title, description, ytTags);
 
   // Set custom YouTube thumbnail
   if (result.videoId && thumbnailReady) {
