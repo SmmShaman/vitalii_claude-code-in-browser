@@ -20,22 +20,33 @@ import {
   fadeTiming,
   clampBoth,
 } from "../design-system";
+import { AnimatedCounter } from "./AnimatedCounter";
+import { BarChart } from "./BarChart";
 
 export interface StatItem {
   value: string;
   label: string;
+  /** If set, value is parsed as number and animated */
+  numericValue?: number;
+  /** Suffix for counter display */
+  suffix?: string;
+  /** For bar chart normalization */
+  barValue?: number;
 }
 
 export interface StatsSceneProps {
   facts: StatItem[];
   accentColor?: string;
   title?: string;
+  /** Display type: 'list' (default), 'counters', 'bars' */
+  visualType?: 'list' | 'counters' | 'bars';
 }
 
 export const StatsScene: React.FC<StatsSceneProps> = ({
   facts,
   accentColor = colors.brand,
   title = "Key Facts",
+  visualType = "list",
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -52,6 +63,119 @@ export const StatsScene: React.FC<StatsSceneProps> = ({
     clampBoth,
   );
 
+  // Counters visualisation
+  if (visualType === "counters") {
+    return (
+      <AbsoluteFill
+        style={{
+          background: gradients.sceneSubtle(accentColor),
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "10% 8%",
+          opacity: fadeOut,
+        }}
+      >
+        {/* Section title */}
+        <div
+          style={{
+            opacity: titleOpacity,
+            transform: `translateY(${titleY}px)`,
+            fontSize: typography.scale.bodySmall,
+            fontWeight: 600,
+            color: accentColor,
+            fontFamily: typography.fontFamily.primary,
+            textTransform: "uppercase",
+            letterSpacing: 3,
+            marginBottom: 48,
+          }}
+        >
+          {title}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: 48,
+            maxWidth: 700,
+          }}
+        >
+          {facts.map((fact, i) => {
+            const stagger =
+              fadeTiming.staggerBaseDelay + i * fadeTiming.staggerIncrement;
+            return (
+              <div key={i} style={{ textAlign: "center", minWidth: 150 }}>
+                <AnimatedCounter
+                  value={(fact.numericValue ?? parseFloat(fact.value)) || 0}
+                  suffix={fact.suffix || ""}
+                  startDelay={stagger}
+                  accentColor={accentColor}
+                />
+                <div
+                  style={{
+                    fontSize: typography.scale.small,
+                    fontWeight: 500,
+                    color: colors.textSubtle,
+                    fontFamily: typography.fontFamily.primary,
+                    marginTop: 8,
+                  }}
+                >
+                  {fact.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </AbsoluteFill>
+    );
+  }
+
+  // Bar chart visualisation
+  if (visualType === "bars") {
+    return (
+      <AbsoluteFill
+        style={{
+          background: gradients.sceneSubtle(accentColor),
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "10% 8%",
+          opacity: fadeOut,
+        }}
+      >
+        {/* Section title */}
+        <div
+          style={{
+            opacity: titleOpacity,
+            transform: `translateY(${titleY}px)`,
+            fontSize: typography.scale.bodySmall,
+            fontWeight: 600,
+            color: accentColor,
+            fontFamily: typography.fontFamily.primary,
+            textTransform: "uppercase",
+            letterSpacing: 3,
+            marginBottom: 48,
+          }}
+        >
+          {title}
+        </div>
+
+        <BarChart
+          data={facts.map((f) => ({
+            label: f.label,
+            value: (f.barValue ?? parseFloat(f.value)) || 0,
+          }))}
+          accentColor={accentColor}
+        />
+      </AbsoluteFill>
+    );
+  }
+
+  // Default: list visualisation
   return (
     <AbsoluteFill
       style={{

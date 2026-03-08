@@ -23,27 +23,36 @@ import {
   fadeTiming,
   clampBoth,
 } from "../design-system";
+import { getMoodConfig, getMoodSpring } from "../design-system/moods";
+import { TypewriterText } from "./TypewriterText";
+import { SplitTextReveal } from "./SplitTextReveal";
 
 export interface HeadlineSceneProps {
   text: string;
   imageSrc?: string;
   accentColor?: string;
+  mood?: string;
+  textReveal?: 'default' | 'typewriter' | 'splitFade' | 'splitScale';
 }
 
 export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
   text,
   imageSrc,
   accentColor = colors.brand,
+  mood,
+  textReveal = 'default',
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
+
+  const moodCfg = getMoodConfig(mood);
 
   const resolve = (src: string | undefined) =>
     src ? (src.startsWith("http") ? src : staticFile(src)) : "";
   const resolvedImage = resolve(imageSrc);
 
   const words = text.split(/\s+/);
-  const framesPerWord = Math.max(3, Math.floor((durationInFrames * 0.6) / words.length));
+  const framesPerWord = Math.max(moodCfg.wordStaggerFrames, Math.floor((durationInFrames * 0.6) / words.length));
 
   // Fade out
   const fadeOut = interpolate(
@@ -109,43 +118,65 @@ export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
           padding: "10% 8%",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "center",
-            gap: "8px 12px",
-            maxWidth: "90%",
-          }}
-        >
-          {words.map((word, i) => {
-            const wordStart = i * framesPerWord;
-            const scale = spring({
-              frame: frame - wordStart,
-              fps,
-              config: springs.wordPunch,
-            });
-            const opacity = interpolate(frame - wordStart, [0, 3], [0, 1], clampBoth);
+        {textReveal === 'typewriter' ? (
+          <TypewriterText
+            text={text}
+            fontSize={words.length > 8 ? typography.scale.h2 : typography.scale.h1}
+            startDelay={10}
+          />
+        ) : textReveal === 'splitFade' ? (
+          <SplitTextReveal
+            text={text}
+            effect="fadeUp"
+            fontSize={words.length > 8 ? typography.scale.h2 : typography.scale.h1}
+            startDelay={10}
+          />
+        ) : textReveal === 'splitScale' ? (
+          <SplitTextReveal
+            text={text}
+            effect="scaleIn"
+            fontSize={words.length > 8 ? typography.scale.h2 : typography.scale.h1}
+            startDelay={10}
+          />
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: "8px 12px",
+              maxWidth: "90%",
+            }}
+          >
+            {words.map((word, i) => {
+              const wordStart = i * framesPerWord;
+              const scale = spring({
+                frame: frame - wordStart,
+                fps,
+                config: getMoodSpring(mood),
+              });
+              const opacity = interpolate(frame - wordStart, [0, 3], [0, 1], clampBoth);
 
-            return (
-              <span
-                key={i}
-                style={{
-                  display: "inline-block",
-                  transform: `scale(${scale})`,
-                  opacity,
-                  fontSize: words.length > 8 ? typography.scale.h2 : typography.scale.h1,
-                  fontWeight: 800,
-                  color: colors.text,
-                  fontFamily: typography.fontFamily.primary,
-                  lineHeight: 1.2,
-                }}
-              >
-                {word}
-              </span>
-            );
-          })}
-        </div>
+              return (
+                <span
+                  key={i}
+                  style={{
+                    display: "inline-block",
+                    transform: `scale(${scale})`,
+                    opacity,
+                    fontSize: words.length > 8 ? typography.scale.h2 : typography.scale.h1,
+                    fontWeight: 800,
+                    color: colors.text,
+                    fontFamily: typography.fontFamily.primary,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {word}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </AbsoluteFill>
     </AbsoluteFill>
   );

@@ -148,13 +148,39 @@ SCRIPT RULES:
 - outroScript: "Det var dagens nyheter. Følg oss på vitalii.no for mer."
 - Each script is a SEPARATE voiceover audio — they must stand alone (no references to "previous" or "next")
 
-SEGMENTS array — one object per article:
+SEGMENTS array — one object per article with VISUAL DIRECTIVES:
 {
   "headline": "Norwegian headline (5-10 words)",
   "keyQuote": "Most impactful sentence from the CORRESPONDING segmentScript (Norwegian)",
   "category": "tech|business|ai|startup|science|politics|crypto|health|news",
-  "accentColor": "#hex (warm orange tones preferred: #FF7A00, #FF8C42, #FF6B35; match category mood)"
+  "accentColor": "#hex (warm orange tones preferred: #FF7A00, #FF8C42, #FF6B35; match category mood)",
+  "mood": "urgent|energetic|positive|analytical|serious|contemplative|lighthearted|cautionary",
+  "transition": "fade|wipeLeft|wipeRight|slideUp|slideDown|zoomIn|zoomOut",
+  "textReveal": "default|typewriter|splitFade|splitScale"
 }
+
+MOOD GUIDE (choose based on story tone):
+- "urgent": breaking news, crises → fast animations
+- "energetic": startups, launches, achievements → quick & lively
+- "positive": good news, growth → balanced pace
+- "analytical": research, data, reports → measured & steady
+- "serious": politics, legal, regulation → formal pacing
+- "contemplative": opinion, human interest → slow & thoughtful
+- "lighthearted": entertainment, culture, fun → playful bounce
+- "cautionary": warnings, risks, security → measured tension
+
+TRANSITION GUIDE (how the segment enters):
+- "fade": calm, default transition
+- "wipeLeft": forward momentum (launches, growth stories)
+- "slideUp": data-heavy, stats-focused pieces
+- "zoomIn": breaking news, urgent stories
+- Use "fade" if unsure
+
+TEXT REVEAL GUIDE (how headline text appears):
+- "default": word-by-word spring punch (most stories)
+- "typewriter": character-by-character typing (building tension, breaking news)
+- "splitFade": words fade up one by one (thoughtful, analytical)
+- "splitScale": words scale in (energetic, startup news)
 
 RULES:
 - Write in Norwegian Bokmål (NOT Nynorsk)
@@ -162,13 +188,14 @@ RULES:
 - segmentScripts array length MUST equal ${articles.length} (one per article, same order)
 - Be engaging, professional, conversational — like a modern news podcast
 - If an article has notable numbers/stats, mention them
+- Each segment MUST include mood, transition, and textReveal fields
 
 Return valid JSON with this structure:
 {
   "introScript": "God morgen...",
   "segmentScripts": ["La oss starte med...", "Videre til...", ...],
   "outroScript": "Det var dagens nyheter...",
-  "segments": [{headline, keyQuote, category, accentColor}, ...],
+  "segments": [{headline, keyQuote, category, accentColor, mood, transition, textReveal}, ...],
   "showTitle": "Daglig Nyhetsoppdatering"
 }`;
 
@@ -240,6 +267,9 @@ function templateShowScript(articles, dateStr) {
       keyQuote: '',
       category: 'news',
       accentColor: '#FF7A00',
+      mood: 'positive',
+      transition: 'fade',
+      textReveal: 'default',
     };
   });
 
@@ -431,6 +461,13 @@ async function main() {
   const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
   if (!hasTTS) throw new Error('Missing TTS credentials');
 
+  // Generate TTS for intro script
+  let introVoiceover = null;
+  if (plan.introScript) {
+    console.log('\n  🎙️ Intro voiceover...');
+    introVoiceover = await generateVoiceover(plan.introScript, LANGUAGE);
+  }
+
   // Generate TTS for each segment script separately
   const segmentVoiceovers = [];
   const segmentScripts = plan.segmentScripts || [];
@@ -438,6 +475,13 @@ async function main() {
     console.log(`\n  🎙️ Segment ${i + 1}/${segmentScripts.length}...`);
     const vo = await generateVoiceover(segmentScripts[i], LANGUAGE);
     segmentVoiceovers.push(vo);
+  }
+
+  // Generate TTS for outro script
+  let outroVoiceover = null;
+  if (plan.outroScript) {
+    console.log('\n  🎙️ Outro voiceover...');
+    outroVoiceover = await generateVoiceover(plan.outroScript, LANGUAGE);
   }
 
   // Step 4: Download images + prepare Remotion assets
@@ -449,11 +493,25 @@ async function main() {
   // Track all audio files for cleanup
   const audioFiles = [];
 
+  // Copy intro audio file
+  let introAudioFilename = '';
+  if (introVoiceover) {
+    introAudioFilename = `daily_vo_intro_${Date.now()}.mp3`;
+    await fs.copyFile(introVoiceover.audioPath, path.join(publicDir, introAudioFilename));
+  }
+
   // Copy per-segment audio files
   for (let i = 0; i < segmentVoiceovers.length; i++) {
     const audioFilename = `daily_vo_seg${i}_${Date.now()}.mp3`;
     await fs.copyFile(segmentVoiceovers[i].audioPath, path.join(publicDir, audioFilename));
     audioFiles.push(audioFilename);
+  }
+
+  // Copy outro audio file
+  let outroAudioFilename = '';
+  if (outroVoiceover) {
+    outroAudioFilename = `daily_vo_outro_${Date.now()}.mp3`;
+    await fs.copyFile(outroVoiceover.audioPath, path.join(publicDir, outroAudioFilename));
   }
 
   // Download images for each segment
@@ -489,12 +547,17 @@ async function main() {
       durationSeconds: segDuration,
       voiceoverSrc: audioFiles[i] || '',
       subtitles: vo ? vo.subtitles : [],
+      // Visual directives from AI director
+      mood: segment.mood || 'positive',
+      transition: segment.transition || 'fade',
+      textReveal: segment.textReveal || 'default',
     });
   }
 
   // Calculate total duration from actual segment durations
-  const introDuration = 4;
-  const outroDuration = 4;
+  // Dynamic intro/outro duration based on TTS (minimum 4s)
+  const introDuration = introVoiceover ? Math.max(introVoiceover.durationSeconds + 1, 4) : 4;
+  const outroDuration = outroVoiceover ? Math.max(outroVoiceover.durationSeconds + 1, 4) : 4;
   const dividerDuration = 2;
   const segmentsTotalDuration = segments.reduce((sum, s) => sum + s.durationSeconds, 0);
   const dividersTotalDuration = segments.length * dividerDuration;
@@ -521,6 +584,8 @@ async function main() {
     outroDurationSeconds: outroDuration,
     dividerDurationSeconds: dividerDuration,
     accentColor: '#FF7A00',
+    introVoiceoverSrc: introAudioFilename || undefined,
+    outroVoiceoverSrc: outroAudioFilename || undefined,
   });
 
   const propsFile = path.join(os.tmpdir(), `daily_props_${Date.now()}.json`);
@@ -565,7 +630,13 @@ async function main() {
       await fs.unlink(path.join(publicDir, seg.voiceoverSrc)).catch(() => {});
     }
   }
-  for (const vo of segmentVoiceovers) {
+  if (introAudioFilename) {
+    await fs.unlink(path.join(publicDir, introAudioFilename)).catch(() => {});
+  }
+  if (outroAudioFilename) {
+    await fs.unlink(path.join(publicDir, outroAudioFilename)).catch(() => {});
+  }
+  for (const vo of [...segmentVoiceovers, introVoiceover, outroVoiceover].filter(Boolean)) {
     await fs.unlink(vo.audioPath).catch(() => {});
   }
 

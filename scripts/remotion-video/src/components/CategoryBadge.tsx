@@ -18,6 +18,7 @@ import {
   springs,
   clampBoth,
 } from "../design-system";
+import { CategoryIcon } from "./CategoryIcon";
 
 export interface CategoryBadgeProps {
   category: string;
@@ -70,15 +71,7 @@ export const CategoryBadge: React.FC<CategoryBadgeProps> = ({
         zIndex: 25,
       }}
     >
-      {/* Color dot */}
-      <div
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: accentColor,
-        }}
-      />
+      <CategoryIcon category={category} size={14} color={accentColor} animated={false} />
       <span
         style={{
           fontSize: badge.fontSize,

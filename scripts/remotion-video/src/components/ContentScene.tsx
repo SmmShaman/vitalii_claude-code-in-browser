@@ -8,7 +8,6 @@
 import React from "react";
 import {
   AbsoluteFill,
-  Audio,
   Img,
   useCurrentFrame,
   useVideoConfig,
@@ -29,6 +28,7 @@ import {
   fadeTiming,
   clampBoth,
 } from "../design-system";
+import { getMoodConfig } from "../design-system/moods";
 
 export interface ContentSceneProps {
   imageSrc: string;
@@ -43,6 +43,17 @@ export interface ContentSceneProps {
   category?: string;
   segmentNumber?: number;
   totalSegments?: number;
+  /** Visual layer overrides from AI director */
+  colorGrade?: {
+    brightness?: number;
+    contrast?: number;
+    saturate?: number;
+    hueRotate?: number;
+  };
+  /** Focus area for Ken Burns (0-1 normalized coordinates) */
+  focusArea?: { x: number; y: number; scale: number };
+  /** Mood for animation speed */
+  mood?: string;
 }
 
 export const ContentScene: React.FC<ContentSceneProps> = ({
@@ -56,6 +67,9 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   category,
   segmentNumber,
   totalSegments,
+  colorGrade,
+  focusArea,
+  mood,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
@@ -64,23 +78,37 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   const resolve = (src: string | undefined) =>
     src ? (src.startsWith("http") ? src : staticFile(src)) : "";
 
-  // Ken Burns
+  // Ken Burns — resolve end values from focusArea / mood / defaults
+  const moodCfg = mood ? getMoodConfig(mood) : null;
+  const scaleEnd = focusArea
+    ? Math.min(focusArea.scale, 1.8)
+    : moodCfg
+      ? moodCfg.kenBurnsScale
+      : kenBurns.scaleRange.end;
+
+  const panXEnd = focusArea
+    ? (focusArea.x - 0.5) * 4
+    : kenBurns.panX.end;
+  const panYEnd = focusArea
+    ? (focusArea.y - 0.5) * 4
+    : kenBurns.panY.end;
+
   const scale = interpolate(
     frame,
     [0, durationInFrames],
-    [kenBurns.scaleRange.start, kenBurns.scaleRange.end],
+    [kenBurns.scaleRange.start, scaleEnd],
     { extrapolateRight: "clamp" },
   );
   const panX = interpolate(
     frame,
     [0, durationInFrames],
-    [kenBurns.panX.start, kenBurns.panX.end],
+    [kenBurns.panX.start, panXEnd],
     { extrapolateRight: "clamp" },
   );
   const panY = interpolate(
     frame,
     [0, durationInFrames],
-    [kenBurns.panY.start, kenBurns.panY.end],
+    [kenBurns.panY.start, panYEnd],
     { extrapolateRight: "clamp" },
   );
 
@@ -141,6 +169,19 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
           height: "100%",
           objectFit: "cover",
           transform: `scale(${scale}) translate(${panX}%, ${panY}%)`,
+          filter:
+            [
+              colorGrade?.brightness != null &&
+                `brightness(${colorGrade.brightness})`,
+              colorGrade?.contrast != null &&
+                `contrast(${colorGrade.contrast})`,
+              colorGrade?.saturate != null &&
+                `saturate(${colorGrade.saturate})`,
+              colorGrade?.hueRotate != null &&
+                `hue-rotate(${colorGrade.hueRotate}deg)`,
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined,
         }}
       />
 
@@ -154,9 +195,6 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
             : gradients.contentOverlayLight,
         }}
       />
-
-      {/* Voiceover audio */}
-      {voiceoverSrc && <Audio src={resolve(voiceoverSrc)} volume={1} />}
 
       {/* Key quote overlay (first 40% of scene) */}
       {showQuote && (

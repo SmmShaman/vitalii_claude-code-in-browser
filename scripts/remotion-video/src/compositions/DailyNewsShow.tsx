@@ -22,10 +22,12 @@ import { HeadlineScene } from "../components/HeadlineScene";
 import { ContentScene } from "../components/ContentScene";
 import { StatsScene } from "../components/StatsScene";
 import { OutroScene } from "../components/OutroScene";
+import { SceneTransition } from "../components/SceneTransition";
 import { AnimatedLogo } from "../components/AnimatedLogo";
 import { ProgressBar } from "../components/ProgressBar";
 import { type SubtitleEntry } from "../components/AnimatedSubtitles";
 import { colors } from "../design-system";
+import type { TransitionType } from "../design-system/transitions";
 
 // ── Segment Types ──
 
@@ -42,6 +44,23 @@ export interface NewsSegment {
   subtitles?: SubtitleEntry[];
   /** Optional stats for this segment */
   facts?: { value: string; label: string }[];
+  /** Mood for animation pacing */
+  mood?: string;
+  /** Transition type into this segment */
+  transition?: string;
+  /** Text reveal style for headline */
+  textReveal?: string;
+  /** Stats display type */
+  statsVisualType?: 'list' | 'counters' | 'bars';
+  /** Color grading for content scene */
+  colorGrade?: {
+    brightness?: number;
+    contrast?: number;
+    saturate?: number;
+    hueRotate?: number;
+  };
+  /** Focus area for Ken Burns */
+  focusArea?: { x: number; y: number; scale: number };
 }
 
 export interface DailyNewsShowProps {
@@ -64,6 +83,10 @@ export interface DailyNewsShowProps {
   dividerDurationSeconds?: number;
   /** Global accent color */
   accentColor?: string;
+  /** Intro voiceover audio file */
+  introVoiceoverSrc?: string;
+  /** Outro voiceover audio file */
+  outroVoiceoverSrc?: string;
 }
 
 export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
@@ -77,6 +100,8 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   outroDurationSeconds = 4,
   dividerDurationSeconds = 2,
   accentColor = colors.brand,
+  introVoiceoverSrc,
+  outroVoiceoverSrc,
 }) => {
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
@@ -87,6 +112,13 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   // Build the timeline
   const sequences: {
     component: React.ReactNode;
+    startFrame: number;
+    durationFrames: number;
+  }[] = [];
+
+  // Separate list for segment-level audio (spans Headline + Content + Stats)
+  const audioSequences: {
+    src: string;
     startFrame: number;
     durationFrames: number;
   }[] = [];
@@ -108,6 +140,16 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
     startFrame: currentFrame,
     durationFrames: introFrames,
   });
+
+  // Intro voiceover (covers full intro sequence)
+  if (introVoiceoverSrc) {
+    audioSequences.push({
+      src: introVoiceoverSrc,
+      startFrame: currentFrame,
+      durationFrames: introFrames,
+    });
+  }
+
   currentFrame += introFrames;
 
   // ── News Segments ──
@@ -133,6 +175,9 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
     // Split segment time: 30% headline, 70% content (or 25/50/25 if stats)
     const segFrames = Math.ceil(segment.durationSeconds * fps);
 
+    // Remember segment start for audio sequence
+    const segmentStartFrame = currentFrame;
+
     if (segment.facts && segment.facts.length > 0) {
       // With stats: headline 25% → content 50% → stats 25%
       const headlineFrames = Math.ceil(segFrames * 0.25);
@@ -141,11 +186,15 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
 
       sequences.push({
         component: (
-          <HeadlineScene
-            text={segment.headline}
-            imageSrc={segment.imageSrc}
-            accentColor={segColor}
-          />
+          <SceneTransition type={(segment.transition as TransitionType) || "fade"}>
+            <HeadlineScene
+              text={segment.headline}
+              imageSrc={segment.imageSrc}
+              accentColor={segColor}
+              mood={segment.mood}
+              textReveal={segment.textReveal as any}
+            />
+          </SceneTransition>
         ),
         startFrame: currentFrame,
         durationFrames: headlineFrames,
@@ -156,7 +205,6 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
         component: (
           <ContentScene
             imageSrc={segment.imageSrc}
-            voiceoverSrc={segment.voiceoverSrc}
             keyQuote={segment.keyQuote}
             accentColor={segColor}
             subtitles={segment.subtitles || []}
@@ -164,6 +212,9 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             category={segment.category}
             segmentNumber={i + 1}
             totalSegments={segments.length}
+            mood={segment.mood}
+            colorGrade={segment.colorGrade}
+            focusArea={segment.focusArea}
           />
         ),
         startFrame: currentFrame,
@@ -176,6 +227,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
           <StatsScene
             facts={segment.facts}
             accentColor={segColor}
+            visualType={segment.statsVisualType}
           />
         ),
         startFrame: currentFrame,
@@ -189,11 +241,15 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
 
       sequences.push({
         component: (
-          <HeadlineScene
-            text={segment.headline}
-            imageSrc={segment.imageSrc}
-            accentColor={segColor}
-          />
+          <SceneTransition type={(segment.transition as TransitionType) || "fade"}>
+            <HeadlineScene
+              text={segment.headline}
+              imageSrc={segment.imageSrc}
+              accentColor={segColor}
+              mood={segment.mood}
+              textReveal={segment.textReveal as any}
+            />
+          </SceneTransition>
         ),
         startFrame: currentFrame,
         durationFrames: headlineFrames,
@@ -204,7 +260,6 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
         component: (
           <ContentScene
             imageSrc={segment.imageSrc}
-            voiceoverSrc={segment.voiceoverSrc}
             keyQuote={segment.keyQuote}
             accentColor={segColor}
             subtitles={segment.subtitles || []}
@@ -212,12 +267,24 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             category={segment.category}
             segmentNumber={i + 1}
             totalSegments={segments.length}
+            mood={segment.mood}
+            colorGrade={segment.colorGrade}
+            focusArea={segment.focusArea}
           />
         ),
         startFrame: currentFrame,
         durationFrames: contentFrames,
       });
       currentFrame += contentFrames;
+    }
+
+    // Segment-level audio: spans from Headline start to end of last scene (Content or Stats)
+    if (segment.voiceoverSrc) {
+      audioSequences.push({
+        src: segment.voiceoverSrc,
+        startFrame: segmentStartFrame,
+        durationFrames: currentFrame - segmentStartFrame,
+      });
     }
   });
 
@@ -234,12 +301,28 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
     durationFrames: outroFrames,
   });
 
+  // Outro voiceover (covers full outro sequence)
+  if (outroVoiceoverSrc) {
+    audioSequences.push({
+      src: outroVoiceoverSrc,
+      startFrame: currentFrame,
+      durationFrames: outroFrames,
+    });
+  }
+
   return (
     <AbsoluteFill style={{ backgroundColor: colors.background }}>
-      {/* Render all sequences */}
+      {/* Render all visual sequences */}
       {sequences.map((seq, i) => (
         <Sequence key={i} from={seq.startFrame} durationInFrames={seq.durationFrames}>
           {seq.component}
+        </Sequence>
+      ))}
+
+      {/* Segment-level audio sequences (span full segment: Headline + Content + Stats) */}
+      {audioSequences.map((audio, i) => (
+        <Sequence key={`audio-${i}`} from={audio.startFrame} durationInFrames={audio.durationFrames}>
+          <Audio src={resolve(audio.src)} volume={1} />
         </Sequence>
       ))}
 

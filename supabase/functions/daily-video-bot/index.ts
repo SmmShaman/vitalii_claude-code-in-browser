@@ -432,30 +432,69 @@ async function generateScenario(targetDate: string, chatId?: number, messageId?:
     return `Article ${i + 1}: "${h.title || ""}"\nScript: ${s.scriptNo || ""}\nTags: ${(h.tags || []).join(", ")}`;
   }).join("\n\n");
 
-  const systemPrompt = `You are a video director creating a visual scenario for a daily news show.
-The show uses Remotion with these components: ShowIntro, SegmentDivider, Headline, Content (with LowerThird + CategoryBadge), Stats, Outro.
+  const systemPrompt = `You are a professional video director creating a detailed visual scenario for a daily news show.
+The show uses Remotion with these components: ShowIntro, SegmentDivider, HeadlineScene (with text reveal effects), ContentScene (image + Ken Burns + quote overlay + CategoryBadge + LowerThird), StatsScene (counters/bars/list), Outro.
 
-For each article segment, specify:
-- headline: Norwegian headline for lower third (5-10 words)
+For each article segment, specify ALL of these fields:
+- headline: Norwegian headline (5-10 words, compelling and concise)
+- summary: Short Norwegian description of the story (1-2 sentences, what the viewer will learn)
 - category: tech|business|ai|startup|science|politics|crypto|health|news
-- accentColor: hex color (warm orange preferred: #FF7A00, #FF8C42, #FF6B35)
-- keyQuote: most impactful sentence from the script (Norwegian, shown as overlay)
-- facts: optional array of {value, label} for stats scene (max 3)
+- accentColor: hex color matching category mood (#FF7A00 tech, #FF8C42 startup, #FF6B35 business, #e74c3c politics, #9b59b6 ai, #2ecc71 growth, #4ecdc4 science)
+- keyQuote: most impactful sentence from the script (Norwegian, shown as large overlay on screen)
+- facts: optional array of {value, label, numericValue?, suffix?} for stats scene (max 3). Use numericValue for animated counters.
+- mood: emotional tone that controls animation speed and intensity:
+  * "urgent" — breaking news, crises → fast snappy animations, aggressive zoom
+  * "energetic" — startups, launches, achievements → quick & lively
+  * "positive" — good news, growth → balanced pace
+  * "analytical" — research, data, reports → measured & steady
+  * "serious" — politics, regulation → formal pacing
+  * "contemplative" — opinion, human interest → slow & thoughtful
+  * "lighthearted" — entertainment, culture → playful bounce
+  * "cautionary" — warnings, risks → measured tension
+- transition: how the segment ENTERS the screen:
+  * "fade" — calm default
+  * "wipeLeft" — forward momentum (launches, growth)
+  * "wipeRight" — alternative direction
+  * "slideUp" — data/stats pieces rising up
+  * "zoomIn" — breaking news, urgent, dramatic reveal
+  * "slideDown" — soft introduction
+- textReveal: how the headline text appears:
+  * "default" — word-by-word spring punch (most stories)
+  * "typewriter" — character-by-character (building tension, breaking news)
+  * "splitFade" — words fade up one by one (analytical, thoughtful)
+  * "splitScale" — words scale in (energetic, startup news)
+- statsVisualType: how stats are displayed (only if facts present):
+  * "list" — simple dot + value + label
+  * "counters" — animated tick-up numbers (for impressive stats like funding, users)
+  * "bars" — horizontal bar chart (for comparisons, percentages)
 
-Also provide a Ukrainian description of the complete visual flow for moderator review.
+VISUAL DIRECTION RULES:
+- Match mood to story content (don't use "urgent" for lifestyle stories)
+- Vary transitions — don't use the same one for every segment
+- Use "typewriter" textReveal sparingly (1-2 per show max, for most dramatic stories)
+- Use "counters" statsVisualType when there are impressive numbers (funding rounds, user counts)
+- Use "bars" when comparing multiple values
+- Each segment should feel visually distinct from its neighbors
+
+Also provide a DETAILED Ukrainian description of the complete visual flow for moderator review. Describe for each segment: what the viewer sees, what animations play, what mood the scene conveys, not just the headline text.
 
 Return JSON:
 {
   "segments": [
     {
       "headline": "...",
+      "summary": "...",
       "category": "...",
       "accentColor": "#...",
       "keyQuote": "...",
-      "facts": []
+      "facts": [],
+      "mood": "...",
+      "transition": "...",
+      "textReveal": "...",
+      "statsVisualType": "list"
     }
   ],
-  "scenarioDescription": "Крок-по-кроковий опис візуального сценарію українською..."
+  "scenarioDescription": "Детальний покроковий опис візуального сценарію українською з описом анімацій, настрою та ефектів кожного сегменту..."
 }`;
 
   const aiResponse = await callAI(
@@ -488,12 +527,19 @@ Return JSON:
     };
     const emoji = catEmoji[seg.category] || "📰";
     msg += `${i + 1}. ${emoji} <b>${escapeHtml(seg.headline || "")}</b>\n`;
+    if (seg.summary) {
+      msg += `   📝 ${escapeHtml(seg.summary)}\n`;
+    }
     msg += `   Категорія: ${seg.category} | Колір: ${seg.accentColor}\n`;
+    if (seg.mood || seg.transition || seg.textReveal) {
+      msg += `   🎬 Mood: ${seg.mood || "positive"} | Перехід: ${seg.transition || "fade"} | Текст: ${seg.textReveal || "default"}\n`;
+    }
     if (seg.keyQuote) {
       msg += `   💬 <i>"${escapeHtml(seg.keyQuote)}"</i>\n`;
     }
     if (seg.facts && seg.facts.length > 0) {
-      msg += `   📊 ${seg.facts.map((f: any) => `${f.value} (${f.label})`).join(", ")}\n`;
+      const statsType = seg.statsVisualType ? ` [${seg.statsVisualType}]` : "";
+      msg += `   📊${statsType} ${seg.facts.map((f: any) => `${f.value} (${f.label})`).join(", ")}\n`;
     }
     msg += "\n";
   });

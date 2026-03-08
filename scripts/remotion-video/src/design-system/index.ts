@@ -41,3 +41,15 @@ export type { SubtitleConfig } from "./subtitles";
 // Theme
 export { defaultTheme, mergeTheme } from "./theme";
 export type { VideoTheme } from "./theme";
+
+// Moods
+export { moodConfigs, getMoodConfig, getMoodSpring } from "./moods";
+export type { Mood, MoodConfig } from "./moods";
+
+// Presets
+export { presets, getPreset, detectPreset } from "./presets";
+export type { PresetId, ThemePreset } from "./presets";
+
+// Transitions
+export { transitionConfigs, getTransitionConfig } from "./transitions";
+export type { TransitionType, TransitionConfig } from "./transitions";
