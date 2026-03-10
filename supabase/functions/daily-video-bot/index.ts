@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-10-v15";
+const VERSION = "2026-03-10-v16";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -485,65 +485,64 @@ Return JSON:
     })
     .eq("target_date", targetDate);
 
-  // Send script to Telegram for approval
+  // Send script to Telegram in 2 messages: Norwegian + Ukrainian
   const headlines = draft.article_headlines || [];
-  let msg = `📝 <b>Сценарій озвучки — ${displayDate}</b>\n`;
+  const theChatId = chatId || TELEGRAM_CHAT_ID;
+
+  // ── Message 1: Norwegian script ──
+  let msgNo = `🇳🇴 <b>Сценарій озвучки — ${displayDate}</b>\n`;
   if (hasOverflow) {
-    msg += `📋 ${orderedArticles.length} статей: ${detailedCount} детально + ${overflowCount} у згадці\n`;
+    msgNo += `📋 ${orderedArticles.length} статей: ${detailedCount} детально + ${overflowCount} згадка\n`;
   }
-  msg += "\n";
+  msgNo += "\n";
 
-  // Intro
-  msg += `🎬 <b>Інтро (NO):</b>\n<i>${escapeHtml(plan.introScript || "")}</i>\n`;
-  if (plan.introTranslation) {
-    msg += `🇺🇦 ${escapeHtml(plan.introTranslation)}\n`;
-  }
-  msg += "\n";
+  msgNo += `🎬 <b>Intro:</b>\n<i>${escapeHtml(plan.introScript || "")}</i>\n\n`;
 
-  // Roundup (if >10 articles)
   if (plan.roundupScript) {
-    msg += `📋 <b>Headlines Roundup (NO):</b>\n<i>${escapeHtml(plan.roundupScript)}</i>\n`;
-    if (plan.roundupTranslation) {
-      msg += `🇺🇦 ${escapeHtml(plan.roundupTranslation)}\n`;
-    }
-    msg += "\n";
+    msgNo += `📋 <b>Roundup:</b>\n<i>${escapeHtml(plan.roundupScript)}</i>\n\n`;
   }
 
-  // Segments (only detailed ones)
   plan.segmentScripts.forEach((script: string, i: number) => {
-    const title = headlines[i]?.title || `Article ${i + 1}`;
-    msg += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>\n`;
-    msg += `🇳🇴 <i>${escapeHtml(script)}</i>\n`;
-    if (plan.segmentTranslations?.[i]) {
-      msg += `🇺🇦 ${escapeHtml(plan.segmentTranslations[i])}\n`;
-    }
-    msg += "\n";
+    const title = headlines[i]?.title || `Sak ${i + 1}`;
+    msgNo += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>\n<i>${escapeHtml(script)}</i>\n\n`;
   });
 
-  // Overflow CTA
   if (plan.overflowScript) {
-    msg += `🔗 <b>Overflow CTA (NO):</b>\n<i>${escapeHtml(plan.overflowScript)}</i>\n`;
-    if (plan.overflowTranslation) {
-      msg += `🇺🇦 ${escapeHtml(plan.overflowTranslation)}\n`;
+    msgNo += `🔗 <b>Overflow:</b>\n<i>${escapeHtml(plan.overflowScript)}</i>\n\n`;
+  }
+
+  msgNo += `🎬 <b>Outro:</b>\n<i>${escapeHtml(plan.outroScript || "")}</i>`;
+
+  await sendMessage(theChatId, msgNo);
+
+  // ── Message 2: Ukrainian translation + approval buttons ──
+  let msgUa = `🇺🇦 <b>Переклад — ${displayDate}</b>\n\n`;
+
+  if (plan.introTranslation) {
+    msgUa += `🎬 <b>Інтро:</b>\n${escapeHtml(plan.introTranslation)}\n\n`;
+  }
+
+  if (plan.roundupTranslation) {
+    msgUa += `📋 <b>Огляд:</b>\n${escapeHtml(plan.roundupTranslation)}\n\n`;
+  }
+
+  plan.segmentScripts.forEach((_: string, i: number) => {
+    const title = headlines[i]?.title || `Стаття ${i + 1}`;
+    const ua = plan.segmentTranslations?.[i] || "";
+    if (ua) {
+      msgUa += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>\n${escapeHtml(ua)}\n\n`;
     }
-    msg += "\n";
+  });
+
+  if (plan.overflowTranslation) {
+    msgUa += `🔗 <b>Overflow:</b>\n${escapeHtml(plan.overflowTranslation)}\n\n`;
   }
 
-  // Outro
-  msg += `🎬 <b>Аутро (NO):</b>\n<i>${escapeHtml(plan.outroScript || "")}</i>\n`;
   if (plan.outroTranslation) {
-    msg += `🇺🇦 ${escapeHtml(plan.outroTranslation)}\n`;
+    msgUa += `🎬 <b>Аутро:</b>\n${escapeHtml(plan.outroTranslation)}\n\n`;
   }
 
-  msg += `\n\n💡 <i>Щоб відредагувати — відповідай reply на це повідомлення з виправленим текстом.</i>`;
-
-  // Truncate if too long for Telegram (4096 limit). Close all open HTML tags safely.
-  if (msg.length > 4000) {
-    // Find last complete segment/section before limit
-    const cutoff = msg.lastIndexOf("\n\n", 3800);
-    const safePoint = cutoff > 2000 ? cutoff : 3800;
-    msg = msg.substring(0, safePoint) + "\n\n<i>... (скорочено, повний скрипт збережено)</i>\n\n💡 <i>Щоб відредагувати — reply з виправленням.</i>";
-  }
+  msgUa += `💡 <i>Щоб відредагувати — відповідай reply з виправленим текстом.</i>`;
 
   const keyboard = {
     inline_keyboard: [
@@ -554,7 +553,7 @@ Return JSON:
     ],
   };
 
-  const scriptMsgId = await sendMessage(chatId || TELEGRAM_CHAT_ID, msg, { reply_markup: keyboard });
+  const scriptMsgId = await sendMessage(theChatId, msgUa, { reply_markup: keyboard });
 
   // Save message ID
   const existingMsgIds = draft.telegram_message_ids || [];
