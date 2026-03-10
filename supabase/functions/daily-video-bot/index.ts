@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-10-v16";
+const VERSION = "2026-03-10-v20";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -61,7 +61,7 @@ async function editMessage(
   text: string,
   options: { reply_markup?: any } = {},
 ): Promise<void> {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+  const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -144,8 +144,9 @@ function buildDigestMessage(
   headlines.forEach((h: any, i: number) => {
     const isExcluded = excludedSet.has(h.id);
     const marker = isExcluded ? "⬜" : "✅";
-    // Truncate title for very large digests
-    const titleText = compact ? escapeHtml(h.title).substring(0, 60) + (h.title.length > 60 ? "…" : "") : escapeHtml(h.title);
+    // Truncate title before escaping (avoid cutting HTML entities like &amp;)
+    const rawTitle = compact && h.title.length > 60 ? h.title.substring(0, 60) + "…" : h.title;
+    const titleText = escapeHtml(rawTitle);
     msg += `${i + 1}. ${marker} <b>${titleText}</b>\n`;
     // Show descriptions only in non-compact mode for selected articles
     if (!compact && h.description && !isExcluded) {
@@ -203,6 +204,18 @@ function buildDigestKeyboard(
 async function initiateDigest(targetDate?: string): Promise<Response> {
   const date = targetDate || getYesterdayDate();
   console.log(`📅 Initiating digest for ${date}`);
+
+  // Skip if digest already sent (idempotency for dual cron)
+  const { data: existingDraft } = await supabase
+    .from("daily_video_drafts")
+    .select("status")
+    .eq("target_date", date)
+    .single();
+
+  if (existingDraft && existingDraft.status !== "pending_digest") {
+    console.log(`⏭ Draft for ${date} already exists with status: ${existingDraft.status}, skipping`);
+    return json({ ok: true, message: `Already in progress: ${existingDraft.status}` });
+  }
 
   const start = `${date}T00:00:00Z`;
   const end = `${date}T23:59:59.999Z`;
@@ -462,7 +475,15 @@ Return JSON:
 }`;
 
   const aiResponse = await callAI(systemPrompt, `Write the script for ${displayDate}:\n\n${articleSummaries}`);
-  const plan = JSON.parse(aiResponse);
+  let plan: any;
+  try {
+    plan = JSON.parse(aiResponse);
+  } catch {
+    console.error(`❌ AI returned invalid JSON: ${aiResponse.substring(0, 200)}`);
+    await supabase.from("daily_video_drafts").update({ status: "failed", error_message: "AI returned invalid JSON for script" }).eq("target_date", targetDate);
+    if (chatId) await sendMessage(chatId, `❌ <b>Помилка:</b> AI повернув невалідний JSON. Спробуйте перегенерувати.`);
+    return json({ error: "Invalid AI JSON response" }, 500);
+  }
 
   if (!plan.segmentScripts || plan.segmentScripts.length === 0) {
     throw new Error("AI returned no segment scripts");
@@ -513,6 +534,12 @@ Return JSON:
 
   msgNo += `🎬 <b>Outro:</b>\n<i>${escapeHtml(plan.outroScript || "")}</i>`;
 
+  // Guard: truncate at last complete segment if over Telegram limit
+  if (msgNo.length > 4000) {
+    const cutIdx = msgNo.lastIndexOf("\n\n", 3900);
+    msgNo = msgNo.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n\n<i>... (скорочено)</i>";
+  }
+
   await sendMessage(theChatId, msgNo);
 
   // ── Message 2: Ukrainian translation + approval buttons ──
@@ -543,6 +570,12 @@ Return JSON:
   }
 
   msgUa += `💡 <i>Щоб відредагувати — відповідай reply з виправленим текстом.</i>`;
+
+  // Guard: truncate at last complete segment if over Telegram limit
+  if (msgUa.length > 4000) {
+    const cutIdx = msgUa.lastIndexOf("\n\n", 3900);
+    msgUa = msgUa.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n\n<i>... (скорочено)</i>";
+  }
 
   const keyboard = {
     inline_keyboard: [
@@ -704,7 +737,16 @@ Return JSON:
     systemPrompt,
     `Create visual scenario for ${displayDate} (${detailedScripts.length} detailed articles):\n\n${articleInfo}`,
   );
-  const scenario = JSON.parse(aiResponse);
+  let scenario: any;
+  try {
+    scenario = JSON.parse(aiResponse);
+  } catch {
+    console.error(`❌ AI returned invalid JSON for scenario: ${aiResponse.substring(0, 200)}`);
+    await supabase.from("daily_video_drafts").update({ status: "failed", error_message: "AI returned invalid JSON for scenario" }).eq("target_date", targetDate);
+    const errChatId = chatId || TELEGRAM_CHAT_ID;
+    await sendMessage(errChatId, `❌ <b>Помилка:</b> AI повернув невалідний JSON для сценарію. Спробуйте перегенерувати.`);
+    return json({ error: "Invalid AI JSON response" }, 500);
+  }
 
   if (!scenario.segments || scenario.segments.length === 0) {
     throw new Error("AI returned no visual segments");
@@ -720,8 +762,11 @@ Return JSON:
     })
     .eq("target_date", targetDate);
 
-  // Send scenario to Telegram
-  let msg = `🎨 <b>Візуальний сценарій — ${displayDate}</b>\n\n`;
+  // Send scenario to Telegram — split into 2 messages to avoid 4096 char limit
+  const targetChatId = chatId || TELEGRAM_CHAT_ID;
+
+  // Message 1: Segment details (no buttons)
+  let segmentsMsg = `🎨 <b>Візуальний сценарій — ${displayDate}</b>\n\n`;
 
   scenario.segments.forEach((seg: any, i: number) => {
     const catEmoji: Record<string, string> = {
@@ -729,30 +774,43 @@ Return JSON:
       science: "🔬", politics: "🏛", crypto: "₿", health: "🏥", news: "📰",
     };
     const emoji = catEmoji[seg.category] || "📰";
-    msg += `${i + 1}. ${emoji} <b>${escapeHtml(seg.headline || "")}</b>\n`;
+    segmentsMsg += `${i + 1}. ${emoji} <b>${escapeHtml(seg.headline || "")}</b>\n`;
     if (seg.summary) {
-      msg += `   📝 ${escapeHtml(seg.summary)}\n`;
+      segmentsMsg += `   📝 ${escapeHtml(seg.summary)}\n`;
     }
-    msg += `   Категорія: ${seg.category} | Колір: ${seg.accentColor}\n`;
-    if (seg.mood || seg.transition || seg.textReveal) {
-      msg += `   🎬 Mood: ${seg.mood || "positive"} | Перехід: ${seg.transition || "fade"} | Текст: ${seg.textReveal || "default"}\n`;
-    }
+    segmentsMsg += `   ${seg.category} | ${seg.accentColor} | ${seg.mood || "positive"} | ${seg.transition || "fade"}\n`;
     if (seg.keyQuote) {
-      msg += `   💬 <i>"${escapeHtml(seg.keyQuote)}"</i>\n`;
+      segmentsMsg += `   💬 <i>"${escapeHtml(seg.keyQuote)}"</i>\n`;
     }
     if (seg.facts && seg.facts.length > 0) {
       const statsType = seg.statsVisualType ? ` [${seg.statsVisualType}]` : "";
-      msg += `   📊${statsType} ${seg.facts.map((f: any) => `${f.value} (${f.label})`).join(", ")}\n`;
+      segmentsMsg += `   📊${statsType} ${seg.facts.map((f: any) => `${f.value} (${f.label})`).join(", ")}\n`;
     }
-    msg += "\n";
+    segmentsMsg += "\n";
   });
 
-  if (scenario.scenarioDescription) {
-    msg += `📋 <b>Опис:</b>\n${escapeHtml(scenario.scenarioDescription)}`;
+  // Trim segments message if still too long
+  if (segmentsMsg.length > 4000) {
+    // Cut at last complete segment (find last double newline before 4000)
+    const cutIdx = segmentsMsg.lastIndexOf("\n\n", 3900);
+    if (cutIdx > 0) {
+      segmentsMsg = segmentsMsg.substring(0, cutIdx) + "\n\n<i>... (скорочено)</i>";
+    }
   }
 
-  if (msg.length > 3800) {
-    msg = msg.substring(0, 3800) + "\n\n<i>... (скорочено)</i>";
+  await sendMessage(targetChatId, segmentsMsg);
+
+  // Message 2: Description + approval buttons
+  let descMsg = "";
+  if (scenario.scenarioDescription) {
+    descMsg = `📋 <b>Візуальний опис:</b>\n\n${escapeHtml(scenario.scenarioDescription)}`;
+    if (descMsg.length > 3800) {
+      // Cut at last paragraph before 3800
+      const cutIdx = descMsg.lastIndexOf("\n", 3700);
+      descMsg = descMsg.substring(0, cutIdx > 0 ? cutIdx : 3700) + "\n\n<i>... (скорочено)</i>";
+    }
+  } else {
+    descMsg = `📋 <b>Сценарій готовий — ${scenario.segments.length} сегментів</b>`;
   }
 
   const keyboard = {
@@ -764,7 +822,7 @@ Return JSON:
     ],
   };
 
-  const scenarioMsgId = await sendMessage(chatId || TELEGRAM_CHAT_ID, msg, { reply_markup: keyboard });
+  const scenarioMsgId = await sendMessage(targetChatId, descMsg, { reply_markup: keyboard });
 
   const existingMsgIds = draft.telegram_message_ids || [];
   await supabase
@@ -832,7 +890,8 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
 
 const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
 const GEMINI_MODELS = ["gemini-3-pro-image-preview", "gemini-2.5-pro-image", "gemini-2.5-flash-image"];
-const GEMINI_TIMEOUT = 60_000;
+const GEMINI_TIMEOUT = 45_000;
+const TOTAL_THUMBNAIL_TIMEOUT = 120_000; // 2 min max for all variants combined
 
 // 4 overlay styles applied on top of real article images
 const THUMBNAIL_STYLES = [
@@ -1271,22 +1330,30 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
     variantImages.push(validImages.length > 0 ? validImages[i % validImages.length] : null);
   }
 
-  // Generate 4 variants in parallel — each with a different style + article image
-  const results = await Promise.allSettled(
-    THUMBNAIL_STYLES.map(async (style, i) => {
-      const img = variantImages[i];
-      const imgLabel = img ? `📸 image ${(i % validImages.length) + 1}` : "🎨 text-only";
-      console.log(`🎨 Variant ${i + 1}: ${style.name} (${imgLabel})`);
-      const prompt = buildThumbPrompt(thumbnailHeadline, displayDate, ordered.length, style, !!img);
-      const buffer = await callGeminiImage(prompt, img || undefined);
-      if (!buffer) throw new Error(`Failed: ${style.id}`);
-      return { style, buffer };
-    }),
-  );
-
+  // Generate 4 variants sequentially to avoid Gemini rate limits
   const variants: { style: typeof THUMBNAIL_STYLES[0]; buffer: Uint8Array }[] = [];
-  for (const r of results) {
-    if (r.status === "fulfilled") variants.push(r.value);
+  const startTime = Date.now();
+
+  for (let i = 0; i < THUMBNAIL_STYLES.length; i++) {
+    if (Date.now() - startTime > TOTAL_THUMBNAIL_TIMEOUT) {
+      console.warn(`⏱️ Total timeout reached after ${variants.length} variants (${((Date.now() - startTime) / 1000).toFixed(0)}s)`);
+      break;
+    }
+
+    const style = THUMBNAIL_STYLES[i];
+    const img = variantImages[i];
+    const imgLabel = img ? `📸 image ${(i % validImages.length) + 1}` : "🎨 text-only";
+    console.log(`🎨 Variant ${i + 1}/${THUMBNAIL_STYLES.length}: ${style.name} (${imgLabel})`);
+
+    const prompt = buildThumbPrompt(thumbnailHeadline, displayDate, ordered.length, style, !!img);
+    const buffer = await callGeminiImage(prompt, img || undefined);
+
+    if (buffer) {
+      variants.push({ style, buffer });
+      console.log(`✅ Variant ${i + 1}: ${(buffer.length / 1024).toFixed(0)} KB`);
+    } else {
+      console.warn(`⚠️ Variant ${i + 1} (${style.name}) failed, skipping`);
+    }
   }
 
   if (variants.length === 0) {

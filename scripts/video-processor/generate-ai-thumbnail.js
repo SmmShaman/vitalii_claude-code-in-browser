@@ -76,17 +76,21 @@ function getPngDimensions(buffer) {
 }
 
 async function ensureSize(buffer) {
-  const dims = getPngDimensions(buffer);
-  if (dims) {
-    console.log(`📐 Output: ${dims.width}×${dims.height}`);
-    if (dims.width !== 1280 || dims.height !== 720) {
+  try {
+    const sharp = (await import('sharp')).default;
+    const meta = await sharp(buffer).metadata();
+    console.log(`📐 Output: ${meta.width}×${meta.height} (${meta.format})`);
+    if (meta.width !== 1280 || meta.height !== 720) {
       console.log(`🔧 Resizing to 1280×720...`);
-      try {
-        const sharp = (await import('sharp')).default;
-        return await sharp(buffer).resize(1280, 720, { fit: 'cover' }).png().toBuffer();
-      } catch (e) {
-        console.warn(`⚠️ sharp resize failed: ${e.message}, using original`);
-      }
+      return await sharp(buffer).resize(1280, 720, { fit: 'cover' }).png().toBuffer();
+    }
+  } catch (e) {
+    // Fallback: try PNG header parsing
+    const dims = getPngDimensions(buffer);
+    if (dims) {
+      console.log(`📐 Output (PNG header): ${dims.width}×${dims.height}`);
+    } else {
+      console.warn(`⚠️ Cannot determine dimensions: ${e.message}, using original`);
     }
   }
   return buffer;
@@ -272,21 +276,26 @@ export async function generateThumbnailVariants(articles, clickbaitTitle, dateSt
   const validImages = imageBase64List.filter(Boolean);
   console.log(`✅ Downloaded ${validImages.length}/${articleImages.length} images`);
 
-  console.log(`🖼️ Generating ${styles.length} variants in parallel...`);
-  const results = await Promise.allSettled(
-    styles.map(async (style, i) => {
-      const img = validImages.length > 0 ? validImages[i % validImages.length] : null;
-      console.log(`  🎨 ${style.name} (${img ? 'with image' : 'text-only'})`);
-      const prompt = buildThumbnailPrompt(clickbaitTitle, displayDate, articles.length, style, !!img);
-      let buffer = await callGeminiImage(prompt, apiKey, img);
-      if (!buffer) throw new Error(`Failed for style ${style.id}`);
+  console.log(`🖼️ Generating ${styles.length} variants sequentially...`);
+  const variants = [];
+
+  for (let i = 0; i < styles.length; i++) {
+    const style = styles[i];
+    const img = validImages.length > 0 ? validImages[i % validImages.length] : null;
+    console.log(`  🎨 ${i + 1}/${styles.length}: ${style.name} (${img ? 'with image' : 'text-only'})`);
+
+    const prompt = buildThumbnailPrompt(clickbaitTitle, displayDate, articles.length, style, !!img);
+    let buffer = await callGeminiImage(prompt, apiKey, img);
+
+    if (buffer) {
       buffer = await ensureSize(buffer);
       console.log(`  ✅ ${style.name}: ${(buffer.length / 1024).toFixed(0)} KB`);
-      return { style: style.id, styleName: style.name, buffer };
-    }),
-  );
+      variants.push({ style: style.id, styleName: style.name, buffer });
+    } else {
+      console.warn(`  ⚠️ ${style.name} failed, skipping`);
+    }
+  }
 
-  const variants = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   console.log(`✅ Generated ${variants.length}/${styles.length} variants`);
   return variants;
 }
