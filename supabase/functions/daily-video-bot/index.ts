@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-10-v13";
+const VERSION = "2026-03-10-v14";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -206,7 +206,7 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
   // Fetch published news
   const { data: articles, error } = await supabase
     .from("news")
-    .select("id, title_no, title_en, original_title, description_no, description_en, image_url, processed_image_url, tags, slug_en")
+    .select("id, title_ua, title_no, title_en, original_title, description_ua, description_no, description_en, image_url, processed_image_url, tags, slug_en")
     .eq("is_published", true)
     .gte("created_at", start)
     .lte("created_at", end)
@@ -226,8 +226,8 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
   // Create or update draft
   const headlines = articles.map((a: any) => ({
     id: a.id,
-    title: a.title_no || a.title_en || a.original_title || "",
-    description: a.description_no || a.description_en || "",
+    title: a.title_ua || a.title_en || a.original_title || "",
+    description: a.description_ua || a.description_en || "",
     hasImage: !!(a.processed_image_url || a.image_url),
     tags: a.tags || [],
     slug_en: a.slug_en || "",
