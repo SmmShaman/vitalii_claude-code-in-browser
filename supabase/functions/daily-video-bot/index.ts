@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-10-v14";
+const VERSION = "2026-03-10-v15";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -73,6 +73,10 @@ async function editMessage(
       ...(options.reply_markup ? { reply_markup: options.reply_markup } : {}),
     }),
   });
+  const data = await resp.json();
+  if (!data.ok) {
+    console.error(`❌ Telegram editMessage failed: ${data.description || JSON.stringify(data)} (text length: ${text.length})`);
+  }
 }
 
 function escapeHtml(text: string): string {
@@ -531,12 +535,15 @@ Return JSON:
     msg += `🇺🇦 ${escapeHtml(plan.outroTranslation)}\n`;
   }
 
-  // Truncate if too long for Telegram
-  if (msg.length > 3800) {
-    msg = msg.substring(0, 3800) + "\n\n<i>... (скорочено)</i>";
-  }
-
   msg += `\n\n💡 <i>Щоб відредагувати — відповідай reply на це повідомлення з виправленим текстом.</i>`;
+
+  // Truncate if too long for Telegram (4096 limit). Close all open HTML tags safely.
+  if (msg.length > 4000) {
+    // Find last complete segment/section before limit
+    const cutoff = msg.lastIndexOf("\n\n", 3800);
+    const safePoint = cutoff > 2000 ? cutoff : 3800;
+    msg = msg.substring(0, safePoint) + "\n\n<i>... (скорочено, повний скрипт збережено)</i>\n\n💡 <i>Щоб відредагувати — reply з виправленням.</i>";
+  }
 
   const keyboard = {
     inline_keyboard: [
