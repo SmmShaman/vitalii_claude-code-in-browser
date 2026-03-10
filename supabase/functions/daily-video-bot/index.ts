@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-08-v12";
+const VERSION = "2026-03-10-v13";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -36,18 +36,22 @@ async function sendMessage(
   text: string,
   options: { reply_markup?: any; parse_mode?: string; disable_web_page_preview?: boolean } = {},
 ): Promise<number> {
+  const body = {
+    chat_id: chatId,
+    text,
+    parse_mode: options.parse_mode || "HTML",
+    disable_web_page_preview: options.disable_web_page_preview ?? true,
+    ...(options.reply_markup ? { reply_markup: options.reply_markup } : {}),
+  };
   const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: options.parse_mode || "HTML",
-      disable_web_page_preview: options.disable_web_page_preview ?? true,
-      ...(options.reply_markup ? { reply_markup: options.reply_markup } : {}),
-    }),
+    body: JSON.stringify(body),
   });
   const data = await resp.json();
+  if (!data.ok) {
+    console.error(`❌ Telegram sendMessage failed: ${data.description || JSON.stringify(data)} (text length: ${text.length})`);
+  }
   return data.result?.message_id || 0;
 }
 
@@ -127,6 +131,8 @@ function buildDigestMessage(
   const displayDate = formatDateNorwegian(date);
   const excludedSet = new Set(excludedIds);
   const selectedCount = headlines.filter((h: any) => !excludedSet.has(h.id)).length;
+  // Compact mode for large digests (Telegram 4096 char limit)
+  const compact = headlines.length > 15;
 
   let msg = `📺 <b>Щоденне відео — ${displayDate}</b>\n\n`;
   msg += `Знайдено <b>${headlines.length}</b> статей (обрано: <b>${selectedCount}</b>):\n\n`;
@@ -134,19 +140,20 @@ function buildDigestMessage(
   headlines.forEach((h: any, i: number) => {
     const isExcluded = excludedSet.has(h.id);
     const marker = isExcluded ? "⬜" : "✅";
-    const imgIcon = h.hasImage ? "🖼" : "⚠️";
-    const tags = h.tags.length > 0 ? ` <i>${h.tags.slice(0, 3).join(", ")}</i>` : "";
-    msg += `${i + 1}. ${marker} ${imgIcon} <b>${escapeHtml(h.title)}</b>${tags}\n`;
-    if (h.description && !isExcluded) {
-      msg += `   <i>${escapeHtml(h.description.substring(0, 100))}${h.description.length > 100 ? "..." : ""}</i>\n`;
+    // Truncate title for very large digests
+    const titleText = compact ? escapeHtml(h.title).substring(0, 60) + (h.title.length > 60 ? "…" : "") : escapeHtml(h.title);
+    msg += `${i + 1}. ${marker} <b>${titleText}</b>\n`;
+    // Show descriptions only in non-compact mode for selected articles
+    if (!compact && h.description && !isExcluded) {
+      msg += `   <i>${escapeHtml(h.description.substring(0, 80))}${h.description.length > 80 ? "..." : ""}</i>\n`;
     }
-    msg += "\n";
   });
 
+  msg += "\n";
   if (selectedCount > MAX_DETAILED) {
-    msg += `⚠️ <b>Більше ${MAX_DETAILED} статей</b> — перші ${MAX_DETAILED} детально, решта ${selectedCount - MAX_DETAILED} як згадка.\n\n`;
+    msg += `⚠️ Перші ${MAX_DETAILED} детально, решта ${selectedCount - MAX_DETAILED} як згадка.\n\n`;
   }
-  msg += `Створити відео з обраних <b>${selectedCount}</b> статей?`;
+  msg += `Створити відео з <b>${selectedCount}</b> статей?`;
   return msg;
 }
 
