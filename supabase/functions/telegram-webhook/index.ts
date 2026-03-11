@@ -199,28 +199,7 @@ serve(async (req) => {
         const sourceLink = extractSourceLink(text)
         console.log('📎 Extracted source link from forward:', sourceLink)
 
-        // Обробити
-        try {
-          await fetch(
-            `${SUPABASE_URL}/functions/v1/process-news`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                content: text,
-                imageUrl: photoUrl,
-                sourceUrl: originalUrl,
-                sourceLink: sourceLink, // External source link from text
-                sourceType: 'telegram_forward',
-                channelUsername: channelUsername,
-                chatId: chatId // Для відправки результату назад
-              })
-            }
-          )
-
+        if (!text || text.trim().length < 50) {
           await fetch(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
             {
@@ -228,12 +207,67 @@ serve(async (req) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: chatId,
-                text: '✅ Forwarded message sent for processing!'
+                text: '⚠️ Повідомлення занадто коротке для обробки (мін. 50 символів)',
               })
             }
           )
-        } catch (error) {
+          return new Response(JSON.stringify({ ok: true }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Обробити через analyze-rss-article (створює запис, AI аналіз, показує з кнопками)
+        try {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `🔄 Обробляю пересланий пост${channelUsername ? ` з @${channelUsername}` : ''}...`,
+              })
+            }
+          )
+
+          const analyzeResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/analyze-rss-article`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                url: originalUrl || sourceLink || '',
+                content: text,
+                title: text.split('\n')[0].substring(0, 200),
+                sourceName: channelUsername ? `@${channelUsername}` : 'Telegram Forward',
+                imageUrl: photoUrl,
+                skipTelegram: false,
+              })
+            }
+          )
+
+          const result = await analyzeResponse.json()
+          if (!result.success && result.error) {
+            throw new Error(result.error)
+          }
+
+          console.log(`✅ Forward processed: newsId=${result.newsId}, score=${result.relevanceScore}`)
+        } catch (error: any) {
           console.error('Error processing forwarded message:', error)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `❌ Помилка: ${error.message}`,
+              })
+            }
+          )
         }
 
         return new Response(JSON.stringify({ ok: true }), {
@@ -576,7 +610,7 @@ serve(async (req) => {
         }
       }
 
-      // Звичайне повідомлення - ручна публікація
+      // Звичайне повідомлення - перевірити чи це URL
       const text = message.text || message.caption || ''
 
       if (text.trim() === '') {
@@ -594,6 +628,112 @@ serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }), {
           headers: { 'Content-Type': 'application/json' }
         })
+      }
+
+      // ── URL Detection: якщо повідомлення містить URL → обробити як статтю ──
+      const urlMatch = text.trim().match(/^(https?:\/\/[^\s]+)$/i) || text.trim().match(/^(https?:\/\/[^\s]+)/i)
+      if (urlMatch) {
+        const articleUrl = urlMatch[1]
+        console.log(`🔗 URL detected in message: ${articleUrl}`)
+
+        try {
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `🔄 Обробляю посилання...\n${articleUrl}`,
+              })
+            }
+          )
+
+          // Check if it's a Telegram post link (t.me/channel/123)
+          const tgMatch = articleUrl.match(/(?:t\.me|telegram\.me)\/([^/]+)\/(\d+)/)
+
+          if (tgMatch) {
+            // Telegram post — forward to process-news with source link
+            const processResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/process-news`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  content: `Telegram post from @${tgMatch[1]}`,
+                  sourceLink: articleUrl,
+                  sourceType: 'telegram_link',
+                  chatId: chatId,
+                })
+              }
+            )
+            const result = await processResponse.json()
+            if (!result.success && result.error) {
+              throw new Error(result.error)
+            }
+
+            await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: `✅ Telegram пост відправлено на обробку!`,
+                })
+              }
+            )
+          } else {
+            // Web URL — analyze as RSS article (fetches content, AI analysis, sends to bot with buttons)
+            const analyzeResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/analyze-rss-article`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  url: articleUrl,
+                  sourceName: 'Manual URL',
+                  skipTelegram: false,
+                })
+              }
+            )
+
+            const result = await analyzeResponse.json()
+            if (!result.success && result.error) {
+              throw new Error(result.error)
+            }
+
+            // analyze-rss-article already sends Telegram message with buttons
+            console.log(`✅ URL processed: newsId=${result.newsId}, score=${result.relevanceScore}`)
+          }
+
+          return new Response(JSON.stringify({ ok: true }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        } catch (error: any) {
+          console.error('Error processing URL:', error)
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `❌ Помилка обробки URL: ${error.message}`,
+              })
+            }
+          )
+          return new Response(JSON.stringify({ ok: false, error: error.message }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200  // Return 200 to Telegram to prevent retries
+          })
+        }
       }
 
       // Отримати фото якщо є

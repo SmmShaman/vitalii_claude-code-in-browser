@@ -9,6 +9,7 @@ import React from "react";
 import {
   AbsoluteFill,
   Img,
+  OffthreadVideo,
   useCurrentFrame,
   useVideoConfig,
   interpolate,
@@ -18,6 +19,7 @@ import {
 import { AnimatedSubtitles, type SubtitleEntry } from "./AnimatedSubtitles";
 import { LowerThird } from "./LowerThird";
 import { CategoryBadge } from "./CategoryBadge";
+import { AvatarOverlay } from "./AvatarOverlay";
 import {
   colors,
   gradients,
@@ -32,6 +34,8 @@ import { getMoodConfig } from "../design-system/moods";
 
 export interface ContentSceneProps {
   imageSrc: string;
+  /** Original article video (played muted as background instead of image) */
+  videoSrc?: string;
   voiceoverSrc?: string;
   subtitles?: SubtitleEntry[];
   keyQuote?: string;
@@ -54,10 +58,13 @@ export interface ContentSceneProps {
   focusArea?: { x: number; y: number; scale: number };
   /** Mood for animation speed */
   mood?: string;
+  /** Avatar video clip (PiP overlay) */
+  avatarSrc?: string;
 }
 
 export const ContentScene: React.FC<ContentSceneProps> = ({
   imageSrc,
+  videoSrc,
   voiceoverSrc,
   subtitles = [],
   keyQuote,
@@ -70,6 +77,7 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   colorGrade,
   focusArea,
   mood,
+  avatarSrc,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
@@ -77,6 +85,11 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
 
   const resolve = (src: string | undefined) =>
     src ? (src.startsWith("http") ? src : staticFile(src)) : "";
+
+  const resolvedImage = resolve(imageSrc);
+  const resolvedVideo = resolve(videoSrc);
+  const hasVideo = !!resolvedVideo;
+  const hasImage = !!resolvedImage;
 
   // Ken Burns — resolve end values from focusArea / mood / defaults
   const moodCfg = mood ? getMoodConfig(mood) : null;
@@ -161,29 +174,49 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
 
   return (
     <AbsoluteFill style={{ opacity: fadeIn * fadeOut }}>
-      {/* Background image with Ken Burns */}
-      <Img
-        src={resolve(imageSrc)}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          transform: `scale(${scale}) translate(${panX}%, ${panY}%)`,
-          filter:
-            [
-              colorGrade?.brightness != null &&
-                `brightness(${colorGrade.brightness})`,
-              colorGrade?.contrast != null &&
-                `contrast(${colorGrade.contrast})`,
-              colorGrade?.saturate != null &&
-                `saturate(${colorGrade.saturate})`,
-              colorGrade?.hueRotate != null &&
-                `hue-rotate(${colorGrade.hueRotate}deg)`,
-            ]
-              .filter(Boolean)
-              .join(" ") || undefined,
-        }}
-      />
+      {/* Background: video (muted) → image with Ken Burns → gradient fallback */}
+      {hasVideo ? (
+        <OffthreadVideo
+          src={resolvedVideo}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+          volume={0}
+        />
+      ) : hasImage ? (
+        <Img
+          src={resolvedImage}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transform: `scale(${scale}) translate(${panX}%, ${panY}%)`,
+            filter:
+              [
+                colorGrade?.brightness != null &&
+                  `brightness(${colorGrade.brightness})`,
+                colorGrade?.contrast != null &&
+                  `contrast(${colorGrade.contrast})`,
+                colorGrade?.saturate != null &&
+                  `saturate(${colorGrade.saturate})`,
+                colorGrade?.hueRotate != null &&
+                  `hue-rotate(${colorGrade.hueRotate}deg)`,
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            background: `linear-gradient(135deg, ${accentColor}88 0%, ${colors.background} 60%, ${accentColor}44 100%)`,
+          }}
+        />
+      )}
 
       {/* Gradient overlay for text readability */}
       <div
@@ -246,6 +279,16 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
         <div style={{ position: "absolute", inset: 0, opacity: subtitleFadeIn, zIndex: 10 }}>
           <AnimatedSubtitles subtitles={offsetSubtitles} isVertical={isVertical} />
         </div>
+      )}
+
+      {/* Avatar PiP overlay */}
+      {avatarSrc && (
+        <AvatarOverlay
+          src={avatarSrc}
+          position="bottom-right"
+          size="pip"
+          accentColor={accentColor}
+        />
       )}
 
       {/* Category badge (top-left) */}

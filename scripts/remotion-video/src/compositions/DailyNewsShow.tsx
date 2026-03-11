@@ -27,6 +27,7 @@ import { BackgroundMusic } from "../components/BackgroundMusic";
 import { SceneTransition } from "../components/SceneTransition";
 import { AnimatedLogo } from "../components/AnimatedLogo";
 import { ProgressBar } from "../components/ProgressBar";
+import { AvatarOverlay } from "../components/AvatarOverlay";
 import { type SubtitleEntry } from "../components/AnimatedSubtitles";
 import { colors, audio as audioTokens } from "../design-system";
 import type { TransitionType } from "../design-system/transitions";
@@ -36,6 +37,8 @@ import type { TransitionType } from "../design-system/transitions";
 export interface NewsSegment {
   headline: string;
   imageSrc: string;
+  /** Original article video (muted, played as background) */
+  videoSrc?: string;
   keyQuote?: string;
   category?: string;
   accentColor?: string;
@@ -63,6 +66,8 @@ export interface NewsSegment {
   };
   /** Focus area for Ken Burns */
   focusArea?: { x: number; y: number; scale: number };
+  /** Avatar video clip source (PiP overlay) */
+  avatarSrc?: string;
 }
 
 export interface DailyNewsShowProps {
@@ -109,6 +114,10 @@ export interface DailyNewsShowProps {
   bgmDuckVolume?: number;
   /** Transition SFX file path */
   transitionSfxSrc?: string;
+  /** Avatar video for intro scene */
+  introAvatarSrc?: string;
+  /** Avatar video for outro scene */
+  outroAvatarSrc?: string;
 }
 
 export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
@@ -134,6 +143,8 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   bgmVolume,
   bgmDuckVolume,
   transitionSfxSrc,
+  introAvatarSrc,
+  outroAvatarSrc,
 }) => {
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
@@ -168,13 +179,23 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   const introFrames = Math.ceil(introDurationSeconds * fps);
   sequences.push({
     component: (
-      <ShowIntroScene
-        date={date}
-        articleCount={segments.length}
-        showTitle={showTitle}
-        accentColor={accentColor}
-        language={language}
-      />
+      <>
+        <ShowIntroScene
+          date={date}
+          articleCount={segments.length}
+          showTitle={showTitle}
+          accentColor={accentColor}
+          language={language}
+        />
+        {introAvatarSrc && (
+          <AvatarOverlay
+            src={introAvatarSrc}
+            position="center"
+            size="large"
+            accentColor={accentColor}
+          />
+        )}
+      </>
     ),
     startFrame: currentFrame,
     durationFrames: introFrames,
@@ -279,6 +300,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
         component: (
           <ContentScene
             imageSrc={segment.imageSrc}
+            videoSrc={segment.videoSrc}
             keyQuote={segment.keyQuote}
             accentColor={segColor}
             subtitles={segment.subtitles || []}
@@ -289,6 +311,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             mood={segment.mood}
             colorGrade={segment.colorGrade}
             focusArea={segment.focusArea}
+            avatarSrc={segment.avatarSrc}
           />
         ),
         startFrame: currentFrame,
@@ -334,6 +357,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
         component: (
           <ContentScene
             imageSrc={segment.imageSrc}
+            videoSrc={segment.videoSrc}
             keyQuote={segment.keyQuote}
             accentColor={segColor}
             subtitles={segment.subtitles || []}
@@ -344,6 +368,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             mood={segment.mood}
             colorGrade={segment.colorGrade}
             focusArea={segment.focusArea}
+            avatarSrc={segment.avatarSrc}
           />
         ),
         startFrame: currentFrame,
@@ -395,10 +420,20 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   const outroFrames = Math.ceil(outroDurationSeconds * fps);
   sequences.push({
     component: (
-      <OutroScene
-        message={language === "no" ? "Les mer p\u00e5" : "Read more on"}
-        accentColor={accentColor}
-      />
+      <>
+        <OutroScene
+          message={language === "no" ? "Les mer p\u00e5" : "Read more on"}
+          accentColor={accentColor}
+        />
+        {outroAvatarSrc && (
+          <AvatarOverlay
+            src={outroAvatarSrc}
+            position="center"
+            size="large"
+            accentColor={accentColor}
+          />
+        )}
+      </>
     ),
     startFrame: currentFrame,
     durationFrames: outroFrames,

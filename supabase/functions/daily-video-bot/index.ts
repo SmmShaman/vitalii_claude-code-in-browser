@@ -14,7 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-10-v20";
+const VERSION = "2026-03-11-v21";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -220,14 +220,14 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
   const start = `${date}T00:00:00Z`;
   const end = `${date}T23:59:59.999Z`;
 
-  // Fetch published news
+  // Fetch published news by published_at (not created_at — articles are scraped one day, published the next)
   const { data: articles, error } = await supabase
     .from("news")
     .select("id, title_ua, title_no, title_en, original_title, description_ua, description_no, description_en, image_url, processed_image_url, tags, slug_en")
     .eq("is_published", true)
-    .gte("created_at", start)
-    .lte("created_at", end)
-    .order("created_at", { ascending: true });
+    .gte("published_at", start)
+    .lte("published_at", end)
+    .order("published_at", { ascending: true });
 
   if (error) throw new Error(`DB error: ${error.message}`);
   if (!articles || articles.length === 0) {

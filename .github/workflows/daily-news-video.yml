@@ -28,11 +28,20 @@ on:
         description: 'Target date (YYYY-MM-DD), default: yesterday'
         required: false
         type: string
+      youtube_privacy:
+        description: 'YouTube privacy (public/unlisted/private)'
+        required: false
+        default: 'public'
+        type: choice
+        options:
+          - public
+          - unlisted
+          - private
 
 jobs:
   daily-compilation:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -80,12 +89,30 @@ jobs:
           ZVUKOGRAM_TOKEN: ${{ secrets.ZVUKOGRAM_TOKEN }}
           ZVUKOGRAM_EMAIL: ${{ secrets.ZVUKOGRAM_EMAIL }}
 
+          # Avatar (fal.ai EchoMimicV3)
+          FAL_KEY: ${{ secrets.FAL_KEY }}
+          ENABLE_AVATAR: ${{ secrets.ENABLE_AVATAR || 'false' }}
+          AVATAR_SOURCE_PHOTO_URL: ${{ secrets.AVATAR_SOURCE_PHOTO_URL }}
+
           # Video settings
           LANGUAGE: ${{ github.event.client_payload.language || github.event.inputs.language || 'no' }}
           FORMAT: ${{ github.event.client_payload.format || github.event.inputs.format || 'horizontal' }}
           TARGET_DATE: ${{ github.event.client_payload.target_date || github.event.inputs.target_date || '' }}
           DRAFT_ID: ${{ github.event.client_payload.draft_id || '' }}
+          YOUTUBE_PRIVACY: ${{ github.event.client_payload.youtube_privacy || github.event.inputs.youtube_privacy || 'public' }}
         run: node daily-compilation.js
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          TARGET="${{ github.event.client_payload.target_date || github.event.inputs.target_date || 'yesterday' }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Video generation failed!</b>\n\n📅 Date: ${TARGET}\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
 
       - name: Report results
         if: always()

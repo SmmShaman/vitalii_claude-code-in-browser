@@ -26,6 +26,7 @@ import { execSync } from 'child_process';
 import { generateVoiceover } from './generate-voiceover.js';
 import { generateClickbaitMeta } from './generate-clickbait.js';
 import { generateAIThumbnail } from './generate-ai-thumbnail.js';
+import { generateAllAvatarClips } from './generate-avatar.js';
 
 // ── Config ──
 
@@ -94,7 +95,7 @@ async function fetchYesterdayNews() {
 
   const { data, error } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, tags, created_at, slug_en')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en')
     .eq('is_published', true)
     .gte('created_at', start)
     .lte('created_at', end)
@@ -131,7 +132,9 @@ async function directDailyShow(articles, dateStr) {
     const title = a.title_no || a.title_en || a.original_title || '';
     const content = a.content_no || a.content_en || a.original_content || '';
     const marker = i >= MAX_DETAILED ? ' [OVERFLOW — no detailed segment needed]' : '';
-    return `ARTICLE ${i + 1}${marker}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
+    const hasVideo = a.video_url && a.video_type;
+    const videoMarker = hasVideo ? ' [HAS VIDEO — write 40-60 word script for this story, more detailed narration]' : '';
+    return `ARTICLE ${i + 1}${marker}${videoMarker}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
   }).join('\n\n');
 
   // ~15 seconds per detailed article + 12s intro/outro + roundup if needed
@@ -359,6 +362,34 @@ async function downloadImage(url, destPath) {
 }
 
 /**
+ * Download a video file from URL and return file size.
+ */
+async function downloadVideo(url, destPath) {
+  const resp = await fetch(url, { redirect: 'follow' });
+  if (!resp.ok) throw new Error(`Video download failed: ${resp.status}`);
+  const buffer = Buffer.from(await resp.arrayBuffer());
+  await fs.writeFile(destPath, buffer);
+  return buffer.length;
+}
+
+/**
+ * Get video duration in seconds using ffprobe.
+ */
+async function getVideoDuration(filePath) {
+  try {
+    const result = execSync(
+      `ffprobe -v error -show_entries format=duration -of csv=p=0 "${filePath}"`,
+      { encoding: 'utf-8', timeout: 15000 }
+    ).trim();
+    const duration = parseFloat(result);
+    return isNaN(duration) ? 0 : duration;
+  } catch (e) {
+    console.log(`  ⚠️ ffprobe failed: ${e.message}`);
+    return 0;
+  }
+}
+
+/**
  * Upload video to YouTube.
  */
 async function uploadToYouTube(filePath, title, description, tags) {
@@ -378,7 +409,7 @@ async function uploadToYouTube(filePath, title, description, tags) {
         tags: tags || ['nyheter', 'norge', 'daglig oppdatering', 'tech', 'vitalii.no'],
       },
       status: {
-        privacyStatus: 'public',
+        privacyStatus: process.env.YOUTUBE_PRIVACY || 'public',
         selfDeclaredMadeForKids: false,
       },
     },
@@ -416,7 +447,7 @@ async function loadFromDraft(draftId) {
   // Fetch articles
   const { data: articles, error: artError } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, tags, created_at, slug_en')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en')
     .in('id', draft.article_ids)
     .order('created_at', { ascending: true });
 
@@ -642,7 +673,7 @@ async function main() {
     await fs.copyFile(outroVoiceover.audioPath, path.join(publicDir, outroAudioFilename));
   }
 
-  // Download images for detailed segments only (max MAX_DETAILED)
+  // Download images and videos for detailed segments only (max MAX_DETAILED)
   const detailedArticles = articles.slice(0, MAX_DETAILED);
   const segments = [];
   for (let i = 0; i < detailedArticles.length; i++) {
@@ -663,13 +694,52 @@ async function main() {
       }
     }
 
-    // Duration from actual TTS audio (not heuristic!)
+    // Download article video if available (direct_url or youtube with original_video_url)
+    let videoFilename = '';
+    let videoDurationSec = 0;
+    const videoUrl = article.original_video_url || (article.video_type === 'direct_url' ? article.video_url : null);
+    if (videoUrl) {
+      videoFilename = `daily_vid_${i}_${Date.now()}.mp4`;
+      try {
+        const size = await downloadVideo(videoUrl, path.join(publicDir, videoFilename));
+        console.log(`  🎬 Article ${i + 1}: video ${(size / 1024 / 1024).toFixed(1)} MB`);
+        videoDurationSec = await getVideoDuration(path.join(publicDir, videoFilename));
+        if (videoDurationSec > 0) {
+          console.log(`     ⏱️ Video duration: ${videoDurationSec.toFixed(1)}s`);
+        }
+        // Validate: skip if too small (<50KB) or too large (>200MB)
+        if (size < 50 * 1024) {
+          console.log(`     ⚠️ Video too small (${size} bytes), skipping`);
+          videoFilename = '';
+          videoDurationSec = 0;
+        } else if (size > 200 * 1024 * 1024) {
+          console.log(`     ⚠️ Video too large (${(size / 1024 / 1024).toFixed(0)} MB), skipping`);
+          await fs.unlink(path.join(publicDir, videoFilename)).catch(() => {});
+          videoFilename = '';
+          videoDurationSec = 0;
+        }
+      } catch (e) {
+        console.log(`  ⚠️ Article ${i + 1}: video download failed: ${e.message}`);
+        videoFilename = '';
+      }
+    }
+
+    // Duration: for video segments use max(voiceover, video), capped at 90s
     const vo = segmentVoiceovers[i];
-    const segDuration = vo ? Math.max(vo.durationSeconds + 1, 8) : 10;
+    const voDuration = vo ? vo.durationSeconds + 1 : 10;
+    let segDuration;
+    if (videoFilename && videoDurationSec > 0) {
+      // Video segment: use video duration but cap at 90s, ensure voiceover fits
+      segDuration = Math.min(Math.max(videoDurationSec, voDuration), 90);
+      console.log(`     📐 Segment duration: ${segDuration.toFixed(1)}s (video: ${videoDurationSec.toFixed(1)}s, voice: ${voDuration.toFixed(1)}s)`);
+    } else {
+      segDuration = Math.max(voDuration, 8);
+    }
 
     segments.push({
       headline: segment.headline || article.title_no || article.title_en || '',
       imageSrc: imageFilename,
+      videoSrc: videoFilename || undefined,
       keyQuote: segment.keyQuote || '',
       category: segment.category || 'news',
       accentColor: segment.accentColor || '#FF7A00',
@@ -682,6 +752,29 @@ async function main() {
       transition: segment.transition || 'fade',
       textReveal: segment.textReveal || 'default',
     });
+  }
+
+  // Step 4b: Generate avatar clips (if enabled)
+  let avatarResult = { introAvatarSrc: null, outroAvatarSrc: null, segmentAvatarSrcs: [] };
+  if (process.env.ENABLE_AVATAR === 'true') {
+    console.log('\n🧑 Step 3b: Generating avatar clips...');
+    try {
+      avatarResult = await generateAllAvatarClips({
+        introAudioPath: introVoiceover?.audioPath || null,
+        outroAudioPath: outroVoiceover?.audioPath || null,
+        segmentAudios: segmentVoiceovers.map(vo => ({ audioPath: vo.audioPath })),
+        publicDir,
+      });
+
+      // Attach avatar sources to segments
+      for (let i = 0; i < segments.length; i++) {
+        if (avatarResult.segmentAvatarSrcs[i]) {
+          segments[i].avatarSrc = avatarResult.segmentAvatarSrcs[i];
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️ Avatar generation failed, continuing without: ${e.message}`);
+    }
   }
 
   // Calculate total duration from actual segment durations
@@ -772,6 +865,9 @@ async function main() {
     bgmVolume: 0.3,
     bgmDuckVolume: 0.1,
     transitionSfxSrc: sfxFileExists ? 'whoosh.mp3' : undefined,
+    // Avatar overlay
+    introAvatarSrc: avatarResult.introAvatarSrc || undefined,
+    outroAvatarSrc: avatarResult.outroAvatarSrc || undefined,
   });
 
   const propsFile = path.join(os.tmpdir(), `daily_props_${Date.now()}.json`);
@@ -879,6 +975,9 @@ async function main() {
     if (seg.imageSrc) {
       await fs.unlink(path.join(publicDir, seg.imageSrc)).catch(() => {});
     }
+    if (seg.videoSrc) {
+      await fs.unlink(path.join(publicDir, seg.videoSrc)).catch(() => {});
+    }
     if (seg.voiceoverSrc) {
       await fs.unlink(path.join(publicDir, seg.voiceoverSrc)).catch(() => {});
     }
@@ -897,6 +996,10 @@ async function main() {
   }
   for (const vo of [...segmentVoiceovers, introVoiceover, roundupVoiceover, overflowVoiceover, outroVoiceover].filter(Boolean)) {
     await fs.unlink(vo.audioPath).catch(() => {});
+  }
+  // Clean up avatar files
+  for (const avatarFile of [avatarResult.introAvatarSrc, avatarResult.outroAvatarSrc, ...avatarResult.segmentAvatarSrcs].filter(Boolean)) {
+    await fs.unlink(path.join(publicDir, avatarFile)).catch(() => {});
   }
 
   // Notify Telegram bot if in draft mode

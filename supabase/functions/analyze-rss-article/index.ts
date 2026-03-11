@@ -37,6 +37,7 @@ interface RSSAnalysisRequest {
   sourceName?: string
   title?: string
   description?: string
+  content?: string            // Direct text content (skip URL fetch)
   imageUrl?: string | null
   images?: string[]           // Array of image URLs
   imagesWithMeta?: ImageWithMeta[]  // Images with copyright metadata
@@ -66,13 +67,17 @@ serve(async (req) => {
 
   try {
     const requestData: RSSAnalysisRequest = await req.json()
-    console.log('📰 Analyzing RSS article:', requestData.url)
+    const hasDirectContent = requestData.content && requestData.content.length >= 100
+    console.log(hasDirectContent
+      ? `📋 Analyzing direct content: ${requestData.title?.substring(0, 60) || 'no title'}`
+      : `📰 Analyzing RSS article: ${requestData.url}`)
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Check if article already exists using database function (more efficient)
-    const { data: duplicateCheck, error: duplicateError } = await supabase
-      .rpc('check_rss_article_exists', { article_url: requestData.url })
+    // Check if article already exists using database function (skip for direct content without URL)
+    const { data: duplicateCheck, error: duplicateError } = requestData.url
+      ? await supabase.rpc('check_rss_article_exists', { article_url: requestData.url })
+      : { data: null, error: null }
 
     if (duplicateError) {
       console.warn('⚠️ Duplicate check failed, falling back to direct query:', duplicateError)
@@ -144,9 +149,21 @@ serve(async (req) => {
       }
     }
 
-    // Fetch article content
-    console.log('📥 Fetching article content...')
-    const articleContent = await fetchArticleContent(requestData.url)
+    // Fetch article content (or use provided text)
+    let articleContent: { text: string; title: string; imageUrl: string | null }
+
+    if (requestData.content && requestData.content.length >= 100) {
+      // Direct text provided (e.g. forwarded Telegram post)
+      console.log('📋 Using provided text content')
+      articleContent = {
+        text: requestData.content,
+        title: requestData.title || requestData.content.substring(0, 100),
+        imageUrl: requestData.imageUrl || null,
+      }
+    } else {
+      console.log('📥 Fetching article content from URL...')
+      articleContent = await fetchArticleContent(requestData.url)
+    }
 
     if (!articleContent.text || articleContent.text.length < 100) {
       console.log('⚠️ Could not extract sufficient content from article')
@@ -258,9 +275,9 @@ serve(async (req) => {
       .insert({
         original_title: title,
         original_content: articleContent.text.substring(0, 10000),
-        original_url: requestData.url,
-        rss_source_url: requestData.url,
-        source_type: 'rss',
+        original_url: requestData.url || null,
+        rss_source_url: requestData.url || null,
+        source_type: requestData.content ? 'manual' : 'rss',
         rss_analysis: analysis,
         is_norway_related: isNorwayRelated,
         image_url: requestData.imageUrl || articleContent.imageUrl,
@@ -323,6 +340,7 @@ serve(async (req) => {
     }
 
     // 🤖 Auto-publish: fire-and-forget if enabled (score >= 5)
+    let autoPublishTriggered = false
     if (analysis.relevance_score >= 5 && !requestData.skipTelegram) {
       const { data: autoPublishSetting } = await supabase
         .from('api_settings')
@@ -347,35 +365,15 @@ serve(async (req) => {
             })
           }).catch(e => console.warn('⚠️ Auto-publish fire-and-forget error:', e))
 
-          if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: TELEGRAM_CHAT_ID,
-                text: `🤖 <b>Auto-publishing RSS article...</b>\n\n📰 ${title?.substring(0, 150) || 'Untitled'}\n📊 Score: ${analysis.relevance_score}/10\n\n⏳ <i>AI обирає зображення та публікує автоматично</i>`,
-                parse_mode: 'HTML'
-              })
-            })
-          }
-
-          return new Response(
-            JSON.stringify({
-              success: true,
-              newsId: newsRecord.id,
-              analysis: analysis,
-              autoPublish: true
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          autoPublishTriggered = true
         } catch (autoPublishError) {
           console.error('❌ Auto-publish trigger failed, falling back to manual:', autoPublishError)
-          // Fall through to normal Telegram bot flow
         }
       }
     }
 
     // Send to Telegram Bot for moderation (score >= 5, unless skipTelegram is set)
+    // ALWAYS send buttons — even when auto-publish is triggered, so moderator can manage
     if (analysis.relevance_score >= 5 && !requestData.skipTelegram && TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
       const telegramMessageId = await sendTelegramNotification(
         newsRecord.id,
@@ -407,7 +405,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         newsId: newsRecord.id,
-        analysis: analysis
+        analysis: analysis,
+        autoPublish: autoPublishTriggered
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
