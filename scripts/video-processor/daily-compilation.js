@@ -95,11 +95,11 @@ async function fetchYesterdayNews() {
 
   const { data, error } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, published_at, slug_en')
     .eq('is_published', true)
-    .gte('created_at', start)
-    .lte('created_at', end)
-    .order('created_at', { ascending: true });
+    .gte('published_at', start)
+    .lte('published_at', end)
+    .order('published_at', { ascending: true });
 
   if (error) throw new Error(`Failed to fetch news: ${error.message}`);
   return data || [];
