@@ -21,6 +21,7 @@ export {
   branding,
   audio,
   thumbnail,
+  avatar,
 } from "./tokens";
 
 // Animations

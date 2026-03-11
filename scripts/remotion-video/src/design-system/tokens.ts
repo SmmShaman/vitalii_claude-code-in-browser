@@ -320,3 +320,26 @@ export const thumbnail = {
   },
   maxElements: 3,               // >3 visual elements drops CTR by 23%
 } as const;
+
+// ── Avatar Overlay ──
+
+export const avatar = {
+  /** PiP mode — small overlay in corner during content scenes */
+  pip: {
+    sizeRatio: { horizontal: 0.15, vertical: 0.20 },
+    shape: "circle" as const,
+  },
+  /** Large mode — bigger avatar for intro/outro scenes */
+  large: {
+    sizeRatio: { horizontal: 0.30, vertical: 0.35 },
+    shape: "rounded" as const,
+  },
+  /** Margin from edges (px) */
+  margin: 32,
+  /** Border ring width (px) */
+  borderWidth: { pip: 3, large: 4 },
+  /** Border radius for rounded shape (px) */
+  roundedRadius: 24,
+  /** Z-index — above image, below subtitles */
+  zIndex: 8,
+} as const;
