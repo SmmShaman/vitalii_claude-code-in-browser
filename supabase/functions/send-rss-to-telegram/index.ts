@@ -107,19 +107,39 @@ serve(async (req) => {
         try { streamSourceName = new URL(fallbackUrl).hostname.replace('www.', '') } catch { streamSourceName = 'RSS' }
       }
 
-      // Fire website-publish (fire-and-forget)
-      fetch(`${SUPABASE_URL}/functions/v1/website-publish`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ newsId: news.id })
-      }).catch(e => console.warn('⚠️ website-publish fire error:', e))
+      // Await website-publish to get the slug for article link
+      let articleUrl = ''
+      try {
+        const wpResponse = await fetch(`${SUPABASE_URL}/functions/v1/website-publish`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newsId: news.id })
+        })
+        if (wpResponse.ok) {
+          // Fetch slug from DB
+          const { data: published } = await supabase
+            .from('news')
+            .select('slug_en')
+            .eq('id', news.id)
+            .single()
+          if (published?.slug_en) {
+            articleUrl = `https://vitalii.no/news/${published.slug_en}`
+          }
+        }
+      } catch (e: any) {
+        console.warn('⚠️ website-publish error:', e.message)
+      }
 
-      // Send lightweight info message to Telegram (no buttons)
+      // Send info message to Telegram with links
       const linkedinScore = (analysis as any)?.linkedin_score || 0
-      const infoText = `📰 <b>Опубліковано:</b> ${escapeHtml((news.original_title || 'Untitled').substring(0, 150))}\n📌 ${escapeHtml(streamSourceName)} · ${analysis.relevance_score}/10${linkedinScore > 0 ? ` | 🔗 LI:${linkedinScore}/10` : ''}`
+      const titleText = escapeHtml((news.original_title || 'Untitled').substring(0, 150))
+      const originalUrl = news.original_url || news.rss_source_url || ''
+      const titleLink = originalUrl ? `<a href="${originalUrl}">${titleText}</a>` : titleText
+      const siteLink = articleUrl ? `\n🌐 <a href="${articleUrl}">vitalii.no</a>` : ''
+      const infoText = `📰 <b>Опубліковано:</b> ${titleLink}\n📌 ${escapeHtml(streamSourceName)} · ${analysis.relevance_score}/10${linkedinScore > 0 ? ` | 🔗 LI:${linkedinScore}/10` : ''}${siteLink}`
 
       if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -128,7 +148,8 @@ serve(async (req) => {
           body: JSON.stringify({
             chat_id: TELEGRAM_CHAT_ID,
             text: infoText,
-            parse_mode: 'HTML'
+            parse_mode: 'HTML',
+            disable_web_page_preview: true
           })
         })
       }
