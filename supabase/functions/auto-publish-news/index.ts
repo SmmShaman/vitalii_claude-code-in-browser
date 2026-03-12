@@ -16,7 +16,7 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-03-06-v11-scheduled-queue'
+const VERSION = '2026-03-12-v12-linkedin-filter'
 
 interface AutoPublishRequest {
   newsId: string
@@ -410,10 +410,41 @@ serve(async (req) => {
     // ═══════════════════════════════════════════════════
     await updateStatus(supabase, newsId, 'social_posting')
 
+    // LinkedIn Smart Filtering: skip LinkedIn if linkedin_score < 7 or daily limit reached
+    const linkedinScore = (news.rss_analysis as any)?.linkedin_score || 0
+    const LINKEDIN_MIN_SCORE = 7
+    const LINKEDIN_DAILY_LIMIT = 2
+    let linkedinSkipped = false
+    let linkedinSkipReason = ''
+
+    if (platforms.includes('linkedin') && !preset?.socialPlatforms) {
+      // Only auto-filter if platforms not explicitly set via preset
+      if (linkedinScore < LINKEDIN_MIN_SCORE) {
+        linkedinSkipped = true
+        linkedinSkipReason = `score ${linkedinScore}/10 < ${LINKEDIN_MIN_SCORE}`
+        console.log(`🔗 LinkedIn SKIPPED: ${linkedinSkipReason}`)
+      } else {
+        // Check daily limit
+        const todayCount = await getTodayLinkedInCount(supabase)
+        if (todayCount >= LINKEDIN_DAILY_LIMIT) {
+          linkedinSkipped = true
+          linkedinSkipReason = `daily limit reached (${todayCount}/${LINKEDIN_DAILY_LIMIT})`
+          console.log(`🔗 LinkedIn SKIPPED: ${linkedinSkipReason}`)
+        } else {
+          console.log(`🔗 LinkedIn OK: score ${linkedinScore}/10, today ${todayCount}/${LINKEDIN_DAILY_LIMIT}`)
+        }
+      }
+    }
+
+    // Build filtered platform list
+    const filteredPlatforms = linkedinSkipped
+      ? platforms.filter(p => p !== 'linkedin')
+      : platforms
+
     // Build all social post tasks, then execute in parallel
     // Timeout: 90s (teasers pre-cached, but image upload + API calls still need time)
     const socialTasks: Array<{ platform: string; lang: string; promise: Promise<Response> }> = []
-    for (const platform of platforms) {
+    for (const platform of filteredPlatforms) {
       for (const lang of languages) {
         console.log(`📤 Queuing ${platform} (${lang})...`)
         socialTasks.push({
@@ -494,13 +525,15 @@ serve(async (req) => {
       .join('\n')
 
     const norwayLabel = isNorwayRelated ? '\n🇳🇴 <b>Norwegian only</b>' : ''
+    const linkedinLabel = linkedinSkipped ? `\n🔗 LinkedIn пропущено: ${linkedinSkipReason}` : ''
+    const linkedinScoreLabel = linkedinScore > 0 ? ` | 🔥 LI:${linkedinScore}/10` : ''
     const articleLink = articleUrl ? `\n🔗 <a href="${articleUrl}">vitalii.no</a>` : ''
     const score = (news.rss_analysis as any)?.relevance_score || '?'
 
     // Caption for photo (max 1024 chars) — concise format
     const presetLabel = preset ? '🚀' : '🤖'
     const pubTypeLabel = preset?.publicationType === 'blog' ? ' (Blog)' : ''
-    const caption = `${presetLabel} <b>Auto-Published${pubTypeLabel}</b>${norwayLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)} · ${score}/10 ${imageStatus}${articleLink}\n\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts}`}`
+    const caption = `${presetLabel} <b>Auto-Published${pubTypeLabel}</b>${norwayLabel}${linkedinLabel}\n\n📰 ${escapeHtml(title)}\n📌 ${escapeHtml(sourceName)} · ${score}/10${linkedinScoreLabel} ${imageStatus}${articleLink}\n\n${socialSummary}\n\n${successfulPosts === totalPosts ? '✅ All done!' : `⚠️ ${successfulPosts}/${totalPosts}`}`
 
     if (finalImageUrl) {
       // Delete old text message, send photo with caption (one message)
@@ -718,6 +751,24 @@ async function aiSelectBestVariant(
     console.warn('⚠️ AI variant selection error:', e)
     return 0
   }
+}
+
+async function getTodayLinkedInCount(supabase: any): Promise<number> {
+  const today = new Date()
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
+
+  const { count, error } = await supabase
+    .from('social_media_posts')
+    .select('*', { count: 'exact', head: true })
+    .eq('platform', 'linkedin')
+    .in('status', ['posted', 'pending'])
+    .gte('created_at', startOfDay)
+
+  if (error) {
+    console.warn('⚠️ Failed to count today LinkedIn posts:', error.message)
+    return 0
+  }
+  return count || 0
 }
 
 async function sendTelegramMessage(text: string) {

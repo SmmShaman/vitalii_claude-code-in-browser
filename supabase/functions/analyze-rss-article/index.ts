@@ -47,11 +47,205 @@ interface RSSAnalysisRequest {
 interface AIAnalysisResult {
   summary: string
   relevance_score: number
+  linkedin_score: number  // 1-10: how good this is for LinkedIn posting
   category: string
   key_points: string[]
+  trending_keywords: string[]  // 3-5 English keywords for trending checks (HN, Google Trends)
   recommended_action: 'publish' | 'skip' | 'needs_review'
   skip_reason?: string
   is_norway_related?: boolean
+}
+
+/**
+ * Check if article topic is trending on Hacker News (free Algolia API)
+ * Returns bonus points (0-3) based on HN engagement
+ */
+async function checkHackerNewsTrending(title: string, keywords: string[]): Promise<{ bonus: number; hnPosts: number; topScore: number }> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000) // 8s for 2 searches
+
+    // Search window: last 7 days (trending topic may be discussed for days)
+    const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 86400
+
+    // Two parallel searches: by keywords AND by title (catches more matches)
+    const keywordQuery = keywords.slice(0, 3).join(' ') || title.split(' ').slice(0, 4).join(' ')
+    const titleQuery = title.substring(0, 100) // Use full title for better matching
+
+    const [kwResponse, titleResponse] = await Promise.all([
+      fetch(
+        `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(keywordQuery)}&tags=story&numericFilters=created_at_i>${sevenDaysAgo}&hitsPerPage=5`,
+        { signal: controller.signal }
+      ),
+      fetch(
+        `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(titleQuery)}&tags=story&numericFilters=created_at_i>${sevenDaysAgo}&hitsPerPage=5`,
+        { signal: controller.signal }
+      )
+    ])
+
+    clearTimeout(timeout)
+
+    // Merge results, deduplicate by story ID
+    const allHits = new Map<string, any>()
+
+    for (const response of [kwResponse, titleResponse]) {
+      if (response.ok) {
+        const data = await response.json()
+        for (const hit of (data.hits || [])) {
+          const id = hit.objectID || hit.story_id
+          if (!allHits.has(id) || (hit.points || 0) > (allHits.get(id).points || 0)) {
+            allHits.set(id, hit)
+          }
+        }
+      }
+    }
+
+    const hits = Array.from(allHits.values())
+
+    if (hits.length === 0) {
+      console.log('📊 HN: no matching stories found')
+      return { bonus: 0, hnPosts: 0, topScore: 0 }
+    }
+
+    // Find the highest-scored related post
+    const topScore = Math.max(...hits.map((h: any) => h.points || 0))
+    const totalComments = hits.reduce((sum: number, h: any) => sum + (h.num_comments || 0), 0)
+
+    console.log(`📊 HN trending: ${hits.length} posts found, top score: ${topScore}, total comments: ${totalComments}`)
+
+    // Calculate bonus based on HN engagement
+    let bonus = 0
+    if (topScore >= 200 || totalComments >= 100) {
+      bonus = 3  // Very hot topic
+    } else if (topScore >= 50 || totalComments >= 30) {
+      bonus = 2  // Trending topic
+    } else if (topScore >= 10 || totalComments >= 5) {
+      bonus = 1  // Mildly interesting
+    }
+
+    return { bonus, hnPosts: hits.length, topScore }
+  } catch (e: any) {
+    console.log('⚠️ HN trending check failed:', e.name === 'AbortError' ? 'Timeout' : e.message)
+    return { bonus: 0, hnPosts: 0, topScore: 0 }
+  }
+}
+
+/**
+ * Check if article topic is trending on Google Trends (free, no auth)
+ * Fetches daily trending searches for US and NO, checks for keyword matches
+ * Returns bonus points (0-3) based on Google Trends presence
+ */
+async function checkGoogleTrends(keywords: string[]): Promise<{ bonus: number; matchedTrends: string[] }> {
+  if (!keywords || keywords.length === 0) {
+    return { bonus: 0, matchedTrends: [] }
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+
+    // Fetch daily trending searches from Google Trends RSS (US + Norway)
+    const geos = ['US', 'NO']
+    const allTrendingTopics: string[] = []
+
+    for (const geo of geos) {
+      try {
+        const rssUrl = `https://trends.google.com/trends/trendingsearches/daily/rss?geo=${geo}`
+        const resp = await fetch(rssUrl, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        })
+        if (resp.ok) {
+          const xml = await resp.text()
+          // Extract titles from RSS <title> tags (trending search terms)
+          const titles = xml.match(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/g) || []
+          for (const t of titles) {
+            const match = t.match(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/)
+            if (match) allTrendingTopics.push(match[1].toLowerCase())
+          }
+          // Also check ht:news_item_title for related topics
+          const newsItems = xml.match(/<ht:news_item_title><!\[CDATA\[([^\]]+)\]\]><\/ht:news_item_title>/g) || []
+          for (const n of newsItems) {
+            const match = n.match(/<ht:news_item_title><!\[CDATA\[([^\]]+)\]\]><\/ht:news_item_title>/)
+            if (match) allTrendingTopics.push(match[1].toLowerCase())
+          }
+        }
+      } catch { /* skip geo if fails */ }
+    }
+
+    clearTimeout(timeout)
+
+    if (allTrendingTopics.length === 0) {
+      console.log('📊 Google Trends: could not fetch trending topics')
+      return { bonus: 0, matchedTrends: [] }
+    }
+
+    console.log(`📊 Google Trends: fetched ${allTrendingTopics.length} trending topics`)
+
+    // Check if any article keywords match trending topics
+    const matchedTrends: string[] = []
+    const keywordsLower = keywords.map(k => k.toLowerCase())
+
+    for (const keyword of keywordsLower) {
+      // Split multi-word keyword for partial matching
+      const keywordParts = keyword.split(' ').filter(p => p.length > 3)
+
+      for (const topic of allTrendingTopics) {
+        // Check if keyword appears in trending topic or vice versa
+        if (topic.includes(keyword) || keyword.includes(topic)) {
+          matchedTrends.push(topic)
+          break
+        }
+        // Partial match: at least 2 significant words match
+        const matchCount = keywordParts.filter(p => topic.includes(p)).length
+        if (matchCount >= 2 || (keywordParts.length === 1 && keywordParts[0].length > 4 && topic.includes(keywordParts[0]))) {
+          matchedTrends.push(topic)
+          break
+        }
+      }
+    }
+
+    // Calculate bonus
+    let bonus = 0
+    if (matchedTrends.length >= 3) {
+      bonus = 3  // Multiple trending matches — very hot
+    } else if (matchedTrends.length >= 2) {
+      bonus = 2  // Good trending presence
+    } else if (matchedTrends.length >= 1) {
+      bonus = 1  // Some trending relevance
+    }
+
+    if (matchedTrends.length > 0) {
+      console.log(`🔥 Google Trends matches: ${matchedTrends.join(', ')} → bonus +${bonus}`)
+    } else {
+      console.log('📊 Google Trends: no keyword matches found')
+    }
+
+    return { bonus, matchedTrends }
+  } catch (e: any) {
+    console.log('⚠️ Google Trends check failed:', e.name === 'AbortError' ? 'Timeout' : e.message)
+    return { bonus: 0, matchedTrends: [] }
+  }
+}
+
+/**
+ * Count LinkedIn posts made today
+ */
+async function getTodayLinkedInCount(supabase: any): Promise<number> {
+  try {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const { count } = await supabase
+      .from('social_media_posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('platform', 'linkedin')
+      .in('status', ['posted', 'pending'])
+      .gte('created_at', today.toISOString())
+
+    return count || 0
+  } catch {
+    return 0
+  }
 }
 
 /**
@@ -197,7 +391,28 @@ serve(async (req) => {
 
     // Prepare prompt with article data
     const title = requestData.title || articleContent.title || 'No title'
-    const systemPrompt = analysisPrompt.prompt_text
+    // Inject linkedin_score requirement into the prompt
+    const linkedinScoreAddendum = `
+
+ТАКОЖ додай ці поля:
+
+"linkedin_score" (1-10) — оцінка того, чи варто публікувати цю статтю в LinkedIn:
+- 8-10: Breaking news, дискусійна тема, трендовий AI/tech контент, бізнес-інсайти — ОБОВ'ЯЗКОВО в LinkedIn
+- 5-7: Непогана стаття але не вірусна — можна опублікувати якщо нічого кращого
+- 1-4: Банальна новина, нішева тема, нецікаво для бізнес-аудиторії LinkedIn — НЕ публікувати
+
+Критерії linkedin_score:
+- Чи викличе це дискусію серед tech/business професіоналів?
+- Чи це breaking news яка зараз обговорюється?
+- Чи є практична цінність для аудиторії (інсайти, тренди, дані)?
+- Чи має потенціал стати вірусним (спірна тема, новий продукт, значна подія)?
+
+"trending_keywords" — масив з 3-5 АНГЛІЙСЬКИХ ключових слів/фраз для перевірки трендів.
+ВАЖЛИВО: ключові слова ЗАВЖДИ англійською, незалежно від мови оригінальної статті.
+Приклад: ["OpenAI GPT-5", "artificial intelligence", "tech layoffs"]
+Використовуй конкретні назви продуктів, компаній, технологій та загальну тему.`
+
+    const systemPrompt = (analysisPrompt.prompt_text + linkedinScoreAddendum)
       .replace('{title}', title)
       .replace('{content}', articleContent.text.substring(0, 4000)) // Limit content
       .replace('{url}', requestData.url)
@@ -256,7 +471,48 @@ serve(async (req) => {
       throw new Error(`Failed to parse AI response: ${parseError.message}`)
     }
 
-    console.log(`✅ Analysis complete: score=${analysis.relevance_score}, action=${analysis.recommended_action}`)
+    // Ensure linkedin_score exists (fallback if AI didn't return it)
+    if (!analysis.linkedin_score) {
+      analysis.linkedin_score = Math.max(1, analysis.relevance_score - 2)
+    }
+    if (!analysis.trending_keywords) {
+      analysis.trending_keywords = []
+    }
+
+    // Use AI-generated English keywords for trending checks
+    const trendingKeywords = analysis.trending_keywords.length > 0
+      ? analysis.trending_keywords
+      : [title] // fallback to title
+
+    // Cross-reference with Hacker News + Google Trends in parallel
+    const [hnResult, gtResult] = await Promise.all([
+      checkHackerNewsTrending(title, trendingKeywords),
+      checkGoogleTrends(trendingKeywords)
+    ])
+
+    // Apply combined trending bonus (max +4, capped at 10)
+    const totalBonus = Math.min(4, hnResult.bonus + gtResult.bonus)
+    if (totalBonus > 0) {
+      const oldScore = analysis.linkedin_score
+      analysis.linkedin_score = Math.min(10, analysis.linkedin_score + totalBonus)
+      const bonusDetails = []
+      if (hnResult.bonus > 0) bonusDetails.push(`HN +${hnResult.bonus} (${hnResult.hnPosts} posts, top ${hnResult.topScore} pts)`)
+      if (gtResult.bonus > 0) bonusDetails.push(`GT +${gtResult.bonus} (${gtResult.matchedTrends.join(', ')})`)
+      console.log(`🔥 Trending bonus: total +${totalBonus} (${oldScore} → ${analysis.linkedin_score}): ${bonusDetails.join(' | ')}`)
+    }
+
+    // Store trending data in analysis for reference
+    ;(analysis as any).trending_data = {
+      hn: { bonus: hnResult.bonus, posts: hnResult.hnPosts, topScore: hnResult.topScore },
+      google_trends: { bonus: gtResult.bonus, matches: gtResult.matchedTrends },
+      total_bonus: totalBonus,
+      keywords_used: trendingKeywords
+    }
+
+    // Get today's LinkedIn post count
+    const todayLinkedInCount = await getTodayLinkedInCount(supabase)
+
+    console.log(`✅ Analysis complete: relevance=${analysis.relevance_score}, linkedin=${analysis.linkedin_score} (bonus +${totalBonus}), action=${analysis.recommended_action}, HN=${hnResult.hnPosts}, GT=${gtResult.matchedTrends.length} matches, LinkedIn today=${todayLinkedInCount}`)
 
     // Update AI prompt usage count
     await supabase
@@ -594,6 +850,8 @@ async function sendTelegramNotification(
 
   const relevanceEmoji = analysis.relevance_score >= 7 ? '🟢' :
                          analysis.relevance_score >= 5 ? '🟡' : '🔴'
+  const linkedinEmoji = analysis.linkedin_score >= 7 ? '🔥' :
+                        analysis.linkedin_score >= 5 ? '📊' : '⬇️'
 
   const hasVariants = variants && variants.length > 0
 
@@ -607,11 +865,21 @@ async function sendTelegramNotification(
     .map(point => `• ${point}`)
     .join('\n')
 
+  // Trending data section
+  const trendingData = (analysis as any).trending_data
+  let trendingSection = ''
+  if (trendingData && (trendingData.hn.bonus > 0 || trendingData.google_trends.bonus > 0)) {
+    const parts = []
+    if (trendingData.hn.bonus > 0) parts.push(`HN: ${trendingData.hn.posts} posts, top ${trendingData.hn.topScore} pts (+${trendingData.hn.bonus})`)
+    if (trendingData.google_trends.bonus > 0) parts.push(`GT: ${trendingData.google_trends.matches.slice(0, 3).join(', ')} (+${trendingData.google_trends.bonus})`)
+    trendingSection = `\n📈 Trending: ${parts.join(' | ')}`
+  }
+
   const expandableContent = `<blockquote expandable>📋 ${escapeHtml(analysis.summary)}
 
 ${escapeHtml(keyPointsList)}
 
-🎯 ${analysis.recommended_action.toUpperCase()}${analysis.skip_reason ? `\nℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}</blockquote>`
+🎯 ${analysis.recommended_action.toUpperCase()}${analysis.skip_reason ? `\nℹ️ ${escapeHtml(analysis.skip_reason)}` : ''}${trendingSection}</blockquote>`
 
   // Compact variant section
   let variantsSection = ''
@@ -619,7 +887,7 @@ ${escapeHtml(keyPointsList)}
     variantsSection = '\n\n🎨 Оберіть концепцію:' + formatCompactVariants(variants!, escapeHtml)
   }
 
-  const messageText = `📰 <b>RSS</b> | 📌 ${escapeHtml(sourceName)} | ${relevanceEmoji} ${analysis.relevance_score}/10 | ${CATEGORY_SHORT[analysis.category] || analysis.category}
+  const messageText = `📰 <b>RSS</b> | 📌 ${escapeHtml(sourceName)} | ${relevanceEmoji} ${analysis.relevance_score}/10 | ${linkedinEmoji} LI:${analysis.linkedin_score}/10 | ${CATEGORY_SHORT[analysis.category] || analysis.category}
 ${duplicateWarning}🔗 <a href="${url}">${escapeHtml(title.substring(0, 100))}</a>
 
 💬 ${escapeHtml(shortSummary)}

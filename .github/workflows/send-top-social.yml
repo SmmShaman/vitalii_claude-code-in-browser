@@ -1,0 +1,36 @@
+name: Send Top Social
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 08:00 Oslo (winter CET=UTC+1)
+    - cron: '0 7 * * *'  # 08:00 Oslo (summer CEST=UTC+2) / backup
+  workflow_dispatch:
+
+jobs:
+  send-top-social:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger send-top-social
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🔥 Triggering send-top-social..."
+          response=$(curl -s -w "\n%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/send-top-social" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" -ge 400 ]; then
+            echo "❌ Failed with status $http_code"
+            exit 1
+          fi
+
+          echo "✅ Done"

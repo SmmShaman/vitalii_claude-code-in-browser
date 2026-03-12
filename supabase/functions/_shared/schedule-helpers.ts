@@ -122,80 +122,77 @@ export async function computeScheduledTime(
 ): Promise<{ scheduledAt: Date; window: string; windowLabel: string }> {
   const now = getOsloNow()
 
-  // Try today, then tomorrow
-  for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
-    const targetDate = new Date(now)
-    targetDate.setDate(targetDate.getDate() + dayOffset)
+  // Only schedule for TODAY — never push to tomorrow
+  const dayStart = new Date(now)
+  dayStart.setHours(0, 0, 0, 0)
+  const dayEnd = new Date(now)
+  dayEnd.setHours(23, 59, 59, 999)
 
-    // Start/end of target date for DB query
-    const dayStart = new Date(targetDate)
-    dayStart.setHours(0, 0, 0, 0)
-    const dayEnd = new Date(targetDate)
-    dayEnd.setHours(23, 59, 59, 999)
+  // Load already-scheduled articles for today
+  const { data: scheduled } = await supabase
+    .from('news')
+    .select('scheduled_publish_at')
+    .eq('auto_publish_status', 'scheduled')
+    .gte('scheduled_publish_at', dayStart.toISOString())
+    .lte('scheduled_publish_at', dayEnd.toISOString())
 
-    // Load already-scheduled articles for this date range
-    const { data: scheduled } = await supabase
-      .from('news')
-      .select('scheduled_publish_at')
-      .eq('auto_publish_status', 'scheduled')
-      .gte('scheduled_publish_at', dayStart.toISOString())
-      .lte('scheduled_publish_at', dayEnd.toISOString())
+  const occupiedTimes = new Set(
+    (scheduled || []).map((r: any) => {
+      const d = new Date(r.scheduled_publish_at)
+      return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+    })
+  )
 
-    const occupiedTimes = new Set(
-      (scheduled || []).map((r: any) => {
-        const d = new Date(r.scheduled_publish_at)
-        return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
-      })
-    )
+  // Try windows that match content weight
+  const eligibleWindows = config.windows.filter(w =>
+    w.types.includes(contentWeight)
+  )
 
-    // Check max per day
-    if (occupiedTimes.size >= config.maxPerDay) {
-      console.log(`Day ${dayOffset} already has ${occupiedTimes.size} scheduled (max ${config.maxPerDay}), trying next day`)
-      continue
-    }
+  for (const win of eligibleWindows) {
+    const windowStart = dateAtTime(now, win.start)
+    const windowEnd = dateAtTime(now, win.end)
 
-    // Filter windows by content weight
-    const eligibleWindows = config.windows.filter(w =>
-      w.types.includes(contentWeight)
-    )
+    const cursor = new Date(windowStart)
+    while (cursor < windowEnd) {
+      const slotKey = `${cursor.getHours()}:${String(cursor.getMinutes()).padStart(2, '0')}`
 
-    for (const win of eligibleWindows) {
-      const windowStart = dateAtTime(targetDate, win.start)
-      const windowEnd = dateAtTime(targetDate, win.end)
-
-      // Generate candidate slots within this window
-      const cursor = new Date(windowStart)
-      while (cursor < windowEnd) {
-        const slotKey = `${cursor.getHours()}:${String(cursor.getMinutes()).padStart(2, '0')}`
-
-        // Skip past slots (only relevant for today)
-        if (dayOffset === 0 && cursor <= now) {
-          cursor.setMinutes(cursor.getMinutes() + config.slotMinutes)
-          continue
-        }
-
-        // Skip occupied slots
-        if (!occupiedTimes.has(slotKey)) {
-          return {
-            scheduledAt: new Date(cursor),
-            window: win.id,
-            windowLabel: win.label,
-          }
-        }
-
+      // Skip past slots
+      if (cursor <= now) {
         cursor.setMinutes(cursor.getMinutes() + config.slotMinutes)
+        continue
       }
+
+      // Skip occupied slots
+      if (!occupiedTimes.has(slotKey)) {
+        return {
+          scheduledAt: new Date(cursor),
+          window: win.id,
+          windowLabel: win.label,
+        }
+      }
+
+      cursor.setMinutes(cursor.getMinutes() + config.slotMinutes)
     }
   }
 
-  // Absolute fallback: schedule 7 minutes from now
+  // Fallback: no window slot available today — schedule from now + slotMinutes (still today)
   const fallbackTime = new Date(now)
   fallbackTime.setMinutes(fallbackTime.getMinutes() + config.slotMinutes)
-  console.warn('No available slot found in windows, using fallback time')
+
+  // Find next free slot from now
+  while (fallbackTime.getDate() === now.getDate()) {
+    const slotKey = `${fallbackTime.getHours()}:${String(fallbackTime.getMinutes()).padStart(2, '0')}`
+    if (!occupiedTimes.has(slotKey)) {
+      break
+    }
+    fallbackTime.setMinutes(fallbackTime.getMinutes() + config.slotMinutes)
+  }
+
+  console.log(`📅 No window slot available, using same-day fallback: ${fallbackTime.getHours()}:${String(fallbackTime.getMinutes()).padStart(2, '0')}`)
   return {
     scheduledAt: fallbackTime,
     window: 'fallback',
-    windowLabel: 'Fallback',
+    windowLabel: 'Зараз',
   }
 }
 

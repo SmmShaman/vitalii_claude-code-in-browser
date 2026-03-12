@@ -1267,6 +1267,7 @@ serve(async (req) => {
 
       if (imageGenResult?.success && imageGenResult.processedImageUrl) {
         const newImageUrl = imageGenResult.processedImageUrl
+        const providerUsed = imageGenResult.provider || imageGenResult.debug?.provider || 'AI'
 
         // Append to gallery
         const { data: galNews } = await supabase.from('news').select('images').eq('id', newsId).single()
@@ -1297,7 +1298,7 @@ serve(async (req) => {
         }
 
         await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
+          truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🤖 <i>${providerUsed}</i>\n🎨 Концепція: <i>${escapeHtml(selectedVariant.label)}</i>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
           galleryKeyboard)
       } else {
         const errorMsg = imageGenResult?.error || 'Невідома помилка'
@@ -1431,6 +1432,7 @@ serve(async (req) => {
 
       if (imageGenResult?.success && imageGenResult.processedImageUrl) {
         const newImageUrl = imageGenResult.processedImageUrl
+        const providerUsed = imageGenResult.provider || imageGenResult.debug?.provider || 'AI'
 
         // Append to gallery
         const { data: galNews } = await supabase.from('news').select('images').eq('id', newsId).single()
@@ -1460,7 +1462,7 @@ serve(async (req) => {
           ]
         }
         await editMessage(TELEGRAM_BOT_TOKEN, chatId, messageId,
-          truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
+          truncateForTelegram(messageText, `\n\n✅ <b>Creative Builder — зображення згенеровано (${langNames[selectedLang] || selectedLang})!</b>\n🤖 <i>${providerUsed}</i>\n📸 Галерея: ${galleryCount} фото\n${squareImageLink}${wideImageLink}`),
           cbGalleryKeyboard)
       } else {
         const errorMsg = imageGenResult?.error || 'Невідома помилка'

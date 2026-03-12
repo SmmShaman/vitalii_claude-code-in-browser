@@ -28,6 +28,18 @@ export function getStatusBadges(item: NewsItem): StatusBadge[] {
     badges.push({ label: '⚡ Publishing', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
   }
 
+  // LinkedIn score badge (show when score exists)
+  const linkedinScore = item.rss_analysis?.linkedin_score
+  if (linkedinScore !== undefined && linkedinScore !== null) {
+    const trendingBonus = item.rss_analysis?.trending_data?.total_bonus || 0
+    const trendingLabel = trendingBonus > 0 ? `+${trendingBonus}` : ''
+    if (linkedinScore >= 7) {
+      badges.push({ label: `🔥 LI:${linkedinScore}${trendingLabel}`, color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' })
+    } else {
+      badges.push({ label: `⬇️ LI:${linkedinScore}${trendingLabel}`, color: 'bg-gray-500/20 text-gray-400 border-gray-500/50' })
+    }
+  }
+
   if (item.is_published) {
     badges.push({ label: '📰 Published', color: 'bg-green-500/20 text-green-400 border-green-500/50' })
   }

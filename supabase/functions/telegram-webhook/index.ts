@@ -1154,7 +1154,7 @@ serve(async (req) => {
         // Lightweight validation
         const { data: news, error: fetchError } = await supabase
           .from('news')
-          .select('id, is_published, is_rewritten, title_en, title_no, title_ua')
+          .select('id, is_published, is_rewritten, title_en, title_no, title_ua, rss_analysis')
           .eq('id', newsId)
           .single()
 
@@ -1240,45 +1240,81 @@ serve(async (req) => {
           }
         )
 
-        // Show social buttons IMMEDIATELY (optimistic pipeline)
-        const socialKeyboard = {
-          inline_keyboard: [
-            [
-              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
-              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
-              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
-            ],
-            [
-              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
-              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
-              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
-            ],
-            [
-              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
-              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
-              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
-            ],
-            [
-              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
-              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
-              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
-            ],
-            [
-              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
-              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
-              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
-            ],
-            [
-              { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
-              { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
-              { text: '🐦 Twitter UA', callback_data: `twitter_ua_${newsId}` }
-            ],
-            [
-              { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
-              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-            ]
-          ]
+        // Check linkedin_score from rss_analysis to decide if LinkedIn buttons should be shown
+        const linkedinScore = news.rss_analysis?.linkedin_score || 0
+        const showLinkedIn = linkedinScore >= 7
+
+        // Count today's LinkedIn posts for daily limit info
+        let todayLiCount = 0
+        try {
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const { count } = await supabase
+            .from('social_media_posts')
+            .select('id', { count: 'exact', head: true })
+            .eq('platform', 'linkedin')
+            .in('status', ['posted', 'pending'])
+            .gte('created_at', today.toISOString())
+          todayLiCount = count || 0
+        } catch { /* ignore */ }
+
+        const linkedinWarning = !showLinkedIn
+          ? `\n⬇️ <i>LinkedIn: score ${linkedinScore}/10 (мін. 7) — не рекомендовано</i>`
+          : todayLiCount >= 2
+            ? `\n⚠️ <i>LinkedIn: вже ${todayLiCount} пости сьогодні (рекомендовано макс 2)</i>`
+            : `\n🔥 <i>LinkedIn: score ${linkedinScore}/10 — рекомендовано!</i>`
+
+        // Build social keyboard with conditional LinkedIn
+        const socialRows: any[][] = []
+
+        if (showLinkedIn) {
+          socialRows.push([
+            { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
+            { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
+            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
+          ])
+          socialRows.push([
+            { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
+            { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
+            { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
+          ])
+          socialRows.push([
+            { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+            { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+            { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+          ])
         }
+
+        socialRows.push([
+          { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
+          { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
+          { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
+        ])
+        socialRows.push([
+          { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
+          { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
+          { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
+        ])
+        socialRows.push([
+          { text: '🐦 Twitter EN', callback_data: `twitter_en_${newsId}` },
+          { text: '🐦 Twitter NO', callback_data: `twitter_no_${newsId}` },
+          { text: '🐦 Twitter UA', callback_data: `twitter_ua_${newsId}` }
+        ])
+
+        // If LinkedIn not shown, add manual override button
+        if (!showLinkedIn) {
+          socialRows.push([
+            { text: '🔗 LinkedIn (override)', callback_data: `linkedin_en_${newsId}` },
+            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+          ])
+        } else {
+          socialRows.push([
+            { text: '🎵 TikTok', callback_data: `tiktok_${newsId}` },
+            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+          ])
+        }
+
+        const socialKeyboard = { inline_keyboard: socialRows }
 
         const typeLabel = publicationType === 'blog' ? 'блог' : 'новину'
         await fetch(
@@ -1289,7 +1325,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n⏳ <b>AI рерайт ${typeLabel} EN/NO/UA у фоні...</b>\n📱 <i>Можете вже обирати соцмережі:</i>`),
+              text: truncateForTelegram(messageText, `\n\n⏳ <b>AI рерайт ${typeLabel} EN/NO/UA у фоні...</b>${linkedinWarning}\n📱 <i>Можете вже обирати соцмережі:</i>`),
               parse_mode: 'HTML',
               reply_markup: socialKeyboard
             })
@@ -1312,7 +1348,7 @@ serve(async (req) => {
         // Lightweight validation
         const { data: news, error: fetchError } = await supabase
           .from('news')
-          .select('id, is_published, is_rewritten')
+          .select('id, is_published, is_rewritten, rss_analysis')
           .eq('id', newsId)
           .single()
 
@@ -1371,39 +1407,73 @@ serve(async (req) => {
           }
         )
 
-        // Show RSS social buttons IMMEDIATELY (optimistic pipeline)
-        const rssSocialKeyboard = {
-          inline_keyboard: [
-            [
-              { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
-              { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
-              { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
-            ],
-            [
-              { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
-              { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
-              { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
-            ],
-            [
-              { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
-              { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
-              { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
-            ],
-            [
-              { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
-              { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
-              { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
-            ],
-            [
-              { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
-              { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
-              { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
-            ],
-            [
-              { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
-            ]
-          ]
+        // Check linkedin_score for RSS articles
+        const rssLinkedinScore = news.rss_analysis?.linkedin_score || 0
+        const rssShowLinkedIn = rssLinkedinScore >= 7
+
+        let rssLiCount = 0
+        try {
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const { count } = await supabase
+            .from('social_media_posts')
+            .select('id', { count: 'exact', head: true })
+            .eq('platform', 'linkedin')
+            .in('status', ['posted', 'pending'])
+            .gte('created_at', today.toISOString())
+          rssLiCount = count || 0
+        } catch { /* ignore */ }
+
+        const rssLinkedinWarning = !rssShowLinkedIn
+          ? `\n⬇️ <i>LinkedIn: score ${rssLinkedinScore}/10 (мін. 7) — не рекомендовано</i>`
+          : rssLiCount >= 2
+            ? `\n⚠️ <i>LinkedIn: вже ${rssLiCount} пости сьогодні (рекомендовано макс 2)</i>`
+            : `\n🔥 <i>LinkedIn: score ${rssLinkedinScore}/10 — рекомендовано!</i>`
+
+        // Build RSS social keyboard with conditional LinkedIn
+        const rssRows: any[][] = []
+
+        if (rssShowLinkedIn) {
+          rssRows.push([
+            { text: '🌐 Все EN', callback_data: `all_en_${newsId}` },
+            { text: '🌐 Все NO', callback_data: `all_no_${newsId}` },
+            { text: '🌐 Все UA', callback_data: `all_ua_${newsId}` }
+          ])
+          rssRows.push([
+            { text: '🔗+📘+📸 EN', callback_data: `combo_li_fb_ig_en_${newsId}` },
+            { text: '🔗+📘+📸 NO', callback_data: `combo_li_fb_ig_no_${newsId}` },
+            { text: '🔗+📘+📸 UA', callback_data: `combo_li_fb_ig_ua_${newsId}` }
+          ])
+          rssRows.push([
+            { text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${newsId}` },
+            { text: '🔗 LinkedIn NO', callback_data: `linkedin_no_${newsId}` },
+            { text: '🔗 LinkedIn UA', callback_data: `linkedin_ua_${newsId}` }
+          ])
         }
+
+        rssRows.push([
+          { text: '📘 Facebook EN', callback_data: `facebook_en_${newsId}` },
+          { text: '📘 Facebook NO', callback_data: `facebook_no_${newsId}` },
+          { text: '📘 Facebook UA', callback_data: `facebook_ua_${newsId}` }
+        ])
+        rssRows.push([
+          { text: '📸 Instagram EN', callback_data: `instagram_en_${newsId}` },
+          { text: '📸 Instagram NO', callback_data: `instagram_no_${newsId}` },
+          { text: '📸 Instagram UA', callback_data: `instagram_ua_${newsId}` }
+        ])
+
+        if (!rssShowLinkedIn) {
+          rssRows.push([
+            { text: '🔗 LinkedIn (override)', callback_data: `linkedin_en_${newsId}` },
+            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+          ])
+        } else {
+          rssRows.push([
+            { text: '⏭️ Skip', callback_data: `skip_social_${newsId}` }
+          ])
+        }
+
+        const rssSocialKeyboard = { inline_keyboard: rssRows }
 
         const rssTypeLabel = publicationType === 'blog' ? 'блог' : 'новину'
         await fetch(
@@ -1414,7 +1484,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n⏳ <b>AI рерайт RSS ${rssTypeLabel} EN/NO/UA у фоні...</b>\n📱 <i>Можете вже обирати соцмережі:</i>`),
+              text: truncateForTelegram(messageText, `\n\n⏳ <b>AI рерайт RSS ${rssTypeLabel} EN/NO/UA у фоні...</b>${rssLinkedinWarning}\n📱 <i>Можете вже обирати соцмережі:</i>`),
               parse_mode: 'HTML',
               reply_markup: rssSocialKeyboard
             })
@@ -2652,6 +2722,23 @@ serve(async (req) => {
 
         console.log('✅ News record verified:', newsCheck.id, newsCheck.original_title?.substring(0, 50))
 
+        // Get today's image generation count for provider info
+        let todayImageCount = 0
+        let activeProvider = 'Grok → Nano Banana'
+        try {
+          const today = new Date().toISOString().split('T')[0]
+          const { data: usageData } = await supabase
+            .from('image_provider_usage')
+            .select('provider_name, success_count')
+            .eq('usage_date', today)
+          if (usageData) {
+            todayImageCount = usageData.reduce((sum: number, r: any) => sum + (r.success_count || 0), 0)
+          }
+        } catch (e) {
+          console.log('⚠️ Could not fetch image count:', e)
+        }
+        const todayDateStr = new Date().toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })
+
         // Show "generating" message
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
@@ -2660,13 +2747,13 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               callback_query_id: callbackId,
-              text: `🎨 Генерую зображення ${langNames[selectedLang] || selectedLang}...`,
+              text: `🎨 Генерую зображення (${activeProvider})...`,
               show_alert: false
             })
           }
         )
 
-        // Update message to show progress
+        // Update message to show progress with provider info
         const progressEditResponse = await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
           {
@@ -2675,7 +2762,7 @@ serve(async (req) => {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація зображення ${langNames[selectedLang] || selectedLang}...</b>\n<i>Це може зайняти до 30 секунд</i>`),
+              text: truncateForTelegram(messageText, `\n\n⏳ <b>Генерація зображення ${langNames[selectedLang] || selectedLang}...</b>\n🤖 Провайдер: <b>${activeProvider}</b>\n📊 Згенеровано сьогодні (${todayDateStr}): <b>${todayImageCount}</b> зображень\n<i>Це може зайняти до 30 секунд</i>`),
               parse_mode: 'HTML'
             })
           }
@@ -2747,6 +2834,9 @@ serve(async (req) => {
             // Wait for wide image to complete before showing result
             await wideImagePromise
 
+            // Extract provider name from response
+            const providerUsed = imageGenResult.provider || imageGenResult.debug?.provider || 'AI'
+
             // Success! Show both images with appropriate buttons based on source type
             const newImageUrl = imageGenResult.processedImageUrl
 
@@ -2803,7 +2893,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_id: messageId,
-                  text: truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${selectedLang.toUpperCase()})!</b>\n${squareImageLink}${wideImageLink}`),
+                  text: truncateForTelegram(messageText, `\n\n✅ <b>Зображення згенеровано (${selectedLang.toUpperCase()})!</b>\n🤖 <i>${providerUsed}</i>\n${squareImageLink}${wideImageLink}`),
                   parse_mode: 'HTML',
                   reply_markup: newKeyboard
                 })

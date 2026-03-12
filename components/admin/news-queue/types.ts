@@ -44,6 +44,18 @@ export interface NewsItem {
   auto_publish_status: string | null
   auto_publish_error: string | null
   preset_config: any | null
+  rss_analysis: {
+    relevance_score?: number
+    linkedin_score?: number
+    trending_keywords?: string[]
+    trending_data?: {
+      hn?: { bonus: number; hnPosts: number; topScore: number }
+      google_trends?: { bonus: number; matchedTrends: string[] }
+      total_bonus?: number
+    }
+    summary?: string
+  } | null
+  image_provider_used: string | null
 }
 
 export interface NewsStats {

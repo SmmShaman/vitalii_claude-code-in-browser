@@ -80,15 +80,68 @@ serve(async (req) => {
       throw new Error('No RSS analysis found for this news record')
     }
 
-    // Check if auto-publish is enabled — skip Telegram bot and fire auto-publish pipeline
-    const { data: autoPublishSetting } = await supabase
+    // Check stream mode and auto-publish settings
+    const { data: modeSettings } = await supabase
       .from('api_settings')
-      .select('key_value')
-      .eq('key_name', 'ENABLE_AUTO_PUBLISH')
-      .single()
+      .select('key_name, key_value')
+      .in('key_name', ['STREAM_MODE', 'ENABLE_AUTO_PUBLISH'])
 
-    const isAutoPublishEnabled = autoPublishSetting?.key_value === 'true'
+    const streamMode = modeSettings?.find((s: any) => s.key_name === 'STREAM_MODE')?.key_value || 'legacy'
+    const isAutoPublishEnabled = modeSettings?.find((s: any) => s.key_name === 'ENABLE_AUTO_PUBLISH')?.key_value === 'true'
 
+    // ═══════════════════════════════════════════════════
+    // STREAM MODE: website-publish only (no images, no social, 1 language)
+    // ═══════════════════════════════════════════════════
+    if (streamMode === 'streams') {
+      console.log('🌊 Stream mode — publishing to website only')
+
+      // Lookup source name
+      let streamSourceName = ''
+      if (news.source_id) {
+        const { data: srcData } = await supabase
+          .from('news_sources').select('name').eq('id', news.source_id).single()
+        if (srcData?.name) streamSourceName = srcData.name
+      }
+      if (!streamSourceName) {
+        const fallbackUrl = news.original_url || news.rss_source_url || ''
+        try { streamSourceName = new URL(fallbackUrl).hostname.replace('www.', '') } catch { streamSourceName = 'RSS' }
+      }
+
+      // Fire website-publish (fire-and-forget)
+      fetch(`${SUPABASE_URL}/functions/v1/website-publish`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ newsId: news.id })
+      }).catch(e => console.warn('⚠️ website-publish fire error:', e))
+
+      // Send lightweight info message to Telegram (no buttons)
+      const linkedinScore = (analysis as any)?.linkedin_score || 0
+      const infoText = `📰 <b>Опубліковано:</b> ${escapeHtml((news.original_title || 'Untitled').substring(0, 150))}\n📌 ${escapeHtml(streamSourceName)} · ${analysis.relevance_score}/10${linkedinScore > 0 ? ` | 🔗 LI:${linkedinScore}/10` : ''}`
+
+      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: infoText,
+            parse_mode: 'HTML'
+          })
+        })
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, newsId: news.id, stream: 'website-publish' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ═══════════════════════════════════════════════════
+    // LEGACY MODE: auto-publish pipeline (images, 3 languages, social)
+    // ═══════════════════════════════════════════════════
     if (isAutoPublishEnabled) {
       console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for RSS article ${news.id}`)
 

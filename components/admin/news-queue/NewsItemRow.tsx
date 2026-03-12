@@ -105,6 +105,11 @@ export function NewsItemRow({ item, isExpanded, onToggleExpand, onDelete }: News
                   <ExternalLink className="h-2.5 w-2.5" />
                 </a>
               )}
+              {item.rss_analysis?.relevance_score && (
+                <span className="text-gray-300">
+                  {item.rss_analysis.relevance_score}/10
+                </span>
+              )}
               {item.pre_moderation_status === 'rejected' && item.rejection_reason && (
                 <span className="text-red-400 truncate max-w-[150px]" title={item.rejection_reason}>
                   ⚠️ {item.rejection_reason}
@@ -164,6 +169,30 @@ export function NewsItemRow({ item, isExpanded, onToggleExpand, onDelete }: News
                   )
                 })}
               </div>
+
+              {/* LinkedIn Score & Trending */}
+              {item.rss_analysis?.linkedin_score !== undefined && (
+                <div className="flex flex-wrap gap-2 mb-2 text-[10px]">
+                  <span className={`px-1.5 py-0.5 rounded ${item.rss_analysis.linkedin_score >= 7 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                    🔗 LinkedIn: {item.rss_analysis.linkedin_score}/10
+                  </span>
+                  {item.rss_analysis?.trending_data?.hn && item.rss_analysis.trending_data.hn.bonus > 0 && (
+                    <span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">
+                      🟠 HN: +{item.rss_analysis.trending_data.hn.bonus} ({item.rss_analysis.trending_data.hn.hnPosts} posts, top {item.rss_analysis.trending_data.hn.topScore} pts)
+                    </span>
+                  )}
+                  {item.rss_analysis?.trending_data?.google_trends && item.rss_analysis.trending_data.google_trends.bonus > 0 && (
+                    <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                      📈 Trends: +{item.rss_analysis.trending_data.google_trends.bonus} ({item.rss_analysis.trending_data.google_trends.matchedTrends?.join(', ')})
+                    </span>
+                  )}
+                  {item.image_provider_used && (
+                    <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                      🤖 {item.image_provider_used}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Content Preview */}
               <p className="text-[10px] text-gray-400 line-clamp-2 mb-2">

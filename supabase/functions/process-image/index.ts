@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-02-27-v11-cascading-fix'
+const VERSION = '2026-03-11-v12-grok-primary'
 
 // Image generation models in priority order (all use generateContent API)
 const IMAGE_GENERATION_MODELS = [
@@ -27,18 +27,15 @@ const RETRY_DELAY_MS = 2_000
 
 interface CascadingProvider {
   name: string
-  type: 'cloudflare' | 'together' | 'pollinations' | 'huggingface' | 'gemini'
+  type: 'grok' | 'gemini'
   model: string
   apiKeyEnv: string
   priority: number
 }
 
 const CASCADING_PROVIDERS: CascadingProvider[] = [
-  { name: 'Cloudflare FLUX', type: 'cloudflare', model: '@cf/black-forest-labs/flux-1-schnell', apiKeyEnv: 'CLOUDFLARE_AI_TOKEN', priority: 1 },
-  { name: 'Together AI FLUX', type: 'together', model: 'black-forest-labs/FLUX.1-schnell-Free', apiKeyEnv: 'TOGETHER_API_KEY', priority: 2 },
-  { name: 'Pollinations', type: 'pollinations', model: 'flux', apiKeyEnv: '', priority: 3 },
-  { name: 'HuggingFace FLUX', type: 'huggingface', model: 'black-forest-labs/FLUX.1-schnell', apiKeyEnv: 'HUGGINGFACE_TOKEN', priority: 4 },
-  { name: 'Gemini (paid fallback)', type: 'gemini', model: 'gemini-2.5-flash-image', apiKeyEnv: 'GOOGLE_API_KEY', priority: 5 },
+  { name: 'Grok', type: 'grok', model: 'grok-imagine-image', apiKeyEnv: 'XAI_API_KEY', priority: 1 },
+  { name: 'Nano Banana', type: 'gemini', model: 'gemini-3-pro-image-preview', apiKeyEnv: 'GOOGLE_API_KEY', priority: 2 },
 ]
 
 /**
@@ -127,69 +124,13 @@ async function getProviderApiKey(supabase: any, keyName: string): Promise<string
 }
 
 /**
- * Generate image with Cloudflare Workers AI (FLUX.1 schnell)
+ * Generate image with xAI Grok (grok-imagine-image)
+ * OpenAI-compatible API: POST https://api.x.ai/v1/images/generations
  */
-async function generateWithCloudflare(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
-  const accountId = await getProviderApiKey(supabase, 'CLOUDFLARE_ACCOUNT_ID')
-  const apiToken = await getProviderApiKey(supabase, 'CLOUDFLARE_AI_TOKEN')
-  if (!accountId || !apiToken) {
-    console.log('⚠️ Cloudflare: missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_AI_TOKEN')
-    return null
-  }
-
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
-
-    // FLUX schnell doesn't support aspect ratio natively, use width/height
-    const width = aspectRatio === '16:9' ? 1024 : 1024
-    const height = aspectRatio === '16:9' ? 576 : 1024
-
-    const response = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          width,
-          height,
-          num_steps: 4,
-        }),
-        signal: controller.signal,
-      }
-    )
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      console.error(`❌ Cloudflare error: ${response.status}`)
-      return null
-    }
-
-    // Cloudflare returns raw image bytes
-    const arrayBuffer = await response.arrayBuffer()
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    )
-    console.log('✅ Cloudflare FLUX generated image successfully')
-    return base64
-  } catch (e: any) {
-    console.error('❌ Cloudflare error:', e.name === 'AbortError' ? 'Timeout' : e.message)
-    return null
-  }
-}
-
-/**
- * Generate image with Together AI (FLUX.1 schnell-Free)
- */
-async function generateWithTogether(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
-  const apiKey = await getProviderApiKey(supabase, 'TOGETHER_API_KEY')
+async function generateWithGrok(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
+  const apiKey = await getProviderApiKey(supabase, 'XAI_API_KEY')
   if (!apiKey) {
-    console.log('⚠️ Together AI: missing TOGETHER_API_KEY')
+    console.log('⚠️ Grok: missing XAI_API_KEY')
     return null
   }
 
@@ -197,20 +138,19 @@ async function generateWithTogether(prompt: string, aspectRatio: '1:1' | '16:9',
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
 
-    const width = aspectRatio === '16:9' ? 1024 : 1024
-    const height = aspectRatio === '16:9' ? 576 : 1024
+    // Grok supports size as "WxH" string
+    const size = aspectRatio === '16:9' ? '1024x576' : '1024x1024'
 
-    const response = await fetch('https://api.together.xyz/v1/images/generations', {
+    const response = await fetch('https://api.x.ai/v1/images/generations', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'black-forest-labs/FLUX.1-schnell-Free',
+        model: 'grok-imagine-image',
         prompt,
-        width,
-        height,
+        size,
         n: 1,
         response_format: 'b64_json',
       }),
@@ -221,109 +161,39 @@ async function generateWithTogether(prompt: string, aspectRatio: '1:1' | '16:9',
 
     if (!response.ok) {
       const errText = await response.text()
-      console.error(`❌ Together AI error: ${response.status} - ${errText.substring(0, 200)}`)
+      console.error(`❌ Grok error: ${response.status} - ${errText.substring(0, 200)}`)
       return null
     }
 
     const result = await response.json()
     const b64 = result.data?.[0]?.b64_json
     if (!b64) {
-      console.error('❌ Together AI: no image in response')
+      // Fallback: check for URL format
+      const url = result.data?.[0]?.url
+      if (url) {
+        const imgResp = await fetch(url)
+        if (imgResp.ok) {
+          const arrayBuffer = await imgResp.arrayBuffer()
+          const base64 = btoa(
+            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          )
+          console.log('✅ Grok generated image successfully (URL format)')
+          return base64
+        }
+      }
+      console.error('❌ Grok: no image in response')
       return null
     }
-    console.log('✅ Together AI FLUX generated image successfully')
+    console.log('✅ Grok generated image successfully')
     return b64
   } catch (e: any) {
-    console.error('❌ Together AI error:', e.name === 'AbortError' ? 'Timeout' : e.message)
+    console.error('❌ Grok error:', e.name === 'AbortError' ? 'Timeout' : e.message)
     return null
   }
 }
 
 /**
- * Generate image with Pollinations AI (free, no API key)
- */
-async function generateWithPollinations(prompt: string, aspectRatio: '1:1' | '16:9'): Promise<string | null> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30_000) // 30s max for Pollinations
-
-    const width = aspectRatio === '16:9' ? 1024 : 1024
-    const height = aspectRatio === '16:9' ? 576 : 1024
-
-    const encodedPrompt = encodeURIComponent(prompt.substring(0, 500))
-    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`
-
-    const response = await fetch(url, { signal: controller.signal })
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      console.error(`❌ Pollinations error: ${response.status}`)
-      return null
-    }
-
-    const arrayBuffer = await response.arrayBuffer()
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    )
-    console.log('✅ Pollinations generated image successfully')
-    return base64
-  } catch (e: any) {
-    console.error('❌ Pollinations error:', e.name === 'AbortError' ? 'Timeout' : e.message)
-    return null
-  }
-}
-
-/**
- * Generate image with Hugging Face Inference API (FLUX.1 schnell)
- */
-async function generateWithHuggingFace(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
-  const token = await getProviderApiKey(supabase, 'HUGGINGFACE_TOKEN')
-  if (!token) {
-    console.log('⚠️ HuggingFace: missing HUGGINGFACE_TOKEN')
-    return null
-  }
-
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
-
-    // HuggingFace Inference API uses simple JSON input
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ inputs: prompt }),
-        signal: controller.signal,
-      }
-    )
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error(`❌ HuggingFace error: ${response.status} - ${errText.substring(0, 200)}`)
-      return null
-    }
-
-    // HuggingFace returns raw image bytes
-    const arrayBuffer = await response.arrayBuffer()
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    )
-    console.log('✅ HuggingFace FLUX generated image successfully')
-    return base64
-  } catch (e: any) {
-    console.error('❌ HuggingFace error:', e.name === 'AbortError' ? 'Timeout' : e.message)
-    return null
-  }
-}
-
-/**
- * Generate image using cascading providers (free → paid fallback)
+ * Generate image using cascading providers (Grok → Nano Banana fallback)
  * Returns base64 image data or null if all fail
  */
 async function generateImageCascading(
@@ -333,7 +203,7 @@ async function generateImageCascading(
   language?: 'en' | 'no' | 'ua',
   aspectRatio: '1:1' | '16:9' = '1:1'
 ): Promise<{ base64: string; provider: string; model: string } | null> {
-  // Simplified prompt for non-Gemini models (no text instructions)
+  // Simplified prompt for Grok (no text/branding instructions)
   const cleanPrompt = `Professional news illustration for LinkedIn. ${prompt}. Style: Modern, professional, high quality. No text on image.`
 
   for (const provider of CASCADING_PROVIDERS) {
@@ -342,23 +212,13 @@ async function generateImageCascading(
     let base64: string | null = null
 
     switch (provider.type) {
-      case 'cloudflare':
-        base64 = await generateWithCloudflare(cleanPrompt, aspectRatio, supabase)
-        break
-      case 'together':
-        base64 = await generateWithTogether(cleanPrompt, aspectRatio, supabase)
-        break
-      case 'pollinations':
-        base64 = await generateWithPollinations(cleanPrompt, aspectRatio)
-        break
-      case 'huggingface':
-        base64 = await generateWithHuggingFace(cleanPrompt, aspectRatio, supabase)
+      case 'grok':
+        base64 = await generateWithGrok(cleanPrompt, aspectRatio, supabase)
         break
       case 'gemini':
         // For Gemini fallback, use existing function with full prompt (supports text)
         const imageUrl = await generateImageFromText(prompt, apiKey, language, 'general', false, aspectRatio)
         if (imageUrl) {
-          // Download the uploaded image back as base64 for overlay
           try {
             const resp = await fetch(imageUrl)
             if (resp.ok) {
@@ -384,7 +244,7 @@ async function generateImageCascading(
     console.log(`⚠️ ${provider.name} failed, trying next...`)
   }
 
-  console.log('❌ All cascading providers failed')
+  console.log('❌ All providers failed (Grok + Nano Banana)')
   return null
 }
 
@@ -470,6 +330,7 @@ interface ProcessImageResponse {
   error?: string
   message?: string
   aspectRatio?: '1:1' | '16:9'
+  provider?: string  // Which provider generated the image (Grok / Nano Banana)
   debug?: {
     version: string
     timestamp: string
@@ -734,6 +595,7 @@ Colors: Vibrant but professional.`
         success: true,
         processedImageUrl,
         aspectRatio,
+        provider: result.provider,
         message: `Image generated by ${result.provider} (${aspectRatio})`,
         debug: {
           version: VERSION,
@@ -748,8 +610,50 @@ Colors: Vibrant but professional.`
   }
 
   // ==========================================
-  // GEMINI ONLY MODE: Original behavior
+  // GEMINI ONLY MODE: Try Grok first, then Gemini
   // ==========================================
+
+  // Try Grok first (even in gemini_only mode) — only on first attempt
+  if (retryCount === 0) {
+    console.log('🔄 Trying Grok as primary provider...')
+    const grokCleanPrompt = `Professional news illustration for LinkedIn. ${imagePrompt}. Style: Modern, professional, high quality. No text on image.`
+    const grokResult = await generateWithGrok(grokCleanPrompt, aspectRatio, supabase)
+
+    if (grokResult) {
+      await trackProviderUsage(supabase, 'Grok', 'grok-imagine-image', true)
+
+      const processedImageUrl = await uploadProcessedImage(grokResult)
+
+      const updateData: Record<string, any> = {
+        image_processed_at: new Date().toISOString(),
+        image_provider_used: 'Grok',
+        image_model_used: 'grok-imagine-image',
+        image_retry_count: 0,
+      }
+      if (aspectRatio === '16:9') {
+        updateData.processed_image_url_wide = processedImageUrl
+      } else {
+        updateData.processed_image_url = processedImageUrl
+      }
+      await supabase.from('news').update(updateData).eq('id', newsId)
+
+      console.log(`✅ Image generated by Grok (${aspectRatio}): ${processedImageUrl}`)
+      return new Response(
+        JSON.stringify({
+          success: true,
+          processedImageUrl,
+          aspectRatio,
+          provider: 'Grok',
+          message: `Image generated by Grok (${aspectRatio})`,
+          debug: { version: VERSION, timestamp: new Date().toISOString(), lastApiError: null, provider: 'Grok', model: 'grok-imagine-image' }
+        } as ProcessImageResponse),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    await trackProviderUsage(supabase, 'Grok', 'grok-imagine-image', false)
+    console.log('⚠️ Grok failed, falling back to Nano Banana (Gemini)...')
+  }
 
   // If retrying, add improvement feedback from previous validation
   if (retryCount > 0 && previousIssues.length > 0) {
@@ -794,9 +698,9 @@ Generate a BETTER image addressing all these issues.`
     )
   }
 
-  // Track Gemini usage
+  // Track Nano Banana (Gemini) usage
   const usedModel = IMAGE_GENERATION_MODELS[0]
-  await trackProviderUsage(supabase, 'Gemini', usedModel, true)
+  await trackProviderUsage(supabase, 'Nano Banana', usedModel, true)
 
   // Run Critic Agent validation
   console.log('🔍 Running Critic Agent validation...')
@@ -827,7 +731,7 @@ Generate a BETTER image addressing all these issues.`
     image_quality_score: validation.score,
     image_validation_issues: validation.issues,
     image_retry_count: retryCount,
-    image_provider_used: 'Gemini',
+    image_provider_used: 'Nano Banana',
     image_model_used: usedModel,
   }
 
@@ -850,6 +754,7 @@ Generate a BETTER image addressing all these issues.`
       success: true,
       processedImageUrl,
       aspectRatio,
+      provider: 'Nano Banana',
       message: validation.isValid
         ? `Image generated and validated successfully (${aspectRatio})`
         : `Image generated with score ${validation.score}/10 (${validation.issues.length} issues) - ${aspectRatio}`,
@@ -857,7 +762,7 @@ Generate a BETTER image addressing all these issues.`
         version: VERSION,
         timestamp: new Date().toISOString(),
         lastApiError: null,
-        provider: 'Gemini',
+        provider: 'Nano Banana',
         model: usedModel,
         validation: {
           score: validation.score,
