@@ -226,25 +226,32 @@ export function NewsArticle({ slug, initialLanguage, initialData }: NewsArticleP
 
         {/* Hero Section - Full Width */}
         {heroImage && !news.video_url && (
-          <button
-            type="button"
-            onClick={() => handleImageClick(heroImage)}
-            className="relative w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-[#221F3A] cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#88B04B] focus:ring-offset-2"
-            aria-label={`View ${title} image in fullscreen`}
-          >
-            <Image
-              src={heroImage}
-              alt={title}
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-              onError={() => setHeroImgFailed(true)}
-              unoptimized
-            />
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
-          </button>
+          <figure className="relative">
+            <button
+              type="button"
+              onClick={() => handleImageClick(heroImage)}
+              className="relative w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-[#221F3A] cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#88B04B] focus:ring-offset-2"
+              aria-label={`View ${title} image in fullscreen`}
+            >
+              <Image
+                src={heroImage}
+                alt={title}
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover"
+                onError={() => setHeroImgFailed(true)}
+                unoptimized
+              />
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
+            </button>
+            {sourceName && !news.processed_image_url && (
+              <figcaption className="absolute bottom-2 right-3 text-xs text-white/60 bg-black/40 px-2 py-0.5 rounded">
+                Photo: {sourceName}
+              </figcaption>
+            )}
+          </figure>
         )}
 
         {/* Video Hero (if video exists) */}
