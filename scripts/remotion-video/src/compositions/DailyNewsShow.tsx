@@ -68,6 +68,12 @@ export interface NewsSegment {
   focusArea?: { x: number; y: number; scale: number };
   /** Avatar video clip source (PiP overlay) */
   avatarSrc?: string;
+  /** Additional stock images for cycling (Pexels) */
+  alternateImages?: string[];
+  /** Seconds per image before crossfade (default: 4) */
+  imageCycleDuration?: number;
+  /** B-roll video clips to interleave */
+  bRollVideos?: string[];
 }
 
 export interface DailyNewsShowProps {
@@ -312,6 +318,9 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             colorGrade={segment.colorGrade}
             focusArea={segment.focusArea}
             avatarSrc={segment.avatarSrc}
+            alternateImages={segment.alternateImages}
+            imageCycleDuration={segment.imageCycleDuration}
+            bRollVideos={segment.bRollVideos}
           />
         ),
         startFrame: currentFrame,
@@ -369,6 +378,9 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             colorGrade={segment.colorGrade}
             focusArea={segment.focusArea}
             avatarSrc={segment.avatarSrc}
+            alternateImages={segment.alternateImages}
+            imageCycleDuration={segment.imageCycleDuration}
+            bRollVideos={segment.bRollVideos}
           />
         ),
         startFrame: currentFrame,

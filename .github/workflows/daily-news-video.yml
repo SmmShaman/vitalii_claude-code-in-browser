@@ -162,6 +162,9 @@ jobs:
           ENABLE_AVATAR: ${{ secrets.ENABLE_AVATAR || 'false' }}
           AVATAR_SOURCE_PHOTO_URL: ${{ secrets.AVATAR_SOURCE_PHOTO_URL }}
 
+          # Pexels (stock images + b-roll)
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
           # Telegram (completion notification)
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

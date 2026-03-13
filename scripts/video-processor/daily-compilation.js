@@ -27,6 +27,7 @@ import { generateVoiceover } from './generate-voiceover.js';
 import { generateClickbaitMeta } from './generate-clickbait.js';
 import { generateAIThumbnail } from './generate-ai-thumbnail.js';
 import { generateAllAvatarClips } from './generate-avatar.js';
+import { downloadPexelsMedia } from './pexels-media.js';
 
 // ── Config ──
 
@@ -781,6 +782,36 @@ async function main() {
       transition: segment.transition || 'fade',
       textReveal: segment.textReveal || 'default',
     });
+  }
+
+  // Step 4a: Download Pexels stock images + b-roll for richer visuals
+  if (process.env.PEXELS_API_KEY) {
+    console.log('\n🖼️ Step 3a: Downloading Pexels stock media...');
+    try {
+      const pexelsSegments = segments.map(s => ({
+        headline: s.headline,
+        category: s.category,
+        keyQuote: s.keyQuote,
+      }));
+      const pexelsMedia = await downloadPexelsMedia(pexelsSegments, publicDir);
+
+      // Attach Pexels media to segments (only for non-video segments)
+      for (let i = 0; i < segments.length; i++) {
+        if (segments[i].videoSrc) continue; // article has its own video, skip stock media
+        const media = pexelsMedia[i];
+        if (media && media.images.length > 0) {
+          segments[i].alternateImages = media.images; // filenames relative to public/
+          segments[i].imageCycleDuration = Math.max(3, Math.round(segments[i].durationSeconds / (media.images.length + 1)));
+        }
+        if (media && media.videos.length > 0) {
+          segments[i].bRollVideos = media.videos;
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️ Pexels media download failed, continuing without: ${e.message}`);
+    }
+  } else {
+    console.log('\n🖼️ Skipping Pexels media (no PEXELS_API_KEY)');
   }
 
   // Step 4b: Generate avatar clips (if enabled)
