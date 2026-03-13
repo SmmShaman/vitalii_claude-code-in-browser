@@ -854,7 +854,7 @@ async function main() {
   const dividersTotalDuration = segments.length * dividerDuration;
   const totalDuration = introDuration + roundupDuration + dividersTotalDuration + segmentsTotalDuration + overflowDuration + outroDuration;
 
-  const voiceoverTotalDuration = segmentVoiceovers.reduce((sum, vo) => sum + vo.durationSeconds, 0);
+  const voiceoverTotalDuration = segmentVoiceovers.reduce((sum, vo) => sum + (Number(vo.durationSeconds) || 0), 0);
   console.log(`\n⏱️ Total duration: ${totalDuration}s`);
   console.log(`   Intro: ${introDuration}s${roundupDuration ? `, Roundup: ${roundupDuration}s` : ''}, Segments: ${segmentsTotalDuration}s, Dividers: ${dividersTotalDuration}s${overflowDuration ? `, Overflow: ${overflowDuration}s` : ''}, Outro: ${outroDuration}s`);
   console.log(`   Voiceover total: ${voiceoverTotalDuration.toFixed(1)}s (${segmentVoiceovers.length} clips)`);
