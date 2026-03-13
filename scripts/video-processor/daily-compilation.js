@@ -524,6 +524,35 @@ async function dispatchThumbnailGeneration(dateStr, clickbaitTitle) {
 }
 
 /**
+ * Send direct Telegram notification (for cron/manual runs without DRAFT_ID).
+ */
+async function notifyTelegramDirect(dateStr, youtubeUrl) {
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+  if (!BOT_TOKEN || !CHAT_ID) {
+    console.log('⚠️ Telegram credentials not set, skipping notification');
+    return;
+  }
+
+  try {
+    const text = `🎬 <b>Дайджест за ${dateStr} готовий!</b>\n\n📺 <a href="${youtubeUrl}">Дивитись на YouTube</a>`;
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: false,
+      }),
+    });
+    console.log('📺 Telegram notification sent');
+  } catch (e) {
+    console.log(`⚠️ Failed to send Telegram notification: ${e.message}`);
+  }
+}
+
+/**
  * Notify the daily-video-bot that rendering is complete.
  */
 async function notifyBotComplete(dateStr, youtubeUrl) {
@@ -1002,9 +1031,12 @@ async function main() {
     await fs.unlink(path.join(publicDir, avatarFile)).catch(() => {});
   }
 
-  // Notify Telegram bot if in draft mode
+  // Notify Telegram bot
   if (DRAFT_ID) {
     await notifyBotComplete(dateStr, result.watchUrl);
+  } else {
+    // Direct Telegram notification for cron/manual runs
+    await notifyTelegramDirect(dateStr, result.watchUrl);
   }
 
   console.log(`\n🎉 Daily compilation complete!`);

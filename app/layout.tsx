@@ -86,18 +86,8 @@ export default function RootLayout({
     <html lang="en" className={comfortaa.variable}>
       <head>
         {/* Preload hero images for LCP — BentoGrid About & Services sections */}
-        <link
-          rel="preload"
-          as="image"
-          href="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80&fm=webp"
-          type="image/webp"
-        />
-        <link
-          rel="preload"
-          as="image"
-          href="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&q=80&fm=webp"
-          type="image/webp"
-        />
+        <link rel="preload" as="image" href="/images/hero/about.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/images/hero/services.webp" type="image/webp" />
       </head>
       <body>
         {/* Skip Link for keyboard navigation - WCAG 2.4.1 */}

@@ -99,6 +99,10 @@ jobs:
           ENABLE_AVATAR: ${{ secrets.ENABLE_AVATAR || 'false' }}
           AVATAR_SOURCE_PHOTO_URL: ${{ secrets.AVATAR_SOURCE_PHOTO_URL }}
 
+          # Telegram (completion notification)
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
           # Video settings
           LANGUAGE: ${{ github.event.client_payload.language || github.event.inputs.language || 'no' }}
           FORMAT: ${{ github.event.client_payload.format || github.event.inputs.format || 'horizontal' }}

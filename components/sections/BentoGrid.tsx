@@ -36,37 +36,37 @@ const sections: Section[] = [
     id: 'about',
     titleKey: 'about_title',
     contentKey: 'about_content',
-    image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&q=80&fm=webp',
+    image: '/images/hero/about.webp',
   },
   {
     id: 'services',
     titleKey: 'services_title',
     contentKey: 'services_content',
-    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&q=80&fm=webp',
+    image: '/images/hero/services.webp',
   },
   {
     id: 'projects',
     titleKey: 'projects_title',
     contentKey: 'projects_content',
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80&fm=webp',
+    image: '/images/hero/projects.webp',
   },
   {
     id: 'skills',
     titleKey: 'skills_title',
     contentKey: 'skills_content',
-    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80&fm=webp',
+    image: '/images/hero/skills.webp',
   },
   {
     id: 'news',
     titleKey: 'news_title',
     contentKey: 'news_description',
-    image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80&fm=webp',
+    image: '/images/hero/news.webp',
   },
   {
     id: 'blog',
     titleKey: 'blog_title',
     contentKey: 'blog_description',
-    image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&q=80&fm=webp',
+    image: '/images/hero/blog.webp',
   },
 ];
 
