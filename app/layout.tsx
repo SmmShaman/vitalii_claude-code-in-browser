@@ -111,6 +111,8 @@ export default function RootLayout({
           {children}
           {modal}
         </Providers>
+        {/* Cloudflare Web Analytics — privacy-first, no cookies, no consent needed */}
+        <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "9aad069e09264dd5aedbad7f61d004c5"}' />
       </body>
     </html>
   )
