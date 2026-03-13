@@ -272,35 +272,56 @@ export async function downloadPexelsMedia(segments, publicDir) {
 // ---------------------------------------------------------------------------
 
 /**
- * Turn a segment's headline + category into a concise Pexels search query.
- * Strips common filler words to improve search relevance.
+ * Turn a segment's headline + category into a Pexels search query.
+ * Extracts company names, products, and key concepts for relevant results.
+ * Expects English headline (Pexels is English-language API).
  */
 function buildSearchQuery(segment) {
   const { headline = '', category = '' } = segment;
 
-  // Start with headline, append category if it adds useful context
+  // Common English stop words to filter out
+  const stopWords = new Set([
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'can', 'shall', 'for', 'and', 'nor', 'but',
+    'or', 'yet', 'so', 'in', 'on', 'at', 'to', 'from', 'by', 'with',
+    'about', 'into', 'through', 'after', 'before', 'above', 'below',
+    'between', 'out', 'off', 'over', 'under', 'again', 'further', 'then',
+    'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
+    'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no',
+    'not', 'only', 'own', 'same', 'than', 'too', 'very', 'just', 'new',
+    'its', 'his', 'her', 'their', 'our', 'your', 'this', 'that', 'these',
+    'says', 'said', 'also', 'now', 'get', 'gets', 'got', 'make', 'makes',
+  ]);
+
+  // Extract meaningful words: capitalize = likely proper noun (company/product)
+  const words = headline
+    .replace(/[^\w\s'-]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopWords.has(w.toLowerCase()));
+
+  // Prioritize capitalized words (company names, products) — up to 4
+  const properNouns = words.filter((w) => /^[A-Z]/.test(w)).slice(0, 4);
+  const otherWords = words.filter((w) => !/^[A-Z]/.test(w)).slice(0, 3);
+
+  // Build query: proper nouns first, then descriptive words
+  const queryParts = [...properNouns, ...otherWords].slice(0, 6);
+
+  // Add category context if query is too short
   const categoryMap = {
     tech: 'technology',
     ai: 'artificial intelligence',
-    business: 'business corporate',
-    startup: 'startup',
-    science: 'science research',
-    politics: 'politics government',
-    crypto: 'cryptocurrency blockchain',
+    business: 'business office',
+    startup: 'startup technology',
+    science: 'science laboratory',
+    crypto: 'cryptocurrency digital',
     health: 'health medical',
-    news: '',
   };
 
-  const categoryTerms = categoryMap[category.toLowerCase()] || category;
-  const raw = `${headline} ${categoryTerms}`.trim();
+  if (queryParts.length < 3) {
+    const extra = categoryMap[category.toLowerCase()] || '';
+    if (extra) queryParts.push(extra);
+  }
 
-  // Remove very short/noise words and clamp length for API
-  const cleaned = raw
-    .replace(/[^\w\s-]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length > 2)
-    .slice(0, 8)
-    .join(' ');
-
-  return cleaned || 'technology news';
+  return queryParts.join(' ') || 'technology business';
 }

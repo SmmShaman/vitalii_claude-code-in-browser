@@ -762,7 +762,8 @@ async function main() {
 
     // Duration: voiceover-driven — each segment lasts as long as its narration
     const vo = segmentVoiceovers[i];
-    const voDuration = vo ? Number(vo.durationSeconds) + 1 : 10;
+    const voDurationRaw = vo ? Number(vo.durationSeconds) : 0;
+    const voDuration = (voDurationRaw > 0 ? voDurationRaw : 10) + 1;
     let segDuration;
     if (videoFilename && videoDurationSec > 0) {
       // Video segment: use voiceover duration (not video duration!) — video plays as background, clipped to voice
@@ -794,8 +795,9 @@ async function main() {
   if (process.env.PEXELS_API_KEY) {
     console.log('\n🖼️ Step 3a: Downloading Pexels stock media...');
     try {
-      const pexelsSegments = segments.map(s => ({
-        headline: s.headline,
+      // Use English titles for Pexels search (Pexels is English-language API)
+      const pexelsSegments = segments.map((s, idx) => ({
+        headline: detailedArticles[idx]?.title_en || s.headline,
         category: s.category,
         keyQuote: s.keyQuote,
       }));
@@ -845,12 +847,12 @@ async function main() {
 
   // Calculate total duration from actual segment durations
   // Dynamic intro/outro duration based on TTS (minimum 4s)
-  const introDuration = introVoiceover ? Math.max(introVoiceover.durationSeconds + 1, 4) : 4;
-  const roundupDuration = roundupVoiceover ? Math.max(roundupVoiceover.durationSeconds + 1, 5) : 0;
-  const outroDuration = outroVoiceover ? Math.max(outroVoiceover.durationSeconds + 1, 4) : 4;
-  const overflowDuration = overflowVoiceover ? Math.max(overflowVoiceover.durationSeconds + 1, 4) : 0;
+  const introDuration = introVoiceover ? Math.max(Number(introVoiceover.durationSeconds) + 1, 4) : 4;
+  const roundupDuration = roundupVoiceover ? Math.max(Number(roundupVoiceover.durationSeconds) + 1, 5) : 0;
+  const outroDuration = outroVoiceover ? Math.max(Number(outroVoiceover.durationSeconds) + 1, 4) : 4;
+  const overflowDuration = overflowVoiceover ? Math.max(Number(overflowVoiceover.durationSeconds) + 1, 4) : 0;
   const dividerDuration = 3.5;
-  const segmentsTotalDuration = segments.reduce((sum, s) => sum + s.durationSeconds, 0);
+  const segmentsTotalDuration = segments.reduce((sum, s) => sum + Number(s.durationSeconds), 0);
   const dividersTotalDuration = segments.length * dividerDuration;
   const totalDuration = introDuration + roundupDuration + dividersTotalDuration + segmentsTotalDuration + overflowDuration + outroDuration;
 
