@@ -105,12 +105,15 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
 
   // ── Image Cycling Setup ──
   // Combine primary image with alternates into a full list for cycling
-  const hasImageCycling =
-    !hasVideo && alternateImages && alternateImages.length > 0;
+  const rawCycleImages =
+    !hasVideo && alternateImages && alternateImages.length > 0
+      ? [imageSrc, ...alternateImages].map((src) => resolve(src)).filter(Boolean)
+      : [];
+  const hasImageCycling = rawCycleImages.length > 1;
   const allImages = hasImageCycling
-    ? [imageSrc, ...alternateImages!].map((src) => resolve(src))
-    : [resolvedImage];
-  const imageCount = allImages.length;
+    ? rawCycleImages
+    : resolvedImage ? [resolvedImage] : [];
+  const imageCount = allImages.length || 1;
 
   // Frames per image and crossfade duration
   const CROSSFADE_FRAMES = 15; // ~0.5s at 30fps
