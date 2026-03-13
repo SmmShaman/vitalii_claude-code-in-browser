@@ -28,6 +28,7 @@ import { generateClickbaitMeta } from './generate-clickbait.js';
 import { generateAIThumbnail } from './generate-ai-thumbnail.js';
 import { generateAllAvatarClips } from './generate-avatar.js';
 import { downloadPexelsMedia } from './pexels-media.js';
+import { scrapeAllArticleImages } from './scrape-article-images.js';
 
 // ── Config ──
 
@@ -96,7 +97,7 @@ async function fetchYesterdayNews() {
 
   const { data, error } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, published_at, slug_en')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, published_at, slug_en, source_link, images')
     .eq('is_published', true)
     .gte('published_at', start)
     .lte('published_at', end)
@@ -448,7 +449,7 @@ async function loadFromDraft(draftId) {
   // Fetch articles
   const { data: articles, error: artError } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en, source_link, images')
     .in('id', draft.article_ids)
     .order('created_at', { ascending: true });
 
@@ -792,35 +793,64 @@ async function main() {
     });
   }
 
-  // Step 4a: Download Pexels stock images + b-roll for richer visuals
-  if (process.env.PEXELS_API_KEY) {
-    console.log('\n🖼️ Step 3a: Downloading Pexels stock media...');
-    try {
-      // Use English titles for Pexels search (Pexels is English-language API)
-      const pexelsSegments = segments.map((s, idx) => ({
-        headline: detailedArticles[idx]?.title_en || detailedArticles[idx]?.original_title || s.headline,
-        category: s.category,
-        keyQuote: s.keyQuote,
-      }));
-      const pexelsMedia = await downloadPexelsMedia(pexelsSegments, publicDir);
+  // Step 4a: Scrape real images from original articles (much more relevant than stock)
+  console.log('\n🌐 Step 3a: Scraping images from original articles...');
+  try {
+    const scrapeArticles = detailedArticles.map((a, idx) => ({
+      sourceLink: a.source_link || '',
+      existingImages: (a.images || []).filter(Boolean),
+    }));
+    const scrapedMedia = await scrapeAllArticleImages(scrapeArticles, publicDir);
 
-      // Attach Pexels media to segments (only for non-video segments)
-      for (let i = 0; i < segments.length; i++) {
-        if (segments[i].videoSrc) continue; // article has its own video, skip stock media
-        const media = pexelsMedia[i];
-        if (media && media.images.length > 0) {
-          segments[i].alternateImages = media.images; // filenames relative to public/
-          segments[i].imageCycleDuration = Math.max(3, Math.round(segments[i].durationSeconds / (media.images.length + 1)));
-        }
-        if (media && media.videos.length > 0) {
-          segments[i].bRollVideos = media.videos;
-        }
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i].videoSrc) continue;
+      const scraped = scrapedMedia[i];
+      if (scraped && scraped.images.length > 0) {
+        segments[i].alternateImages = scraped.images;
+        segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (scraped.images.length + 1)));
+        console.log(`  📸 Segment ${i}: ${scraped.images.length} article images`);
       }
-    } catch (e) {
-      console.log(`⚠️ Pexels media download failed, continuing without: ${e.message}`);
     }
-  } else {
-    console.log('\n🖼️ Skipping Pexels media (no PEXELS_API_KEY)');
+  } catch (e) {
+    console.log(`⚠️ Article scraping failed, continuing: ${e.message}`);
+  }
+
+  // Step 4a-2: Pexels fallback — only for segments with <2 scraped images + b-roll for all
+  if (process.env.PEXELS_API_KEY) {
+    const needsPexels = segments.some((s, i) => !s.videoSrc && (!s.alternateImages || s.alternateImages.length < 2));
+    if (needsPexels) {
+      console.log('\n🖼️ Step 3a-2: Pexels fallback for segments with few article images...');
+      try {
+        const pexelsSegments = segments.map((s, idx) => ({
+          headline: detailedArticles[idx]?.title_en || detailedArticles[idx]?.original_title || s.headline,
+          category: s.category,
+          keyQuote: s.keyQuote,
+        }));
+        const pexelsMedia = await downloadPexelsMedia(pexelsSegments, publicDir);
+
+        for (let i = 0; i < segments.length; i++) {
+          if (segments[i].videoSrc) continue;
+          const media = pexelsMedia[i];
+          const existing = segments[i].alternateImages || [];
+
+          // Add Pexels images only if article scraping yielded <2
+          if (existing.length < 2 && media && media.images.length > 0) {
+            segments[i].alternateImages = [...existing, ...media.images];
+            segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (segments[i].alternateImages.length + 1)));
+            console.log(`  🖼️ Segment ${i}: +${media.images.length} Pexels images (fallback)`);
+          }
+
+          // B-roll video from Pexels for all non-video segments
+          if (media && media.videos.length > 0 && !segments[i].bRollVideos) {
+            segments[i].bRollVideos = media.videos;
+          }
+        }
+      } catch (e) {
+        console.log(`⚠️ Pexels fallback failed, continuing: ${e.message}`);
+      }
+    } else {
+      console.log('\n✅ All segments have enough article images, skipping Pexels');
+    }
   }
 
   // Step 4b: Generate avatar clips (if enabled)
