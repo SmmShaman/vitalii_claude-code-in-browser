@@ -97,7 +97,7 @@ async function fetchYesterdayNews() {
 
   const { data, error } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, published_at, slug_en, source_link, images')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, published_at, slug_en, source_link, source_links, images')
     .eq('is_published', true)
     .gte('published_at', start)
     .lte('published_at', end)
@@ -449,7 +449,7 @@ async function loadFromDraft(draftId) {
   // Fetch articles
   const { data: articles, error: artError } = await supabase
     .from('news')
-    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en, source_link, images')
+    .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en, source_link, source_links, images')
     .in('id', draft.article_ids)
     .order('created_at', { ascending: true });
 
@@ -797,7 +797,7 @@ async function main() {
   console.log('\n🌐 Step 3a: Scraping images from original articles...');
   try {
     const scrapeArticles = detailedArticles.map((a, idx) => ({
-      sourceLink: a.source_link || '',
+      sourceLink: a.source_link || (a.source_links || []).find(l => l && !l.includes('t.me/')) || '',
       existingImages: (a.images || []).filter(Boolean),
     }));
     const scrapedMedia = await scrapeAllArticleImages(scrapeArticles, publicDir);
