@@ -760,16 +760,17 @@ async function main() {
       }
     }
 
-    // Duration: for video segments use max(voiceover, video), capped at 90s
+    // Duration: voiceover-driven, max 30s per segment (target: 4-5 min total video)
     const vo = segmentVoiceovers[i];
-    const voDuration = vo ? vo.durationSeconds + 1 : 10;
+    const voDuration = vo ? Number(vo.durationSeconds) + 1 : 10;
+    const MAX_SEGMENT_DURATION = 30; // hard cap: keep total video under 5 min
     let segDuration;
     if (videoFilename && videoDurationSec > 0) {
-      // Video segment: use video duration but cap at 90s, ensure voiceover fits
-      segDuration = Math.min(Math.max(videoDurationSec, voDuration), 90);
-      console.log(`     📐 Segment duration: ${segDuration.toFixed(1)}s (video: ${videoDurationSec.toFixed(1)}s, voice: ${voDuration.toFixed(1)}s)`);
+      // Video segment: use voiceover duration (not video duration!) — video plays as background, clipped
+      segDuration = Math.min(voDuration, MAX_SEGMENT_DURATION);
+      console.log(`     📐 Segment duration: ${segDuration.toFixed(1)}s (voice: ${voDuration.toFixed(1)}s, video: ${videoDurationSec.toFixed(1)}s — clipped to voice)`);
     } else {
-      segDuration = Math.max(voDuration, 8);
+      segDuration = Math.min(Math.max(voDuration, 8), MAX_SEGMENT_DURATION);
     }
 
     segments.push({
