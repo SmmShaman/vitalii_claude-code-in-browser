@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff, Zap, ZapOff, Calendar, Video, VideoOff } from 'lucide-react'
+import { Clock, Save, AlertCircle, CheckCircle, Info, RefreshCw, Shield, ShieldOff, Zap, ZapOff, Calendar, Video, VideoOff, Layers, ArrowRightLeft } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
 const CRON_PRESETS = [
@@ -23,6 +23,15 @@ export const CronScheduleSettings = () => {
 
   const [telegramScraperSchedule, setTelegramScraperSchedule] = useState('*/10 * * * *')
   const [fetchNewsSchedule, setFetchNewsSchedule] = useState('0 * * * *')
+
+  // Stream Mode state
+  const [streamMode, setStreamMode] = useState<'legacy' | 'streams'>('legacy')
+  const [savedStreamMode, setSavedStreamMode] = useState<'legacy' | 'streams'>('legacy')
+  const [streamModeLoading, setStreamModeLoading] = useState(false)
+  const [rewriteLanguage, setRewriteLanguage] = useState('en')
+  const [savedRewriteLanguage, setSavedRewriteLanguage] = useState('en')
+  const [topN, setTopN] = useState(3)
+  const [savedTopN, setSavedTopN] = useState(3)
 
   // Pre-moderation toggle state
   const [preModerationEnabled, setPreModerationEnabled] = useState(true)
@@ -63,6 +72,11 @@ export const CronScheduleSettings = () => {
     || slotMinutes !== savedSlotMinutes
     || maxPerDay !== savedMaxPerDay
 
+  // Check if there are unsaved stream mode changes
+  const hasUnsavedStreamModeChanges = streamMode !== savedStreamMode
+    || rewriteLanguage !== savedRewriteLanguage
+    || topN !== savedTopN
+
   // Check if there are unsaved pre-moderation changes
   const hasUnsavedPreModerationChanges = preModerationEnabled !== savedPreModerationValue
 
@@ -83,6 +97,28 @@ export const CronScheduleSettings = () => {
       setLoading(true)
       setTelegramScraperSchedule('*/10 * * * *')
       setFetchNewsSchedule('0 * * * *')
+
+      // Load stream mode settings
+      const { data: streamSettings } = await supabase
+        .from('api_settings')
+        .select('key_name, key_value')
+        .in('key_name', ['STREAM_MODE', 'STREAM1_REWRITE_LANGUAGE', 'STREAM3_TOP_N'])
+
+      if (streamSettings) {
+        for (const s of streamSettings) {
+          if (s.key_name === 'STREAM_MODE') {
+            const mode = s.key_value === 'streams' ? 'streams' : 'legacy'
+            setStreamMode(mode)
+            setSavedStreamMode(mode)
+          } else if (s.key_name === 'STREAM1_REWRITE_LANGUAGE') {
+            setRewriteLanguage(s.key_value || 'en')
+            setSavedRewriteLanguage(s.key_value || 'en')
+          } else if (s.key_name === 'STREAM3_TOP_N') {
+            const val = parseInt(s.key_value, 10)
+            if (!isNaN(val)) { setTopN(val); setSavedTopN(val) }
+          }
+        }
+      }
 
       // Load pre-moderation setting
       const { data: preModerationSetting, error } = await supabase
@@ -167,6 +203,57 @@ export const CronScheduleSettings = () => {
       console.error('Failed to load cron jobs:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Save stream mode settings
+  const saveStreamMode = async () => {
+    try {
+      setStreamModeLoading(true)
+      setSaveResult(null)
+
+      const settings = [
+        { key_name: 'STREAM_MODE', key_value: streamMode, description: 'Pipeline mode: legacy (auto-publish all) or streams (3-stream pipeline)' },
+        { key_name: 'STREAM1_REWRITE_LANGUAGE', key_value: rewriteLanguage, description: 'Rewrite language for website stream: en, no, smart' },
+        { key_name: 'STREAM3_TOP_N', key_value: topN.toString(), description: 'Top N articles for social media daily' },
+      ]
+
+      for (const setting of settings) {
+        const { data, error } = await supabase
+          .from('api_settings')
+          .update({ key_value: setting.key_value })
+          .eq('key_name', setting.key_name)
+          .select()
+
+        if (error) throw error
+
+        if (!data || data.length === 0) {
+          const { error: insertError } = await supabase
+            .from('api_settings')
+            .insert({ ...setting, is_active: true })
+            .select()
+
+          if (insertError) throw insertError
+        }
+      }
+
+      setSavedStreamMode(streamMode)
+      setSavedRewriteLanguage(rewriteLanguage)
+      setSavedTopN(topN)
+      setSaveResult({
+        success: true,
+        message: streamMode === 'streams'
+          ? `Streams mode active: Website (${rewriteLanguage.toUpperCase()}) + Video Digest + Top ${topN} Social`
+          : 'Legacy mode: all articles auto-published with 3-language rewrite + AI images + social posting'
+      })
+    } catch (error: any) {
+      console.error('Failed to save stream mode:', error)
+      setSaveResult({
+        success: false,
+        message: `Failed to save stream mode: ${error.message || 'Unknown error'}`
+      })
+    } finally {
+      setStreamModeLoading(false)
     }
   }
 
@@ -531,6 +618,119 @@ $$);`
           </div>
         </motion.div>
       )}
+
+      {/* Stream Mode Toggle */}
+      <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-lg ${streamMode === 'streams' ? 'bg-blue-500/20' : 'bg-gray-500/20'}`}>
+              {streamMode === 'streams' ? (
+                <Layers className="h-6 w-6 text-blue-400" />
+              ) : (
+                <ArrowRightLeft className="h-6 w-6 text-gray-400" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Pipeline Mode</h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {streamMode === 'streams'
+                  ? '3-Stream: Website + Video Digest + Top Social'
+                  : 'Legacy: auto-publish all articles with full processing'}
+              </p>
+            </div>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { setStreamMode(streamMode === 'streams' ? 'legacy' : 'streams'); setSaveResult(null) }}
+            className={`relative w-16 h-8 rounded-full transition-colors duration-300 cursor-pointer ${
+              streamMode === 'streams' ? 'bg-blue-500' : 'bg-gray-600'
+            } ${hasUnsavedStreamModeChanges ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-900' : ''}`}
+          >
+            <motion.div
+              className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
+              animate={{ left: streamMode === 'streams' ? '2rem' : '0.25rem' }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+          </motion.button>
+        </div>
+
+        <div className={`mt-4 p-3 rounded-lg ${streamMode === 'streams' ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-gray-500/10 border border-gray-500/30'}`}>
+          {streamMode === 'streams' ? (
+            <div className="space-y-2">
+              <p className="text-sm text-blue-300 font-medium">3-Stream Pipeline:</p>
+              <ul className="text-sm text-blue-200 space-y-1 ml-4 list-disc">
+                <li>Stream 1: All articles → website (1 language, original images)</li>
+                <li>Stream 2: Daily video digest at 07:00 Oslo (LLM selects top-10)</li>
+                <li>Stream 3: Top articles → social media with AI images</li>
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-300">
+              All articles get full 3-language rewrite + AI image + auto social posting. Higher cost, more social posts.
+            </p>
+          )}
+        </div>
+
+        {/* Stream settings (only visible in streams mode) */}
+        {streamMode === 'streams' && (
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-gray-300 block mb-1">Website Language</label>
+                <select
+                  value={rewriteLanguage}
+                  onChange={(e) => { setRewriteLanguage(e.target.value); setSaveResult(null) }}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                >
+                  <option value="en">English</option>
+                  <option value="no">Norwegian</option>
+                  <option value="ua">Ukrainian</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-gray-300 block mb-1">Top N for Social</label>
+                <select
+                  value={topN}
+                  onChange={(e) => { setTopN(parseInt(e.target.value, 10)); setSaveResult(null) }}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <option key={n} value={n}>{n} articles/day</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {hasUnsavedStreamModeChanges && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={saveStreamMode}
+              disabled={streamModeLoading}
+              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {streamModeLoading ? (
+                <>
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  Save Pipeline Mode
+                </>
+              )}
+            </motion.button>
+          </motion.div>
+        )}
+      </div>
 
       {/* Pre-moderation Toggle */}
       <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">

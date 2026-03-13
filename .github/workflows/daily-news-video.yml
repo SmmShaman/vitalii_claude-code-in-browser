@@ -2,19 +2,28 @@ name: Daily News Video
 
 on:
   # Daily cron: 07:00 Oslo (05:00 UTC summer CEST, 06:00 UTC winter CET)
+  # Triggers auto_digest → bot sends script for approval → moderator approves → render
   schedule:
     - cron: '0 5 * * *'  # 07:00 Oslo (summer CEST=UTC+2)
     - cron: '0 6 * * *'  # 07:00 Oslo (winter CET=UTC+1)
 
-  # Telegram bot triggers render via repository_dispatch
+  # Telegram bot triggers render via repository_dispatch (after moderator approval)
   repository_dispatch:
     types: [daily-video-render]
 
   # Manual trigger
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'Mode: auto_digest (LLM selects + script) or render (full video)'
+        required: true
+        default: 'auto_digest'
+        type: choice
+        options:
+          - auto_digest
+          - render
       language:
-        description: 'Video language'
+        description: 'Video language (render mode only)'
         required: true
         default: 'no'
         type: choice
@@ -22,7 +31,7 @@ on:
           - 'no'    # Norwegian
           - 'en'    # English
       format:
-        description: 'Video format'
+        description: 'Video format (render mode only)'
         required: true
         default: 'horizontal'
         type: choice
@@ -34,7 +43,7 @@ on:
         required: false
         type: string
       youtube_privacy:
-        description: 'YouTube privacy (public/unlisted/private)'
+        description: 'YouTube privacy (render mode only)'
         required: false
         default: 'public'
         type: choice
@@ -44,7 +53,61 @@ on:
           - private
 
 jobs:
-  daily-compilation:
+  # ── Job 1: Auto Digest (cron + manual auto_digest mode) ──
+  # Calls Edge Function to: fetch articles → LLM ranks top-10 → writes script → sends to bot
+  auto-digest:
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'auto_digest')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger auto digest via Edge Function
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          TARGET_DATE="${{ github.event.inputs.target_date || '' }}"
+          QUERY="action=auto_digest"
+          if [ -n "$TARGET_DATE" ]; then
+            QUERY="${QUERY}&target_date=${TARGET_DATE}"
+          fi
+
+          echo "🤖 Calling auto_digest..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "${SUPABASE_URL}/functions/v1/daily-video-bot?${QUERY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -X POST -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response ($HTTP_CODE): $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "❌ Auto digest failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "✅ Auto digest triggered successfully"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Auto digest failed!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
+
+  # ── Job 2: Render Video (repository_dispatch from bot + manual render mode) ──
+  render-video:
+    if: >-
+      github.event_name == 'repository_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'render')
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -121,11 +184,11 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -H "Content-Type: application/json" \
-            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Video generation failed!</b>\n\n📅 Date: ${TARGET}\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Video render failed!</b>\n\n📅 Date: ${TARGET}\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
 
       - name: Report results
         if: always()
         run: |
           echo "Daily news video generation completed"
           echo "Language: ${{ github.event.inputs.language || 'no' }}"
-          echo "Format: ${{ github.event.inputs.format || 'vertical' }}"
+          echo "Format: ${{ github.event.inputs.format || 'horizontal' }}"

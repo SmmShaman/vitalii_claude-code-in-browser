@@ -3,34 +3,45 @@ name: Send Top Social
 on:
   schedule:
     - cron: '0 6 * * *'  # 08:00 Oslo (winter CET=UTC+1)
-    - cron: '0 7 * * *'  # 08:00 Oslo (summer CEST=UTC+2) / backup
+    - cron: '0 7 * * *'  # 08:00 Oslo (summer CEST=UTC+2)
   workflow_dispatch:
 
 jobs:
   send-top-social:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - name: Trigger send-top-social
+      - name: Trigger send-top-social Edge Function
         env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          echo "🔥 Triggering send-top-social..."
-          response=$(curl -s -w "\n%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/send-top-social" \
+          echo "🔥 Calling send-top-social..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "${SUPABASE_URL}/functions/v1/send-top-social" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{}')
+            -X POST -d '{}')
 
-          http_code=$(echo "$response" | tail -1)
-          body=$(echo "$response" | head -n -1)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
 
-          echo "HTTP Status: $http_code"
-          echo "Response: $body"
+          echo "Response ($HTTP_CODE): $BODY"
 
-          if [ "$http_code" -ge 400 ]; then
-            echo "❌ Failed with status $http_code"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "❌ Send top social failed with HTTP $HTTP_CODE"
             exit 1
           fi
 
-          echo "✅ Done"
+          echo "✅ Send top social triggered successfully"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Send Top Social failed!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"

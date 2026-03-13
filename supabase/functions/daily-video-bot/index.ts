@@ -1,12 +1,17 @@
 /**
  * Daily Video Bot — Edge Function
  *
- * Handles the 3-step Telegram approval flow for daily news videos:
- *   1. initiate_digest  — fetch news, send digest to Telegram
- *   2. generate_script  — AI writes per-article Norwegian scripts
- *   3. apply_edit       — user edited script text via reply
- *   4. generate_scenario — AI plans visual scenario
- *   5. trigger_render   — dispatch GitHub Actions for Remotion render
+ * Two modes:
+ *   A. AUTO (cron): auto_digest → LLM ranks articles + writes script → moderator approves → scenario → render
+ *   B. MANUAL: initiate_digest → moderator picks articles → generate_script → scenario → render
+ *
+ * Actions:
+ *   - auto_digest       — LLM selects top-10 + writes script (skips manual selection)
+ *   - initiate_digest   — fetch news, send digest to Telegram (manual mode)
+ *   - generate_script   — AI writes per-article Norwegian scripts
+ *   - apply_edit        — user edited script text via reply
+ *   - generate_scenario — AI plans visual scenario
+ *   - trigger_render    — dispatch GitHub Actions for Remotion render
  *
  * Called by: telegram-webhook (callback handlers), cron workflow, manual
  */
@@ -14,7 +19,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-11-v21";
+const VERSION = "2026-03-13-v22";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -105,7 +110,7 @@ function formatDateNorwegian(dateStr: string): string {
 
 // ── Azure OpenAI Helper ──
 
-async function callAI(systemPrompt: string, userPrompt: string): Promise<string> {
+async function callAI(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
   const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
   const resp = await fetch(url, {
     method: "POST",
@@ -116,7 +121,7 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
         { role: "user", content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: maxTokens,
       response_format: { type: "json_object" },
     }),
   });
@@ -279,6 +284,283 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
 
   console.log(`✅ Digest sent (${articles.length} articles)`);
   return json({ ok: true, draftId: draft.id, articles: articles.length });
+}
+
+// ══════════════════════════════════════════════════════════════
+// STEP 1-AUTO: Auto Digest (LLM ranks + writes script in one step)
+// ══════════════════════════════════════════════════════════════
+
+async function autoDigest(targetDate?: string): Promise<Response> {
+  const date = targetDate || getYesterdayDate();
+  console.log(`🤖 Auto digest for ${date}`);
+
+  // Skip if already in progress
+  const { data: existingDraft } = await supabase
+    .from("daily_video_drafts")
+    .select("status")
+    .eq("target_date", date)
+    .single();
+
+  if (existingDraft && existingDraft.status !== "pending_digest") {
+    console.log(`⏭ Draft for ${date} already exists: ${existingDraft.status}`);
+    return json({ ok: true, message: `Already in progress: ${existingDraft.status}` });
+  }
+
+  const start = `${date}T00:00:00Z`;
+  const end = `${date}T23:59:59.999Z`;
+
+  // Fetch ALL published articles with rss_analysis
+  const { data: articles, error } = await supabase
+    .from("news")
+    .select("id, title_ua, title_no, title_en, original_title, description_ua, description_no, description_en, content_no, content_en, original_content, image_url, processed_image_url, tags, slug_en, rss_analysis, source_link")
+    .eq("is_published", true)
+    .gte("published_at", start)
+    .lte("published_at", end)
+    .order("published_at", { ascending: true });
+
+  if (error) throw new Error(`DB error: ${error.message}`);
+  if (!articles || articles.length === 0) {
+    console.log("No articles found for this date");
+    await sendMessage(TELEGRAM_CHAT_ID, `📺 <b>Дайджест за ${formatDateNorwegian(date)}</b>\n\n❌ Статей не знайдено.`);
+    return json({ ok: true, message: "No articles found" });
+  }
+
+  if (articles.length < 2) {
+    console.log("Only 1 article — need at least 2");
+    await sendMessage(TELEGRAM_CHAT_ID, `📺 <b>Дайджест за ${formatDateNorwegian(date)}</b>\n\n⚠️ Лише 1 стаття — потрібно мінімум 2.`);
+    return json({ ok: true, message: "Only 1 article, need 2+" });
+  }
+
+  // Notify moderator that auto-digest is starting
+  await sendMessage(TELEGRAM_CHAT_ID, `🤖 <b>Авто-дайджест за ${formatDateNorwegian(date)}</b>\n\n📰 Знайдено <b>${articles.length}</b> статей\n⏳ LLM аналізує та обирає топ-${Math.min(MAX_DETAILED, articles.length)}...\n\nЦе може зайняти 30-60 секунд.`);
+
+  const displayDate = formatDateNorwegian(date);
+
+  // Build article summaries for LLM with scoring data
+  const articleData = articles.map((a: any, i: number) => {
+    const analysis = a.rss_analysis || {};
+    const title = a.title_no || a.title_en || a.original_title || "";
+    const description = a.description_no || a.description_en || "";
+    const content = a.content_no || a.content_en || a.original_content || "";
+    const linkedinScore = analysis.linkedin_score || 0;
+    const relevanceScore = analysis.relevance_score || 0;
+    const trendingKeywords = analysis.trending_keywords || [];
+
+    // Trending data
+    const trendingData = analysis.trending_data || {};
+    const hnPosts = trendingData.hacker_news?.posts || 0;
+    const hnMaxScore = trendingData.hacker_news?.max_score || 0;
+    const gtMatches = trendingData.google_trends?.matches || [];
+    const totalBonus = trendingData.total_bonus || 0;
+
+    return `ARTICLE ${i + 1} [id: ${a.id}]:
+Title: ${title}
+Description: ${description}
+Content: ${content.substring(0, 400)}
+LinkedIn Score: ${linkedinScore}/10
+Relevance Score: ${relevanceScore}/10
+Trending Bonus: +${totalBonus}
+HackerNews: ${hnPosts} posts (max score: ${hnMaxScore})
+Google Trends: ${gtMatches.length > 0 ? gtMatches.join(", ") : "none"}
+Trending Keywords: ${trendingKeywords.join(", ") || "none"}
+Tags: ${(a.tags || []).join(", ")}`;
+  }).join("\n\n---\n\n");
+
+  const topN = Math.min(MAX_DETAILED, articles.length);
+  const targetDuration = topN * 15 + 12;
+  const wordTarget = Math.round(targetDuration * 2);
+  const wordsPerArticle = Math.round(wordTarget / (topN + 2));
+
+  // Single LLM call: rank + select top-N + write script
+  const systemPrompt = `You are a professional news editor AND Norwegian news anchor for a daily tech news video.
+
+TASK: From ${articles.length} articles, select the TOP ${topN} most newsworthy stories and write the voiceover script.
+
+TARGET AUDIENCE: Business professionals, tech entrepreneurs, startup founders, AI/e-commerce/marketing specialists.
+The channel "vitalii.no" covers BUSINESS & TECH news — NOT general world news.
+
+RANKING CRITERIA (all three matter equally):
+1. linkedin_score — editorial quality and professional relevance (already rated 1-10)
+2. trending_data — HackerNews activity (posts/score) and Google Trends matches indicate viral potential
+3. Your own analysis — business impact, innovation, relevance to tech/startup/AI/marketing audience
+
+CONTENT FILTER (CRITICAL):
+- PRIORITIZE: tech innovations, AI/ML breakthroughs, startup funding/launches, e-commerce trends, marketing strategies, SaaS products, fintech, business strategy, digital transformation, developer tools
+- DEPRIORITIZE: wars, military conflicts, geopolitics, elections, crime, natural disasters, celebrity gossip, sports — even if they have high trending scores
+- Exception: political/regulatory news DIRECTLY affecting tech/business (e.g., AI regulation, antitrust, data privacy laws) IS relevant
+- If an article about war/politics has high scores but low business relevance, SKIP IT in favor of a lower-scoring business article
+
+SCRIPT REQUIREMENTS:
+- Target duration: ~${targetDuration} seconds
+- Write SEPARATE scripts for each part in Norwegian Bokmål:
+  1. "introScript" — personal opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Hei, jeg er Vitalii fra vitalii punkt no." then mention today's news count.
+  2. "segmentScripts" — one narration per selected article (~12-18s each, ~${wordsPerArticle * 2} words). 3-5 clear sentences each.
+  3. "outroScript" — closing with CTA (~4-5s). MUST include "Abonner på kanalen og trykk liker-knappen!"
+
+LANGUAGE QUALITY:
+- Clean Norwegian Bokmål (NOT Nynorsk). Avoid English loanwords when Norwegian exists.
+- "kunstig intelligens" not "AI", "programvare" not "software", "nettside" not "website"
+- Technical terms with no Norwegian equivalent (blockchain, API, GPU) may stay in English.
+- Text will be read by TTS — write phonetically clear, natural-sounding Norwegian.
+- Short, clear sentences. No complex compounds.
+
+Also provide English translations for moderator review.
+
+RULES:
+- selectedArticleIds.length MUST equal ${topN}
+- segmentScripts.length MUST equal ${topN}
+- segmentTranslationsEn.length MUST equal ${topN}
+- Each segmentScript stands alone (no cross-references)
+- Order articles by importance (most impactful first)
+- Be engaging, professional, conversational
+
+Return JSON:
+{
+  "selectedArticleIds": ["uuid1", "uuid2", ...],
+  "rankingReasoning": "Brief explanation of why these ${topN} were chosen and why others were excluded",
+  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",
+  "segmentScripts": ["...", "...", ...],
+  "outroScript": "Det var alt for i dag...",
+  "introTranslationEn": "Hi, I'm Vitalii from vitalii.no...",
+  "segmentTranslationsEn": ["...", "...", ...],
+  "outroTranslationEn": "That's all for today..."
+}`;
+
+  const aiResponse = await callAI(systemPrompt, `Rank and write script for ${displayDate}:\n\n${articleData}`, 8000);
+  let plan: any;
+  try {
+    plan = JSON.parse(aiResponse);
+  } catch {
+    console.error(`❌ AI returned invalid JSON: ${aiResponse.substring(0, 300)}`);
+    await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка авто-дайджесту:</b> AI повернув невалідний JSON.\n\nСпробуйте ще раз або використайте ручний режим.`);
+    return json({ error: "Invalid AI JSON response" }, 500);
+  }
+
+  if (!plan.selectedArticleIds || plan.selectedArticleIds.length === 0 || !plan.segmentScripts || plan.segmentScripts.length === 0) {
+    console.error("❌ AI returned empty selection or scripts");
+    await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI не обрав жодної статті.`);
+    return json({ error: "AI returned empty selection" }, 500);
+  }
+
+  // Validate selected IDs exist in our articles
+  const articleMap = new Map(articles.map((a: any) => [a.id, a]));
+  const validSelectedIds = plan.selectedArticleIds.filter((id: string) => articleMap.has(id));
+  if (validSelectedIds.length === 0) {
+    console.error("❌ None of the selected IDs match our articles");
+    await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI обрав невідомі ID статей.`);
+    return json({ error: "Invalid article IDs from AI" }, 500);
+  }
+
+  // Build headlines from selected articles
+  const selectedArticles = validSelectedIds.map((id: string) => articleMap.get(id));
+  const headlines = selectedArticles.map((a: any) => ({
+    id: a.id,
+    title: a.title_ua || a.title_en || a.original_title || "",
+    description: a.description_ua || a.description_en || "",
+    hasImage: !!(a.processed_image_url || a.image_url),
+    tags: a.tags || [],
+    slug_en: a.slug_en || "",
+  }));
+
+  // Create draft with pending_script status (skip pending_digest)
+  const { data: draft, error: upsertError } = await supabase
+    .from("daily_video_drafts")
+    .upsert({
+      target_date: date,
+      status: "pending_script",
+      article_ids: validSelectedIds,
+      article_headlines: headlines,
+      excluded_article_ids: [],
+      telegram_chat_id: Number(TELEGRAM_CHAT_ID),
+      intro_script: plan.introScript,
+      segment_scripts: validSelectedIds.map((id: string, i: number) => ({
+        articleId: id,
+        scriptNo: plan.segmentScripts[i] || "",
+        scriptUa: "", // We use English translations now
+        scriptEn: plan.segmentTranslationsEn?.[i] || "",
+      })),
+      outro_script: plan.outroScript,
+    }, { onConflict: "target_date" })
+    .select()
+    .single();
+
+  if (upsertError) throw new Error(`Draft upsert: ${upsertError.message}`);
+
+  // ── Send to Telegram: Norwegian script ──
+  let msgNo = `🇳🇴 <b>Дайджест — ${displayDate}</b>\n`;
+  msgNo += `📊 Обрано <b>${validSelectedIds.length}</b> з ${articles.length} статей\n\n`;
+
+  msgNo += `🎬 <b>Intro:</b>\n<i>${escapeHtml(plan.introScript || "")}</i>\n\n`;
+
+  plan.segmentScripts.forEach((script: string, i: number) => {
+    const title = headlines[i]?.title || `Sak ${i + 1}`;
+    const a = selectedArticles[i];
+    const analysis = a?.rss_analysis || {};
+    const li = analysis.linkedin_score || 0;
+    const bonus = analysis.trending_data?.total_bonus || 0;
+    msgNo += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>`;
+    msgNo += ` <code>LI:${li} +${bonus}</code>\n`;
+    msgNo += `<i>${escapeHtml(script)}</i>\n\n`;
+  });
+
+  msgNo += `🎬 <b>Outro:</b>\n<i>${escapeHtml(plan.outroScript || "")}</i>`;
+
+  if (msgNo.length > 4000) {
+    const cutIdx = msgNo.lastIndexOf("\n\n", 3900);
+    msgNo = msgNo.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n\n<i>... (скорочено)</i>";
+  }
+
+  await sendMessage(TELEGRAM_CHAT_ID, msgNo);
+
+  // ── Send English translation + approval buttons ──
+  let msgEn = `🇬🇧 <b>English translation — ${displayDate}</b>\n\n`;
+
+  if (plan.introTranslationEn) {
+    msgEn += `🎬 <b>Intro:</b>\n${escapeHtml(plan.introTranslationEn)}\n\n`;
+  }
+
+  plan.segmentScripts.forEach((_: string, i: number) => {
+    const title = headlines[i]?.title || `Article ${i + 1}`;
+    const en = plan.segmentTranslationsEn?.[i] || "";
+    if (en) {
+      msgEn += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>\n${escapeHtml(en)}\n\n`;
+    }
+  });
+
+  if (plan.outroTranslationEn) {
+    msgEn += `🎬 <b>Outro:</b>\n${escapeHtml(plan.outroTranslationEn)}\n\n`;
+  }
+
+  if (plan.rankingReasoning) {
+    msgEn += `📊 <b>Чому ці статті:</b>\n<i>${escapeHtml(plan.rankingReasoning)}</i>\n\n`;
+  }
+
+  msgEn += `💡 <i>Щоб відредагувати — відповідай reply з виправленим текстом.</i>`;
+
+  if (msgEn.length > 4000) {
+    const cutIdx = msgEn.lastIndexOf("\n\n", 3900);
+    msgEn = msgEn.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n\n<i>... (скорочено)</i>";
+  }
+
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: "✅ Підтвердити скрипт", callback_data: `dv_sok_${date}` },
+        { text: "✏️ Перегенерувати", callback_data: `dv_srg_${date}` },
+      ],
+    ],
+  };
+
+  const scriptMsgId = await sendMessage(TELEGRAM_CHAT_ID, msgEn, { reply_markup: keyboard });
+
+  // Save message ID
+  await supabase
+    .from("daily_video_drafts")
+    .update({ telegram_message_ids: [scriptMsgId] })
+    .eq("id", draft.id);
+
+  console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, script sent for approval`);
+  return json({ ok: true, draftId: draft.id, selected: validSelectedIds.length, total: articles.length });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1653,6 +1935,9 @@ Deno.serve(async (req) => {
     switch (action || body.action) {
       case "initiate_digest":
         return await initiateDigest(targetDate || undefined);
+
+      case "auto_digest":
+        return await autoDigest(targetDate || undefined);
 
       case "toggle_article":
         if (!targetDate || !body.article_index) return json({ error: "target_date and article_index required" }, 400);
