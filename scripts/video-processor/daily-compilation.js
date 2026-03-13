@@ -771,6 +771,7 @@ async function main() {
       console.log(`     📐 Segment duration: ${segDuration.toFixed(1)}s (voice: ${voDuration.toFixed(1)}s, video: ${videoDurationSec.toFixed(1)}s — clipped to voice)`);
     } else {
       segDuration = Math.max(voDuration, 8);
+      console.log(`     📐 Segment ${i} duration: ${segDuration.toFixed(1)}s (voice: ${voDuration.toFixed(1)}s)`);
     }
 
     segments.push({
@@ -797,7 +798,7 @@ async function main() {
     try {
       // Use English titles for Pexels search (Pexels is English-language API)
       const pexelsSegments = segments.map((s, idx) => ({
-        headline: detailedArticles[idx]?.title_en || s.headline,
+        headline: detailedArticles[idx]?.title_en || detailedArticles[idx]?.original_title || s.headline,
         category: s.category,
         keyQuote: s.keyQuote,
       }));
