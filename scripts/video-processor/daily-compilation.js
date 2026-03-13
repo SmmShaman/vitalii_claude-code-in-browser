@@ -559,10 +559,11 @@ async function notifyTelegramDirect(dateStr, youtubeUrl) {
 async function notifyBotComplete(dateStr, youtubeUrl) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!SUPABASE_URL) return;
+  if (!SUPABASE_URL) { console.log('⚠️ SUPABASE_URL not set, skipping bot notification'); return; }
+  if (!youtubeUrl) { console.log('⚠️ No YouTube URL, skipping bot notification'); return; }
 
   try {
-    await fetch(`${SUPABASE_URL}/functions/v1/daily-video-bot?action=notify_complete`, {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/daily-video-bot?action=notify_complete`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -570,7 +571,12 @@ async function notifyBotComplete(dateStr, youtubeUrl) {
       },
       body: JSON.stringify({ target_date: dateStr, youtube_url: youtubeUrl }),
     });
-    console.log('📺 Bot notified of completion');
+    const body = await resp.text();
+    if (!resp.ok) {
+      console.log(`⚠️ Bot notification failed (${resp.status}): ${body}`);
+    } else {
+      console.log(`📺 Bot notified of completion: ${body}`);
+    }
   } catch (e) {
     console.log(`⚠️ Failed to notify bot: ${e.message}`);
   }
