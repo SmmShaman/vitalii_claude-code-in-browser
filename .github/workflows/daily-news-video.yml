@@ -1,6 +1,11 @@
 name: Daily News Video
 
 on:
+  # Daily cron: 07:00 Oslo (05:00 UTC summer CEST, 06:00 UTC winter CET)
+  schedule:
+    - cron: '0 5 * * *'  # 07:00 Oslo (summer CEST=UTC+2)
+    - cron: '0 6 * * *'  # 07:00 Oslo (winter CET=UTC+1)
+
   # Telegram bot triggers render via repository_dispatch
   repository_dispatch:
     types: [daily-video-render]
