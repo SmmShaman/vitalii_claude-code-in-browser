@@ -534,6 +534,47 @@ async function parseRSS(xml: string): Promise<RSSArticle[]> {
           }
         }
 
+        // Fallback: fetch og:image from article page if RSS has no image
+        if (!imageUrl && url) {
+          try {
+            const controller = new AbortController()
+            const timer = setTimeout(() => controller.abort(), 5000)
+            const pageResp = await fetch(url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; bot)',
+                'Accept': 'text/html',
+              },
+              signal: controller.signal,
+            })
+            clearTimeout(timer)
+            if (pageResp.ok) {
+              // Read only first 50KB to find og:image in <head>
+              const reader = pageResp.body?.getReader()
+              let headHtml = ''
+              if (reader) {
+                const decoder = new TextDecoder()
+                let bytesRead = 0
+                while (bytesRead < 50000) {
+                  const { done, value } = await reader.read()
+                  if (done) break
+                  headHtml += decoder.decode(value, { stream: true })
+                  bytesRead += value.length
+                  if (headHtml.includes('</head>')) break
+                }
+                reader.cancel().catch(() => {})
+              }
+              const ogMatch = headHtml.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+                || headHtml.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+              if (ogMatch) {
+                imageUrl = decodeHTMLEntities(ogMatch[1])
+                console.log(`🖼️ OG image found: ${imageUrl.substring(0, 80)}`)
+              }
+            }
+          } catch (_e) {
+            // Timeout or network error — skip silently
+          }
+        }
+
         // Skip if no title or URL
         if (!title || !url) {
           continue
