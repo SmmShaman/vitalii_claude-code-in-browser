@@ -596,17 +596,27 @@ serve(async (req) => {
     }
 
     // 🤖 Auto-publish: fire-and-forget if enabled (score >= 5)
+    // Skip in streams mode — website-publish handles publication via send-rss-to-telegram
     let autoPublishTriggered = false
     if (analysis.relevance_score >= 5 && !requestData.skipTelegram) {
       const { data: autoPublishSetting } = await supabase
         .from('api_settings')
         .select('key_value')
         .eq('key_name', 'ENABLE_AUTO_PUBLISH')
-        .single()
+        .maybeSingle()
+
+      const { data: modeSetting } = await supabase
+        .from('api_settings')
+        .select('key_value')
+        .eq('key_name', 'STREAM_MODE')
+        .maybeSingle()
 
       const isAutoPublishEnabled = autoPublishSetting?.key_value === 'true'
+      const isStreamsMode = modeSetting?.key_value === 'streams'
 
-      if (isAutoPublishEnabled) {
+      if (isStreamsMode) {
+        console.log('🌊 Streams mode — skipping auto-publish (website-publish handles it)')
+      } else if (isAutoPublishEnabled) {
         console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for RSS article`)
         try {
           fetch(`${SUPABASE_URL}/functions/v1/auto-publish-news`, {

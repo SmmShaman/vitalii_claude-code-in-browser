@@ -13,7 +13,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
-const VERSION = '2026-03-12-v1-stream1'
+const VERSION = '2026-03-14-v2-stream1'
 
 interface WebsitePublishRequest {
   newsId: string
@@ -42,7 +42,7 @@ serve(async (req) => {
       .from('api_settings')
       .select('key_value')
       .eq('key_name', 'STREAM1_REWRITE_LANGUAGE')
-      .single()
+      .maybeSingle()
 
     const rewriteLang = langSetting?.key_value || 'en'
 

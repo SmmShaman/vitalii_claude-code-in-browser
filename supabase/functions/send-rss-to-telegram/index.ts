@@ -99,7 +99,7 @@ serve(async (req) => {
       let streamSourceName = ''
       if (news.source_id) {
         const { data: srcData } = await supabase
-          .from('news_sources').select('name').eq('id', news.source_id).single()
+          .from('news_sources').select('name').eq('id', news.source_id).maybeSingle()
         if (srcData?.name) streamSourceName = srcData.name
       }
       if (!streamSourceName) {
