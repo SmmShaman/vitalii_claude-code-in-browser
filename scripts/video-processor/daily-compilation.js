@@ -1074,8 +1074,7 @@ async function main() {
 
   // Copy video to workspace for artifact upload if YouTube failed
   if (!result.videoId) {
-    const artifactDir = process.env.GITHUB_WORKSPACE || process.cwd();
-    const artifactPath = path.join(artifactDir, `daily-video-${dateStr}.mp4`);
+    const artifactPath = path.join(process.cwd(), `daily-video-${dateStr}.mp4`);
     try {
       await fs.copyFile(outputPath, artifactPath);
       console.log(`📦 Video saved for artifact: ${artifactPath}`);

@@ -190,14 +190,15 @@ jobs:
             TARGET_DATE=$(date -u -d "yesterday" +%Y-%m-%d)
           fi
           VIDEO_FILE="daily-video-${TARGET_DATE}.mp4"
+          VIDEO_PATH="scripts/video-processor/${VIDEO_FILE}"
 
-          if [ ! -f "scripts/video-processor/${VIDEO_FILE}" ]; then
+          if [ ! -f "${VIDEO_PATH}" ]; then
             echo "✅ No fallback video file — YouTube upload likely succeeded"
             exit 0
           fi
 
           echo "📤 YouTube upload failed — uploading to Supabase Storage..."
-          FILE_SIZE=$(stat -c%s "scripts/video-processor/${VIDEO_FILE}")
+          FILE_SIZE=$(stat -c%s "${VIDEO_PATH}")
           echo "📁 File: ${VIDEO_FILE} ($(( FILE_SIZE / 1024 / 1024 )) MB)"
 
           # Upload to Supabase Storage (videos bucket)
@@ -206,7 +207,7 @@ jobs:
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: video/mp4" \
             -H "x-upsert: true" \
-            --data-binary "@scripts/video-processor/${VIDEO_FILE}")
+            --data-binary "@${VIDEO_PATH}")
 
           HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -1)
 
