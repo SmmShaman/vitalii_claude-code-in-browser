@@ -2,8 +2,8 @@
  * Daily Video Bot — Edge Function
  *
  * Two modes:
- *   A. AUTO (cron): auto_digest → LLM ranks articles + writes script → moderator approves → scenario → render
- *   B. MANUAL: initiate_digest → moderator picks articles → generate_script → scenario → render
+ *   A. AUTO (cron): auto_digest → LLM ranks articles + writes script → moderator approves → scenario → images → render
+ *   B. MANUAL: initiate_digest → moderator picks articles → generate_script → scenario → images → render
  *
  * Actions:
  *   - auto_digest       — LLM selects top-10 + writes script (skips manual selection)
@@ -11,6 +11,7 @@
  *   - generate_script   — AI writes per-article Norwegian scripts
  *   - apply_edit        — user edited script text via reply
  *   - generate_scenario — AI plans visual scenario
+ *   - prepare_images    — send article images to Telegram for approval
  *   - trigger_render    — dispatch GitHub Actions for Remotion render
  *
  * Called by: telegram-webhook (callback handlers), cron workflow, manual
@@ -19,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-13-v22";
+const VERSION = "2026-03-14-v23-image-preview";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -1117,6 +1118,142 @@ Return JSON:
 }
 
 // ══════════════════════════════════════════════════════════════
+// STEP 3b: Image Preview (before render)
+// ══════════════════════════════════════════════════════════════
+
+async function prepareImages(targetDate: string, chatId?: number, messageId?: number): Promise<Response> {
+  console.log(`🖼️ Preparing image preview for ${targetDate}`);
+
+  const { data: draft, error } = await supabase
+    .from("daily_video_drafts")
+    .select("*")
+    .eq("target_date", targetDate)
+    .single();
+
+  if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
+
+  // Load articles
+  const articleIds: string[] = draft.article_ids || [];
+  if (articleIds.length === 0) throw new Error("No articles in draft");
+
+  const { data: articles } = await supabase
+    .from("news")
+    .select("id, original_title, title_en, title_no, image_url, processed_image_url, images, original_url")
+    .in("id", articleIds);
+
+  if (!articles || articles.length === 0) throw new Error("No articles found");
+
+  // Build ordered list matching article_ids order
+  const articleMap = new Map(articles.map((a: any) => [a.id, a]));
+  const ordered = articleIds.map((id: string) => articleMap.get(id)).filter(Boolean);
+
+  const targetChatId = chatId || TELEGRAM_CHAT_ID;
+
+  if (messageId && chatId) {
+    await editMessage(chatId, messageId, `🖼️ <b>Підготовка зображень для дайджесту...</b>`);
+  }
+
+  // Update status
+  await supabase
+    .from("daily_video_drafts")
+    .update({ status: "pending_images" })
+    .eq("target_date", targetDate);
+
+  const displayDate = new Date(targetDate + "T12:00:00Z").toLocaleDateString("uk-UA", {
+    day: "numeric", month: "long",
+  });
+
+  // Send header
+  await sendMessage(targetChatId, `🖼️ <b>Зображення для дайджесту — ${displayDate}</b>\n\nПеревірте зображення для кожної новини.\nПісля перевірки натисніть "🎬 Рендерити".`);
+
+  // Send each article's images
+  for (let i = 0; i < ordered.length; i++) {
+    const article = ordered[i] as any;
+    const title = article.title_no || article.title_en || article.original_title || "Untitled";
+    const imageUrl = article.processed_image_url || article.image_url;
+    const extraImages: string[] = (article.images || []).filter((u: string) => u && u !== imageUrl);
+
+    // Collect all image URLs (max 10 for sendMediaGroup)
+    const allImages = [imageUrl, ...extraImages].filter(Boolean).slice(0, 10);
+
+    const caption = `📹 <b>${i + 1}/${ordered.length}</b> — ${escapeHtml(title.substring(0, 150))}\n🖼️ ${allImages.length} зображ.${article.original_url ? `\n🔗 ${escapeHtml(new URL(article.original_url).hostname)}` : ""}`;
+
+    if (allImages.length === 0) {
+      // No images at all
+      await sendMessage(targetChatId, `${caption}\n\n⚠️ <i>Немає зображень — буде використано Pexels stock</i>`);
+    } else if (allImages.length === 1) {
+      // Single image — sendPhoto
+      try {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            photo: allImages[0],
+            caption,
+            parse_mode: "HTML",
+          }),
+        });
+      } catch (e: any) {
+        console.warn(`⚠️ sendPhoto failed for article ${i}: ${e.message}`);
+        await sendMessage(targetChatId, `${caption}\n\n⚠️ <i>Не вдалося відправити зображення</i>\n<code>${escapeHtml(allImages[0].substring(0, 100))}</code>`);
+      }
+    } else {
+      // Multiple images — sendMediaGroup (album)
+      try {
+        const media = allImages.map((url: string, idx: number) => ({
+          type: "photo",
+          media: url,
+          ...(idx === 0 ? { caption, parse_mode: "HTML" } : {}),
+        }));
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: targetChatId, media }),
+        });
+      } catch (e: any) {
+        console.warn(`⚠️ sendMediaGroup failed for article ${i}: ${e.message}`);
+        // Fallback to single photo
+        try {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetChatId,
+              photo: allImages[0],
+              caption: `${caption}\n\n<i>(+${allImages.length - 1} зображ. не відправлено)</i>`,
+              parse_mode: "HTML",
+            }),
+          });
+        } catch { /* silent */ }
+      }
+    }
+  }
+
+  // Summary with render button
+  const summaryKeyboard = {
+    inline_keyboard: [
+      [
+        { text: "🎬 Рендерити", callback_data: `dv_rok_${targetDate}` },
+        { text: "🔄 Перегенерувати сценарій", callback_data: `dv_vrg_${targetDate}` },
+      ],
+    ],
+  };
+
+  const noImageCount = ordered.filter((a: any) => !a.processed_image_url && !a.image_url).length;
+  let summaryText = `✅ <b>Зображення готові — ${ordered.length} новин</b>`;
+  if (noImageCount > 0) {
+    summaryText += `\n⚠️ ${noImageCount} новин без зображень (буде Pexels stock + скрапінг)`;
+  }
+  summaryText += `\n\nПід час рендеру скрапер завантажить додаткові зображення з оригінальних статей.`;
+
+  await sendMessage(targetChatId, summaryText, { reply_markup: summaryKeyboard });
+
+  console.log(`✅ Image preview sent for ${ordered.length} articles`);
+  return json({ ok: true, articles: ordered.length });
+}
+
+// ══════════════════════════════════════════════════════════════
 // STEP 4: Trigger Render
 // ══════════════════════════════════════════════════════════════
 
@@ -1962,6 +2099,10 @@ Deno.serve(async (req) => {
       case "regenerate_scenario":
         if (!targetDate) return json({ error: "target_date required" }, 400);
         return await generateScenario(targetDate, chatId, messageId);
+
+      case "prepare_images":
+        if (!targetDate) return json({ error: "target_date required" }, 400);
+        return await prepareImages(targetDate, chatId, messageId);
 
       case "trigger_render":
         if (!targetDate) return json({ error: "target_date required" }, 400);

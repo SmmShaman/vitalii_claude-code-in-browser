@@ -1022,6 +1022,9 @@ serve(async (req) => {
       } else if (callbackData.startsWith('dv_ren_')) {
         action = 'dv_ren'
         newsId = callbackData.replace('dv_ren_', '')
+      } else if (callbackData.startsWith('dv_rok_')) {
+        action = 'dv_rok'
+        newsId = callbackData.replace('dv_rok_', '')
       } else if (callbackData.startsWith('dv_vrg_')) {
         action = 'dv_vrg'
         newsId = callbackData.replace('dv_vrg_', '')
@@ -4372,7 +4375,8 @@ serve(async (req) => {
           'dv_skip': 'skip',               // Skip this day
           'dv_sok': 'generate_scenario',   // Script approved → generate scenario
           'dv_srg': 'regenerate_script',   // Regenerate script
-          'dv_ren': 'trigger_render',      // Scenario approved → render
+          'dv_ren': 'prepare_images',      // Scenario approved → show images for approval
+          'dv_rok': 'trigger_render',      // Images approved → render
           'dv_vrg': 'regenerate_scenario', // Regenerate scenario
           'dv_toggle': 'toggle_article',   // Toggle article inclusion
           'dv_th': 'select_thumbnail',     // Select thumbnail variant
