@@ -334,9 +334,66 @@ export async function scrapeArticleImages(articleUrl, publicDir, prefix, options
 }
 
 /**
- * Scrape images for all segments from their source articles.
+ * Search Google News RSS for related articles covering the same story.
+ * Returns up to `limit` URLs of other news sites.
  *
- * @param {Array<{sourceLink: string, existingImages?: string[]}>} articles
+ * @param {string} headline - Article headline to search for
+ * @param {string} originalUrl - Original article URL (to exclude from results)
+ * @param {number} limit - Max URLs to return (default 3)
+ * @returns {Promise<string[]>}
+ */
+async function searchRelatedArticles(headline, originalUrl, limit = 3) {
+  if (!headline || headline.length < 10) return [];
+
+  // Use first 8 words of headline for a focused search
+  const query = headline.split(/\s+/).slice(0, 8).join(' ');
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en&gl=US&ceid=US:en`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': USER_AGENT },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return [];
+    const xml = await res.text();
+
+    // Extract URLs from RSS <link> tags (Google News wraps in CDATA or direct)
+    const links = [];
+    const itemMatches = xml.matchAll(/<item>[\s\S]*?<\/item>/gi);
+    for (const m of itemMatches) {
+      const item = m[0];
+      // Google News RSS has the real URL in <link> tag
+      const linkMatch = item.match(/<link>([^<]+)/);
+      if (linkMatch) {
+        let articleUrl = linkMatch[1].trim();
+        // Skip if it's the same domain as original
+        try {
+          const origHost = new URL(originalUrl).hostname.replace('www.', '');
+          const foundHost = new URL(articleUrl).hostname.replace('www.', '');
+          if (origHost === foundHost) continue;
+        } catch { /* ignore */ }
+        links.push(articleUrl);
+        if (links.length >= limit) break;
+      }
+    }
+
+    console.log(`[search] "${query.substring(0, 40)}..." → ${links.length} related articles`);
+    return links;
+  } catch (e) {
+    console.log(`[search] Google News search failed: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Scrape images for all segments from their source articles
+ * AND from related articles found via Google News search.
+ *
+ * @param {Array<{sourceLink: string, headline?: string, existingImages?: string[]}>} articles
  * @param {string} publicDir
  * @returns {Promise<Record<number, {images: string[], attribution: string[]}>>}
  */
@@ -347,7 +404,7 @@ export async function scrapeAllArticleImages(articles, publicDir) {
     result[i] = { images: [], attribution: [] };
   }
 
-  // Process sequentially to be polite to source servers
+  // Step 1: Scrape original article images
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
     if (!article.sourceLink) {
@@ -365,6 +422,48 @@ export async function scrapeAllArticleImages(articles, publicDir) {
       result[i] = scraped;
     } catch (e) {
       console.log(`[scraper] Segment ${i} failed: ${e.message}`);
+    }
+  }
+
+  // Step 2: Search for related articles and scrape additional images
+  console.log(`\n[scraper] 🔍 Searching for related articles to get more images...`);
+  for (let i = 0; i < articles.length; i++) {
+    const existing = result[i].images.length;
+    if (existing >= 6) {
+      console.log(`[scraper] Segment ${i}: already has ${existing} images, skipping search`);
+      continue;
+    }
+
+    const headline = articles[i].headline || '';
+    const sourceLink = articles[i].sourceLink || '';
+    if (!headline) continue;
+
+    try {
+      const relatedUrls = await searchRelatedArticles(headline, sourceLink, 3);
+
+      for (let j = 0; j < relatedUrls.length; j++) {
+        const currentCount = result[i].images.length;
+        if (currentCount >= 8) break;
+
+        const maxExtra = 8 - currentCount;
+        try {
+          const extra = await scrapeArticleImages(
+            relatedUrls[j],
+            publicDir,
+            `seg_${i}_related_${j}`,
+            { maxImages: Math.min(3, maxExtra), existingImages: [] },
+          );
+          if (extra.images.length > 0) {
+            result[i].images.push(...extra.images);
+            result[i].attribution.push(...extra.attribution);
+            console.log(`[scraper]   +${extra.images.length} from ${new URL(relatedUrls[j]).hostname}`);
+          }
+        } catch (e) {
+          console.log(`[scraper]   Related ${j} failed: ${e.message}`);
+        }
+      }
+    } catch (e) {
+      console.log(`[scraper] Search failed for segment ${i}: ${e.message}`);
     }
   }
 

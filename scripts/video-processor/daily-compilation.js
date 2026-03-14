@@ -798,6 +798,7 @@ async function main() {
   try {
     const scrapeArticles = detailedArticles.map((a, idx) => ({
       sourceLink: a.original_url || a.source_link || (a.source_links || []).find(l => l && !l.includes('t.me/')) || '',
+      headline: a.title_en || a.original_title || '',
       existingImages: (a.images || []).filter(Boolean),
     }));
     const scrapedMedia = await scrapeAllArticleImages(scrapeArticles, publicDir);
