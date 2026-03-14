@@ -12,7 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-03-12-v1-top-social'
+const VERSION = '2026-03-14-v2-top-social'
 const SOCIAL_SLOTS = ['09:00', '13:00', '18:00']
 
 /**
@@ -20,9 +20,12 @@ const SOCIAL_SLOTS = ['09:00', '13:00', '18:00']
  * Runs daily at 08:00 Oslo after daily video digest (07:00)
  *
  * Flow:
- * 1. Select top N articles from yesterday by linkedin_score
- * 2. Generate AI images + 3-language rewrite for each
- * 3. Send to Telegram bot with social media buttons
+ * 1. Check STREAM_MODE — skip if not 'streams'
+ * 2. Select top N articles from yesterday by linkedin_score
+ * 3. Send to Telegram bot with social media buttons (no heavy processing here)
+ *
+ * Image generation and 3-language rewrite happen ON DEMAND when moderator
+ * clicks a social button in the bot (handled by telegram-webhook).
  */
 serve(async (req) => {
   console.log(`🔥 Send Top Social ${VERSION} started`)
@@ -34,17 +37,20 @@ serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Check stream mode
-    const { data: modeSetting } = await supabase
+    // Check stream mode — graceful handling if setting doesn't exist
+    const { data: modeSetting, error: modeError } = await supabase
       .from('api_settings')
       .select('key_value')
       .eq('key_name', 'STREAM_MODE')
-      .single()
+      .maybeSingle()
 
-    if (modeSetting?.key_value !== 'streams') {
+    const streamMode = modeSetting?.key_value || 'legacy'
+    console.log(`📋 STREAM_MODE: ${streamMode}${modeError ? ` (error: ${modeError.message})` : ''}`)
+
+    if (streamMode !== 'streams') {
       console.log('⏭️ Not in streams mode, skipping')
       return new Response(
-        JSON.stringify({ success: true, skipped: true, reason: 'not_streams_mode' }),
+        JSON.stringify({ success: true, skipped: true, reason: 'not_streams_mode', mode: streamMode }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -54,7 +60,7 @@ serve(async (req) => {
       .from('api_settings')
       .select('key_value')
       .eq('key_name', 'STREAM3_TOP_N')
-      .single()
+      .maybeSingle()
 
     const topN = parseInt(topNSetting?.key_value || '3', 10)
 
@@ -102,7 +108,7 @@ serve(async (req) => {
     console.log(`🏆 Top ${sorted.length} articles selected:`)
     sorted.forEach((a, i) => console.log(`  ${i + 1}. LI:${a.linkedinScore} — ${(a.original_title || '').substring(0, 60)}`))
 
-    // Process each article: generate image + 3-language rewrite
+    // Send each article to Telegram bot (lightweight — no image gen or rewrite here)
     const results: Array<{ newsId: string; title: string; slot: string; success: boolean; error?: string }> = []
 
     for (let i = 0; i < sorted.length; i++) {
@@ -110,57 +116,13 @@ serve(async (req) => {
       const slot = SOCIAL_SLOTS[i] || SOCIAL_SLOTS[SOCIAL_SLOTS.length - 1]
 
       try {
-        // Step 1: Generate AI image if none exists
-        if (!article.processed_image_url) {
-          console.log(`🖼️ Generating AI image for article ${i + 1}...`)
-
-          // Generate image prompt
-          await callFunction('generate-image-prompt', {
-            newsId: article.id,
-            title: article.original_title || '',
-            content: '', // Content already in DB
-            mode: 'variants'
-          })
-
-          // Auto-select first variant and generate full prompt
-          await callFunction('generate-image-prompt', {
-            newsId: article.id,
-            title: article.original_title || '',
-            content: '',
-            mode: 'full'
-          })
-
-          // Generate image
-          await callFunction('process-image', {
-            newsId: article.id,
-            generateFromPrompt: true,
-            language: 'en',
-            aspectRatio: '1:1'
-          })
-
-          console.log(`✅ Image generated for article ${i + 1}`)
-        }
-
-        // Step 2: Full 3-language rewrite (overwrite single-language from Stream 1)
-        console.log(`📝 3-language rewrite for article ${i + 1}...`)
-        const rewriteResponse = await callFunction('process-rss-news', {
-          newsId: article.id,
-          title: article.original_title || '',
-          content: '', // Content already in DB via original_content
-        })
-
-        if (!rewriteResponse.ok) {
-          console.warn(`⚠️ 3-language rewrite failed for article ${i + 1}`)
-        }
-
-        // Step 3: Send to Telegram bot with social buttons
         const title = article.title_en || article.original_title || 'Untitled'
 
         // Lookup source name
         let sourceName = ''
         if (article.source_id) {
           const { data: srcData } = await supabase
-            .from('news_sources').select('name').eq('id', article.source_id).single()
+            .from('news_sources').select('name').eq('id', article.source_id).maybeSingle()
           if (srcData?.name) sourceName = srcData.name
         }
         if (!sourceName) {
@@ -177,8 +139,11 @@ serve(async (req) => {
           trendingInfo = `\n📈 ${parts.join(' | ')}`
         }
 
+        const hasImage = article.processed_image_url ? '✅' : '⚠️ no image'
+
         const messageText = `🔥 <b>Топ-${i + 1} для соцмереж</b> (${yesterday.toLocaleDateString('uk-UA')})
 ⏰ Слот: ${slot} Oslo
+🖼️ Image: ${hasImage}
 
 📰 ${escapeHtml(title.substring(0, 150))}
 📌 ${escapeHtml(sourceName)} · 🔗 LI:${article.linkedinScore}/10${article.trendingBonus > 0 ? ` (+${article.trendingBonus})` : ''}${trendingInfo}
@@ -213,7 +178,7 @@ newsId:${article.id}`
         }
 
         if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          const tgResp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -223,6 +188,10 @@ newsId:${article.id}`
               reply_markup: keyboard,
             })
           })
+          if (!tgResp.ok) {
+            const body = await tgResp.text()
+            console.warn(`⚠️ Telegram send failed: ${tgResp.status} ${body}`)
+          }
         }
 
         results.push({ newsId: article.id, title: title.substring(0, 60), slot, success: true })
@@ -250,21 +219,3 @@ newsId:${article.id}`
     )
   }
 })
-
-async function callFunction(name: string, body: any, timeoutMs = 60000): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    })
-  } finally {
-    clearTimeout(timer)
-  }
-}
