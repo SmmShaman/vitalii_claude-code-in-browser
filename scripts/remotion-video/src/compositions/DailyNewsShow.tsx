@@ -124,6 +124,10 @@ export interface DailyNewsShowProps {
   introAvatarSrc?: string;
   /** Avatar video for outro scene */
   outroAvatarSrc?: string;
+  /** Background images for intro (website screenshots, hero images) */
+  introBackgroundImages?: string[];
+  /** Profile/logo image for intro (circular overlay) */
+  introProfileImageSrc?: string;
 }
 
 export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
@@ -151,6 +155,8 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   transitionSfxSrc,
   introAvatarSrc,
   outroAvatarSrc,
+  introBackgroundImages = [],
+  introProfileImageSrc,
 }) => {
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
@@ -192,6 +198,8 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
           showTitle={showTitle}
           accentColor={accentColor}
           language={language}
+          backgroundImages={introBackgroundImages}
+          profileImageSrc={introProfileImageSrc}
         />
         {introAvatarSrc && (
           <AvatarOverlay

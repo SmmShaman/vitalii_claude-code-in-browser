@@ -879,7 +879,7 @@ async function main() {
 
   // Calculate total duration from actual segment durations
   // Dynamic intro/outro duration based on TTS (minimum 4s)
-  const introDuration = introVoiceover ? Math.max(Number(introVoiceover.durationSeconds) + 1, 4) : 4;
+  const introDuration = introVoiceover ? Math.max(Number(introVoiceover.durationSeconds) + 1, 8) : 8;
   const roundupDuration = roundupVoiceover ? Math.max(Number(roundupVoiceover.durationSeconds) + 1, 5) : 0;
   const outroDuration = outroVoiceover ? Math.max(Number(outroVoiceover.durationSeconds) + 1, 4) : 4;
   const overflowDuration = overflowVoiceover ? Math.max(Number(overflowVoiceover.durationSeconds) + 1, 4) : 0;
@@ -934,6 +934,28 @@ async function main() {
   try { await fs.access(path.join(publicDir, 'bgm.mp3')); bgmFileExists = true; console.log('🎵 Background music found: bgm.mp3'); } catch {}
   try { await fs.access(path.join(publicDir, 'whoosh.mp3')); sfxFileExists = true; console.log('🔊 Transition SFX found: whoosh.mp3'); } catch {}
 
+  // Step 4c: Copy intro assets (hero images + logo) to Remotion public dir
+  console.log('\n🖼️ Step 4c: Preparing intro assets...');
+  const introBackgroundImages = [];
+  const heroDir = path.join(__dirname, '..', '..', 'public', 'images', 'hero');
+  const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png');
+  const heroFiles = ['about.webp', 'services.webp', 'projects.webp', 'skills.webp', 'news.webp', 'blog.webp'];
+  for (const hf of heroFiles) {
+    try {
+      const src = path.join(heroDir, hf);
+      const dest = path.join(publicDir, `intro_${hf}`);
+      await fs.copyFile(src, dest);
+      introBackgroundImages.push(`intro_${hf}`);
+    } catch { /* skip missing */ }
+  }
+  let introProfileImageSrc = null;
+  try {
+    const dest = path.join(publicDir, 'intro_logo.png');
+    await fs.copyFile(logoPath, dest);
+    introProfileImageSrc = 'intro_logo.png';
+  } catch { /* skip if missing */ }
+  console.log(`  📸 ${introBackgroundImages.length} bg images, profile: ${introProfileImageSrc ? 'yes' : 'no'}`);
+
   // Step 5: Render with Remotion
   console.log('\n🎬 Step 4: Rendering with Remotion...');
   const outputPath = path.join(os.tmpdir(), `daily_show_${Date.now()}.mp4`);
@@ -968,6 +990,9 @@ async function main() {
     // Avatar overlay
     introAvatarSrc: avatarResult.introAvatarSrc || undefined,
     outroAvatarSrc: avatarResult.outroAvatarSrc || undefined,
+    // Intro background images + profile
+    introBackgroundImages: introBackgroundImages.length > 0 ? introBackgroundImages : undefined,
+    introProfileImageSrc: introProfileImageSrc || undefined,
   });
 
   const propsFile = path.join(os.tmpdir(), `daily_props_${Date.now()}.json`);
