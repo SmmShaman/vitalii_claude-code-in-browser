@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-14-v24-data-overlays";
+const VERSION = "2026-03-14-v25-deep-overlays";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -993,31 +993,6 @@ For each article segment, specify ALL of these fields:
   GOOD: ["naval warship ocean", "military destroyer ship", "strait waterway aerial view"]
   Think: what REAL PHOTOS would illustrate this story? Use concrete visual nouns.
 
-- dataOverlays: array of animated infographic elements that appear ON TOP of the image during the content scene. These visualize key data points from the narration. Each overlay has:
-  * type: "keyFigure" | "barChart" | "bulletList" | "miniTable" | "comparison"
-  * showAt: fraction (0.0-1.0) of scene when it appears (e.g. 0.15 = 15% into scene)
-  * hideAt: fraction when it disappears (e.g. 0.55 = 55% into scene)
-  * position: "right" or "left" side of screen
-  * data: type-specific data object
-
-  TYPE EXAMPLES:
-  keyFigure: { value: "€5,5M", label: "Investering", trend: "up", icon: "💰" }
-  barChart: { title: "Markedsandel", items: [{ label: "Google", value: 65 }, { label: "Bing", value: 12 }, { label: "Andre", value: 23 }] }
-  bulletList: { title: "Funksjoner", items: ["AI-automatisering", "Prediktiv analyse", "Sanntidsovervåking"] }
-  miniTable: { headers: ["Selskap", "Verdi"], rows: [["Zalaris", "2,2 mrd"], ["Norvestor", "10+ mrd"]] }
-  comparison: { title: "Endring", left: { label: "Før", value: "15%" }, right: { label: "Nå", value: "43%" } }
-
-  OVERLAY RULES:
-  - Generate 1-3 overlays per segment. Every segment MUST have at least one overlay.
-  - Time them to appear when the narrator mentions the relevant data point.
-  - Don't overlap multiple overlays — space them out with different showAt/hideAt ranges.
-  - Use keyFigure for big impressive numbers (funding, revenue, percentages).
-  - Use barChart for comparisons of 2-5 items.
-  - Use bulletList for features, capabilities, key points.
-  - Use miniTable for structured data (companies, dates, values).
-  - Use comparison for before/after or old/new contrasts.
-  - Labels and titles in Norwegian Bokmål.
-
 VISUAL DIRECTION RULES:
 - Headlines and keyQuotes in clean Norwegian Bokmål — avoid unnecessary anglicisms
 - Match mood to story content (don't use "urgent" for lifestyle stories)
@@ -1043,11 +1018,7 @@ Return JSON:
       "transition": "...",
       "textReveal": "...",
       "statsVisualType": "list",
-      "imageSearchQueries": ["concrete visual query 1", "concrete visual query 2"],
-      "dataOverlays": [
-        { "type": "keyFigure", "showAt": 0.1, "hideAt": 0.45, "position": "right", "data": { "value": "€5,5M", "label": "Investering", "trend": "up", "icon": "💰" } },
-        { "type": "bulletList", "showAt": 0.5, "hideAt": 0.9, "position": "right", "data": { "title": "Hovedpunkter", "items": ["Punkt 1", "Punkt 2"] } }
-      ]
+      "imageSearchQueries": ["concrete visual query 1", "concrete visual query 2"]
     }
   ],
   "scenarioDescription": "Детальний покроковий опис візуального сценарію українською з описом анімацій, настрою та ефектів кожного сегменту..."
@@ -1072,7 +1043,7 @@ Return JSON:
     throw new Error("AI returned no visual segments");
   }
 
-  // Save scenario
+  // Save base scenario first
   await supabase
     .from("daily_video_drafts")
     .update({
@@ -1082,13 +1053,30 @@ Return JSON:
     })
     .eq("target_date", targetDate);
 
-  // Send scenario to Telegram — split into 2 messages to avoid 4096 char limit
   const targetChatId = chatId || TELEGRAM_CHAT_ID;
+
+  // ── Deep Infographic Overlay Generation (per-segment AI calls) ──
+  // This is a separate step that analyzes each script individually
+  // for data visualization opportunities (charts, tables, key figures).
+  const enrichedSegments = await generateDataOverlays(
+    scenario.segments,
+    detailedScripts,
+    detailedHeadlines,
+    targetChatId,
+  );
+
+  // Save enriched scenario with overlays
+  await supabase
+    .from("daily_video_drafts")
+    .update({ visual_scenario: enrichedSegments })
+    .eq("target_date", targetDate);
+
+  // Send scenario to Telegram — split into 2 messages to avoid 4096 char limit
 
   // Message 1: Segment details (no buttons)
   let segmentsMsg = `🎨 <b>Візуальний сценарій — ${displayDate}</b>\n\n`;
 
-  scenario.segments.forEach((seg: any, i: number) => {
+  enrichedSegments.forEach((seg: any, i: number) => {
     const catEmoji: Record<string, string> = {
       tech: "💻", business: "💼", ai: "🤖", startup: "🚀",
       science: "🔬", politics: "🏛", crypto: "₿", health: "🏥", news: "📰",
@@ -1105,6 +1093,18 @@ Return JSON:
     if (seg.facts && seg.facts.length > 0) {
       const statsType = seg.statsVisualType ? ` [${seg.statsVisualType}]` : "";
       segmentsMsg += `   📊${statsType} ${seg.facts.map((f: any) => `${f.value} (${f.label})`).join(", ")}\n`;
+    }
+    // Show infographic overlays
+    if (seg.dataOverlays && seg.dataOverlays.length > 0) {
+      const overlayTypes: Record<string, string> = {
+        keyFigure: "🔢", barChart: "📊", bulletList: "📋", miniTable: "📑", comparison: "⚖️",
+      };
+      const overlayDesc = seg.dataOverlays.map((o: any) => {
+        const icon = overlayTypes[o.type] || "📌";
+        const label = o.type === "keyFigure" ? o.data?.value : o.type === "barChart" ? `${o.data?.items?.length || 0} bars` : o.type === "bulletList" ? `${o.data?.items?.length || 0} pts` : o.type === "miniTable" ? `${o.data?.rows?.length || 0} rows` : "vs";
+        return `${icon}${label}`;
+      }).join(" ");
+      segmentsMsg += `   🎨 Інфографіка: ${overlayDesc}\n`;
     }
     segmentsMsg += "\n";
   });
@@ -1152,6 +1152,158 @@ Return JSON:
 
   console.log(`✅ Visual scenario sent for approval`);
   return json({ ok: true, segments: scenario.segments.length });
+}
+
+// ══════════════════════════════════════════════════════════════
+// STEP 3a-2: Deep Infographic Overlays (per-segment AI analysis)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * For each segment, make a dedicated AI call to analyze the script text
+ * and generate precise infographic overlays (charts, tables, key figures).
+ *
+ * This produces much higher quality overlays than embedding them in the
+ * main scenario prompt, because the AI can focus entirely on data extraction
+ * and visualization design for one article at a time.
+ */
+async function generateDataOverlays(
+  segments: any[],
+  scripts: any[],
+  headlines: any[],
+  chatId?: string | number,
+): Promise<any[]> {
+  console.log(`📊 Generating deep infographic overlays for ${segments.length} segments...`);
+
+  if (chatId) {
+    await sendMessage(chatId, `📊 <b>Аналізую кожну новину для інфографіки...</b>\n0/${segments.length} сегментів`);
+  }
+
+  const overlaySystemPrompt = `You are a data visualization expert for a news video. Your ONLY task: analyze the narrator's script and design animated infographic overlays.
+
+STEP-BY-STEP PROCESS:
+1. Read the script word by word.
+2. Find EVERY number, statistic, percentage, monetary value, comparison, list, or key fact.
+3. For each found data point, decide the best visualization type.
+4. Calculate WHEN in the script this data point is mentioned (as a fraction 0.0-1.0 of total text length).
+5. Design the overlay data with Norwegian labels.
+
+AVAILABLE OVERLAY TYPES:
+
+1. "keyFigure" — ONE big animated number with label and trend arrow.
+   Best for: funding amounts, percentages, counts, prices, ratings.
+   Data: { "value": "€5,5M", "label": "Investering", "trend": "up", "icon": "💰" }
+   trend: "up" (green arrow), "down" (red arrow), or omit.
+   icon: relevant emoji (💰💶📈📉🏆⚡🔬💻🚀👥🏢📊).
+
+2. "barChart" — Horizontal animated bar chart (2-5 items).
+   Best for: market share, rankings, comparisons between entities, benchmark scores.
+   Data: { "title": "Benchmark-resultater", "items": [{ "label": "KGMON", "value": 87 }, { "label": "GPT-4", "value": 72 }] }
+
+3. "bulletList" — Animated bullet points appearing one by one.
+   Best for: features, capabilities, key takeaways, steps, consequences.
+   Data: { "title": "Hovedfunksjoner", "items": ["Punkt 1", "Punkt 2", "Punkt 3"] }
+   Max 5 items. Each item max 6 words.
+
+4. "miniTable" — Compact table with header row and data rows.
+   Best for: structured comparisons (company+value, before+after, entity+metric).
+   Data: { "headers": ["Selskap", "Beløp"], "rows": [["Tower", "€5,5M"], ["Zalaris", "2,2 mrd"]] }
+   Max 2-3 columns, max 4 rows.
+
+5. "comparison" — Side-by-side before/after or versus comparison.
+   Best for: changes over time, old vs new, two competing values.
+   Data: { "title": "Endring", "left": { "label": "Før", "value": "150" }, "right": { "label": "Nå", "value": "2200" } }
+
+TIMING RULES:
+- showAt: fraction (0.0-1.0) of when the overlay should appear. Calculate based on WHERE in the script text the data point is mentioned. If a number appears at word 15 of 50, showAt ≈ 0.3.
+- hideAt: overlay should stay visible for 25-40% of the scene. So hideAt = showAt + 0.25 to 0.40.
+- NEVER overlap two overlays. If overlay 1 ends at 0.5, overlay 2 starts at 0.5 or later.
+- First overlay should start at 0.05-0.15 (not immediately).
+
+POSITION RULES:
+- "right" is default. Use "left" for variety if there are 2+ overlays in one segment.
+- Alternate positions between overlays within a segment.
+
+QUALITY RULES:
+- Generate 1-4 overlays per segment depending on how data-rich the script is.
+- EVERY segment MUST have at least 1 overlay. Even opinion pieces have key takeaways (use bulletList).
+- All text labels in Norwegian Bokmål.
+- Values should be formatted nicely: "2,2 mrd NOK" not "2200000000", "43%" not "0.43".
+- For keyFigure: choose the single MOST impressive number from the segment.
+- For barChart: extract real numbers from the script, don't invent data.
+- For bulletList: extract actual points from the script, max 6 words each.
+
+Return JSON:
+{
+  "dataOverlays": [
+    { "type": "...", "showAt": 0.1, "hideAt": 0.45, "position": "right", "data": {...} }
+  ],
+  "reasoning": "Brief explanation of what data you found and why you chose these visualizations"
+}`;
+
+  const enrichedSegments = [...segments];
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const script = scripts[i];
+    const headline = headlines[i];
+
+    // Build the script text — use Norwegian version
+    const scriptText = typeof script === "string" ? script : (script?.scriptNo || script?.scriptEn || "");
+
+    if (!scriptText) {
+      console.log(`  ⚠️ Segment ${i}: no script text, skipping overlay generation`);
+      enrichedSegments[i] = { ...seg, dataOverlays: [] };
+      continue;
+    }
+
+    const userPrompt = `Segment ${i + 1}: "${seg.headline || headline?.title || ""}"
+Category: ${seg.category || "news"}
+Mood: ${seg.mood || "positive"}
+
+NARRATOR SCRIPT (this is what the narrator reads aloud):
+"""
+${scriptText}
+"""
+
+Analyze this script. Find all numbers, statistics, facts, lists, and comparisons.
+Design the optimal infographic overlays for this segment.`;
+
+    try {
+      const response = await callAI(overlaySystemPrompt, userPrompt, 2000);
+      const parsed = JSON.parse(response);
+      const overlays = parsed.dataOverlays || parsed.overlays || [];
+
+      // Validate overlay structure
+      const validOverlays = overlays.filter((o: any) =>
+        o.type && o.showAt != null && o.hideAt != null && o.data &&
+        ["keyFigure", "barChart", "bulletList", "miniTable", "comparison"].includes(o.type) &&
+        o.showAt >= 0 && o.showAt < 1 && o.hideAt > o.showAt && o.hideAt <= 1
+      );
+
+      enrichedSegments[i] = { ...seg, dataOverlays: validOverlays };
+      console.log(`  📊 Segment ${i} "${(seg.headline || "").substring(0, 30)}": ${validOverlays.length} overlays (${validOverlays.map((o: any) => o.type).join(", ")})`);
+      if (parsed.reasoning) {
+        console.log(`     💡 ${parsed.reasoning.substring(0, 120)}`);
+      }
+    } catch (err: any) {
+      console.error(`  ❌ Segment ${i} overlay generation failed: ${err.message}`);
+      enrichedSegments[i] = { ...seg, dataOverlays: [] };
+    }
+
+    // Small delay between API calls to stay within rate limits
+    if (i < segments.length - 1) {
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+
+  const totalOverlays = enrichedSegments.reduce((n: number, s: any) => n + (s.dataOverlays?.length || 0), 0);
+  console.log(`✅ Deep overlays complete: ${totalOverlays} overlays across ${segments.length} segments`);
+
+  if (chatId) {
+    await sendMessage(chatId, `✅ <b>Інфографіка готова:</b> ${totalOverlays} елементів для ${segments.length} сегментів`);
+  }
+
+  return enrichedSegments;
 }
 
 // ══════════════════════════════════════════════════════════════
