@@ -790,6 +790,8 @@ async function main() {
       mood: segment.mood || 'positive',
       transition: segment.transition || 'fade',
       textReveal: segment.textReveal || 'default',
+      // AI-generated image search queries for Pexels (from visual scenario)
+      imageSearchQueries: segment.imageSearchQueries || [],
     });
   }
 
@@ -826,6 +828,7 @@ async function main() {
           headline: detailedArticles[idx]?.title_en || detailedArticles[idx]?.original_title || s.headline,
           category: s.category,
           keyQuote: s.keyQuote,
+          imageSearchQueries: s.imageSearchQueries || [],
         }));
         const pexelsMedia = await downloadPexelsMedia(pexelsSegments, publicDir);
 

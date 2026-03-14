@@ -210,15 +210,31 @@ export async function downloadPexelsMedia(segments, publicDir) {
 
   for (let segIndex = 0; segIndex < segments.length; segIndex++) {
     const seg = segments[segIndex];
-    const searchQuery = buildSearchQuery(seg);
-    console.log(`[pexels] Segment ${segIndex}: searching "${searchQuery}"`);
+    const allQueries = getAllSearchQueries(seg);
+    const primaryQuery = allQueries[0];
+    console.log(`[pexels] Segment ${segIndex}: searching "${primaryQuery}"${allQueries.length > 1 ? ` (+${allQueries.length - 1} alt queries)` : ''}`);
 
     try {
-      // Run image + video searches concurrently (still throttled by limiter)
-      const [images, videos] = await Promise.all([
-        limiter(() => searchPexelsImages(searchQuery, 3)),
-        limiter(() => searchPexelsVideos(searchQuery, 1)),
+      // Search with primary query first
+      const [primaryImages, videos] = await Promise.all([
+        limiter(() => searchPexelsImages(primaryQuery, 3)),
+        limiter(() => searchPexelsVideos(primaryQuery, 1)),
       ]);
+
+      // Search with alternative queries for more diverse images
+      let images = [...primaryImages];
+      for (let q = 1; q < allQueries.length && images.length < 5; q++) {
+        try {
+          const extra = await limiter(() => searchPexelsImages(allQueries[q], 2));
+          // Deduplicate by photo id
+          const existingIds = new Set(images.map(img => img.id));
+          const newImages = extra.filter(img => !existingIds.has(img.id));
+          images.push(...newImages);
+          if (newImages.length > 0) {
+            console.log(`[pexels]   +${newImages.length} from alt query "${allQueries[q].substring(0, 30)}"`);
+          }
+        } catch { /* skip failed alt query */ }
+      }
 
       console.log(`[pexels] Segment ${segIndex}: found ${images.length} images, ${videos.length} videos`);
 
@@ -273,13 +289,20 @@ export async function downloadPexelsMedia(segments, publicDir) {
 
 /**
  * Turn a segment's headline + category into a Pexels search query.
- * Extracts company names, products, and key concepts for relevant results.
- * Expects English headline (Pexels is English-language API).
+ *
+ * Priority: AI-generated imageSearchQueries (from visual scenario) > headline extraction.
+ * AI queries describe WHAT TO SEE (e.g. "naval warship ocean") not the headline text.
  */
 function buildSearchQuery(segment) {
-  const { headline = '', category = '' } = segment;
+  const { headline = '', category = '', imageSearchQueries = [] } = segment;
 
-  // Common English stop words to filter out
+  // If AI provided specific image search queries, use the first one
+  // (others will be used for additional searches below)
+  if (imageSearchQueries.length > 0) {
+    return imageSearchQueries[0];
+  }
+
+  // Fallback: extract meaningful words from headline
   const stopWords = new Set([
     'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
     'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
@@ -294,20 +317,15 @@ function buildSearchQuery(segment) {
     'says', 'said', 'also', 'now', 'get', 'gets', 'got', 'make', 'makes',
   ]);
 
-  // Extract meaningful words: capitalize = likely proper noun (company/product)
   const words = headline
     .replace(/[^\w\s'-]/g, ' ')
     .split(/\s+/)
     .filter((w) => w.length > 2 && !stopWords.has(w.toLowerCase()));
 
-  // Prioritize capitalized words (company names, products) — up to 4
   const properNouns = words.filter((w) => /^[A-Z]/.test(w)).slice(0, 4);
   const otherWords = words.filter((w) => !/^[A-Z]/.test(w)).slice(0, 3);
-
-  // Build query: proper nouns first, then descriptive words
   const queryParts = [...properNouns, ...otherWords].slice(0, 6);
 
-  // Add category context if query is too short
   const categoryMap = {
     tech: 'technology',
     ai: 'artificial intelligence',
@@ -316,6 +334,7 @@ function buildSearchQuery(segment) {
     science: 'science laboratory',
     crypto: 'cryptocurrency digital',
     health: 'health medical',
+    politics: 'government politics',
   };
 
   if (queryParts.length < 3) {
@@ -324,4 +343,20 @@ function buildSearchQuery(segment) {
   }
 
   return queryParts.join(' ') || 'technology business';
+}
+
+/**
+ * Get all search queries for a segment (primary + alternatives from AI).
+ */
+function getAllSearchQueries(segment) {
+  const queries = [];
+  const { imageSearchQueries = [] } = segment;
+
+  if (imageSearchQueries.length > 0) {
+    queries.push(...imageSearchQueries);
+  } else {
+    queries.push(buildSearchQuery(segment));
+  }
+
+  return queries;
 }

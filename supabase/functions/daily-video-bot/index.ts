@@ -985,6 +985,13 @@ For each article segment, specify ALL of these fields:
   * "list" — simple dot + value + label
   * "counters" — animated tick-up numbers (for impressive stats like funding, users)
   * "bars" — horizontal bar chart (for comparisons, percentages)
+- imageSearchQueries: array of 2-3 English search queries for finding relevant stock photos/videos on Pexels.
+  CRITICAL: These must describe WHAT THE VIEWER SHOULD SEE, not the headline text.
+  BAD: "QuTwo quantum startup" (Pexels won't find this)
+  GOOD: ["quantum computer laboratory", "superconducting chip close-up", "physics research lab"]
+  BAD: "Hormuz Strait military"
+  GOOD: ["naval warship ocean", "military destroyer ship", "strait waterway aerial view"]
+  Think: what REAL PHOTOS would illustrate this story? Use concrete visual nouns.
 
 VISUAL DIRECTION RULES:
 - Headlines and keyQuotes in clean Norwegian Bokmål — avoid unnecessary anglicisms
@@ -1010,7 +1017,8 @@ Return JSON:
       "mood": "...",
       "transition": "...",
       "textReveal": "...",
-      "statsVisualType": "list"
+      "statsVisualType": "list",
+      "imageSearchQueries": ["concrete visual query 1", "concrete visual query 2"]
     }
   ],
   "scenarioDescription": "Детальний покроковий опис візуального сценарію українською з описом анімацій, настрою та ефектів кожного сегменту..."
