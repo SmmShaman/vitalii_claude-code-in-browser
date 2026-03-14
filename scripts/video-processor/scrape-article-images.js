@@ -334,8 +334,53 @@ export async function scrapeArticleImages(articleUrl, publicDir, prefix, options
 }
 
 /**
+ * Resolve a Google News redirect URL to the actual article URL.
+ * Google News RSS wraps all URLs in redirects like:
+ * https://news.google.com/rss/articles/CBMi...
+ * We follow the redirect (without downloading body) to get the real URL.
+ */
+async function resolveGoogleNewsUrl(gnUrl) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(gnUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': USER_AGENT },
+      redirect: 'manual', // Don't follow — just get Location header
+    });
+    clearTimeout(timeout);
+
+    // Google News returns 302/303 with Location header pointing to real URL
+    const location = res.headers.get('location');
+    if (location && !location.includes('news.google.com')) {
+      return location;
+    }
+
+    // Some redirects are 200 with meta refresh or JS redirect — try follow
+    if (res.status === 200) {
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 8000);
+      const res2 = await fetch(gnUrl, {
+        signal: controller2.signal,
+        headers: { 'User-Agent': USER_AGENT },
+        redirect: 'follow',
+      });
+      clearTimeout(timeout2);
+      const finalUrl = res2.url;
+      if (finalUrl && !finalUrl.includes('news.google.com')) {
+        return finalUrl;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Search Google News RSS for related articles covering the same story.
- * Returns up to `limit` URLs of other news sites.
+ * Returns up to `limit` resolved URLs of other news sites.
  *
  * @param {string} headline - Article headline to search for
  * @param {string} originalUrl - Original article URL (to exclude from results)
@@ -361,27 +406,46 @@ async function searchRelatedArticles(headline, originalUrl, limit = 3) {
     if (!res.ok) return [];
     const xml = await res.text();
 
-    // Extract URLs from RSS <link> tags (Google News wraps in CDATA or direct)
-    const links = [];
+    // Extract Google News redirect URLs from RSS items
+    const rawLinks = [];
     const itemMatches = xml.matchAll(/<item>[\s\S]*?<\/item>/gi);
     for (const m of itemMatches) {
       const item = m[0];
-      // Google News RSS has the real URL in <link> tag
       const linkMatch = item.match(/<link>([^<]+)/);
       if (linkMatch) {
-        let articleUrl = linkMatch[1].trim();
-        // Skip if it's the same domain as original
-        try {
-          const origHost = new URL(originalUrl).hostname.replace('www.', '');
-          const foundHost = new URL(articleUrl).hostname.replace('www.', '');
-          if (origHost === foundHost) continue;
-        } catch { /* ignore */ }
-        links.push(articleUrl);
-        if (links.length >= limit) break;
+        rawLinks.push(linkMatch[1].trim());
       }
+      if (rawLinks.length >= limit + 3) break; // extra buffer for filtering
+    }
+
+    // Resolve Google News redirect URLs to actual article URLs
+    const links = [];
+    const origHost = originalUrl ? new URL(originalUrl).hostname.replace('www.', '') : '';
+
+    for (const rawUrl of rawLinks) {
+      if (links.length >= limit) break;
+
+      let realUrl = rawUrl;
+      // If it's a Google News redirect, resolve it
+      if (rawUrl.includes('news.google.com')) {
+        const resolved = await resolveGoogleNewsUrl(rawUrl);
+        if (!resolved) continue;
+        realUrl = resolved;
+      }
+
+      // Skip if same domain as original article
+      try {
+        const foundHost = new URL(realUrl).hostname.replace('www.', '');
+        if (origHost && origHost === foundHost) continue;
+      } catch { continue; }
+
+      links.push(realUrl);
     }
 
     console.log(`[search] "${query.substring(0, 40)}..." → ${links.length} related articles`);
+    if (links.length > 0) {
+      links.forEach((l, i) => console.log(`[search]   ${i + 1}. ${new URL(l).hostname}`));
+    }
     return links;
   } catch (e) {
     console.log(`[search] Google News search failed: ${e.message}`);
