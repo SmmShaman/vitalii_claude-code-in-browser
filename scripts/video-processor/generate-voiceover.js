@@ -28,13 +28,33 @@ import os from 'os';
  */
 
 /**
+ * Norwegian voice pairs for dual-narrator digest.
+ * Male and female voices alternate between segments.
+ */
+export const VOICE_PRESETS = {
+  no: {
+    male: 'Финн',
+    female: 'Ida plus',
+  },
+  en: {
+    male: 'Brian US HD',
+    female: 'Nova NO',
+  },
+  ua: {
+    male: 'Финн',
+    female: 'Ida plus',
+  },
+};
+
+/**
  * Generate voiceover audio and word timestamps from a script.
  *
  * @param {string} scriptText - The voiceover script text
  * @param {string} language - Language code: 'en', 'no', 'ua'
+ * @param {{ voice?: string, gender?: 'male' | 'female' }} options - Optional voice override or gender selection
  * @returns {Promise<VoiceoverResult>}
  */
-export async function generateVoiceover(scriptText, language = 'en') {
+export async function generateVoiceover(scriptText, language = 'en', options = {}) {
   const ZVUKOGRAM_TOKEN = process.env.ZVUKOGRAM_TOKEN;
   const ZVUKOGRAM_EMAIL = process.env.ZVUKOGRAM_EMAIL;
 
@@ -45,13 +65,17 @@ export async function generateVoiceover(scriptText, language = 'en') {
   console.log(`🎙️ Generating voiceover (${language})...`);
   console.log(`   Script length: ${scriptText.length} chars, ${scriptText.split(/\s+/).length} words`);
 
-  // Pick voice based on language
-  const voices = {
-    en: 'Brian US HD',
-    no: 'Andrew HD US',
-    ua: 'Andrew HD US',
-  };
-  const voice = voices[language] || 'Brian US HD';
+  // Pick voice: explicit override > gender preset > default male
+  let voice;
+  if (options.voice) {
+    voice = options.voice;
+  } else if (options.gender) {
+    const preset = VOICE_PRESETS[language] || VOICE_PRESETS.no;
+    voice = preset[options.gender] || preset.male;
+  } else {
+    const preset = VOICE_PRESETS[language] || VOICE_PRESETS.no;
+    voice = preset.male;
+  }
 
   const BASE = 'https://zvukogram.com/index.php?r=api';
   console.log(`🔊 Using voice: ${voice}`);

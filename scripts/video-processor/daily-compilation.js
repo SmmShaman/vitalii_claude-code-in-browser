@@ -23,7 +23,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { execSync } from 'child_process';
-import { generateVoiceover } from './generate-voiceover.js';
+import { generateVoiceover, VOICE_PRESETS } from './generate-voiceover.js';
 import { generateClickbaitMeta } from './generate-clickbait.js';
 import { generateAIThumbnail } from './generate-ai-thumbnail.js';
 import { generateAllAvatarClips } from './generate-avatar.js';
@@ -164,13 +164,13 @@ Target duration: ~${Math.round(targetDuration)} seconds. There is NO maximum len
 ${segmentCountNote}
 
 You must write SEPARATE scripts for each part of the show:
-1. "introScript" — personal opening greeting (~4-5 seconds, ~${wordsPerArticle} words). Start with "Hei, jeg er Vitalii fra vitalii punkt no." then a brief mention of today's news count (${articles.length} saker).${roundupPromptBlock}
+1. "introScript" — news digest opening (~4-5 seconds, ~${wordsPerArticle} words). Start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha." then a brief mention of today's news count (${articles.length} saker).${roundupPromptBlock}
 ${hasOverflow ? '3' : '2'}. "segmentScripts" — one narration script for each of the ${detailedCount} detailed articles (~12-18 seconds each, ~${wordsPerArticle * 2} words each)
 ${hasOverflow ? '4' : '3'}. "outroScript" — closing with subscribe CTA (~4-5 seconds, ~${wordsPerArticle} words). End with "Abonner på kanalen og trykk liker-knappen! Vi ses i morgen."${overflowPromptBlock}
 ${hasOverflow ? '6' : '4'}. "segments" — visual metadata for each of the ${detailedCount} detailed stories
 
 SCRIPT RULES:
-- introScript: Must start with "Hei, jeg er Vitalii fra vitalii punkt no." followed by greeting and news count.${hasOverflow ? '\n- roundupScript: Quick-fire listing of ALL headlines. Each story name 3-5 words. Fast pace, building anticipation.' : ''}
+- introScript: Must start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha." followed by today's news count.${hasOverflow ? '\n- roundupScript: Quick-fire listing of ALL headlines. Each story name 3-5 words. Fast pace, building anticipation.' : ''}
 - Each segmentScript: transition + 3-5 sentences covering key points. Natural conversational tone. Don't rush.
 - outroScript: Must include "Abonner på kanalen og trykk liker-knappen!" (subscribe and like CTA).${hasOverflow ? '\n- overflowScript: Brief mention that more stories are on the website.' : ''}
 - Each script is a SEPARATE voiceover audio — they must stand alone (no references to "previous" or "next")
@@ -229,7 +229,7 @@ RULES:
 
 Return valid JSON with this structure:
 {
-  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",${hasOverflow ? '\n  "roundupScript": "I dag dekker vi N nyheter. Blant annet: ...",' : ''}
+  "introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha...",${hasOverflow ? '\n  "roundupScript": "I dag dekker vi N nyheter. Blant annet: ...",' : ''}
   "segmentScripts": ["La oss starte med...", "Videre til...", ...],
   "outroScript": "Det var dagens nyheter...",${hasOverflow ? '\n  "overflowScript": "Du finner N flere nyheter på vitalii punkt no.",' : ''}
   "segments": [{headline, keyQuote, category, accentColor, mood, transition, textReveal}, ...],
@@ -318,7 +318,7 @@ function templateShowScript(articles, dateStr) {
     };
   });
 
-  const introScript = `Hei, jeg er Vitalii — vibecoder og utvikler av språkplattformen Elvarika. Her kommer en ny nyhetsoppdatering for dagen som gikk. Jeg presenterer et utvalg av de mest interessante nyhetene innen business, teknologi og startups. Vi har ${articles.length} saker i dag.`;
+  const introScript = `Velkommen til dagens nyhetsdigest fra Vitalii Berbeha. Her er de viktigste teknologinyhetene. Vi har ${articles.length} saker i dag.`;
 
   const roundupScript = hasOverflow
     ? `I dag dekker vi ${articles.length} nyheter. Blant annet: ${articles.map(a => (a.title_no || a.title_en || '').substring(0, 40)).join(', ')}.`
@@ -629,41 +629,51 @@ async function main() {
   const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
   if (!hasTTS) throw new Error('Missing TTS credentials');
 
-  // Generate TTS for intro script
+  // Dual-voice narration: male intro, alternating per segment, female outro
+  const DUAL_VOICE = process.env.DUAL_VOICE !== 'false'; // enabled by default
+  if (DUAL_VOICE) {
+    const preset = VOICE_PRESETS[LANGUAGE] || VOICE_PRESETS.no;
+    console.log(`🎙️ Dual-voice mode: male="${preset.male}", female="${preset.female}"`);
+  }
+
+  // Generate TTS for intro script (male voice — main host)
   let introVoiceover = null;
   if (plan.introScript) {
-    console.log('\n  🎙️ Intro voiceover...');
-    introVoiceover = await generateVoiceover(plan.introScript, LANGUAGE);
+    console.log('\n  🎙️ Intro voiceover (male)...');
+    introVoiceover = await generateVoiceover(plan.introScript, LANGUAGE, { gender: 'male' });
   }
 
-  // Generate TTS for roundup script (cold open)
+  // Generate TTS for roundup script (female voice — co-host)
   let roundupVoiceover = null;
   if (plan.roundupScript) {
-    console.log('\n  🎙️ Roundup voiceover...');
-    roundupVoiceover = await generateVoiceover(plan.roundupScript, LANGUAGE);
+    console.log('\n  🎙️ Roundup voiceover (female)...');
+    roundupVoiceover = await generateVoiceover(plan.roundupScript, LANGUAGE,
+      DUAL_VOICE ? { gender: 'female' } : {});
   }
 
-  // Generate TTS for each segment script separately
+  // Generate TTS for each segment script — alternate male/female
   const segmentVoiceovers = [];
   const segmentScripts = plan.segmentScripts || [];
   for (let i = 0; i < segmentScripts.length; i++) {
-    console.log(`\n  🎙️ Segment ${i + 1}/${segmentScripts.length}...`);
-    const vo = await generateVoiceover(segmentScripts[i], LANGUAGE);
+    const gender = DUAL_VOICE ? (i % 2 === 0 ? 'male' : 'female') : 'male';
+    console.log(`\n  🎙️ Segment ${i + 1}/${segmentScripts.length} (${gender})...`);
+    const vo = await generateVoiceover(segmentScripts[i], LANGUAGE, { gender });
     segmentVoiceovers.push(vo);
   }
 
-  // Generate TTS for overflow script
+  // Generate TTS for overflow script (female)
   let overflowVoiceover = null;
   if (plan.overflowScript) {
-    console.log('\n  🎙️ Overflow voiceover...');
-    overflowVoiceover = await generateVoiceover(plan.overflowScript, LANGUAGE);
+    console.log('\n  🎙️ Overflow voiceover (female)...');
+    overflowVoiceover = await generateVoiceover(plan.overflowScript, LANGUAGE,
+      DUAL_VOICE ? { gender: 'female' } : {});
   }
 
-  // Generate TTS for outro script
+  // Generate TTS for outro script (male — closing by host)
   let outroVoiceover = null;
   if (plan.outroScript) {
-    console.log('\n  🎙️ Outro voiceover...');
-    outroVoiceover = await generateVoiceover(plan.outroScript, LANGUAGE);
+    console.log('\n  🎙️ Outro voiceover (male)...');
+    outroVoiceover = await generateVoiceover(plan.outroScript, LANGUAGE, { gender: 'male' });
   }
 
   // Step 4: Download images + prepare Remotion assets

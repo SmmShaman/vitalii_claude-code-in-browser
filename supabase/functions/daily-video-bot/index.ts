@@ -394,7 +394,7 @@ CONTENT FILTER (CRITICAL):
 SCRIPT REQUIREMENTS:
 - Target duration: ~${targetDuration} seconds
 - Write SEPARATE scripts for each part in Norwegian Bokmål:
-  1. "introScript" — personal opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Hei, jeg er Vitalii fra vitalii punkt no." then mention today's news count.
+  1. "introScript" — news digest opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha." then mention today's news count.
   2. "segmentScripts" — one narration per selected article (~12-18s each, ~${wordsPerArticle * 2} words). 3-5 clear sentences each.
   3. "outroScript" — closing with CTA (~4-5s). MUST include "Abonner på kanalen og trykk liker-knappen!"
 
@@ -419,10 +419,10 @@ Return JSON:
 {
   "selectedArticleIds": ["uuid1", "uuid2", ...],
   "rankingReasoning": "Brief explanation of why these ${topN} were chosen and why others were excluded",
-  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",
+  "introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha...",
   "segmentScripts": ["...", "...", ...],
   "outroScript": "Det var alt for i dag...",
-  "introTranslationEn": "Hi, I'm Vitalii from vitalii.no...",
+  "introTranslationEn": "Welcome to today's news digest from Vitalii Berbeha...",
   "segmentTranslationsEn": ["...", "...", ...],
   "outroTranslationEn": "That's all for today..."
 }`;
@@ -445,11 +445,158 @@ Return JSON:
 
   // Validate selected IDs exist in our articles
   const articleMap = new Map(articles.map((a: any) => [a.id, a]));
-  const validSelectedIds = plan.selectedArticleIds.filter((id: string) => articleMap.has(id));
+  let validSelectedIds = plan.selectedArticleIds.filter((id: string) => articleMap.has(id));
   if (validSelectedIds.length === 0) {
     console.error("❌ None of the selected IDs match our articles");
     await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI обрав невідомі ID статей.`);
     return json({ error: "Invalid article IDs from AI" }, 500);
+  }
+
+  // ── Media Pre-Check: ensure each article has enough images ──
+  // An article passes if it has ≥3 images from: DB images array, image_url,
+  // processed_image_url, or source_link (checked via HEAD/og:image).
+  const MIN_IMAGES = 3;
+  const selectedSet = new Set(validSelectedIds);
+  const remainingIds = articles
+    .map((a: any) => a.id)
+    .filter((id: string) => !selectedSet.has(id));
+
+  await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Перевірка медіа...</b>\nМінімум ${MIN_IMAGES} зображень на новину.`);
+
+  const mediaCheckResults: { id: string; imageCount: number; passed: boolean; title: string }[] = [];
+  const finalSelectedIds: string[] = [];
+
+  for (const id of validSelectedIds) {
+    const a = articleMap.get(id)!;
+    const title = a.title_no || a.title_en || a.original_title || "";
+
+    // Count available images
+    let imageCount = 0;
+    const images: string[] = [];
+
+    // 1. DB images array
+    if (a.images && Array.isArray(a.images)) {
+      for (const img of a.images) {
+        if (img && typeof img === "string" && img.startsWith("http")) {
+          images.push(img);
+        }
+      }
+    }
+
+    // 2. processed_image_url
+    if (a.processed_image_url) images.push(a.processed_image_url);
+
+    // 3. image_url
+    if (a.image_url && !images.includes(a.image_url)) images.push(a.image_url);
+
+    // 4. Check source_link for og:image (quick HEAD check)
+    if (images.length < MIN_IMAGES && a.source_link) {
+      try {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 5000);
+        const res = await fetch(a.source_link, {
+          signal: ctrl.signal,
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" },
+          redirect: "follow",
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const html = await res.text();
+          // Extract og:image and other image meta tags
+          const ogMatches = html.match(/property="og:image"\s+content="([^"]+)"/gi) || [];
+          const twMatches = html.match(/name="twitter:image"\s+content="([^"]+)"/gi) || [];
+          for (const m of [...ogMatches, ...twMatches]) {
+            const urlMatch = m.match(/content="([^"]+)"/);
+            if (urlMatch?.[1] && !images.includes(urlMatch[1])) {
+              images.push(urlMatch[1]);
+            }
+          }
+          // Count <img> tags with reasonable src (jpg/png/webp, >200px likely)
+          const imgMatches = html.match(/<img[^>]+src="(https?:\/\/[^"]+\.(jpg|jpeg|png|webp))[^"]*"/gi) || [];
+          for (const m of imgMatches.slice(0, 10)) {
+            const srcMatch = m.match(/src="([^"]+)"/);
+            if (srcMatch?.[1] && !images.includes(srcMatch[1])) {
+              images.push(srcMatch[1]);
+            }
+          }
+        }
+      } catch { /* timeout or network error — skip */ }
+    }
+
+    // 5. Video counts as 3 images (strong visual content)
+    if (a.video_url || a.original_video_url) {
+      imageCount = images.length + 3;
+    } else {
+      imageCount = images.length;
+    }
+
+    const passed = imageCount >= MIN_IMAGES;
+    mediaCheckResults.push({ id, imageCount, passed, title: title.substring(0, 40) });
+
+    if (passed) {
+      finalSelectedIds.push(id);
+    } else {
+      console.log(`  ❌ "${title.substring(0, 40)}" — only ${imageCount} images, need ${MIN_IMAGES}`);
+    }
+  }
+
+  // Replace rejected articles with next best from remaining pool
+  let replacementIdx = 0;
+  const rejectedCount = validSelectedIds.length - finalSelectedIds.length;
+  if (rejectedCount > 0 && remainingIds.length > 0) {
+    console.log(`  🔄 Replacing ${rejectedCount} articles without enough media...`);
+    for (const rejectedResult of mediaCheckResults.filter(r => !r.passed)) {
+      while (replacementIdx < remainingIds.length) {
+        const replId = remainingIds[replacementIdx++];
+        const replA = articleMap.get(replId)!;
+        // Quick check: has image_url or images array?
+        const replImages = (replA.images || []).filter(Boolean).length
+          + (replA.image_url ? 1 : 0) + (replA.processed_image_url ? 1 : 0)
+          + (replA.video_url ? 3 : 0);
+        if (replImages >= MIN_IMAGES) {
+          finalSelectedIds.push(replId);
+          console.log(`  ✅ Replaced with "${(replA.title_no || replA.title_en || "").substring(0, 40)}" (${replImages} images)`);
+          break;
+        }
+      }
+    }
+  }
+
+  // Media check report to Telegram
+  let mediaReport = `📸 <b>Медіа-чеклист:</b>\n\n`;
+  for (const r of mediaCheckResults) {
+    const icon = r.passed ? "✅" : "❌";
+    mediaReport += `${icon} ${r.imageCount} зобр. — ${escapeHtml(r.title)}\n`;
+  }
+  if (rejectedCount > 0) {
+    mediaReport += `\n🔄 Замінено ${rejectedCount} статей без медіа`;
+  }
+  await sendMessage(TELEGRAM_CHAT_ID, mediaReport);
+
+  validSelectedIds = finalSelectedIds;
+
+  // Regenerate scripts for replaced articles if needed
+  if (rejectedCount > 0 && validSelectedIds.length > 0) {
+    // Trim scripts to match new selection (keep scripts for articles that passed, drop rejected)
+    const passedOriginalIds = mediaCheckResults.filter(r => r.passed).map(r => r.id);
+    const newScripts: string[] = [];
+    const newTranslations: string[] = [];
+    for (const id of validSelectedIds) {
+      const origIdx = plan.selectedArticleIds.indexOf(id);
+      if (origIdx >= 0 && plan.segmentScripts[origIdx]) {
+        newScripts.push(plan.segmentScripts[origIdx]);
+        newTranslations.push(plan.segmentTranslationsEn?.[origIdx] || "");
+      } else {
+        // New article needs a script — generate a simple placeholder
+        const a = articleMap.get(id)!;
+        const title = a.title_no || a.title_en || a.original_title || "";
+        newScripts.push(`${title}. ${(a.description_no || a.description_en || "").substring(0, 200)}`);
+        newTranslations.push(a.title_en || title);
+      }
+    }
+    plan.segmentScripts = newScripts;
+    plan.segmentTranslationsEn = newTranslations;
+    plan.selectedArticleIds = validSelectedIds;
   }
 
   // Build headlines from selected articles
@@ -727,7 +874,7 @@ The video is a compilation of ${orderedArticles.length} news stories from ${disp
 Target duration: ~${targetDuration} seconds. There is NO maximum length — take the time needed for each story.
 
 Write SEPARATE scripts for each part:
-1. "introScript" — personal opening (~8-12s, ~25-30 words). MUST start with "Hei, jeg er Vitalii — vibecoder og utvikler av språkplattformen Elvarika." Then: "Her kommer en ny nyhetsoppdatering for dagen som gikk. Jeg presenterer et utvalg av de mest interessante nyhetene innen business, teknologi og startups." Then mention article count (${orderedArticles.length} saker i dag).${roundupPromptBlock}
+1. "introScript" — news digest opening (~8-12s, ~25-30 words). MUST start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha. Her er de viktigste teknologinyhetene." Then mention article count (${orderedArticles.length} saker i dag).${roundupPromptBlock}
 ${hasOverflow ? "3" : "2"}. "segmentScripts" — one narration for each of the ${detailedCount} detailed articles (~25-35s each, ~${wordsPerArticle * 2} words each). 5-8 sentences each. Include CONTEXT: why this matters, who is affected, key numbers/facts, brief background. Make each segment substantive — the viewer should understand the story fully from the narration alone.
 ${hasOverflow ? "4" : "3"}. "outroScript" — closing with subscribe CTA (~4-5s, ~${wordsPerArticle} words). MUST include "Abonner på kanalen og trykk liker-knappen!"${overflowPromptBlock}
 - "segmentTranslations" — Ukrainian translations of each segmentScript (for moderator review)
@@ -749,7 +896,7 @@ RULES:
 
 Return JSON:
 {
-  "introScript": "Hei, jeg er Vitalii fra vitalii punkt no...",${hasOverflow ? '\n  "roundupScript": "I dag dekker vi N nyheter...",' : ""}${hasOverflow ? '\n  "roundupTranslation": "Сьогодні ми розглянемо...",' : ""}
+  "introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha...",${hasOverflow ? '\n  "roundupScript": "I dag dekker vi N nyheter...",' : ""}${hasOverflow ? '\n  "roundupTranslation": "Сьогодні ми розглянемо...",' : ""}
   "segmentScripts": ["...", ...],
   "outroScript": "Det var alt for i dag. Abonner på kanalen...",${hasOverflow ? '\n  "overflowScript": "Du finner N flere nyheter på vitalii punkt no.",' : ""}${hasOverflow ? '\n  "overflowTranslation": "Ще N новин читайте на...",' : ""}
   "segmentTranslations": ["Почнімо з...", ...],
