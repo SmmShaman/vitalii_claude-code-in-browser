@@ -15,7 +15,7 @@ import { join } from 'node:path';
 // Configuration
 // ---------------------------------------------------------------------------
 
-const MAX_IMAGES_PER_ARTICLE = 5;
+const MAX_IMAGES_PER_ARTICLE = 8;
 const MIN_IMAGE_WIDTH = 300;     // skip tiny icons/logos
 const MIN_IMAGE_SIZE = 20_000;   // 20 KB minimum
 const MAX_IMAGE_SIZE = 10_000_000; // 10 MB maximum

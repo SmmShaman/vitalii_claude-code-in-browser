@@ -318,7 +318,7 @@ function templateShowScript(articles, dateStr) {
     };
   });
 
-  const introScript = `Hei, jeg er Vitalii fra vitalii punkt no. Her er dagens nyhetsoppdatering for ${formatDateNorwegian(dateStr)}. Vi har ${articles.length} saker i dag.`;
+  const introScript = `Hei, jeg er Vitalii — vibecoder og utvikler av språkplattformen Elvarika. Her kommer en ny nyhetsoppdatering for dagen som gikk. Jeg presenterer et utvalg av de mest interessante nyhetene innen business, teknologi og startups. Vi har ${articles.length} saker i dag.`;
 
   const roundupScript = hasOverflow
     ? `I dag dekker vi ${articles.length} nyheter. Blant annet: ${articles.map(a => (a.title_no || a.title_en || '').substring(0, 40)).join(', ')}.`
@@ -817,7 +817,7 @@ async function main() {
 
   // Step 4a-2: Pexels fallback — only for segments with <2 scraped images + b-roll for all
   if (process.env.PEXELS_API_KEY) {
-    const needsPexels = segments.some((s, i) => !s.videoSrc && (!s.alternateImages || s.alternateImages.length < 2));
+    const needsPexels = segments.some((s, i) => !s.videoSrc && (!s.alternateImages || s.alternateImages.length < 3));
     if (needsPexels) {
       console.log('\n🖼️ Step 3a-2: Pexels fallback for segments with few article images...');
       try {
@@ -834,7 +834,7 @@ async function main() {
           const existing = segments[i].alternateImages || [];
 
           // Add Pexels images only if article scraping yielded <2
-          if (existing.length < 2 && media && media.images.length > 0) {
+          if (existing.length < 3 && media && media.images.length > 0) {
             segments[i].alternateImages = [...existing, ...media.images];
             segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (segments[i].alternateImages.length + 1)));
             console.log(`  🖼️ Segment ${i}: +${media.images.length} Pexels images (fallback)`);

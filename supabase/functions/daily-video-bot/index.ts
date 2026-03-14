@@ -709,8 +709,8 @@ async function generateScript(targetDate: string, chatId?: number, messageId?: n
     return `ARTICLE ${i + 1}${marker}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
   }).join("\n\n");
 
-  const targetDuration = detailedCount * 15 + 12 + (hasOverflow ? 25 : 0);
-  const wordTarget = Math.round(targetDuration * 2);
+  const targetDuration = detailedCount * 30 + 20 + (hasOverflow ? 25 : 0);
+  const wordTarget = Math.round(targetDuration * 2.5);
   const wordsPerArticle = Math.round(wordTarget / (detailedCount + 2));
 
   const roundupPromptBlock = hasOverflow ? `
@@ -727,8 +727,8 @@ The video is a compilation of ${orderedArticles.length} news stories from ${disp
 Target duration: ~${targetDuration} seconds. There is NO maximum length — take the time needed for each story.
 
 Write SEPARATE scripts for each part:
-1. "introScript" — personal opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Hei, jeg er Vitalii fra vitalii punkt no." then mention today's news count (${orderedArticles.length} saker).${roundupPromptBlock}
-${hasOverflow ? "3" : "2"}. "segmentScripts" — one narration for each of the ${detailedCount} detailed articles (~12-18s each, ~${wordsPerArticle * 2} words each). 3-5 sentences each.
+1. "introScript" — personal opening (~8-12s, ~25-30 words). MUST start with "Hei, jeg er Vitalii — vibecoder og utvikler av språkplattformen Elvarika." Then: "Her kommer en ny nyhetsoppdatering for dagen som gikk. Jeg presenterer et utvalg av de mest interessante nyhetene innen business, teknologi og startups." Then mention article count (${orderedArticles.length} saker i dag).${roundupPromptBlock}
+${hasOverflow ? "3" : "2"}. "segmentScripts" — one narration for each of the ${detailedCount} detailed articles (~25-35s each, ~${wordsPerArticle * 2} words each). 5-8 sentences each. Include CONTEXT: why this matters, who is affected, key numbers/facts, brief background. Make each segment substantive — the viewer should understand the story fully from the narration alone.
 ${hasOverflow ? "4" : "3"}. "outroScript" — closing with subscribe CTA (~4-5s, ~${wordsPerArticle} words). MUST include "Abonner på kanalen og trykk liker-knappen!"${overflowPromptBlock}
 - "segmentTranslations" — Ukrainian translations of each segmentScript (for moderator review)
 
