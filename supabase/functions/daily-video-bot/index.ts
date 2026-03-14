@@ -313,7 +313,7 @@ async function autoDigest(targetDate?: string): Promise<Response> {
   // Fetch ALL published articles with rss_analysis
   const { data: articles, error } = await supabase
     .from("news")
-    .select("id, title_ua, title_no, title_en, original_title, description_ua, description_no, description_en, content_no, content_en, original_content, image_url, processed_image_url, tags, slug_en, rss_analysis, source_link")
+    .select("id, title_ua, title_no, title_en, original_title, description_ua, description_no, description_en, content_no, content_en, original_content, image_url, processed_image_url, images, video_url, original_video_url, tags, slug_en, rss_analysis, source_link")
     .eq("is_published", true)
     .gte("published_at", start)
     .lte("published_at", end)
@@ -573,10 +573,17 @@ Return JSON:
   }
   await sendMessage(TELEGRAM_CHAT_ID, mediaReport);
 
-  validSelectedIds = finalSelectedIds;
+  // Fallback: if media check rejected ALL articles, skip check and use original selection
+  if (finalSelectedIds.length === 0) {
+    console.log(`⚠️ Media check rejected ALL articles — using original selection as fallback`);
+    await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Медіа-чек відхилив усі статті.</b>\nВикористовую оригінальний вибір без фільтрації.`);
+    // Keep validSelectedIds unchanged (original AI selection)
+  } else {
+    validSelectedIds = finalSelectedIds;
+  }
 
   // Regenerate scripts for replaced articles if needed
-  if (rejectedCount > 0 && validSelectedIds.length > 0) {
+  if (rejectedCount > 0 && validSelectedIds.length > 0 && finalSelectedIds.length > 0) {
     // Trim scripts to match new selection (keep scripts for articles that passed, drop rejected)
     const passedOriginalIds = mediaCheckResults.filter(r => r.passed).map(r => r.id);
     const newScripts: string[] = [];
