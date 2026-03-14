@@ -792,6 +792,8 @@ async function main() {
       textReveal: segment.textReveal || 'default',
       // AI-generated image search queries for Pexels (from visual scenario)
       imageSearchQueries: segment.imageSearchQueries || [],
+      // Animated infographic overlays (charts, tables, key figures)
+      dataOverlays: segment.dataOverlays || [],
     });
   }
 

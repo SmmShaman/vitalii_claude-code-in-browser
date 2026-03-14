@@ -29,6 +29,7 @@ import { AnimatedLogo } from "../components/AnimatedLogo";
 import { ProgressBar } from "../components/ProgressBar";
 import { AvatarOverlay } from "../components/AvatarOverlay";
 import { type SubtitleEntry } from "../components/AnimatedSubtitles";
+import { type DataOverlayItem } from "../components/InfoGraphicOverlay";
 import { colors, audio as audioTokens } from "../design-system";
 import type { TransitionType } from "../design-system/transitions";
 
@@ -74,6 +75,8 @@ export interface NewsSegment {
   imageCycleDuration?: number;
   /** B-roll video clips to interleave */
   bRollVideos?: string[];
+  /** Animated infographic overlays (charts, tables, key figures) */
+  dataOverlays?: DataOverlayItem[];
 }
 
 export interface DailyNewsShowProps {
@@ -329,6 +332,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             alternateImages={segment.alternateImages}
             imageCycleDuration={segment.imageCycleDuration}
             bRollVideos={segment.bRollVideos}
+            dataOverlays={segment.dataOverlays}
           />
         ),
         startFrame: currentFrame,
@@ -389,6 +393,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
             alternateImages={segment.alternateImages}
             imageCycleDuration={segment.imageCycleDuration}
             bRollVideos={segment.bRollVideos}
+            dataOverlays={segment.dataOverlays}
           />
         ),
         startFrame: currentFrame,

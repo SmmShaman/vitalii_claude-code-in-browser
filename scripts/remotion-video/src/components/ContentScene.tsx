@@ -23,6 +23,7 @@ import { AnimatedSubtitles, type SubtitleEntry } from "./AnimatedSubtitles";
 import { LowerThird } from "./LowerThird";
 import { CategoryBadge } from "./CategoryBadge";
 import { AvatarOverlay } from "./AvatarOverlay";
+import { InfoGraphicOverlay, type DataOverlayItem } from "./InfoGraphicOverlay";
 import {
   colors,
   gradients,
@@ -69,6 +70,8 @@ export interface ContentSceneProps {
   imageCycleDuration?: number;
   /** B-roll video clips to interleave */
   bRollVideos?: string[];
+  /** Animated infographic overlays synced to narration */
+  dataOverlays?: DataOverlayItem[];
 }
 
 export const ContentScene: React.FC<ContentSceneProps> = ({
@@ -90,6 +93,7 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   alternateImages,
   imageCycleDuration = 4,
   bRollVideos,
+  dataOverlays,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
@@ -508,6 +512,14 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
         <div style={{ position: "absolute", inset: 0, opacity: subtitleFadeIn, zIndex: 10 }}>
           <AnimatedSubtitles subtitles={offsetSubtitles} isVertical={isVertical} />
         </div>
+      )}
+
+      {/* Animated infographic overlays (charts, tables, key figures) */}
+      {dataOverlays && dataOverlays.length > 0 && (
+        <InfoGraphicOverlay
+          overlays={dataOverlays}
+          accentColor={accentColor}
+        />
       )}
 
       {/* Avatar PiP overlay */}

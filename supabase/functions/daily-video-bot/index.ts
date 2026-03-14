@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-14-v23-image-preview";
+const VERSION = "2026-03-14-v24-data-overlays";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -993,6 +993,31 @@ For each article segment, specify ALL of these fields:
   GOOD: ["naval warship ocean", "military destroyer ship", "strait waterway aerial view"]
   Think: what REAL PHOTOS would illustrate this story? Use concrete visual nouns.
 
+- dataOverlays: array of animated infographic elements that appear ON TOP of the image during the content scene. These visualize key data points from the narration. Each overlay has:
+  * type: "keyFigure" | "barChart" | "bulletList" | "miniTable" | "comparison"
+  * showAt: fraction (0.0-1.0) of scene when it appears (e.g. 0.15 = 15% into scene)
+  * hideAt: fraction when it disappears (e.g. 0.55 = 55% into scene)
+  * position: "right" or "left" side of screen
+  * data: type-specific data object
+
+  TYPE EXAMPLES:
+  keyFigure: { value: "€5,5M", label: "Investering", trend: "up", icon: "💰" }
+  barChart: { title: "Markedsandel", items: [{ label: "Google", value: 65 }, { label: "Bing", value: 12 }, { label: "Andre", value: 23 }] }
+  bulletList: { title: "Funksjoner", items: ["AI-automatisering", "Prediktiv analyse", "Sanntidsovervåking"] }
+  miniTable: { headers: ["Selskap", "Verdi"], rows: [["Zalaris", "2,2 mrd"], ["Norvestor", "10+ mrd"]] }
+  comparison: { title: "Endring", left: { label: "Før", value: "15%" }, right: { label: "Nå", value: "43%" } }
+
+  OVERLAY RULES:
+  - Generate 1-3 overlays per segment. Every segment MUST have at least one overlay.
+  - Time them to appear when the narrator mentions the relevant data point.
+  - Don't overlap multiple overlays — space them out with different showAt/hideAt ranges.
+  - Use keyFigure for big impressive numbers (funding, revenue, percentages).
+  - Use barChart for comparisons of 2-5 items.
+  - Use bulletList for features, capabilities, key points.
+  - Use miniTable for structured data (companies, dates, values).
+  - Use comparison for before/after or old/new contrasts.
+  - Labels and titles in Norwegian Bokmål.
+
 VISUAL DIRECTION RULES:
 - Headlines and keyQuotes in clean Norwegian Bokmål — avoid unnecessary anglicisms
 - Match mood to story content (don't use "urgent" for lifestyle stories)
@@ -1018,7 +1043,11 @@ Return JSON:
       "transition": "...",
       "textReveal": "...",
       "statsVisualType": "list",
-      "imageSearchQueries": ["concrete visual query 1", "concrete visual query 2"]
+      "imageSearchQueries": ["concrete visual query 1", "concrete visual query 2"],
+      "dataOverlays": [
+        { "type": "keyFigure", "showAt": 0.1, "hideAt": 0.45, "position": "right", "data": { "value": "€5,5M", "label": "Investering", "trend": "up", "icon": "💰" } },
+        { "type": "bulletList", "showAt": 0.5, "hideAt": 0.9, "position": "right", "data": { "title": "Hovedpunkter", "items": ["Punkt 1", "Punkt 2"] } }
+      ]
     }
   ],
   "scenarioDescription": "Детальний покроковий опис візуального сценарію українською з описом анімацій, настрою та ефектів кожного сегменту..."
