@@ -1072,6 +1072,25 @@ async function main() {
     }
   }
 
+  // Copy video to workspace for artifact upload if YouTube failed
+  if (!result.videoId) {
+    const artifactDir = process.env.GITHUB_WORKSPACE || process.cwd();
+    const artifactPath = path.join(artifactDir, `daily-video-${dateStr}.mp4`);
+    try {
+      await fs.copyFile(outputPath, artifactPath);
+      console.log(`📦 Video saved for artifact: ${artifactPath}`);
+      // Write path for subsequent workflow steps
+      const ghOutput = process.env.GITHUB_OUTPUT;
+      if (ghOutput) {
+        const outputFs = await import('fs');
+        outputFs.appendFileSync(ghOutput, `video_path=${artifactPath}\n`);
+        outputFs.appendFileSync(ghOutput, `video_filename=daily-video-${dateStr}.mp4\n`);
+      }
+    } catch (copyErr) {
+      console.warn(`⚠️ Failed to copy video for artifact: ${copyErr.message}`);
+    }
+  }
+
   // Cleanup
   console.log('\n🧹 Cleaning up...');
   await fs.unlink(propsFile).catch(() => {});
