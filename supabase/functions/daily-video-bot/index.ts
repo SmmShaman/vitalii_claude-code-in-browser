@@ -1118,11 +1118,24 @@ Return JSON:
 }
 
 // ══════════════════════════════════════════════════════════════
-// STEP 3b: Image Preview (before render)
+// STEP 3b: Video Sequence Preview (before render)
 // ══════════════════════════════════════════════════════════════
 
+const CAT_EMOJI: Record<string, string> = {
+  tech: "💻", business: "💼", ai: "🤖", startup: "🚀",
+  science: "🔬", politics: "🏛", crypto: "₿", health: "🏥", news: "📰",
+};
+const MOOD_EMOJI: Record<string, string> = {
+  urgent: "🔴", energetic: "⚡", positive: "🟢", analytical: "🔍",
+  serious: "⚫", contemplative: "💭", lighthearted: "😊", cautionary: "⚠️",
+};
+const TRANSITION_EMOJI: Record<string, string> = {
+  fade: "🌫", wipeLeft: "👈", wipeRight: "👉", slideUp: "⬆️",
+  zoomIn: "🔎", slideDown: "⬇️",
+};
+
 async function prepareImages(targetDate: string, chatId?: number, messageId?: number): Promise<Response> {
-  console.log(`🖼️ Preparing image preview for ${targetDate}`);
+  console.log(`🎬 Preparing video sequence preview for ${targetDate}`);
 
   const { data: draft, error } = await supabase
     .from("daily_video_drafts")
@@ -1132,28 +1145,27 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
 
   if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
 
-  // Load articles
   const articleIds: string[] = draft.article_ids || [];
   if (articleIds.length === 0) throw new Error("No articles in draft");
 
   const { data: articles } = await supabase
     .from("news")
-    .select("id, original_title, title_en, title_no, image_url, processed_image_url, images, original_url")
+    .select("id, original_title, title_en, title_no, image_url, processed_image_url, images, original_url, video_url, video_type, original_video_url")
     .in("id", articleIds);
 
   if (!articles || articles.length === 0) throw new Error("No articles found");
 
-  // Build ordered list matching article_ids order
   const articleMap = new Map(articles.map((a: any) => [a.id, a]));
   const ordered = articleIds.map((id: string) => articleMap.get(id)).filter(Boolean);
+  const scenario: any[] = draft.visual_scenario || [];
+  const scripts: any[] = draft.segment_scripts || [];
 
   const targetChatId = chatId || TELEGRAM_CHAT_ID;
 
   if (messageId && chatId) {
-    await editMessage(chatId, messageId, `🖼️ <b>Підготовка зображень для дайджесту...</b>`);
+    await editMessage(chatId, messageId, `🎬 <b>Готую превʼю відеоряду...</b>`);
   }
 
-  // Update status
   await supabase
     .from("daily_video_drafts")
     .update({ status: "pending_images" })
@@ -1163,94 +1175,152 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
     day: "numeric", month: "long",
   });
 
-  // Send header
-  await sendMessage(targetChatId, `🖼️ <b>Зображення для дайджесту — ${displayDate}</b>\n\nПеревірте зображення для кожної новини.\nПісля перевірки натисніть "🎬 Рендерити".`);
+  // ── INTRO ──
+  let introText = `🎬 <b>Відеоряд дайджесту — ${displayDate}</b>\n`;
+  introText += `📊 ${ordered.length} сегментів`;
+  if (draft.intro_script) {
+    const introWords = (draft.intro_script as string).split(/\s+/).length;
+    introText += ` | Intro: ~${Math.round(introWords / 2.5)}с`;
+  }
+  if (draft.roundup_script) {
+    const roWords = (draft.roundup_script as string).split(/\s+/).length;
+    introText += ` | Roundup: ~${Math.round(roWords / 2.5)}с`;
+  }
+  introText += `\n\n━━━ 🎥 INTRO ━━━`;
+  if (draft.intro_script) {
+    introText += `\n🗣️ <i>${escapeHtml((draft.intro_script as string).substring(0, 200))}...</i>`;
+  }
+  await sendMessage(targetChatId, introText);
 
-  // Send each article's images
+  // ── EACH SEGMENT ──
+  let totalEstDuration = 15; // intro ~15s
+  let noImageCount = 0;
+
   for (let i = 0; i < ordered.length; i++) {
     const article = ordered[i] as any;
-    const title = article.title_no || article.title_en || article.original_title || "Untitled";
+    const seg = scenario[i] || {} as any;
+    const script = scripts[i] || {} as any;
+
+    const headline = seg.headline || article.title_no || article.title_en || article.original_title || "";
+    const category = seg.category || "news";
+    const mood = seg.mood || "positive";
+    const transition = seg.transition || "fade";
+    const textReveal = seg.textReveal || "default";
+    const accentColor = seg.accentColor || "#FF7A00";
+    const keyQuote = seg.keyQuote || "";
+    const facts: any[] = seg.facts || [];
+
+    // Determine media source
+    const hasVideo = !!(article.original_video_url || (article.video_url && article.video_type === "direct_url"));
     const imageUrl = article.processed_image_url || article.image_url;
     const extraImages: string[] = (article.images || []).filter((u: string) => u && u !== imageUrl);
+    const allImages = [imageUrl, ...extraImages].filter(Boolean);
 
-    // Collect all image URLs (max 10 for sendMediaGroup)
-    const allImages = [imageUrl, ...extraImages].filter(Boolean).slice(0, 10);
+    let sourceHost = "";
+    if (article.original_url) {
+      try { sourceHost = new URL(article.original_url).hostname.replace("www.", ""); } catch { /* */ }
+    }
 
-    const caption = `📹 <b>${i + 1}/${ordered.length}</b> — ${escapeHtml(title.substring(0, 150))}\n🖼️ ${allImages.length} зображ.${article.original_url ? `\n🔗 ${escapeHtml(new URL(article.original_url).hostname)}` : ""}`;
+    // Estimate segment duration from script word count
+    const scriptText = script.scriptNo || script.scriptEn || "";
+    const wordCount = scriptText.split(/\s+/).filter(Boolean).length;
+    const estDuration = Math.max(8, Math.round(wordCount / 2.5));
+    totalEstDuration += estDuration + 3.5; // + divider
 
-    if (allImages.length === 0) {
-      // No images at all
-      await sendMessage(targetChatId, `${caption}\n\n⚠️ <i>Немає зображень — буде використано Pexels stock</i>`);
-    } else if (allImages.length === 1) {
-      // Single image — sendPhoto
+    // Build caption with full visual info
+    let caption = `━━━ Сегмент ${i + 1}/${ordered.length} ━━━\n`;
+    caption += `${CAT_EMOJI[category] || "📰"} <b>${escapeHtml(headline.substring(0, 120))}</b>\n\n`;
+
+    // Visual metadata line
+    caption += `🎨 ${accentColor} | ${MOOD_EMOJI[mood] || ""} ${mood} | ${TRANSITION_EMOJI[transition] || ""} ${transition} | ${textReveal}\n`;
+
+    // Media source
+    if (hasVideo) {
+      caption += `🎥 <b>ВІДЕО</b> (фоном, muted, Ken Burns)\n`;
+    } else if (allImages.length > 0) {
+      caption += `🖼️ ${allImages.length} зображ. (cycling, Ken Burns, ~4с/фото)\n`;
+      if (sourceHost) {
+        caption += `📸 Скрапінг: + зображення з ${sourceHost}\n`;
+      }
+    } else {
+      caption += `⚠️ Без зображень → Pexels stock + скрапінг\n`;
+      noImageCount++;
+    }
+
+    // Key quote
+    if (keyQuote) {
+      caption += `💬 <i>"${escapeHtml(keyQuote.substring(0, 120))}"</i>\n`;
+    }
+
+    // Facts
+    if (facts.length > 0) {
+      const statsType = seg.statsVisualType || "list";
+      caption += `📊 [${statsType}] ${facts.map((f: any) => `${f.value} (${f.label})`).join(" · ")}\n`;
+    }
+
+    // Duration & script preview
+    caption += `⏱️ ~${estDuration}с | ${wordCount} слів`;
+
+    // Send photo with caption, or text-only if no image
+    if (imageUrl) {
       try {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: targetChatId,
-            photo: allImages[0],
+            photo: imageUrl,
             caption,
             parse_mode: "HTML",
           }),
         });
-      } catch (e: any) {
-        console.warn(`⚠️ sendPhoto failed for article ${i}: ${e.message}`);
-        await sendMessage(targetChatId, `${caption}\n\n⚠️ <i>Не вдалося відправити зображення</i>\n<code>${escapeHtml(allImages[0].substring(0, 100))}</code>`);
+        const result = await resp.json();
+        if (!result.ok) {
+          // Photo failed — send as text with URL
+          await sendMessage(targetChatId, `${caption}\n\n🔗 <code>${escapeHtml(imageUrl.substring(0, 100))}</code>`);
+        }
+      } catch {
+        await sendMessage(targetChatId, `${caption}\n\n⚠️ Зображення не відправлено`);
       }
     } else {
-      // Multiple images — sendMediaGroup (album)
-      try {
-        const media = allImages.map((url: string, idx: number) => ({
-          type: "photo",
-          media: url,
-          ...(idx === 0 ? { caption, parse_mode: "HTML" } : {}),
-        }));
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: targetChatId, media }),
-        });
-      } catch (e: any) {
-        console.warn(`⚠️ sendMediaGroup failed for article ${i}: ${e.message}`);
-        // Fallback to single photo
-        try {
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: targetChatId,
-              photo: allImages[0],
-              caption: `${caption}\n\n<i>(+${allImages.length - 1} зображ. не відправлено)</i>`,
-              parse_mode: "HTML",
-            }),
-          });
-        } catch { /* silent */ }
-      }
+      await sendMessage(targetChatId, caption);
     }
   }
 
-  // Summary with render button
+  // ── OUTRO ──
+  totalEstDuration += 10; // outro ~10s
+
+  // ── SUMMARY ──
   const summaryKeyboard = {
     inline_keyboard: [
       [
         { text: "🎬 Рендерити", callback_data: `dv_rok_${targetDate}` },
-        { text: "🔄 Перегенерувати сценарій", callback_data: `dv_vrg_${targetDate}` },
+        { text: "🔄 Сценарій", callback_data: `dv_vrg_${targetDate}` },
       ],
     ],
   };
 
-  const noImageCount = ordered.filter((a: any) => !a.processed_image_url && !a.image_url).length;
-  let summaryText = `✅ <b>Зображення готові — ${ordered.length} новин</b>`;
-  if (noImageCount > 0) {
-    summaryText += `\n⚠️ ${noImageCount} новин без зображень (буде Pexels stock + скрапінг)`;
-  }
-  summaryText += `\n\nПід час рендеру скрапер завантажить додаткові зображення з оригінальних статей.`;
+  let summary = `━━━ 📋 ПІДСУМОК ━━━\n\n`;
+  summary += `📊 <b>${ordered.length} сегментів</b> · ~${Math.round(totalEstDuration / 60)}:${String(totalEstDuration % 60).padStart(2, "0")} хв\n`;
 
-  await sendMessage(targetChatId, summaryText, { reply_markup: summaryKeyboard });
+  const withVideo = ordered.filter((a: any) => !!(a as any).original_video_url || ((a as any).video_url && (a as any).video_type === "direct_url")).length;
+  const withImage = ordered.filter((a: any) => !!(a as any).processed_image_url || !!(a as any).image_url).length;
+  const withScrape = ordered.filter((a: any) => !!(a as any).original_url).length;
 
-  console.log(`✅ Image preview sent for ${ordered.length} articles`);
-  return json({ ok: true, articles: ordered.length });
+  summary += `🎥 Відео: ${withVideo} | 🖼️ Зображення: ${withImage} | ⚠️ Без медіа: ${noImageCount}\n`;
+  summary += `📸 Скрапінг з оригіналів: ${withScrape} статей\n`;
+  summary += `🎨 Pexels fallback: ${noImageCount > 0 ? `${noImageCount} сегментів` : "не потрібен"}\n\n`;
+
+  summary += `<b>Під час рендеру:</b>\n`;
+  summary += `1. TTS озвучка кожного сегмента (NO)\n`;
+  summary += `2. Скрапінг додаткових зображень з оригінальних статей\n`;
+  summary += `3. Pexels stock fallback (якщо мало зображень)\n`;
+  summary += `4. Remotion рендер → YouTube upload`;
+
+  await sendMessage(targetChatId, summary, { reply_markup: summaryKeyboard });
+
+  console.log(`✅ Video sequence preview sent: ${ordered.length} segments, ~${totalEstDuration}s`);
+  return json({ ok: true, articles: ordered.length, estDuration: totalEstDuration });
 }
 
 // ══════════════════════════════════════════════════════════════
