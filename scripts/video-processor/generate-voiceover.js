@@ -193,26 +193,32 @@ async function longTextEndpoint(BASE, token, email, voice, text) {
     throw new Error(`Zvukogram /longtext error: ${data.error || JSON.stringify(data)}`);
   }
 
-  // /longtext is async — poll for result
-  if (data.status === 0 && data.id) {
-    console.log(`⏳ Processing longtext (id=${data.id})...`);
-    for (let i = 0; i < 120; i++) {
-      await new Promise(r => setTimeout(r, 3000));
-      const poll = await fetch(`${BASE}/result`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ token, email, id: String(data.id) }).toString(),
-      });
-      data = await poll.json();
-      if (data.status === 1) break;
-      if (data.status === -1) {
-        throw new Error(`Zvukogram /longtext failed: ${data.error || JSON.stringify(data)}`);
-      }
-      if (i % 10 === 9) console.log(`   Still processing... (${(i + 1) * 3}s)`);
+  // /longtext is async — poll until file URL appears
+  const taskId = data.id;
+  if (!taskId) {
+    throw new Error(`Zvukogram /longtext: no task ID in response: ${JSON.stringify(data)}`);
+  }
+
+  console.log(`⏳ Processing longtext (id=${taskId}, parts=${data.parts || '?'})...`);
+  for (let i = 0; i < 120; i++) {
+    // Check if file is already available
+    if (data.file || data.file_cors) break;
+
+    await new Promise(r => setTimeout(r, 3000));
+    const poll = await fetch(`${BASE}/result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token, email, id: String(taskId) }).toString(),
+    });
+    data = await poll.json();
+    if (data.status === -1) {
+      throw new Error(`Zvukogram /longtext failed: ${data.error || JSON.stringify(data)}`);
     }
-    if (data.status !== 1) {
-      throw new Error(`Zvukogram /longtext timeout after 360s`);
-    }
+    if (i % 10 === 9) console.log(`   Still processing... (${(i + 1) * 3}s, parts_done=${data.parts_done || 0}/${data.parts || '?'})`);
+  }
+
+  if (!data.file && !data.file_cors) {
+    throw new Error(`Zvukogram /longtext: no file URL after polling: ${JSON.stringify(data)}`);
   }
 
   console.log(`✅ /longtext succeeded`);
