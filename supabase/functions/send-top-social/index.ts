@@ -139,7 +139,7 @@ serve(async (req) => {
           trendingInfo = `\n📈 ${parts.join(' | ')}`
         }
 
-        const hasImage = article.processed_image_url ? '✅' : '⚠️ no image'
+        const hasImage = article.processed_image_url ? '✅ AI' : article.image_url ? '📷 original' : '⚠️ no image'
 
         const messageText = `🔥 <b>Топ-${i + 1} для соцмереж</b> (${yesterday.toLocaleDateString('uk-UA')})
 ⏰ Слот: ${slot} Oslo
