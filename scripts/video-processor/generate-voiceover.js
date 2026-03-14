@@ -60,12 +60,19 @@ export async function generateVoiceover(scriptText, language = 'en') {
   let result = await trySubsEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
 
   if (!result) {
-    if (scriptText.length > 1900) {
-      console.log(`📝 Using /longtext endpoint (${scriptText.length} chars > 1900)`);
+    if (scriptText.length > 1500) {
+      console.log(`📝 Using /longtext endpoint (${scriptText.length} chars > 1500)`);
       result = await longTextEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
     } else {
       console.log(`📝 Using /text endpoint (instant mode)`);
-      result = await textEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
+      try {
+        result = await textEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
+      } catch (textErr) {
+        // Retry with /longtext if /text fails (partial voice failures, etc.)
+        console.log(`⚠️ /text failed: ${textErr.message}`);
+        console.log(`🔄 Retrying with /longtext...`);
+        result = await longTextEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
+      }
     }
   }
 
