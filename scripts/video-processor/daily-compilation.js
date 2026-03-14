@@ -937,8 +937,9 @@ async function main() {
   // Step 4c: Copy intro assets (hero images + logo) to Remotion public dir
   console.log('\n🖼️ Step 4c: Preparing intro assets...');
   const introBackgroundImages = [];
-  const heroDir = path.join(__dirname, '..', '..', 'public', 'images', 'hero');
-  const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png');
+  const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+  const heroDir = path.join(scriptDir, '..', '..', 'public', 'images', 'hero');
+  const logoPath = path.join(scriptDir, '..', '..', 'public', 'logo.png');
   const heroFiles = ['about.webp', 'services.webp', 'projects.webp', 'skills.webp', 'news.webp', 'blog.webp'];
   for (const hf of heroFiles) {
     try {
