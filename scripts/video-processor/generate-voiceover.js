@@ -60,8 +60,13 @@ export async function generateVoiceover(scriptText, language = 'en') {
   let result = await trySubsEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
 
   if (!result) {
-    console.log(`📝 Using /text endpoint (instant mode)`);
-    result = await textEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
+    if (scriptText.length > 1900) {
+      console.log(`📝 Using /longtext endpoint (${scriptText.length} chars > 1900)`);
+      result = await longTextEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
+    } else {
+      console.log(`📝 Using /text endpoint (instant mode)`);
+      result = await textEndpoint(BASE, ZVUKOGRAM_TOKEN, ZVUKOGRAM_EMAIL, voice, scriptText);
+    }
   }
 
   // ── Step 3: Download audio file ──
@@ -166,6 +171,51 @@ async function textEndpoint(BASE, token, email, voice, text) {
   }
 
   console.log(`✅ /text succeeded`);
+  return data;
+}
+
+/**
+ * Use /longtext endpoint for texts >2000 chars. Returns after polling.
+ */
+async function longTextEndpoint(BASE, token, email, voice, text) {
+  const resp = await fetch(`${BASE}/longtext`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ token, email, voice, text, format: 'mp3', speed: '0.9' }).toString(),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Zvukogram /longtext error: ${resp.status} ${await resp.text()}`);
+  }
+
+  let data = await resp.json();
+  if (data.status === -1) {
+    throw new Error(`Zvukogram /longtext error: ${data.error || JSON.stringify(data)}`);
+  }
+
+  // /longtext is async — poll for result
+  if (data.status === 0 && data.id) {
+    console.log(`⏳ Processing longtext (id=${data.id})...`);
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const poll = await fetch(`${BASE}/result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token, email, id: String(data.id) }).toString(),
+      });
+      data = await poll.json();
+      if (data.status === 1) break;
+      if (data.status === -1) {
+        throw new Error(`Zvukogram /longtext failed: ${data.error || JSON.stringify(data)}`);
+      }
+      if (i % 10 === 9) console.log(`   Still processing... (${(i + 1) * 3}s)`);
+    }
+    if (data.status !== 1) {
+      throw new Error(`Zvukogram /longtext timeout after 360s`);
+    }
+  }
+
+  console.log(`✅ /longtext succeeded`);
   return data;
 }
 
