@@ -457,6 +457,7 @@ async function loadFromDraft(draftId) {
 
   // Build plan from draft data
   const segmentScripts = (draft.segment_scripts || []).map(s => s.scriptNo || s);
+  const webImagesPerSegment = (draft.segment_scripts || []).map(s => s.webImages || []);
   const visualSegments = draft.visual_scenario || [];
 
   const hasOverflow = articles.length > MAX_DETAILED;
@@ -805,6 +806,18 @@ async function main() {
       // Animated infographic overlays (charts, tables, key figures)
       dataOverlays: segment.dataOverlays || [],
     });
+  }
+
+  // Step 3.5: Add web images found during media pre-check (from daily-video-bot)
+  for (let i = 0; i < segments.length; i++) {
+    const wImages = webImagesPerSegment[i] || [];
+    if (wImages.length > 0 && !segments[i].videoSrc) {
+      segments[i].alternateImages = wImages.filter(u => u && u.startsWith('http'));
+      if (segments[i].alternateImages.length > 0) {
+        segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (segments[i].alternateImages.length + 1)));
+        console.log(`  🌐 Segment ${i}: ${segments[i].alternateImages.length} web images from media pre-check`);
+      }
+    }
   }
 
   // Step 4a: Scrape real images from original articles (much more relevant than stock)

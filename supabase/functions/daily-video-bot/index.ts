@@ -452,140 +452,193 @@ Return JSON:
     return json({ error: "Invalid article IDs from AI" }, 500);
   }
 
-  // ── Media Pre-Check: ensure each article has enough images ──
-  // An article passes if it has ≥3 images from: DB images array, image_url,
-  // processed_image_url, or source_link (checked via HEAD/og:image).
+  // ── Media Pre-Check: search INTERNET for images for each article ──
+  // For every selected article, search Pexels for stock images + scrape source page.
+  // An article needs ≥3 images total (DB + source + Pexels). If not enough even after
+  // internet search — replace with next article from the remaining pool.
   const MIN_IMAGES = 3;
+  const PEXELS_KEY = Deno.env.get("PEXELS_API_KEY") || "";
+
+  // Sorted remaining articles by relevance for replacements
   const selectedSet = new Set(validSelectedIds);
   const remainingIds = articles
     .map((a: any) => a.id)
     .filter((id: string) => !selectedSet.has(id));
 
-  await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Перевірка медіа...</b>\nМінімум ${MIN_IMAGES} зображень на новину.`);
+  await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Пошук зображень в інтернеті...</b>\nМінімум ${MIN_IMAGES} зображень на новину.\n${PEXELS_KEY ? "📸 Pexels API: активний" : "⚠️ Pexels API: немає ключа"}`);
 
-  const mediaCheckResults: { id: string; imageCount: number; passed: boolean; title: string }[] = [];
+  // ── Helper: search Pexels for images by query ──
+  async function searchPexels(query: string, count = 5): Promise<string[]> {
+    if (!PEXELS_KEY) return [];
+    try {
+      const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=${count * 2}&orientation=landscape&size=large`;
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        headers: { Authorization: PEXELS_KEY },
+      });
+      clearTimeout(timeout);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.photos || [])
+        .filter((p: any) => p.width > p.height)
+        .slice(0, count)
+        .map((p: any) => p.src?.large2x || p.src?.large || p.src?.original)
+        .filter(Boolean);
+    } catch { return []; }
+  }
+
+  // ── Helper: scrape source page for images ──
+  async function scrapeSourceImages(sourceLink: string): Promise<string[]> {
+    if (!sourceLink) return [];
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(sourceLink, {
+        signal: ctrl.signal,
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" },
+        redirect: "follow",
+      });
+      clearTimeout(timeout);
+      if (!res.ok) return [];
+      const html = await res.text();
+      const found: string[] = [];
+      // og:image + twitter:image
+      for (const m of (html.match(/(?:property|name)="(?:og:image|twitter:image)"\s+content="([^"]+)"/gi) || [])) {
+        const urlMatch = m.match(/content="([^"]+)"/);
+        if (urlMatch?.[1] && !found.includes(urlMatch[1])) found.push(urlMatch[1]);
+      }
+      // <img> tags with jpg/png/webp
+      for (const m of (html.match(/<img[^>]+src="(https?:\/\/[^"]+\.(jpg|jpeg|png|webp))[^"]*"/gi) || []).slice(0, 15)) {
+        const srcMatch = m.match(/src="([^"]+)"/);
+        if (srcMatch?.[1] && !found.includes(srcMatch[1])) found.push(srcMatch[1]);
+      }
+      return found;
+    } catch { return []; }
+  }
+
+  // ── Helper: collect all images for an article (DB + source + Pexels) ──
+  async function collectArticleImages(a: any): Promise<{ images: string[]; sources: string }> {
+    const images: string[] = [];
+    const srcInfo: string[] = [];
+
+    // 1. DB images
+    if (a.images && Array.isArray(a.images)) {
+      for (const img of a.images) {
+        if (img && typeof img === "string" && img.startsWith("http")) images.push(img);
+      }
+    }
+    if (a.processed_image_url) images.push(a.processed_image_url);
+    if (a.image_url && !images.includes(a.image_url)) images.push(a.image_url);
+    if (images.length > 0) srcInfo.push(`DB:${images.length}`);
+
+    // 2. Video counts as 3 images
+    if (a.video_url || a.original_video_url) {
+      srcInfo.push("Video:+3");
+      // Still search for images but video guarantees minimum
+    }
+
+    // 3. Scrape source page
+    const sourceImages = await scrapeSourceImages(a.source_link);
+    for (const img of sourceImages) {
+      if (!images.includes(img)) images.push(img);
+    }
+    if (sourceImages.length > 0) srcInfo.push(`Source:${sourceImages.length}`);
+
+    // 4. Search Pexels by article title (English for best results)
+    const searchQuery = a.title_en || a.title_no || a.original_title || "";
+    if (searchQuery && images.length < MIN_IMAGES + 2) {
+      const pexelsImages = await searchPexels(searchQuery, 5);
+      for (const img of pexelsImages) {
+        if (!images.includes(img)) images.push(img);
+      }
+      if (pexelsImages.length > 0) srcInfo.push(`Pexels:${pexelsImages.length}`);
+    }
+
+    const totalCount = (a.video_url || a.original_video_url) ? images.length + 3 : images.length;
+    return { images, sources: srcInfo.join(" ") };
+  }
+
+  // ── Run media check for all selected articles ──
+  type MediaResult = { id: string; imageCount: number; passed: boolean; title: string; images: string[]; sources: string };
+  const mediaCheckResults: MediaResult[] = [];
   const finalSelectedIds: string[] = [];
+  const articleImageMap: Record<string, string[]> = {}; // store found images per article
 
   for (const id of validSelectedIds) {
     const a = articleMap.get(id)!;
     const title = a.title_no || a.title_en || a.original_title || "";
-
-    // Count available images
-    let imageCount = 0;
-    const images: string[] = [];
-
-    // 1. DB images array
-    if (a.images && Array.isArray(a.images)) {
-      for (const img of a.images) {
-        if (img && typeof img === "string" && img.startsWith("http")) {
-          images.push(img);
-        }
-      }
-    }
-
-    // 2. processed_image_url
-    if (a.processed_image_url) images.push(a.processed_image_url);
-
-    // 3. image_url
-    if (a.image_url && !images.includes(a.image_url)) images.push(a.image_url);
-
-    // 4. Check source_link for og:image (quick HEAD check)
-    if (images.length < MIN_IMAGES && a.source_link) {
-      try {
-        const ctrl = new AbortController();
-        const timeout = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(a.source_link, {
-          signal: ctrl.signal,
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" },
-          redirect: "follow",
-        });
-        clearTimeout(timeout);
-        if (res.ok) {
-          const html = await res.text();
-          // Extract og:image and other image meta tags
-          const ogMatches = html.match(/property="og:image"\s+content="([^"]+)"/gi) || [];
-          const twMatches = html.match(/name="twitter:image"\s+content="([^"]+)"/gi) || [];
-          for (const m of [...ogMatches, ...twMatches]) {
-            const urlMatch = m.match(/content="([^"]+)"/);
-            if (urlMatch?.[1] && !images.includes(urlMatch[1])) {
-              images.push(urlMatch[1]);
-            }
-          }
-          // Count <img> tags with reasonable src (jpg/png/webp, >200px likely)
-          const imgMatches = html.match(/<img[^>]+src="(https?:\/\/[^"]+\.(jpg|jpeg|png|webp))[^"]*"/gi) || [];
-          for (const m of imgMatches.slice(0, 10)) {
-            const srcMatch = m.match(/src="([^"]+)"/);
-            if (srcMatch?.[1] && !images.includes(srcMatch[1])) {
-              images.push(srcMatch[1]);
-            }
-          }
-        }
-      } catch { /* timeout or network error — skip */ }
-    }
-
-    // 5. Video counts as 3 images (strong visual content)
-    if (a.video_url || a.original_video_url) {
-      imageCount = images.length + 3;
-    } else {
-      imageCount = images.length;
-    }
-
+    const { images, sources } = await collectArticleImages(a);
+    const imageCount = (a.video_url || a.original_video_url) ? images.length + 3 : images.length;
     const passed = imageCount >= MIN_IMAGES;
-    mediaCheckResults.push({ id, imageCount, passed, title: title.substring(0, 40) });
+
+    mediaCheckResults.push({ id, imageCount, passed, title: title.substring(0, 40), images, sources });
+    articleImageMap[id] = images;
 
     if (passed) {
       finalSelectedIds.push(id);
+      console.log(`  ✅ "${title.substring(0, 40)}" — ${imageCount} images (${sources})`);
     } else {
-      console.log(`  ❌ "${title.substring(0, 40)}" — only ${imageCount} images, need ${MIN_IMAGES}`);
+      console.log(`  ❌ "${title.substring(0, 40)}" — only ${imageCount} images (${sources}), need ${MIN_IMAGES}`);
     }
+
+    // Small delay to respect Pexels rate limits
+    await new Promise((r) => setTimeout(r, 300));
   }
 
-  // Replace rejected articles with next best from remaining pool
+  // ── Replace rejected articles with next from pool (also search internet) ──
   let replacementIdx = 0;
   const rejectedCount = validSelectedIds.length - finalSelectedIds.length;
   if (rejectedCount > 0 && remainingIds.length > 0) {
-    console.log(`  🔄 Replacing ${rejectedCount} articles without enough media...`);
-    for (const rejectedResult of mediaCheckResults.filter(r => !r.passed)) {
-      while (replacementIdx < remainingIds.length) {
-        const replId = remainingIds[replacementIdx++];
-        const replA = articleMap.get(replId)!;
-        // Quick check: has image_url or images array?
-        const replImages = (replA.images || []).filter(Boolean).length
-          + (replA.image_url ? 1 : 0) + (replA.processed_image_url ? 1 : 0)
-          + (replA.video_url ? 3 : 0);
-        if (replImages >= MIN_IMAGES) {
-          finalSelectedIds.push(replId);
-          console.log(`  ✅ Replaced with "${(replA.title_no || replA.title_en || "").substring(0, 40)}" (${replImages} images)`);
-          break;
-        }
+    console.log(`  🔄 Replacing ${rejectedCount} articles — searching internet for replacements...`);
+    let replacementsNeeded = rejectedCount;
+
+    while (replacementsNeeded > 0 && replacementIdx < remainingIds.length) {
+      const replId = remainingIds[replacementIdx++];
+      const replA = articleMap.get(replId)!;
+      const replTitle = replA.title_no || replA.title_en || replA.original_title || "";
+
+      // Full internet search for replacement too!
+      const { images, sources } = await collectArticleImages(replA);
+      const replCount = (replA.video_url || replA.original_video_url) ? images.length + 3 : images.length;
+
+      if (replCount >= MIN_IMAGES) {
+        finalSelectedIds.push(replId);
+        articleImageMap[replId] = images;
+        replacementsNeeded--;
+        console.log(`  ✅ Replacement: "${replTitle.substring(0, 40)}" — ${replCount} images (${sources})`);
+      } else {
+        console.log(`  ⏭ Skip replacement "${replTitle.substring(0, 40)}" — only ${replCount} images`);
       }
+
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
 
-  // Media check report to Telegram
-  let mediaReport = `📸 <b>Медіа-чеклист:</b>\n\n`;
+  // ── Media check report to Telegram ──
+  let mediaReport = `📸 <b>Медіа-чеклист (інтернет-пошук):</b>\n\n`;
   for (const r of mediaCheckResults) {
     const icon = r.passed ? "✅" : "❌";
-    mediaReport += `${icon} ${r.imageCount} зобр. — ${escapeHtml(r.title)}\n`;
+    mediaReport += `${icon} ${r.imageCount} зобр. (${r.sources}) — ${escapeHtml(r.title)}\n`;
   }
   if (rejectedCount > 0) {
-    mediaReport += `\n🔄 Замінено ${rejectedCount} статей без медіа`;
+    const replaced = finalSelectedIds.length - mediaCheckResults.filter(r => r.passed).length;
+    mediaReport += `\n🔄 Відхилено ${rejectedCount}, замінено ${replaced}`;
   }
+  mediaReport += `\n\n✅ <b>Фінальний пул: ${finalSelectedIds.length} новин з медіа</b>`;
   await sendMessage(TELEGRAM_CHAT_ID, mediaReport);
 
-  // Fallback: if media check rejected ALL articles, skip check and use original selection
+  // Use final selection (or original if media check somehow rejected all)
   if (finalSelectedIds.length === 0) {
-    console.log(`⚠️ Media check rejected ALL articles — using original selection as fallback`);
-    await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Медіа-чек відхилив усі статті.</b>\nВикористовую оригінальний вибір без фільтрації.`);
-    // Keep validSelectedIds unchanged (original AI selection)
+    console.log(`⚠️ Media check rejected ALL articles even after internet search — using original selection`);
+    await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Жодна новина не пройшла медіа-чек навіть після пошуку.</b>\nВикористовую оригінальний вибір.`);
   } else {
     validSelectedIds = finalSelectedIds;
   }
 
   // Regenerate scripts for replaced articles if needed
-  if (rejectedCount > 0 && validSelectedIds.length > 0 && finalSelectedIds.length > 0) {
-    // Trim scripts to match new selection (keep scripts for articles that passed, drop rejected)
-    const passedOriginalIds = mediaCheckResults.filter(r => r.passed).map(r => r.id);
+  if (rejectedCount > 0 && finalSelectedIds.length > 0 && finalSelectedIds.length !== mediaCheckResults.length) {
     const newScripts: string[] = [];
     const newTranslations: string[] = [];
     for (const id of validSelectedIds) {
@@ -594,7 +647,7 @@ Return JSON:
         newScripts.push(plan.segmentScripts[origIdx]);
         newTranslations.push(plan.segmentTranslationsEn?.[origIdx] || "");
       } else {
-        // New article needs a script — generate a simple placeholder
+        // New article needs a script — generate placeholder
         const a = articleMap.get(id)!;
         const title = a.title_no || a.title_en || a.original_title || "";
         newScripts.push(`${title}. ${(a.description_no || a.description_en || "").substring(0, 200)}`);
@@ -617,6 +670,12 @@ Return JSON:
     slug_en: a.slug_en || "",
   }));
 
+  // Build web images map: articleId → array of image URLs found via internet search
+  const webImagesPerArticle: Record<string, string[]> = {};
+  for (const id of validSelectedIds) {
+    webImagesPerArticle[id] = articleImageMap[id] || [];
+  }
+
   // Create draft with pending_script status (skip pending_digest)
   const { data: draft, error: upsertError } = await supabase
     .from("daily_video_drafts")
@@ -633,6 +692,7 @@ Return JSON:
         scriptNo: plan.segmentScripts[i] || "",
         scriptUa: "", // We use English translations now
         scriptEn: plan.segmentTranslationsEn?.[i] || "",
+        webImages: webImagesPerArticle[id] || [],
       })),
       outro_script: plan.outroScript,
     }, { onConflict: "target_date" })
