@@ -34,7 +34,7 @@ import os from 'os';
 export const VOICE_PRESETS = {
   no: {
     male: 'Финн',
-    female: 'Ida plus',
+    female: 'Пернилла',
   },
   en: {
     male: 'Brian US HD',
@@ -42,7 +42,7 @@ export const VOICE_PRESETS = {
   },
   ua: {
     male: 'Финн',
-    female: 'Ida plus',
+    female: 'Пернилла',
   },
 };
 

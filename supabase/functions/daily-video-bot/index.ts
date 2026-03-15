@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-14-v25-deep-overlays";
+const VERSION = "2026-03-15-v26-media-preview";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -472,23 +472,45 @@ Return JSON:
   await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Пошук зображень в інтернеті...</b>\nМінімум ${MIN_IMAGES} зображень на новину.\n🔎 ${searchEngines.length > 0 ? searchEngines.join(" + ") : "Тільки source scraping (немає API ключів)"}`);
 
   // ── Helper: Google Custom Search Image API (finds REAL news images) ──
-  async function searchGoogleImages(query: string, count = 5): Promise<string[]> {
+  // Uses combo query: "original title" + source domain + dateRestrict=d7
+  async function searchGoogleImages(query: string, count = 5, sourceDomain = ""): Promise<string[]> {
     if (!GOOGLE_KEY || !GOOGLE_CSE_ID) return [];
     try {
-      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&searchType=image&num=${Math.min(count, 10)}&imgSize=large&safe=active`;
+      // Build combo query: quoted title + source domain for relevance
+      let searchQ = `"${query}"`;
+      if (sourceDomain) searchQ += ` ${sourceDomain}`;
+      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(searchQ)}&searchType=image&num=${Math.min(count, 10)}&imgSize=large&safe=active&dateRestrict=d7`;
       const ctrl = new AbortController();
       const timeout = setTimeout(() => ctrl.abort(), 8000);
       const res = await fetch(url, { signal: ctrl.signal });
       clearTimeout(timeout);
       if (!res.ok) {
         console.log(`  ⚠️ Google Images API ${res.status}: ${await res.text().catch(() => "")}`);
+        // Fallback: retry without quotes and domain (broader search)
+        if (sourceDomain || query.length > 60) {
+          return searchGoogleImages(query.substring(0, 60), count, "");
+        }
         return [];
       }
       const data = await res.json();
-      return (data.items || [])
+      const results = (data.items || [])
         .map((item: any) => item.link)
         .filter((link: string) => link && link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(link))
         .slice(0, count);
+      // If quoted search found nothing, retry without quotes
+      if (results.length === 0 && (sourceDomain || query.includes('"'))) {
+        console.log(`  🔄 No results with quotes, retrying broader...`);
+        const broaderUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&searchType=image&num=${Math.min(count, 10)}&imgSize=large&safe=active&dateRestrict=d14`;
+        const res2 = await fetch(broaderUrl, { signal: AbortSignal.timeout(8000) });
+        if (res2.ok) {
+          const data2 = await res2.json();
+          return (data2.items || [])
+            .map((item: any) => item.link)
+            .filter((link: string) => link && link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(link))
+            .slice(0, count);
+        }
+      }
+      return results;
     } catch (e: any) {
       console.log(`  ⚠️ Google Images error: ${e.message}`);
       return [];
@@ -575,9 +597,11 @@ Return JSON:
     if (sourceImages.length > 0) srcInfo.push(`Src:${sourceImages.length}`);
 
     // 4. Google Image Search — finds REAL images from news coverage
-    const searchQuery = a.title_en || a.title_no || a.original_title || "";
+    const searchQuery = a.original_title || a.title_en || a.title_no || "";
+    let sourceDomain = "";
+    try { if (a.source_link) sourceDomain = new URL(a.source_link).hostname.replace("www.", ""); } catch { /* */ }
     if (searchQuery && images.length < MIN_IMAGES + 2) {
-      const googleImages = await searchGoogleImages(searchQuery, 5);
+      const googleImages = await searchGoogleImages(searchQuery, 5, sourceDomain);
       for (const img of googleImages) {
         if (!images.includes(img)) images.push(img);
       }
@@ -737,80 +761,45 @@ Return JSON:
 
   if (upsertError) throw new Error(`Draft upsert: ${upsertError.message}`);
 
-  // ── Send to Telegram: Norwegian script ──
-  let msgNo = `🇳🇴 <b>Дайджест — ${displayDate}</b>\n`;
-  msgNo += `📊 Обрано <b>${validSelectedIds.length}</b> з ${articles.length} статей\n\n`;
+  // ── Send to Telegram: article titles + images preview (compact, no scripts) ──
+  let msg = `📺 <b>Дайджест — ${displayDate}</b>\n`;
+  msg += `📊 Обрано <b>${validSelectedIds.length}</b> з ${articles.length} статей\n\n`;
 
-  msgNo += `🎬 <b>Intro:</b>\n<i>${escapeHtml(plan.introScript || "")}</i>\n\n`;
-
-  plan.segmentScripts.forEach((script: string, i: number) => {
-    const title = headlines[i]?.title || `Sak ${i + 1}`;
+  for (let i = 0; i < validSelectedIds.length; i++) {
     const a = selectedArticles[i];
-    const analysis = a?.rss_analysis || {};
-    const li = analysis.linkedin_score || 0;
-    const bonus = analysis.trending_data?.total_bonus || 0;
-    msgNo += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>`;
-    msgNo += ` <code>LI:${li} +${bonus}</code>\n`;
-    msgNo += `<i>${escapeHtml(script)}</i>\n\n`;
-  });
-
-  msgNo += `🎬 <b>Outro:</b>\n<i>${escapeHtml(plan.outroScript || "")}</i>`;
-
-  if (msgNo.length > 4000) {
-    const cutIdx = msgNo.lastIndexOf("\n\n", 3900);
-    msgNo = msgNo.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n\n<i>... (скорочено)</i>";
+    const title = a?.title_no || a?.title_en || a?.original_title || `Sak ${i + 1}`;
+    const imgCount = (webImagesPerArticle[validSelectedIds[i]] || []).length;
+    const hasVideo = !!(a?.video_url || a?.original_video_url);
+    const mediaIcon = hasVideo ? "🎥" : imgCount >= MIN_IMAGES ? "✅" : imgCount > 0 ? "⚠️" : "❌";
+    msg += `${mediaIcon} <b>${i + 1}.</b> ${escapeHtml(title.substring(0, 80))}\n`;
+    msg += `   📸 ${imgCount} зобр.${hasVideo ? " + відео" : ""}\n`;
   }
 
-  await sendMessage(TELEGRAM_CHAT_ID, msgNo);
+  msg += `\n🖼️ Зображення знайдено через: ${searchEngines.join(", ") || "source scraping"}`;
 
-  // ── Send English translation + approval buttons ──
-  let msgEn = `🇬🇧 <b>English translation — ${displayDate}</b>\n\n`;
-
-  if (plan.introTranslationEn) {
-    msgEn += `🎬 <b>Intro:</b>\n${escapeHtml(plan.introTranslationEn)}\n\n`;
-  }
-
-  plan.segmentScripts.forEach((_: string, i: number) => {
-    const title = headlines[i]?.title || `Article ${i + 1}`;
-    const en = plan.segmentTranslationsEn?.[i] || "";
-    if (en) {
-      msgEn += `📰 <b>${i + 1}. ${escapeHtml(title)}</b>\n${escapeHtml(en)}\n\n`;
-    }
-  });
-
-  if (plan.outroTranslationEn) {
-    msgEn += `🎬 <b>Outro:</b>\n${escapeHtml(plan.outroTranslationEn)}\n\n`;
-  }
-
-  if (plan.rankingReasoning) {
-    msgEn += `📊 <b>Чому ці статті:</b>\n<i>${escapeHtml(plan.rankingReasoning)}</i>\n\n`;
-  }
-
-  msgEn += `💡 <i>Щоб відредагувати — відповідай reply з виправленим текстом.</i>`;
-
-  if (msgEn.length > 4000) {
-    const cutIdx = msgEn.lastIndexOf("\n\n", 3900);
-    msgEn = msgEn.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n\n<i>... (скорочено)</i>";
+  if (msg.length > 4000) {
+    const cutIdx = msg.lastIndexOf("\n", 3900);
+    msg = msg.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n<i>... (скорочено)</i>";
   }
 
   const keyboard = {
     inline_keyboard: [
       [
-        { text: "✅ Підтвердити скрипт", callback_data: `dv_sok_${date}` },
-        { text: "✏️ Перегенерувати", callback_data: `dv_srg_${date}` },
+        { text: "✅ Погоджую", callback_data: `dv_sok_${date}` },
+        { text: "🔍 Знайти інші картинки", callback_data: `dv_rsi_${date}` },
       ],
     ],
   };
 
-  const scriptMsgId = await sendMessage(TELEGRAM_CHAT_ID, msgEn, { reply_markup: keyboard });
+  const previewMsgId = await sendMessage(TELEGRAM_CHAT_ID, msg, { reply_markup: keyboard });
 
   // Save message ID
   await supabase
     .from("daily_video_drafts")
-    .update({ telegram_message_ids: [scriptMsgId] })
+    .update({ telegram_message_ids: [previewMsgId] })
     .eq("id", draft.id);
 
-  console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, script sent for approval`);
+  console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, media preview sent`);
   return json({ ok: true, draftId: draft.id, selected: validSelectedIds.length, total: articles.length });
 }
 
@@ -1572,6 +1561,211 @@ const TRANSITION_EMOJI: Record<string, string> = {
   fade: "🌫", wipeLeft: "👈", wipeRight: "👉", slideUp: "⬆️",
   zoomIn: "🔎", slideDown: "⬇️",
 };
+
+// ══════════════════════════════════════════════════════════════
+// STEP 2.5: Re-search images for specific article
+// ══════════════════════════════════════════════════════════════
+
+async function showResearchOptions(targetDate: string, chatId?: number, messageId?: number): Promise<Response> {
+  const { data: draft, error } = await supabase
+    .from("daily_video_drafts")
+    .select("article_ids, article_headlines, segment_scripts")
+    .eq("target_date", targetDate)
+    .single();
+
+  if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
+
+  const targetChatId = chatId || TELEGRAM_CHAT_ID;
+  const articleIds: string[] = draft.article_ids || [];
+  const headlines: any[] = draft.article_headlines || [];
+
+  if (messageId && chatId) {
+    await editMessage(chatId, messageId, `🔍 <b>Оберіть новину для пошуку нових зображень:</b>`);
+  }
+
+  // Build buttons — one per article
+  const buttons: any[][] = [];
+  for (let i = 0; i < articleIds.length; i++) {
+    const title = headlines[i]?.title || `Новина ${i + 1}`;
+    const scripts: any[] = draft.segment_scripts || [];
+    const imgCount = (scripts[i]?.webImages || []).length;
+    buttons.push([
+      { text: `${i + 1}. ${title.substring(0, 35)}… (${imgCount} 📸)`, callback_data: `dv_rsa_${i}_${targetDate}` },
+    ]);
+  }
+  buttons.push([
+    { text: "⬅️ Назад", callback_data: `dv_sok_${targetDate}` },
+  ]);
+
+  await sendMessage(targetChatId, `🔍 <b>Оберіть новину для перепошуку зображень:</b>`, {
+    reply_markup: { inline_keyboard: buttons },
+  });
+
+  return json({ ok: true });
+}
+
+async function researchArticleImages(targetDate: string, articleIndex: number, chatId?: number, messageId?: number): Promise<Response> {
+  console.log(`🔍 Re-searching images for article #${articleIndex} on ${targetDate}`);
+
+  const { data: draft, error } = await supabase
+    .from("daily_video_drafts")
+    .select("*")
+    .eq("target_date", targetDate)
+    .single();
+
+  if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
+
+  const articleIds: string[] = draft.article_ids || [];
+  if (articleIndex < 0 || articleIndex >= articleIds.length) throw new Error(`Invalid article index: ${articleIndex}`);
+
+  const articleId = articleIds[articleIndex];
+  const targetChatId = chatId || TELEGRAM_CHAT_ID;
+
+  if (messageId && chatId) {
+    await editMessage(chatId, messageId, `🔍 <b>Шукаю нові зображення для новини #${articleIndex + 1}...</b>`);
+  }
+
+  // Fetch article
+  const { data: article } = await supabase
+    .from("news")
+    .select("id, original_title, title_en, title_no, image_url, processed_image_url, images, source_link, video_url, original_video_url")
+    .eq("id", articleId)
+    .single();
+
+  if (!article) throw new Error(`Article not found: ${articleId}`);
+
+  // Re-run Google Image Search with different query variations
+  const GOOGLE_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
+  const GOOGLE_CSE_ID = Deno.env.get("GOOGLE_CSE_ID") || "";
+  const PEXELS_KEY = Deno.env.get("PEXELS_API_KEY") || "";
+
+  const title = article.original_title || article.title_en || article.title_no || "";
+  let sourceDomain = "";
+  try { if (article.source_link) sourceDomain = new URL(article.source_link).hostname.replace("www.", ""); } catch { /* */ }
+
+  const allImages: string[] = [];
+
+  // 1. Google with original title + domain
+  if (GOOGLE_KEY && GOOGLE_CSE_ID) {
+    const q1 = sourceDomain ? `"${title}" ${sourceDomain}` : `"${title}"`;
+    try {
+      const url1 = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(q1)}&searchType=image&num=10&imgSize=large&safe=active&dateRestrict=d14`;
+      const r1 = await fetch(url1);
+      if (r1.ok) {
+        const d1 = await r1.json();
+        for (const item of (d1.items || [])) {
+          if (item.link && item.link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(item.link) && !allImages.includes(item.link)) {
+            allImages.push(item.link);
+          }
+        }
+      }
+    } catch { /* */ }
+
+    // 2. Google without quotes (broader)
+    if (allImages.length < 5) {
+      try {
+        const url2 = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(title)}&searchType=image&num=10&imgSize=large&safe=active`;
+        const r2 = await fetch(url2);
+        if (r2.ok) {
+          const d2 = await r2.json();
+          for (const item of (d2.items || [])) {
+            if (item.link && item.link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(item.link) && !allImages.includes(item.link)) {
+              allImages.push(item.link);
+            }
+          }
+        }
+      } catch { /* */ }
+    }
+  }
+
+  // 3. Source scraping
+  if (article.source_link) {
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(article.source_link, {
+        signal: ctrl.signal,
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" },
+        redirect: "follow",
+      });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const html = await res.text();
+        for (const m of (html.match(/(?:property|name)="(?:og:image|twitter:image)"\s+content="([^"]+)"/gi) || [])) {
+          const urlMatch = m.match(/content="([^"]+)"/);
+          if (urlMatch?.[1] && !allImages.includes(urlMatch[1])) allImages.push(urlMatch[1]);
+        }
+        for (const m of (html.match(/<img[^>]+src="(https?:\/\/[^"]+\.(jpg|jpeg|png|webp))[^"]*"/gi) || []).slice(0, 15)) {
+          const srcMatch = m.match(/src="([^"]+)"/);
+          if (srcMatch?.[1] && !allImages.includes(srcMatch[1])) allImages.push(srcMatch[1]);
+        }
+      }
+    } catch { /* */ }
+  }
+
+  // 4. Pexels fallback
+  if (PEXELS_KEY && allImages.length < 3) {
+    try {
+      const pUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(title)}&per_page=10&orientation=landscape&size=large`;
+      const pRes = await fetch(pUrl, { headers: { Authorization: PEXELS_KEY } });
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        for (const p of (pData.photos || [])) {
+          const imgUrl = p.src?.large2x || p.src?.large || p.src?.original;
+          if (imgUrl && !allImages.includes(imgUrl)) allImages.push(imgUrl);
+        }
+      }
+    } catch { /* */ }
+  }
+
+  console.log(`  🔍 Found ${allImages.length} images for article #${articleIndex + 1}`);
+
+  // Send top images as photo album (max 5)
+  const topImages = allImages.slice(0, 5);
+  if (topImages.length > 0) {
+    // Send as individual photos with index
+    for (let j = 0; j < topImages.length; j++) {
+      try {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            photo: topImages[j],
+            caption: j === 0 ? `🔍 Нові зображення для: <b>${escapeHtml(title.substring(0, 80))}</b>\n📸 ${j + 1}/${topImages.length}` : `📸 ${j + 1}/${topImages.length}`,
+            parse_mode: "HTML",
+          }),
+        });
+      } catch { /* skip failed image */ }
+    }
+  }
+
+  // Update draft with new images
+  const scripts: any[] = draft.segment_scripts || [];
+  if (scripts[articleIndex]) {
+    scripts[articleIndex].webImages = allImages;
+  }
+  await supabase
+    .from("daily_video_drafts")
+    .update({ segment_scripts: scripts })
+    .eq("target_date", targetDate);
+
+  // Confirmation buttons
+  const confirmKeyboard = {
+    inline_keyboard: [
+      [
+        { text: "✅ Погоджую ці зображення", callback_data: `dv_sok_${targetDate}` },
+        { text: "🔍 Шукати для іншої", callback_data: `dv_rsi_${targetDate}` },
+      ],
+    ],
+  };
+
+  await sendMessage(targetChatId, `📸 Знайдено <b>${allImages.length}</b> зображень для новини #${articleIndex + 1}.\n\nОберіть дію:`, {
+    reply_markup: confirmKeyboard,
+  });
+
+  return json({ ok: true, found: allImages.length });
+}
 
 async function prepareImages(targetDate: string, chatId?: number, messageId?: number): Promise<Response> {
   console.log(`🎬 Preparing video sequence preview for ${targetDate}`);
@@ -2608,6 +2802,14 @@ Deno.serve(async (req) => {
       case "regenerate_scenario":
         if (!targetDate) return json({ error: "target_date required" }, 400);
         return await generateScenario(targetDate, chatId, messageId);
+
+      case "show_research_options":
+        if (!targetDate) return json({ error: "target_date required" }, 400);
+        return await showResearchOptions(targetDate, chatId, messageId);
+
+      case "research_article":
+        if (!targetDate || body.article_index === undefined) return json({ error: "target_date and article_index required" }, 400);
+        return await researchArticleImages(targetDate, Number(body.article_index), chatId, messageId);
 
       case "prepare_images":
         if (!targetDate) return json({ error: "target_date required" }, 400);

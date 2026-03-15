@@ -1028,6 +1028,15 @@ serve(async (req) => {
       } else if (callbackData.startsWith('dv_vrg_')) {
         action = 'dv_vrg'
         newsId = callbackData.replace('dv_vrg_', '')
+      } else if (callbackData.startsWith('dv_rsi_')) {
+        action = 'dv_rsi'
+        newsId = callbackData.replace('dv_rsi_', '')
+      } else if (callbackData.startsWith('dv_rsa_')) {
+        // dv_rsa_{index}_{date} — research images for specific article
+        action = 'dv_rsa'
+        const rsaParts = callbackData.replace('dv_rsa_', '').split('_')
+        socialLanguage = rsaParts[0] // article index
+        newsId = rsaParts.slice(1).join('_') // target_date
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
@@ -4373,8 +4382,10 @@ serve(async (req) => {
         const dvActionMap: Record<string, string> = {
           'dv_ok': 'generate_script',      // Digest approved → generate script
           'dv_skip': 'skip',               // Skip this day
-          'dv_sok': 'generate_scenario',   // Script approved → generate scenario
+          'dv_sok': 'generate_scenario',   // Media approved → generate scenario
           'dv_srg': 'regenerate_script',   // Regenerate script
+          'dv_rsi': 'show_research_options', // Show article list for image re-search
+          'dv_rsa': 'research_article',    // Re-search images for specific article
           'dv_ren': 'prepare_images',      // Scenario approved → show images for approval
           'dv_rok': 'trigger_render',      // Images approved → render
           'dv_vrg': 'regenerate_scenario', // Regenerate scenario
@@ -4412,6 +4423,7 @@ serve(async (req) => {
             chat_id: chatId,
             message_id: messageId,
             ...(action === 'dv_toggle' ? { article_index: Number(socialLanguage) } : {}),
+            ...(action === 'dv_rsa' ? { article_index: Number(socialLanguage) } : {}),
             ...(action === 'dv_th' ? { variant_index: Number(socialLanguage) } : {}),
           })
         }).catch(err => console.error('❌ Daily video bot dispatch failed:', err))
