@@ -194,31 +194,43 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   );
 
   // Per-image Ken Burns transform (used during image cycling)
+  // Uses CONTINUOUS scale based on global scene progress to avoid
+  // "zoom in then sudden reset" artifacts when cycling between images.
+  // Only the pan direction changes per image (smoothly via crossfade).
   const getKenBurnsTransform = (imgIdx: number) => {
     const { panXDir, panYDir } = getImageKenBurns(imgIdx);
+    // Continuous scale across the entire scene (no reset per image)
+    const globalProgress = interpolate(
+      frame,
+      [0, durationInFrames],
+      [0, 1],
+      clampBoth,
+    );
+    const imgScale = interpolate(
+      globalProgress,
+      [0, 1],
+      [kenBurns.scaleRange.start, scaleEnd],
+      clampBoth,
+    );
+    // Pan direction still per-image for variety, but uses gentle range
     const localFrame = frame - rawImageIndex * framesPerImage;
-    const progress = interpolate(
+    const localProgress = interpolate(
       localFrame,
       [0, framesPerImage],
       [0, 1],
       clampBoth,
     );
-    const imgScale = interpolate(
-      progress,
-      [0, 1],
-      [kenBurns.scaleRange.start, scaleEnd],
-      clampBoth,
-    );
+    const panRange = Math.min(Math.abs(panXEnd), 1.5); // limit pan to avoid jitter
     const imgPanX = panXDir * interpolate(
-      progress,
+      localProgress,
       [0, 1],
-      [0, Math.abs(panXEnd)],
+      [0, panRange],
       clampBoth,
     );
     const imgPanY = panYDir * interpolate(
-      progress,
+      localProgress,
       [0, 1],
-      [0, Math.abs(panYEnd)],
+      [0, panRange],
       clampBoth,
     );
     return `scale(${imgScale}) translate(${imgPanX}%, ${imgPanY}%)`;
