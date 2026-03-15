@@ -452,11 +452,12 @@ Return JSON:
     return json({ error: "Invalid article IDs from AI" }, 500);
   }
 
-  // ── Media Pre-Check: search INTERNET for images for each article ──
-  // For every selected article, search Pexels for stock images + scrape source page.
-  // An article needs ≥3 images total (DB + source + Pexels). If not enough even after
-  // internet search — replace with next article from the remaining pool.
+  // ── Media Pre-Check: search INTERNET for real news images per article ──
+  // Priority: 1) DB images, 2) Source article scraping, 3) Google Image Search (real news images),
+  // 4) Pexels fallback (stock). Article needs ≥3 images. If not enough — replace from pool.
   const MIN_IMAGES = 3;
+  const GOOGLE_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
+  const GOOGLE_CSE_ID = Deno.env.get("GOOGLE_CSE_ID") || "";
   const PEXELS_KEY = Deno.env.get("PEXELS_API_KEY") || "";
 
   // Sorted remaining articles by relevance for replacements
@@ -465,9 +466,36 @@ Return JSON:
     .map((a: any) => a.id)
     .filter((id: string) => !selectedSet.has(id));
 
-  await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Пошук зображень в інтернеті...</b>\nМінімум ${MIN_IMAGES} зображень на новину.\n${PEXELS_KEY ? "📸 Pexels API: активний" : "⚠️ Pexels API: немає ключа"}`);
+  const searchEngines: string[] = [];
+  if (GOOGLE_KEY && GOOGLE_CSE_ID) searchEngines.push("Google Images");
+  if (PEXELS_KEY) searchEngines.push("Pexels (fallback)");
+  await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Пошук зображень в інтернеті...</b>\nМінімум ${MIN_IMAGES} зображень на новину.\n🔎 ${searchEngines.length > 0 ? searchEngines.join(" + ") : "Тільки source scraping (немає API ключів)"}`);
 
-  // ── Helper: search Pexels for images by query ──
+  // ── Helper: Google Custom Search Image API (finds REAL news images) ──
+  async function searchGoogleImages(query: string, count = 5): Promise<string[]> {
+    if (!GOOGLE_KEY || !GOOGLE_CSE_ID) return [];
+    try {
+      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&searchType=image&num=${Math.min(count, 10)}&imgSize=large&safe=active`;
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        console.log(`  ⚠️ Google Images API ${res.status}: ${await res.text().catch(() => "")}`);
+        return [];
+      }
+      const data = await res.json();
+      return (data.items || [])
+        .map((item: any) => item.link)
+        .filter((link: string) => link && link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(link))
+        .slice(0, count);
+    } catch (e: any) {
+      console.log(`  ⚠️ Google Images error: ${e.message}`);
+      return [];
+    }
+  }
+
+  // ── Helper: search Pexels (stock fallback) ──
   async function searchPexels(query: string, count = 5): Promise<string[]> {
     if (!PEXELS_KEY) return [];
     try {
@@ -518,7 +546,8 @@ Return JSON:
     } catch { return []; }
   }
 
-  // ── Helper: collect all images for an article (DB + source + Pexels) ──
+  // ── Helper: collect all images for an article ──
+  // Priority: DB → source page → Google Images (real) → Pexels (stock fallback)
   async function collectArticleImages(a: any): Promise<{ images: string[]; sources: string }> {
     const images: string[] = [];
     const srcInfo: string[] = [];
@@ -536,19 +565,27 @@ Return JSON:
     // 2. Video counts as 3 images
     if (a.video_url || a.original_video_url) {
       srcInfo.push("Video:+3");
-      // Still search for images but video guarantees minimum
     }
 
-    // 3. Scrape source page
+    // 3. Scrape source article page
     const sourceImages = await scrapeSourceImages(a.source_link);
     for (const img of sourceImages) {
       if (!images.includes(img)) images.push(img);
     }
-    if (sourceImages.length > 0) srcInfo.push(`Source:${sourceImages.length}`);
+    if (sourceImages.length > 0) srcInfo.push(`Src:${sourceImages.length}`);
 
-    // 4. Search Pexels by article title (English for best results)
+    // 4. Google Image Search — finds REAL images from news coverage
     const searchQuery = a.title_en || a.title_no || a.original_title || "";
     if (searchQuery && images.length < MIN_IMAGES + 2) {
+      const googleImages = await searchGoogleImages(searchQuery, 5);
+      for (const img of googleImages) {
+        if (!images.includes(img)) images.push(img);
+      }
+      if (googleImages.length > 0) srcInfo.push(`Google:${googleImages.length}`);
+    }
+
+    // 5. Pexels fallback — only if still not enough after Google
+    if (searchQuery && images.length < MIN_IMAGES) {
       const pexelsImages = await searchPexels(searchQuery, 5);
       for (const img of pexelsImages) {
         if (!images.includes(img)) images.push(img);
@@ -556,7 +593,6 @@ Return JSON:
       if (pexelsImages.length > 0) srcInfo.push(`Pexels:${pexelsImages.length}`);
     }
 
-    const totalCount = (a.video_url || a.original_video_url) ? images.length + 3 : images.length;
     return { images, sources: srcInfo.join(" ") };
   }
 
