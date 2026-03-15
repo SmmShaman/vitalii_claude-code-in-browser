@@ -481,6 +481,7 @@ async function loadFromDraft(draftId) {
     showTitle: 'Daglig Nyhetsoppdatering',
     hasOverflow,
     overflowCount,
+    webImagesPerSegment,
   };
 
   console.log(`✅ Draft loaded: ${articles.length} articles, ${segmentScripts.length} scripts`);
@@ -809,6 +810,7 @@ async function main() {
   }
 
   // Step 3.5: Add web images found during media pre-check (from daily-video-bot)
+  const webImagesPerSegment = plan.webImagesPerSegment || [];
   for (let i = 0; i < segments.length; i++) {
     const wImages = webImagesPerSegment[i] || [];
     if (wImages.length > 0 && !segments[i].videoSrc) {
