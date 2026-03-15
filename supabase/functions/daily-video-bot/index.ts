@@ -1843,11 +1843,12 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
     const keyQuote = seg.keyQuote || "";
     const facts: any[] = seg.facts || [];
 
-    // Determine media source
+    // Determine media source (DB images + web images from media pre-check)
     const hasVideo = !!(article.original_video_url || (article.video_url && article.video_type === "direct_url"));
     const imageUrl = article.processed_image_url || article.image_url;
     const extraImages: string[] = (article.images || []).filter((u: string) => u && u !== imageUrl);
-    const allImages = [imageUrl, ...extraImages].filter(Boolean);
+    const webImages: string[] = (script.webImages || []).filter(Boolean);
+    const allImages = [...new Set([imageUrl, ...extraImages, ...webImages].filter(Boolean))];
 
     let sourceHost = "";
     if (article.original_url) {
@@ -1871,9 +1872,11 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
     if (hasVideo) {
       caption += `🎥 <b>ВІДЕО</b> (фоном, muted, Ken Burns)\n`;
     } else if (allImages.length > 0) {
-      caption += `🖼️ ${allImages.length} зображ. (cycling, Ken Burns, ~4с/фото)\n`;
+      const dbCount = [imageUrl, ...extraImages].filter(Boolean).length;
+      const webCount = webImages.length;
+      caption += `🖼️ ${allImages.length} зображ. (DB:${dbCount} + Web:${webCount}, Ken Burns)\n`;
       if (sourceHost) {
-        caption += `📸 Скрапінг: + зображення з ${sourceHost}\n`;
+        caption += `📸 Джерело: ${sourceHost}\n`;
       }
     } else {
       caption += `⚠️ Без зображень → Pexels stock + скрапінг\n`;
@@ -1895,22 +1898,34 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
     caption += `⏱️ ~${estDuration}с | ${wordCount} слів`;
 
     // Send photo with caption, or text-only if no image
-    if (imageUrl) {
+    const bestImage = allImages[0]; // DB image or first web image
+    if (bestImage) {
       try {
         const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: targetChatId,
-            photo: imageUrl,
+            photo: bestImage,
             caption,
             parse_mode: "HTML",
           }),
         });
         const result = await resp.json();
         if (!result.ok) {
-          // Photo failed — send as text with URL
-          await sendMessage(targetChatId, `${caption}\n\n🔗 <code>${escapeHtml(imageUrl.substring(0, 100))}</code>`);
+          // Try next image if first fails
+          const fallbackImg = allImages[1];
+          if (fallbackImg) {
+            const r2 = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: targetChatId, photo: fallbackImg, caption, parse_mode: "HTML" }),
+            });
+            const r2j = await r2.json();
+            if (!r2j.ok) await sendMessage(targetChatId, caption);
+          } else {
+            await sendMessage(targetChatId, caption);
+          }
         }
       } catch {
         await sendMessage(targetChatId, `${caption}\n\n⚠️ Зображення не відправлено`);
@@ -1937,17 +1952,17 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
   summary += `📊 <b>${ordered.length} сегментів</b> · ~${Math.round(totalEstDuration / 60)}:${String(totalEstDuration % 60).padStart(2, "0")} хв\n`;
 
   const withVideo = ordered.filter((a: any) => !!(a as any).original_video_url || ((a as any).video_url && (a as any).video_type === "direct_url")).length;
-  const withImage = ordered.filter((a: any) => !!(a as any).processed_image_url || !!(a as any).image_url).length;
-  const withScrape = ordered.filter((a: any) => !!(a as any).original_url).length;
+  const withDbImage = ordered.filter((a: any) => !!(a as any).processed_image_url || !!(a as any).image_url).length;
+  const withWebImage = scripts.filter((s: any) => (s.webImages || []).length > 0).length;
+  const totalWithMedia = ordered.length - noImageCount;
 
-  summary += `🎥 Відео: ${withVideo} | 🖼️ Зображення: ${withImage} | ⚠️ Без медіа: ${noImageCount}\n`;
-  summary += `📸 Скрапінг з оригіналів: ${withScrape} статей\n`;
-  summary += `🎨 Pexels fallback: ${noImageCount > 0 ? `${noImageCount} сегментів` : "не потрібен"}\n\n`;
+  summary += `🎥 Відео: ${withVideo} | 🖼️ DB: ${withDbImage} | 🌐 Web: ${withWebImage} | ⚠️ Без медіа: ${noImageCount}\n`;
+  summary += `✅ <b>${totalWithMedia}/${ordered.length}</b> сегментів з зображеннями\n\n`;
 
   summary += `<b>Під час рендеру:</b>\n`;
-  summary += `1. TTS озвучка кожного сегмента (NO)\n`;
-  summary += `2. Скрапінг додаткових зображень з оригінальних статей\n`;
-  summary += `3. Pexels stock fallback (якщо мало зображень)\n`;
+  summary += `1. TTS озвучка (Финн + Пернилла, NO)\n`;
+  summary += `2. Web-зображення з медіа-чеку\n`;
+  summary += `3. Додатковий скрапінг з оригінальних статей\n`;
   summary += `4. Remotion рендер → YouTube upload`;
 
   await sendMessage(targetChatId, summary, { reply_markup: summaryKeyboard });
