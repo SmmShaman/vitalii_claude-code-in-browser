@@ -1001,6 +1001,14 @@ async function main() {
   } catch { /* skip if missing */ }
   console.log(`  📸 ${introBackgroundImages.length} bg images, profile: ${introProfileImageSrc ? 'yes' : 'no'}`);
 
+  // Debug: log what Remotion will receive for each segment
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i];
+    const altCount = s.alternateImages ? s.alternateImages.length : 0;
+    const altSample = s.alternateImages ? s.alternateImages.slice(0, 2).join(', ') : 'none';
+    console.log(`  📋 Segment ${i}: imageSrc="${s.imageSrc || 'EMPTY'}" | alternateImages=${altCount} [${altSample}] | cycleDuration=${s.imageCycleDuration || 'N/A'}s`);
+  }
+
   // Step 5: Render with Remotion
   console.log('\n🎬 Step 4: Rendering with Remotion...');
   const outputPath = path.join(os.tmpdir(), `daily_show_${Date.now()}.mp4`);
