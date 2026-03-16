@@ -1054,7 +1054,7 @@ async function main() {
   const compositionId = FORMAT === 'horizontal' ? 'DailyNewsShowHorizontal' : 'DailyNewsShowVertical';
   console.log(`📐 Composition: ${compositionId}`);
 
-  const cmd = `npx remotion render ${compositionId} ${outputPath} --props=${propsFile} --log=warn`;
+  const cmd = `npx remotion render ${compositionId} ${outputPath} --props=${propsFile} --log=verbose`;
   console.log(`🖥️ Running: ${cmd}`);
   execSync(cmd, { cwd: remotionProjectDir, stdio: 'inherit', timeout: 1800_000 }); // 30 min timeout
 

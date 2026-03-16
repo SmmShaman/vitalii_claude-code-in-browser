@@ -119,11 +119,8 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
     : resolvedImage ? [resolvedImage] : [];
   const imageCount = allImages.length || 1;
 
-  // Debug: log image cycling state on first frame
-  if (frame === 0) {
-    console.log(`[ContentScene] seg=${segmentNumber} hasVideo=${hasVideo} alternateImages=${alternateImages?.length ?? 0} rawCycleImages=${rawCycleImages.length} hasImageCycling=${hasImageCycling} imageCount=${imageCount} imageSrc="${imageSrc}" cycleDur=${imageCycleDuration}`);
-    if (rawCycleImages.length > 0) console.log(`[ContentScene] seg=${segmentNumber} images: ${rawCycleImages.slice(0, 3).join(', ')}...`);
-  }
+  // DEBUG: visible overlay showing image cycling state (remove after testing)
+  const DEBUG_IMAGES = true;
 
   // Frames per image and crossfade duration
   const CROSSFADE_FRAMES = 15; // ~0.5s at 30fps
@@ -343,6 +340,12 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
 
   return (
     <AbsoluteFill style={{ opacity: fadeIn * fadeOut }}>
+      {/* DEBUG overlay — remove after testing */}
+      {DEBUG_IMAGES && (
+        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 9999, background: 'rgba(0,0,0,0.8)', color: '#0f0', padding: '8px 12px', fontSize: 14, fontFamily: 'monospace', borderRadius: 4 }}>
+          seg={segmentNumber} | cycling={String(hasImageCycling)} | images={imageCount} | current={currentImageIndex}/{imageCount} | alt={alternateImages?.length ?? 0} | frame={frame}/{durationInFrames}
+        </div>
+      )}
       {/* Background: video (muted) → cycling images with Ken Burns → single image → gradient fallback */}
       {hasVideo ? (
         <OffthreadVideo
