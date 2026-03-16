@@ -809,15 +809,27 @@ async function main() {
     });
   }
 
-  // Step 3.5: Add web images found during media pre-check (from daily-video-bot)
+  // Step 3.5: Download web images found during media pre-check (from daily-video-bot)
+  // IMPORTANT: Remotion <Img> in headless Chrome can't reliably load external HTTP URLs.
+  // All images must be downloaded to publicDir as local files before render.
   const webImagesPerSegment = plan.webImagesPerSegment || [];
   for (let i = 0; i < segments.length; i++) {
-    const wImages = webImagesPerSegment[i] || [];
+    const wImages = (webImagesPerSegment[i] || []).filter(u => u && u.startsWith('http'));
     if (wImages.length > 0 && !segments[i].videoSrc) {
-      segments[i].alternateImages = wImages.filter(u => u && u.startsWith('http'));
-      if (segments[i].alternateImages.length > 0) {
-        segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (segments[i].alternateImages.length + 1)));
-        console.log(`  🌐 Segment ${i}: ${segments[i].alternateImages.length} web images from media pre-check`);
+      const downloadedWebImages = [];
+      for (let j = 0; j < wImages.length; j++) {
+        const filename = `daily_web_${i}_${j}_${Date.now()}.jpg`;
+        try {
+          await downloadImage(wImages[j], path.join(publicDir, filename));
+          downloadedWebImages.push(filename);
+        } catch (e) {
+          // Skip failed downloads silently
+        }
+      }
+      if (downloadedWebImages.length > 0) {
+        segments[i].alternateImages = downloadedWebImages;
+        segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (downloadedWebImages.length + 1)));
+        console.log(`  🌐 Segment ${i}: ${downloadedWebImages.length}/${wImages.length} web images downloaded`);
       }
     }
   }
