@@ -674,21 +674,36 @@ Return JSON:
     }
     if (sourceImages.length > 0) srcInfo.push(`Src:${sourceImages.length}`);
 
-    // 4. Google Image Search — finds REAL images from news coverage
-    const searchQuery = a.original_title || a.title_en || a.title_no || "";
+    // 4. Google Image Search — find DIVERSE images using multiple queries
+    const title = a.original_title || a.title_en || a.title_no || "";
     let sourceDomain = "";
     try { if (a.source_link) sourceDomain = new URL(a.source_link).hostname.replace("www.", ""); } catch { /* */ }
-    if (searchQuery && images.length < MIN_IMAGES + 2) {
-      const googleImages = await searchGoogleImages(searchQuery, 5, sourceDomain);
-      for (const img of googleImages) {
+    if (title && images.length < MIN_IMAGES + 2) {
+      // Query 1: exact title + source (finds the article's main image)
+      const googleImages1 = await searchGoogleImages(title, 2, sourceDomain);
+      for (const img of googleImages1) {
         if (!images.includes(img)) images.push(img);
       }
-      if (googleImages.length > 0) srcInfo.push(`Google:${googleImages.length}`);
+
+      // Query 2: extract key entities/topics for broader visual diversity
+      const tags = (a.tags || []).slice(0, 3).join(" ");
+      const shortTitle = title.split(/[:.!?\-–—]/).slice(0, 2).join(" ").trim().substring(0, 40);
+      if (images.length < MIN_IMAGES + 2) {
+        const googleImages2 = await searchGoogleImages(`${shortTitle} ${tags}`, 3, "");
+        for (const img of googleImages2) {
+          if (!images.includes(img)) images.push(img);
+        }
+      }
+      const totalGoogle = googleImages1.length + (images.length >= MIN_IMAGES + 2 ? 0 : 3);
+      if (totalGoogle > 0) srcInfo.push(`Google:${totalGoogle}`);
     }
 
     // 5. Pexels fallback — only if still not enough after Google
-    if (searchQuery && images.length < MIN_IMAGES) {
-      const pexelsImages = await searchPexels(searchQuery, 5);
+    if (title && images.length < MIN_IMAGES) {
+      // Use tags for Pexels to get visually diverse stock images
+      const tags = (a.tags || []).slice(0, 2).join(" ");
+      const pexelsQuery = tags || title.substring(0, 40);
+      const pexelsImages = await searchPexels(pexelsQuery, 5);
       for (const img of pexelsImages) {
         if (!images.includes(img)) images.push(img);
       }
@@ -1308,13 +1323,19 @@ For each article segment, specify ALL of these fields:
   * "list" — simple dot + value + label
   * "counters" — animated tick-up numbers (for impressive stats like funding, users)
   * "bars" — horizontal bar chart (for comparisons, percentages)
-- imageSearchQueries: array of 2-3 English search queries for finding relevant stock photos/videos on Pexels.
-  CRITICAL: These must describe WHAT THE VIEWER SHOULD SEE, not the headline text.
-  BAD: "QuTwo quantum startup" (Pexels won't find this)
-  GOOD: ["quantum computer laboratory", "superconducting chip close-up", "physics research lab"]
-  BAD: "Hormuz Strait military"
-  GOOD: ["naval warship ocean", "military destroyer ship", "strait waterway aerial view"]
-  Think: what REAL PHOTOS would illustrate this story? Use concrete visual nouns.
+- imageSearchQueries: array of 3-4 English search queries for finding DIVERSE stock photos on Pexels.
+  CRITICAL RULES:
+  1. Each query must show a DIFFERENT VISUAL ASPECT of the story — NOT variations of the same image!
+  2. Think about: WHO (people involved), WHERE (location/setting), WHAT (objects/technology), IMPACT (consequences/results)
+  3. Mix close-ups, wide shots, abstract concepts, and concrete objects
+
+  BAD (all similar): ["tired woman laptop", "exhausted office worker", "stressed person computer"]
+  GOOD (diverse aspects): ["brain scan neural activity", "corporate office panoramic", "coffee cup desk morning", "person walking park break"]
+
+  BAD (all similar): ["oil rig ocean", "oil platform sea", "oil refinery"]
+  GOOD (diverse aspects): ["oil tanker ship aerial", "stock market trading floor", "gas station price display", "middle east city skyline"]
+
+  Each image in the video should tell a DIFFERENT part of the story!
 
 VISUAL DIRECTION RULES:
 - Headlines and keyQuotes in clean Norwegian Bokmål — avoid unnecessary anglicisms
