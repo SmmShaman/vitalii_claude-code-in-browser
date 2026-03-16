@@ -119,6 +119,12 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
     : resolvedImage ? [resolvedImage] : [];
   const imageCount = allImages.length || 1;
 
+  // Debug: log image cycling state on first frame
+  if (frame === 0) {
+    console.log(`[ContentScene] seg=${segmentNumber} hasVideo=${hasVideo} alternateImages=${alternateImages?.length ?? 0} rawCycleImages=${rawCycleImages.length} hasImageCycling=${hasImageCycling} imageCount=${imageCount} imageSrc="${imageSrc}" cycleDur=${imageCycleDuration}`);
+    if (rawCycleImages.length > 0) console.log(`[ContentScene] seg=${segmentNumber} images: ${rawCycleImages.slice(0, 3).join(', ')}...`);
+  }
+
   // Frames per image and crossfade duration
   const CROSSFADE_FRAMES = 15; // ~0.5s at 30fps
   const framesPerImage = Math.round(imageCycleDuration * fps);
