@@ -34,6 +34,11 @@ const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")!;
 const AZURE_ENDPOINT = Deno.env.get("AZURE_OPENAI_ENDPOINT") || "";
 const AZURE_KEY = Deno.env.get("AZURE_OPENAI_API_KEY") || "";
 const AZURE_DEPLOYMENT = Deno.env.get("AZURE_OPENAI_DEPLOYMENT") || "Jobbot-gpt-4.1-mini";
+const GEMINI_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
+
+// LLM provider override (set via query param or api_settings)
+let LLM_PROVIDER = "azure"; // default
 
 // ── Telegram Helpers ──
 
@@ -112,6 +117,66 @@ function formatDateNorwegian(dateStr: string): string {
 // ── Azure OpenAI Helper ──
 
 async function callAI(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
+  if (LLM_PROVIDER === "gemini" && GEMINI_API_KEY) {
+    console.log("🤖 Using Gemini 2.5 Flash Lite");
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: maxTokens,
+            responseMimeType: "application/json",
+          },
+        }),
+      }
+    );
+    if (!resp.ok) throw new Error(`Gemini: ${resp.status} ${await resp.text()}`);
+    const data = await resp.json();
+    // Gemini may return multiple parts (thinking + response), get the last text part
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    let text = "";
+    for (const part of parts) {
+      if (part.text) text = part.text.trim();
+    }
+    console.log(`🤖 Gemini response: ${text.substring(0, 100)}...`);
+    // Strip markdown code block if present
+    if (text.startsWith("```")) {
+      text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+    }
+    return text;
+  }
+
+  if (LLM_PROVIDER === "groq" && GROQ_API_KEY) {
+    console.log("🤖 Using Groq (Llama 4 Scout)");
+    const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: maxTokens,
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!resp.ok) throw new Error(`Groq: ${resp.status} ${await resp.text()}`);
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content?.trim() || "";
+  }
+
+  // Default: Azure OpenAI
+  console.log("🤖 Using Azure OpenAI");
   const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
   const resp = await fetch(url, {
     method: "POST",
@@ -249,8 +314,8 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
   // Create or update draft
   const headlines = articles.map((a: any) => ({
     id: a.id,
-    title: a.title_ua || a.title_en || a.original_title || "",
-    description: a.description_ua || a.description_en || "",
+    title: a.title_no || a.title_en || a.original_title || "",
+    description: a.description_no || a.description_en || "",
     hasImage: !!(a.processed_image_url || a.image_url),
     tags: a.tags || [],
     slug_en: a.slug_en || "",
@@ -291,7 +356,7 @@ async function initiateDigest(targetDate?: string): Promise<Response> {
 // STEP 1-AUTO: Auto Digest (LLM ranks + writes script in one step)
 // ══════════════════════════════════════════════════════════════
 
-async function autoDigest(targetDate?: string): Promise<Response> {
+async function autoDigest(targetDate?: string, youtubePrivacy = "public"): Promise<Response> {
   const date = targetDate || getYesterdayDate();
   console.log(`🤖 Auto digest for ${date}`);
 
@@ -427,14 +492,27 @@ Return JSON:
   "outroTranslationEn": "That's all for today..."
 }`;
 
-  const aiResponse = await callAI(systemPrompt, `Rank and write script for ${displayDate}:\n\n${articleData}`, 8000);
+  let aiResponse = await callAI(systemPrompt, `Rank and write script for ${displayDate}:\n\n${articleData}`, 8000);
   let plan: any;
   try {
     plan = JSON.parse(aiResponse);
   } catch {
-    console.error(`❌ AI returned invalid JSON: ${aiResponse.substring(0, 300)}`);
-    await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка авто-дайджесту:</b> AI повернув невалідний JSON.\n\nСпробуйте ще раз або використайте ручний режим.`);
-    return json({ error: "Invalid AI JSON response" }, 500);
+    // Fallback: extract JSON from markdown code blocks or mixed text
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        plan = JSON.parse(jsonMatch[0]);
+        console.log("✅ Extracted JSON from mixed response");
+      } catch {
+        console.error(`❌ AI returned invalid JSON: ${aiResponse.substring(0, 300)}`);
+        await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка авто-дайджесту:</b> AI повернув невалідний JSON.\n\nСпробуйте ще раз або використайте ручний режим.`);
+        return json({ error: "Invalid AI JSON response" }, 500);
+      }
+    } else {
+      console.error(`❌ No JSON found in AI response: ${aiResponse.substring(0, 300)}`);
+      await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка авто-дайджесту:</b> AI повернув невалідний JSON.\n\nСпробуйте ще раз або використайте ручний режим.`);
+      return json({ error: "Invalid AI JSON response" }, 500);
+    }
   }
 
   if (!plan.selectedArticleIds || plan.selectedArticleIds.length === 0 || !plan.segmentScripts || plan.segmentScripts.length === 0) {
@@ -723,8 +801,8 @@ Return JSON:
   const selectedArticles = validSelectedIds.map((id: string) => articleMap.get(id));
   const headlines = selectedArticles.map((a: any) => ({
     id: a.id,
-    title: a.title_ua || a.title_en || a.original_title || "",
-    description: a.description_ua || a.description_en || "",
+    title: a.title_no || a.title_en || a.original_title || "",
+    description: a.description_no || a.description_en || "",
     hasImage: !!(a.processed_image_url || a.image_url),
     tags: a.tags || [],
     slug_en: a.slug_en || "",
@@ -755,6 +833,8 @@ Return JSON:
         webImages: webImagesPerArticle[id] || [],
       })),
       outro_script: plan.outroScript,
+      llm_provider: LLM_PROVIDER,
+      youtube_privacy: youtubePrivacy || "public",
     }, { onConflict: "target_date" })
     .select()
     .single();
@@ -1174,6 +1254,10 @@ async function generateScenario(targetDate: string, chatId?: number, messageId?:
     .single();
 
   if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
+
+  // Restore LLM provider from draft (so scenario uses same provider as script)
+  if (draft.llm_provider) LLM_PROVIDER = draft.llm_provider;
+  console.log(`🤖 Scenario LLM: ${LLM_PROVIDER} (from draft)`);
 
   const headlines = draft.article_headlines || [];
   const scripts = draft.segment_scripts || [];
@@ -1975,7 +2059,7 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
 // STEP 4: Trigger Render
 // ══════════════════════════════════════════════════════════════
 
-async function triggerRender(targetDate: string, chatId?: number, messageId?: number): Promise<Response> {
+async function triggerRender(targetDate: string, chatId?: number, messageId?: number, youtubePrivacy = "public"): Promise<Response> {
   console.log(`🚀 Triggering render for ${targetDate}`);
 
   const { data: draft, error } = await supabase
@@ -1985,6 +2069,10 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
     .single();
 
   if (error || !draft) throw new Error(`Draft not found for ${targetDate}`);
+
+  // Read settings from draft (saved during auto_digest)
+  const draftPrivacy = draft.youtube_privacy || youtubePrivacy || "public";
+  console.log(`🎬 YouTube privacy: ${draftPrivacy} (from draft)`);
 
   // Update status
   await supabase
@@ -2002,6 +2090,7 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
     targetDate,
     format: (draft.format || "horizontal") as "horizontal" | "vertical",
     language: draft.language || "no",
+    youtubePrivacy: draftPrivacy as "public" | "unlisted" | "private",
   });
 
   if (!result.success) {
@@ -2786,13 +2875,19 @@ Deno.serve(async (req) => {
     const targetDate = body.target_date || url.searchParams.get("target_date") || "";
     const chatId = body.chat_id ? Number(body.chat_id) : undefined;
     const messageId = body.message_id ? Number(body.message_id) : undefined;
+    const youtubePrivacy = body.youtube_privacy || url.searchParams.get("youtube_privacy") || "public";
+
+    // LLM provider override: gemini, groq, or azure (default)
+    const llmParam = body.llm_provider || url.searchParams.get("llm_provider") || "";
+    if (llmParam === "gemini" || llmParam === "groq") LLM_PROVIDER = llmParam;
+    console.log(`🤖 LLM Provider: ${LLM_PROVIDER}, YouTube: ${youtubePrivacy}`);
 
     switch (action || body.action) {
       case "initiate_digest":
         return await initiateDigest(targetDate || undefined);
 
       case "auto_digest":
-        return await autoDigest(targetDate || undefined);
+        return await autoDigest(targetDate || undefined, youtubePrivacy);
 
       case "toggle_article":
         if (!targetDate || !body.article_index) return json({ error: "target_date and article_index required" }, 400);
@@ -2832,7 +2927,7 @@ Deno.serve(async (req) => {
 
       case "trigger_render":
         if (!targetDate) return json({ error: "target_date required" }, 400);
-        return await triggerRender(targetDate, chatId, messageId);
+        return await triggerRender(targetDate, chatId, messageId, youtubePrivacy);
 
       case "skip":
         if (!targetDate) return json({ error: "target_date required" }, 400);

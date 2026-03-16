@@ -277,6 +277,7 @@ interface TriggerDailyVideoRenderOptions {
   targetDate: string;
   format?: 'horizontal' | 'vertical';
   language?: string;
+  youtubePrivacy?: 'public' | 'unlisted' | 'private';
 }
 
 /**
@@ -294,12 +295,13 @@ export async function triggerDailyVideoRender(
     return { success: false, error: 'GitHub PAT not configured' };
   }
 
-  const { draftId, targetDate, format = 'horizontal', language = 'no' } = options;
+  const { draftId, targetDate, format = 'horizontal', language = 'no', youtubePrivacy = 'public' } = options;
 
   console.log(`🚀 Triggering GitHub Action: daily-video-render`);
   console.log(`   Draft ID: ${draftId}`);
   console.log(`   Target date: ${targetDate}`);
   console.log(`   Format: ${format}`);
+  console.log(`   YouTube privacy: ${youtubePrivacy}`);
 
   try {
     const response = await fetch(
@@ -318,6 +320,7 @@ export async function triggerDailyVideoRender(
             target_date: targetDate,
             format: format,
             language: language,
+            youtube_privacy: youtubePrivacy,
           },
         }),
       }

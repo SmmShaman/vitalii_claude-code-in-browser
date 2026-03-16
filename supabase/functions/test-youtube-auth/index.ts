@@ -10,9 +10,13 @@ serve(async (req) => {
     const url = new URL(req.url)
     const code = url.searchParams.get('code')
 
+    // External URL (Supabase edge functions have internal origin without /functions/v1/)
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://uchmopqiylywnemvjttl.supabase.co'
+    const EXTERNAL_REDIRECT_URI = `${SUPABASE_URL}/functions/v1/test-youtube-auth`
+
     // ── OAuth callback: exchange code for refresh token ──
     if (code && CLIENT_ID && CLIENT_SECRET) {
-      const REDIRECT_URI = `${url.origin}${url.pathname}`
+      const REDIRECT_URI = EXTERNAL_REDIRECT_URI
 
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -53,9 +57,11 @@ serve(async (req) => {
 
     // ── Generate auth URL ──
     if (url.searchParams.get('action') === 'auth_url' && CLIENT_ID) {
-      const REDIRECT_URI = `${url.origin}${url.pathname}`
+      const REDIRECT_URI = EXTERNAL_REDIRECT_URI
+      const loginHint = url.searchParams.get('login_hint') || ''
       const SCOPE = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly'
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent`
+      let authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(SCOPE)}&access_type=offline&prompt=consent`
+      if (loginHint) authUrl += `&login_hint=${encodeURIComponent(loginHint)}`
 
       return new Response(JSON.stringify({ auth_url: authUrl }), {
         headers: { 'Content-Type': 'application/json' },

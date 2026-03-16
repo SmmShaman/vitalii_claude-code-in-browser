@@ -836,9 +836,11 @@ async function main() {
       if (segments[i].videoSrc) continue;
       const scraped = scrapedMedia[i];
       if (scraped && scraped.images.length > 0) {
-        segments[i].alternateImages = scraped.images;
-        segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (scraped.images.length + 1)));
-        console.log(`  📸 Segment ${i}: ${scraped.images.length} article images`);
+        // Merge with existing web images instead of overwriting
+        const existing = segments[i].alternateImages || [];
+        segments[i].alternateImages = [...new Set([...scraped.images, ...existing])];
+        segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (segments[i].alternateImages.length + 1)));
+        console.log(`  📸 Segment ${i}: ${scraped.images.length} scraped + ${existing.length} web = ${segments[i].alternateImages.length} total`);
       }
     }
   } catch (e) {
