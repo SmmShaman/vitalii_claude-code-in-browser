@@ -898,6 +898,60 @@ async function main() {
     }
   }
 
+  // Step 4a-3: Deduplicate images per segment
+  // Problem: same photo from DB, Google Search, and article scraping creates duplicates.
+  // Detect duplicates by comparing file sizes (same image = same size ±5%).
+  console.log('\n🔍 Step 3a-3: Deduplicating images per segment...');
+  for (let i = 0; i < segments.length; i++) {
+    if (!segments[i].alternateImages || segments[i].alternateImages.length < 2) continue;
+    const allImgs = segments[i].alternateImages;
+    const mainImg = segments[i].imageSrc;
+    const seen = new Map(); // filesize -> first filename
+    const unique = [];
+
+    // Get main image size for comparison
+    let mainSize = 0;
+    if (mainImg) {
+      try { mainSize = (await fs.stat(path.join(publicDir, mainImg))).size; } catch {}
+    }
+
+    for (const img of allImgs) {
+      try {
+        const imgPath = path.join(publicDir, img);
+        const stat = await fs.stat(imgPath);
+        const size = stat.size;
+
+        // Skip if too similar to main image (±10%)
+        if (mainSize > 0 && Math.abs(size - mainSize) / mainSize < 0.1) {
+          continue;
+        }
+
+        // Skip if too similar to an already-seen image (±5%)
+        let isDuplicate = false;
+        for (const [seenSize] of seen) {
+          if (Math.abs(size - seenSize) / seenSize < 0.05) {
+            isDuplicate = true;
+            break;
+          }
+        }
+
+        if (!isDuplicate) {
+          seen.set(size, img);
+          unique.push(img);
+        }
+      } catch {
+        unique.push(img); // keep if can't check
+      }
+    }
+
+    const removed = allImgs.length - unique.length;
+    if (removed > 0) {
+      segments[i].alternateImages = unique;
+      segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (unique.length + 1)));
+      console.log(`  🔍 Segment ${i}: ${removed} duplicates removed, ${unique.length} unique images`);
+    }
+  }
+
   // Step 4b: Generate avatar clips (if enabled)
   let avatarResult = { introAvatarSrc: null, outroAvatarSrc: null, segmentAvatarSrcs: [] };
   if (process.env.ENABLE_AVATAR === 'true') {
@@ -1054,7 +1108,7 @@ async function main() {
   const compositionId = FORMAT === 'horizontal' ? 'DailyNewsShowHorizontal' : 'DailyNewsShowVertical';
   console.log(`📐 Composition: ${compositionId}`);
 
-  const cmd = `npx remotion render ${compositionId} ${outputPath} --props=${propsFile} --log=verbose`;
+  const cmd = `npx remotion render ${compositionId} ${outputPath} --props=${propsFile} --log=warn`;
   console.log(`🖥️ Running: ${cmd}`);
   execSync(cmd, { cwd: remotionProjectDir, stdio: 'inherit', timeout: 1800_000 }); // 30 min timeout
 

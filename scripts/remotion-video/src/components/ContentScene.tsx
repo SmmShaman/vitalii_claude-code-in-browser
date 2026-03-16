@@ -119,8 +119,8 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
     : resolvedImage ? [resolvedImage] : [];
   const imageCount = allImages.length || 1;
 
-  // DEBUG: visible overlay showing image cycling state (remove after testing)
-  const DEBUG_IMAGES = true;
+  // Debug image cycling (set to true temporarily for testing)
+  const DEBUG_IMAGES = false;
 
   // Frames per image and crossfade duration
   const CROSSFADE_FRAMES = 15; // ~0.5s at 30fps
