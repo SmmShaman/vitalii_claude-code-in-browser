@@ -35,6 +35,7 @@ import {
   clampBoth,
 } from "../design-system";
 import { getMoodConfig } from "../design-system/moods";
+import { Particles, Spawner, Behavior } from "remotion-bits";
 
 export interface ContentSceneProps {
   imageSrc: string;
@@ -563,6 +564,20 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
           accentColor={accentColor}
         />
       )}
+
+      {/* Subtle ambient particles (bokeh-like) */}
+      <AbsoluteFill style={{ pointerEvents: 'none', opacity: 0.15, zIndex: 2 }}>
+        <Particles startFrame={0}>
+          <Spawner rate={0.5} max={15}>
+            <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'white' }} />
+          </Spawner>
+          <Behavior
+            gravity={{ y: -0.02 }}
+            opacity={[0, 0.8, 0.4, 0]}
+            scale={{ start: 0.5, end: 1.5 }}
+          />
+        </Particles>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };

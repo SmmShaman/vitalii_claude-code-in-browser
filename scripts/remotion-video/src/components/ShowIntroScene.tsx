@@ -26,6 +26,7 @@ import {
   fadeTiming,
   clampBoth,
 } from "../design-system";
+import { GradientTransition } from "remotion-bits";
 
 export interface ShowIntroSceneProps {
   date: string;
@@ -181,8 +182,18 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
           />
         </>
       ) : (
-        <AbsoluteFill
-          style={{ background: gradients.sceneRadial(accentColor) }}
+        <GradientTransition
+          gradient={[
+            `linear-gradient(135deg, #1a1a2e, #16213e)`,
+            `linear-gradient(135deg, ${accentColor}cc, #0f3460)`,
+            `linear-gradient(135deg, #1a1a2e, ${accentColor}88)`,
+          ]}
+          duration={durationInFrames}
+          easing="easeInOutCubic"
+          style={{
+            position: 'absolute',
+            inset: 0,
+          }}
         />
       )}
 

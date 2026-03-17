@@ -23,6 +23,7 @@ import {
   fadeTiming,
   clampBoth,
 } from "../design-system";
+import { StaggeredMotion } from "remotion-bits";
 
 // ── Types ──
 
@@ -198,50 +199,61 @@ const BarChartOverlay: React.FC<{
   return (
     <div>
       {data.title && <div style={titleStyle(accent)}>{data.title}</div>}
-      {data.items.map((item, idx) => {
-        const itemDelay = idx * 6;
-        const barProgress = spring({
-          frame: Math.max(0, frame - itemDelay),
-          fps,
-          config: { damping: 14, stiffness: 80 },
-        });
-        const barWidth = (item.value / maxVal) * 100 * barProgress;
+      <StaggeredMotion
+        transition={{
+          y: [20, 0],
+          opacity: [0, 1],
+          duration: 18,
+          stagger: 5,
+          staggerDirection: "forward",
+          easing: "easeOutCubic",
+        }}
+      >
+        {data.items.map((item, idx) => {
+          const itemDelay = idx * 6;
+          const barProgress = spring({
+            frame: Math.max(0, frame - itemDelay),
+            fps,
+            config: { damping: 14, stiffness: 80 },
+          });
+          const barWidth = (item.value / maxVal) * 100 * barProgress;
 
-        return (
-          <div key={idx} style={{ marginBottom: 14 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 4,
-              }}
-            >
-              <span style={labelStyle}>{item.label}</span>
-              <span style={{ ...valueStyle, fontSize: typography.scale.small }}>
-                {item.value}
-              </span>
-            </div>
-            <div
-              style={{
-                height: 10,
-                borderRadius: 5,
-                background: "rgba(255,255,255,0.08)",
-                overflow: "hidden",
-              }}
-            >
+          return (
+            <div key={idx} style={{ marginBottom: 14 }}>
               <div
                 style={{
-                  height: "100%",
-                  width: `${barWidth}%`,
-                  borderRadius: 5,
-                  background: `linear-gradient(90deg, ${item.color || accent}, ${item.color || accent}cc)`,
-                  boxShadow: `0 0 12px ${item.color || accent}60`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 4,
                 }}
-              />
+              >
+                <span style={labelStyle}>{item.label}</span>
+                <span style={{ ...valueStyle, fontSize: typography.scale.small }}>
+                  {item.value}
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 10,
+                  borderRadius: 5,
+                  background: "rgba(255,255,255,0.08)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${barWidth}%`,
+                    borderRadius: 5,
+                    background: `linear-gradient(90deg, ${item.color || accent}, ${item.color || accent}cc)`,
+                    boxShadow: `0 0 12px ${item.color || accent}60`,
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </StaggeredMotion>
     </div>
   );
 };
@@ -254,21 +266,18 @@ const BulletList: React.FC<{
 }> = ({ data, accent, fps, frame }) => (
   <div>
     {data.title && <div style={titleStyle(accent)}>{data.title}</div>}
-    {data.items.map((item, idx) => {
-      const itemDelay = idx * 8;
-      const itemScale = spring({
-        frame: Math.max(0, frame - itemDelay),
-        fps,
-        config: springs.staggerItem,
-      });
-      const itemOpacity = interpolate(
-        frame,
-        [itemDelay, itemDelay + 8],
-        [0, 1],
-        clampBoth,
-      );
-
-      return (
+    <StaggeredMotion
+      transition={{
+        y: [30, 0],
+        opacity: [0, 1],
+        scale: [0.9, 1],
+        duration: 20,
+        stagger: 4,
+        staggerDirection: "forward",
+        easing: "easeOutCubic",
+      }}
+    >
+      {data.items.map((item, idx) => (
         <div
           key={idx}
           style={{
@@ -276,8 +285,6 @@ const BulletList: React.FC<{
             alignItems: "flex-start",
             gap: 12,
             marginBottom: 14,
-            opacity: itemOpacity,
-            transform: `translateX(${(1 - itemScale) * 20}px)`,
           }}
         >
           <div
@@ -301,8 +308,8 @@ const BulletList: React.FC<{
             {item}
           </span>
         </div>
-      );
-    })}
+      ))}
+    </StaggeredMotion>
   </div>
 );
 

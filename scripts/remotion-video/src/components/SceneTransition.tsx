@@ -1,7 +1,8 @@
 /**
  * SceneTransition — wraps a scene with entry/exit transition effects.
  *
- * Supports: fade, wipeLeft, wipeRight, slideUp, slideDown, zoomIn, zoomOut.
+ * Supports: fade, wipeLeft, wipeRight, slideUp, slideDown, zoomIn, zoomOut,
+ * filmBurn (gradient sweep overlay), glitchWipe (brief RGB split during transition).
  * Uses clip-path and transform for GPU-accelerated transitions.
  */
 import React from "react";
@@ -86,6 +87,30 @@ export const SceneTransition: React.FC<SceneTransitionProps> = ({
           opacity: entryProgress * exitOpacity,
         };
       }
+      case "filmBurn": {
+        // Content fades in while a gradient overlay sweeps across
+        const fadeIn = interpolate(
+          frame,
+          [0, config.durationFrames],
+          [0, 1],
+          clampBoth,
+        );
+        return {
+          opacity: fadeIn * exitOpacity,
+        };
+      }
+      case "glitchWipe": {
+        // Content fades in quickly
+        const fadeIn = interpolate(
+          frame,
+          [0, Math.ceil(config.durationFrames * 0.6)],
+          [0, 1],
+          clampBoth,
+        );
+        return {
+          opacity: fadeIn * exitOpacity,
+        };
+      }
       case "fade":
       default: {
         const fadeIn = interpolate(
@@ -101,9 +126,104 @@ export const SceneTransition: React.FC<SceneTransitionProps> = ({
     }
   };
 
+  // Film burn overlay: gradient sweep from left to right
+  const renderFilmBurnOverlay = () => {
+    if (type !== "filmBurn") return null;
+    const sweepProgress = interpolate(
+      frame,
+      [0, config.durationFrames],
+      [-100, 150],
+      clampBoth,
+    );
+    const overlayOpacity = interpolate(
+      frame,
+      [0, config.durationFrames * 0.4, config.durationFrames],
+      [0, 0.7, 0],
+      clampBoth,
+    );
+    return (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `linear-gradient(90deg, transparent ${sweepProgress - 30}%, rgba(255, 180, 50, 0.6) ${sweepProgress}%, rgba(255, 100, 20, 0.4) ${sweepProgress + 15}%, transparent ${sweepProgress + 30}%)`,
+          opacity: overlayOpacity,
+          pointerEvents: "none",
+          zIndex: 50,
+        }}
+      />
+    );
+  };
+
+  // Glitch wipe overlay: brief RGB split effect during transition
+  const renderGlitchWipeOverlay = () => {
+    if (type !== "glitchWipe") return null;
+    const glitchActive = frame < config.durationFrames;
+    if (!glitchActive) return null;
+
+    const glitchIntensity = interpolate(
+      frame,
+      [0, config.durationFrames * 0.3, config.durationFrames],
+      [0, 1, 0],
+      clampBoth,
+    );
+    const rgbOffset = glitchIntensity * 6;
+    // Scanline position sweeps down the screen
+    const scanY = interpolate(
+      frame,
+      [0, config.durationFrames],
+      [0, 100],
+      clampBoth,
+    );
+    return (
+      <>
+        {/* RGB split: red channel offset */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `rgba(255, 0, 0, ${glitchIntensity * 0.15})`,
+            transform: `translateX(${rgbOffset}px)`,
+            mixBlendMode: "screen",
+            pointerEvents: "none",
+            zIndex: 50,
+          }}
+        />
+        {/* RGB split: cyan channel offset */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `rgba(0, 255, 255, ${glitchIntensity * 0.12})`,
+            transform: `translateX(${-rgbOffset}px)`,
+            mixBlendMode: "screen",
+            pointerEvents: "none",
+            zIndex: 50,
+          }}
+        />
+        {/* Scanline */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: `${scanY}%`,
+            height: 3,
+            background: `rgba(255, 255, 255, ${glitchIntensity * 0.4})`,
+            boxShadow: `0 0 10px rgba(255, 255, 255, ${glitchIntensity * 0.3})`,
+            pointerEvents: "none",
+            zIndex: 51,
+          }}
+        />
+      </>
+    );
+  };
+
   return (
     <AbsoluteFill style={getTransitionStyle()}>
       {children}
+      {renderFilmBurnOverlay()}
+      {renderGlitchWipeOverlay()}
     </AbsoluteFill>
   );
 };

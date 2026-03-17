@@ -12,7 +12,9 @@ export type TransitionType =
   | 'slideUp'
   | 'slideDown'
   | 'zoomIn'
-  | 'zoomOut';
+  | 'zoomOut'
+  | 'filmBurn'
+  | 'glitchWipe';
 
 export interface TransitionConfig {
   /** Default duration in frames */
@@ -49,6 +51,14 @@ export const transitionConfigs: Record<TransitionType, TransitionConfig> = {
   zoomOut: {
     durationFrames: 15,
     spring: { damping: 10, stiffness: 80 },
+  },
+  filmBurn: {
+    durationFrames: 18,
+    spring: { damping: 10, stiffness: 100 },
+  },
+  glitchWipe: {
+    durationFrames: 12,
+    spring: { damping: 8, stiffness: 150 },
   },
 };
 

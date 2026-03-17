@@ -26,6 +26,8 @@ import {
 import { getMoodConfig, getMoodSpring } from "../design-system/moods";
 import { TypewriterText } from "./TypewriterText";
 import { SplitTextReveal } from "./SplitTextReveal";
+import { AnimatedText } from "remotion-bits";
+import { DigitalGlitchRGB } from "@storybynumbers_/remotion-glitch-effect";
 
 export interface HeadlineSceneProps {
   text: string;
@@ -138,45 +140,41 @@ export const HeadlineScene: React.FC<HeadlineSceneProps> = ({
             fontSize={words.length > 8 ? typography.scale.h2 : typography.scale.h1}
             startDelay={10}
           />
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: "8px 12px",
-              maxWidth: "90%",
-            }}
-          >
-            {words.map((word, i) => {
-              const wordStart = i * framesPerWord;
-              const scale = spring({
-                frame: frame - wordStart,
-                fps,
-                config: getMoodSpring(mood),
-              });
-              const opacity = interpolate(frame - wordStart, [0, 3], [0, 1], clampBoth);
-
-              return (
-                <span
-                  key={i}
-                  style={{
-                    display: "inline-block",
-                    transform: `scale(${scale})`,
-                    opacity,
-                    fontSize: words.length > 8 ? typography.scale.h2 : typography.scale.h1,
-                    fontWeight: 800,
-                    color: colors.text,
-                    fontFamily: typography.fontFamily.primary,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {word}
-                </span>
-              );
-            })}
-          </div>
-        )}
+        ) : (() => {
+          const headlineContent = (
+            <AnimatedText
+              transition={{
+                split: "word",
+                y: [30, 0],
+                blur: [8, 0],
+                opacity: [0, 1],
+                splitStagger: 2,
+                duration: 15,
+                easing: "easeOutCubic",
+              }}
+              style={{
+                fontSize: words.length > 8 ? typography.scale.h2 : typography.scale.h1,
+                fontWeight: 800,
+                color: colors.text,
+                fontFamily: typography.fontFamily.primary,
+                lineHeight: 1.2,
+                textAlign: 'center' as const,
+              }}
+            >
+              {text}
+            </AnimatedText>
+          );
+          return mood === 'urgent' ? (
+            <DigitalGlitchRGB
+              splitAmount={4}
+              blurAmount={0.8}
+              burstSpacing={25}
+              burstDuration={[2, 5]}
+            >
+              {headlineContent}
+            </DigitalGlitchRGB>
+          ) : headlineContent;
+        })()}
       </AbsoluteFill>
     </AbsoluteFill>
   );
