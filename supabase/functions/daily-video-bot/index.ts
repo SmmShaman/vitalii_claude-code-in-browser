@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-17-v29-serper-image-search";
+const VERSION = "2026-03-17-v30-fix-script-alignment";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -540,6 +540,65 @@ Return JSON:
   // Validate selected IDs exist in our articles
   const articleMap = new Map(articles.map((a: any) => [a.id, a]));
   let validSelectedIds = plan.selectedArticleIds.filter((id: string) => articleMap.has(id));
+
+  // ── Verify script-to-article alignment ──
+  // LLM sometimes returns scripts in different order than selectedArticleIds.
+  // Detect and fix by matching script content to article titles.
+  if (plan.segmentScripts && plan.segmentScripts.length === validSelectedIds.length) {
+    const reordered: number[] = new Array(validSelectedIds.length).fill(-1);
+    const used = new Set<number>();
+
+    for (let si = 0; si < validSelectedIds.length; si++) {
+      const a = articleMap.get(validSelectedIds[si]);
+      if (!a) continue;
+      const titleWords = new Set(
+        (a.title_en || a.original_title || a.title_no || "")
+          .toLowerCase().split(/[\s,.:;!?\-–—()'"]+/)
+          .filter((w: string) => w.length > 3)
+      );
+
+      // Find which script best matches this article
+      let bestIdx = si; // default: same index
+      let bestScore = 0;
+      for (let sci = 0; sci < plan.segmentScripts.length; sci++) {
+        if (used.has(sci)) continue;
+        const script = (plan.segmentScripts[sci] || "").toLowerCase();
+        let score = 0;
+        for (const w of titleWords) {
+          if (script.includes(w)) score++;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = sci;
+        }
+      }
+      reordered[si] = bestIdx;
+      used.add(bestIdx);
+    }
+
+    // Check if reordering is needed
+    const needsReorder = reordered.some((v, i) => v !== i);
+    if (needsReorder) {
+      console.log(`⚠️ Script-article misalignment detected! Reordering...`);
+      console.log(`   Mapping: ${reordered.map((v, i) => `${i}→${v}`).join(", ")}`);
+      const origScripts = [...plan.segmentScripts];
+      const origTranslations = [...(plan.segmentTranslationsEn || [])];
+      const origEntities = [...(plan.articleEntities || [])];
+      for (let i = 0; i < reordered.length; i++) {
+        plan.segmentScripts[i] = origScripts[reordered[i]] || "";
+        if (origTranslations.length > 0) {
+          plan.segmentTranslationsEn[i] = origTranslations[reordered[i]] || "";
+        }
+        if (origEntities.length > 0) {
+          plan.articleEntities = plan.articleEntities || [];
+          plan.articleEntities[i] = origEntities[reordered[i]] || null;
+        }
+      }
+      console.log(`✅ Scripts reordered to match articles`);
+    } else {
+      console.log(`✅ Script-article alignment OK`);
+    }
+  }
   if (validSelectedIds.length === 0) {
     console.error("❌ None of the selected IDs match our articles");
     await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI обрав невідомі ID статей.`);
