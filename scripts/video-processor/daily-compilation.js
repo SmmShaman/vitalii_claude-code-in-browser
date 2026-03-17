@@ -1194,14 +1194,18 @@ async function main() {
   }
 
   // Step 5c: Upload to YouTube (thumbnail is handled separately via Telegram approval)
-  console.log('\n📤 Step 5: Uploading to YouTube...');
   let result = { videoId: null, url: null };
-  try {
-    result = await uploadToYouTube(outputPath, title, description, ytTags);
-  } catch (ytErr) {
-    console.log(`⚠️ YouTube upload failed: ${ytErr.message}`);
-    console.log('   Video was rendered successfully but could not be uploaded.');
-    console.log('   This may be a temporary quota/rate limit — retry later.');
+  if (process.env.SKIP_YOUTUBE === 'true') {
+    console.log('\n⏭️ Step 5: YouTube upload SKIPPED (SKIP_YOUTUBE=true)');
+  } else {
+    console.log('\n📤 Step 5: Uploading to YouTube...');
+    try {
+      result = await uploadToYouTube(outputPath, title, description, ytTags);
+    } catch (ytErr) {
+      console.log(`⚠️ YouTube upload failed: ${ytErr.message}`);
+      console.log('   Video was rendered successfully but could not be uploaded.');
+      console.log('   This may be a temporary quota/rate limit — retry later.');
+    }
   }
 
   // Step 5d: Dispatch thumbnail generation to Telegram bot (4 variants for approval)

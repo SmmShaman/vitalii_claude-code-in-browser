@@ -278,6 +278,7 @@ interface TriggerDailyVideoRenderOptions {
   format?: 'horizontal' | 'vertical';
   language?: string;
   youtubePrivacy?: 'public' | 'unlisted' | 'private';
+  skipYoutube?: boolean;
 }
 
 /**
@@ -295,7 +296,7 @@ export async function triggerDailyVideoRender(
     return { success: false, error: 'GitHub PAT not configured' };
   }
 
-  const { draftId, targetDate, format = 'horizontal', language = 'no', youtubePrivacy = 'public' } = options;
+  const { draftId, targetDate, format = 'horizontal', language = 'no', youtubePrivacy = 'public', skipYoutube = false } = options;
 
   console.log(`🚀 Triggering GitHub Action: daily-video-render`);
   console.log(`   Draft ID: ${draftId}`);
@@ -321,6 +322,7 @@ export async function triggerDailyVideoRender(
             format: format,
             language: language,
             youtube_privacy: youtubePrivacy,
+            skip_youtube: skipYoutube ? 'true' : 'false',
           },
         }),
       }

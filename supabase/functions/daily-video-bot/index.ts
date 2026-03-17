@@ -869,27 +869,34 @@ Return JSON:
     validSelectedIds = finalSelectedIds;
   }
 
-  // Regenerate scripts for replaced articles if needed
-  if (rejectedCount > 0 && finalSelectedIds.length > 0 && finalSelectedIds.length !== mediaCheckResults.length) {
-    const newScripts: string[] = [];
-    const newTranslations: string[] = [];
-    for (const id of validSelectedIds) {
-      const origIdx = plan.selectedArticleIds.indexOf(id);
-      if (origIdx >= 0 && plan.segmentScripts[origIdx]) {
-        newScripts.push(plan.segmentScripts[origIdx]);
-        newTranslations.push(plan.segmentTranslationsEn?.[origIdx] || "");
-      } else {
-        // New article needs a script — generate placeholder
-        const a = articleMap.get(id)!;
-        const title = a.title_no || a.title_en || a.original_title || "";
-        newScripts.push(`${title}. ${(a.description_no || a.description_en || "").substring(0, 200)}`);
-        newTranslations.push(a.title_en || title);
-      }
-    }
-    plan.segmentScripts = newScripts;
-    plan.segmentTranslationsEn = newTranslations;
-    plan.selectedArticleIds = validSelectedIds;
+  // Map scripts/translations by article ID (not array index) to handle replacements
+  // This prevents the ordering mismatch when media pre-check replaces articles
+  const scriptByArticleId: Record<string, string> = {};
+  const translationByArticleId: Record<string, string> = {};
+  for (let idx = 0; idx < plan.selectedArticleIds.length; idx++) {
+    const aid = plan.selectedArticleIds[idx];
+    scriptByArticleId[aid] = plan.segmentScripts[idx] || "";
+    translationByArticleId[aid] = plan.segmentTranslationsEn?.[idx] || "";
   }
+
+  // Build final scripts array in validSelectedIds order
+  const finalScripts: string[] = [];
+  const finalTranslations: string[] = [];
+  for (const id of validSelectedIds) {
+    if (scriptByArticleId[id]) {
+      finalScripts.push(scriptByArticleId[id]);
+      finalTranslations.push(translationByArticleId[id] || "");
+    } else {
+      // Replacement article — generate placeholder
+      const a = articleMap.get(id)!;
+      const title = a.title_no || a.title_en || a.original_title || "";
+      finalScripts.push(`${title}. ${(a.description_no || a.description_en || "").substring(0, 200)}`);
+      finalTranslations.push(a.title_en || title);
+    }
+  }
+  plan.segmentScripts = finalScripts;
+  plan.segmentTranslationsEn = finalTranslations;
+  plan.selectedArticleIds = validSelectedIds;
 
   // Build headlines from selected articles
   const selectedArticles = validSelectedIds.map((id: string) => articleMap.get(id));
@@ -2259,12 +2266,14 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
   }
 
   // Trigger GitHub Actions
+  const skipYt = draftPrivacy === "skip" || Deno.env.get("SKIP_YOUTUBE") === "true";
   const result = await triggerDailyVideoRender({
     draftId: draft.id,
     targetDate,
     format: (draft.format || "horizontal") as "horizontal" | "vertical",
     language: draft.language || "no",
     youtubePrivacy: draftPrivacy as "public" | "unlisted" | "private",
+    skipYoutube: skipYt,
   });
 
   if (!result.success) {

@@ -175,6 +175,7 @@ jobs:
           TARGET_DATE: ${{ github.event.client_payload.target_date || github.event.inputs.target_date || '' }}
           DRAFT_ID: ${{ github.event.client_payload.draft_id || '' }}
           YOUTUBE_PRIVACY: ${{ github.event.client_payload.youtube_privacy || github.event.inputs.youtube_privacy || 'public' }}
+          SKIP_YOUTUBE: ${{ github.event.client_payload.skip_youtube || 'false' }}
         run: node daily-compilation.js
 
       - name: Upload video to Supabase Storage (YouTube fallback)
