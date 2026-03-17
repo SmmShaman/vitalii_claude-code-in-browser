@@ -197,12 +197,12 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
   );
 
   // Per-image Ken Burns transform (used during image cycling)
-  // Uses CONTINUOUS scale based on global scene progress to avoid
-  // "zoom in then sudden reset" artifacts when cycling between images.
-  // Only the pan direction changes per image (smoothly via crossfade).
+  // Uses CONTINUOUS scale AND pan based on global scene progress.
+  // Pan direction varies per image but transitions are smooth because
+  // crossfade opacity handles the visual blending — no position jumps.
   const getKenBurnsTransform = (imgIdx: number) => {
     const { panXDir, panYDir } = getImageKenBurns(imgIdx);
-    // Continuous scale across the entire scene (no reset per image)
+    // Continuous progress across the entire scene (no reset per image)
     const globalProgress = interpolate(
       frame,
       [0, durationInFrames],
@@ -215,25 +215,20 @@ export const ContentScene: React.FC<ContentSceneProps> = ({
       [kenBurns.scaleRange.start, scaleEnd],
       clampBoth,
     );
-    // Pan direction still per-image for variety, but uses gentle range
-    const localFrame = frame - rawImageIndex * framesPerImage;
-    const localProgress = interpolate(
-      localFrame,
-      [0, framesPerImage],
-      [0, 1],
-      clampBoth,
-    );
-    const panRange = Math.min(Math.abs(panXEnd), 1.5); // limit pan to avoid jitter
+    // GLOBAL pan — slow continuous movement across entire scene duration.
+    // Direction varies per image for variety, but progress is NEVER reset.
+    // This eliminates the "jerk" when switching images.
+    const panRange = Math.min(Math.abs(panXEnd), 1.2);
     const imgPanX = panXDir * interpolate(
-      localProgress,
+      globalProgress,
       [0, 1],
       [0, panRange],
       clampBoth,
     );
     const imgPanY = panYDir * interpolate(
-      localProgress,
+      globalProgress,
       [0, 1],
-      [0, panRange],
+      [0, panRange * 0.6],
       clampBoth,
     );
     return `scale(${imgScale}) translate(${imgPanX}%, ${imgPanY}%)`;
