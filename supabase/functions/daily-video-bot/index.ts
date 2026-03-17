@@ -488,7 +488,9 @@ Return JSON:
     return json({ error: "AI returned empty selection" }, 500);
   }
 
-  console.log(`✅ Selected ${selection.selectedArticleIds.length} articles: ${selection.rankingReasoning?.substring(0, 100) || ""}`);
+  console.log(`✅ Selected ${selection.selectedArticleIds.length} articles`);
+  console.log(`   IDs: ${selection.selectedArticleIds.map((id: string) => id.substring(0, 8)).join(", ")}`);
+  console.log(`   Reasoning: ${(selection.rankingReasoning || "").substring(0, 150)}`);
 
   // ══════════════════════════════════════════════════════════════
   // LLM CALL 2: Write scripts + extract entities for selected articles
@@ -496,6 +498,11 @@ Return JSON:
   // Build article details ONLY for selected articles (in selection order)
   const articleMap = new Map(articles.map((a: any) => [a.id, a]));
   const selectedValid = selection.selectedArticleIds.filter((id: string) => articleMap.has(id));
+  console.log(`   Valid: ${selectedValid.length}/${selection.selectedArticleIds.length} IDs match articles`);
+  if (selectedValid.length === 0) {
+    console.log(`   Available IDs sample: ${articles.slice(0, 3).map((a: any) => a.id.substring(0, 12)).join(", ")}`);
+    console.log(`   LLM returned: ${selection.selectedArticleIds.slice(0, 3).map((id: string) => String(id).substring(0, 12)).join(", ")}`);
+  }
   const selectedArticleData = selectedValid.map((id: string, i: number) => {
     const a = articleMap.get(id)!;
     const title = a.title_no || a.title_en || a.original_title || "";
