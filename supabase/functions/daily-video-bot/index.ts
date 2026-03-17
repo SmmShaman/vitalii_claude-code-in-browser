@@ -543,7 +543,7 @@ Return JSON:
 
   // ── Verify script-to-article alignment ──
   // LLM sometimes returns scripts in different order than selectedArticleIds.
-  // Detect and fix by matching script content to article titles.
+  // Detect and fix by matching script content to article content (same language).
   if (plan.segmentScripts && plan.segmentScripts.length === validSelectedIds.length) {
     const reordered: number[] = new Array(validSelectedIds.length).fill(-1);
     const used = new Set<number>();
@@ -551,10 +551,14 @@ Return JSON:
     for (let si = 0; si < validSelectedIds.length; si++) {
       const a = articleMap.get(validSelectedIds[si]);
       if (!a) continue;
+      // Use ALL available title languages + description for matching
+      const allText = [
+        a.title_en, a.title_no, a.title_ua, a.original_title,
+        a.description_en, a.description_no,
+      ].filter(Boolean).join(" ");
       const titleWords = new Set(
-        (a.title_en || a.original_title || a.title_no || "")
-          .toLowerCase().split(/[\s,.:;!?\-–—()'"]+/)
-          .filter((w: string) => w.length > 3)
+        allText.toLowerCase().split(/[\s,.:;!?\-–—()'"]+/)
+          .filter((w: string) => w.length > 3 && !/^(this|that|with|from|have|been|will|also|their|about|more|than|into|when|each|they|were|which|could|would|should|after|before|other|first|these|being|through|between|those|under|since|while|where|every|still|over|during)$/.test(w))
       );
 
       // Find which script best matches this article
@@ -563,9 +567,12 @@ Return JSON:
       for (let sci = 0; sci < plan.segmentScripts.length; sci++) {
         if (used.has(sci)) continue;
         const script = (plan.segmentScripts[sci] || "").toLowerCase();
+        // Also check English translation if available
+        const scriptEn = (plan.segmentTranslationsEn?.[sci] || "").toLowerCase();
+        const combined = script + " " + scriptEn;
         let score = 0;
         for (const w of titleWords) {
-          if (script.includes(w)) score++;
+          if (combined.includes(w)) score++;
         }
         if (score > bestScore) {
           bestScore = score;
@@ -587,6 +594,7 @@ Return JSON:
       for (let i = 0; i < reordered.length; i++) {
         plan.segmentScripts[i] = origScripts[reordered[i]] || "";
         if (origTranslations.length > 0) {
+          plan.segmentTranslationsEn = plan.segmentTranslationsEn || [];
           plan.segmentTranslationsEn[i] = origTranslations[reordered[i]] || "";
         }
         if (origEntities.length > 0) {
