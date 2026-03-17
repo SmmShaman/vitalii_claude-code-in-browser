@@ -529,7 +529,16 @@ SCRIPT REQUIREMENTS:
 
 LANGUAGE: Clean Norwegian Bokmål. Use "kunstig intelligens" not "AI", "programvare" not "software". TTS-friendly.
 
-ENTITY EXTRACTION: For each article, extract entities for image search.
+ENTITY EXTRACTION: For each article, create 3-4 Google Image search queries that will find REAL NEWS PHOTOS.
+
+IMAGE QUERY RULES (CRITICAL):
+- Queries must find REAL photos from news articles, press conferences, events — NOT flags, logos, icons, stock illustrations
+- GOOD: "He Lifeng trade talks Paris 2026", "China US trade delegation meeting", "Paris economic forum speakers"
+- BAD: "China flag", "USA flag", "trade concept", "handshake business" (these return generic stock/icons)
+- For people: use "FULL NAME + context" (e.g. "Jensen Huang GTC keynote" NOT just "Jensen Huang")
+- For companies: use "COMPANY + event/product" (e.g. "Nvidia GTC 2026 conference" NOT "Nvidia logo")
+- For events: describe the SCENE (e.g. "trade delegation meeting room" NOT "trade concept")
+- Each query should find a DIFFERENT visual aspect of the story
 
 Return JSON:
 {
@@ -540,7 +549,7 @@ Return JSON:
   "segmentTranslationsEn": ["translation 1", "translation 2", ...],
   "outroTranslationEn": "That's all...",
   "articleEntities": [
-    {"people": [], "companies": [], "products": [], "locations": [], "imageQueries": ["query1", "query2", "query3"]}
+    {"people": [], "companies": [], "products": [], "locations": [], "imageQueries": ["news photo query 1", "news photo query 2", "news photo query 3"]}
   ]
 }`;
 
@@ -662,11 +671,25 @@ Return JSON:
         return [];
       }
       const data = await res.json();
+      // Filter out flags, icons, logos, stock illustrations, SVGs
+      const BLOCKED_HOSTS = ["wikimedia.org", "wikipedia.org", "flagsource", "flagfactory", "flagcdn", "countryflags", "worldflags", "flaticon.com", "icons8.com", "clipartmax", "pngitem", "cleanpng", "seekpng", "kindpng", "vecteezy.com"];
       const results = (data.images || [])
         .map((img: any) => img.imageUrl)
-        .filter((url: string) => url && url.startsWith("http"))
+        .filter((url: string) => {
+          if (!url || !url.startsWith("http")) return false;
+          const urlLower = url.toLowerCase();
+          // Skip SVG files (usually icons/flags)
+          if (urlLower.includes(".svg")) return false;
+          // Skip tiny images (usually icons)
+          if (urlLower.includes("icon") || urlLower.includes("favicon")) return false;
+          // Skip flag images
+          if (urlLower.includes("flag_of_") || urlLower.includes("flag-of-") || urlLower.includes("/flags/")) return false;
+          // Skip blocked domains
+          if (BLOCKED_HOSTS.some(h => urlLower.includes(h))) return false;
+          return true;
+        })
         .slice(0, count);
-      console.log(`    📡 Serper found: ${results.length} images`);
+      console.log(`    📡 Serper found: ${results.length} images (filtered)`);
       return results;
     } catch (e: any) {
       console.log(`  ⚠️ Serper error: ${e.message}`);
