@@ -606,6 +606,28 @@ Return JSON:
     } else {
       console.log(`✅ Script-article alignment OK`);
     }
+
+    // Post-alignment validation: replace scripts that still don't match their article
+    for (let vi = 0; vi < validSelectedIds.length; vi++) {
+      const a = articleMap.get(validSelectedIds[vi]);
+      if (!a) continue;
+      const allTitles = [a.title_no, a.title_en, a.original_title].filter(Boolean).join(" ").toLowerCase();
+      const titleKeywords = allTitles.split(/[\s,.:;!?\-–—()'"]+/).filter((w: string) => w.length > 4);
+      const script = (plan.segmentScripts[vi] || "").toLowerCase();
+      const matchCount = titleKeywords.filter((w: string) => script.includes(w)).length;
+
+      if (matchCount < 1 && plan.segmentScripts[vi]) {
+        // Script doesn't match article at all — replace with article content
+        const title = a.title_no || a.title_en || a.original_title || "";
+        const desc = a.description_no || a.description_en || "";
+        const content = a.content_no || a.content_en || a.original_content || "";
+        console.log(`  ⚠️ Segment ${vi} script mismatch (0 keywords) — replacing with article text`);
+        plan.segmentScripts[vi] = `${title}. ${desc || content.substring(0, 300)}`;
+        if (plan.segmentTranslationsEn) {
+          plan.segmentTranslationsEn[vi] = a.title_en || a.original_title || title;
+        }
+      }
+    }
   }
   if (validSelectedIds.length === 0) {
     console.error("❌ None of the selected IDs match our articles");
