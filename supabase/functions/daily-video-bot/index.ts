@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-17-v31-split-llm-quiet-telegram";
+const VERSION = "2026-03-17-v32-group-same-company-articles";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -441,9 +441,10 @@ Tags: ${(a.tags || []).join(", ")}`;
   // ══════════════════════════════════════════════════════════════
   // LLM CALL 1: Select top-N articles (IDs only, no scripts)
   // ══════════════════════════════════════════════════════════════
-  const selectPrompt = `You are a professional news editor for a daily tech news video.
+  const selectPrompt = `You are a professional news editor for a daily tech news video digest.
 
-TASK: From ${articles.length} articles, select the TOP ${topN} most newsworthy stories. Return ONLY the article IDs.
+TASK: From ${articles.length} articles, select the TOP ${topN} most newsworthy stories.
+IMPORTANT: If multiple articles cover the SAME company or event, GROUP them into ONE selection.
 
 TARGET AUDIENCE: Business professionals, tech entrepreneurs, startup founders, AI/e-commerce/marketing specialists.
 The channel "vitalii.no" covers BUSINESS & TECH news — NOT general world news.
@@ -453,16 +454,28 @@ RANKING CRITERIA (all three matter equally):
 2. trending_data — HackerNews activity (posts/score) and Google Trends matches indicate viral potential
 3. Your own analysis — business impact, innovation, relevance to tech/startup/AI/marketing audience
 
-CONTENT FILTER (CRITICAL):
+CONTENT FILTER:
 - PRIORITIZE: tech innovations, AI/ML breakthroughs, startup funding/launches, e-commerce trends, marketing strategies, SaaS products, fintech, business strategy, digital transformation, developer tools
 - DEPRIORITIZE: wars, military conflicts, geopolitics, elections, crime, natural disasters, celebrity gossip, sports
 - Exception: political/regulatory news DIRECTLY affecting tech/business IS relevant
-- Avoid selecting multiple articles about the SAME topic/event (e.g. don't pick 3 Nvidia articles from the same conference)
+
+GROUPING RULE (CRITICAL — MUST FOLLOW):
+- If 2+ articles mention the SAME company (e.g. Nvidia, Google, AWS) or the SAME event (e.g. GTC 2026, CES) — they MUST be grouped into ONE segment
+- Return ALL related article IDs together in one group
+- Each group = one video segment that covers all related news
+- The final selectedGroups MUST have ${topN} groups, each covering a DIFFERENT company/topic
+- This ensures maximum diversity: ${topN} different stories, not 4 stories about Nvidia
+
+Example: If articles 5, 12, 23 are all about "Nvidia GTC 2026" → group them: {"articleIds": ["id5", "id12", "id23"], "topic": "Nvidia GTC 2026"}
 
 Return JSON:
 {
-  "selectedArticleIds": ["uuid1", "uuid2", ...],
-  "rankingReasoning": "Brief explanation of why these were chosen"
+  "selectedGroups": [
+    {"articleIds": ["uuid1"], "topic": "Short topic description"},
+    {"articleIds": ["uuid5", "uuid12", "uuid23"], "topic": "Nvidia GTC 2026 — keynote, DSX Air, partnerships"},
+    {"articleIds": ["uuid8"], "topic": "Another company story"}
+  ],
+  "rankingReasoning": "Brief explanation"
 }`;
 
   console.log(`📋 LLM Call 1: Selecting top-${topN} articles...`);
@@ -483,63 +496,91 @@ Return JSON:
     }
   }
 
-  if (!selection.selectedArticleIds || selection.selectedArticleIds.length === 0) {
+  // LLM may return article NUMBERS instead of UUIDs — build mapping
+  const articleNumToId = new Map<string, string>();
+  articles.forEach((a: any, i: number) => articleNumToId.set(String(i + 1), a.id));
+  const articleMap = new Map(articles.map((a: any) => [a.id, a]));
+
+  const mapId = (idOrNum: string): string => {
+    const str = String(idOrNum).trim();
+    if (/^\d{1,3}$/.test(str) && articleNumToId.has(str)) return articleNumToId.get(str)!;
+    return str;
+  };
+
+  // Parse groups (new format) or flat IDs (legacy fallback)
+  const groups: { articleIds: string[]; topic: string }[] = [];
+  if (selection.selectedGroups && Array.isArray(selection.selectedGroups)) {
+    for (const g of selection.selectedGroups) {
+      const ids = (g.articleIds || []).map(mapId).filter((id: string) => articleMap.has(id));
+      if (ids.length > 0) groups.push({ articleIds: ids, topic: g.topic || "" });
+    }
+  } else if (selection.selectedArticleIds) {
+    // Legacy: flat list of IDs → each is its own group
+    for (const id of selection.selectedArticleIds) {
+      const mapped = mapId(id);
+      if (articleMap.has(mapped)) groups.push({ articleIds: [mapped], topic: "" });
+    }
+  }
+
+  if (groups.length === 0) {
     await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI не обрав жодної статті.`);
     return json({ error: "AI returned empty selection" }, 500);
   }
 
-  // LLM may return article NUMBERS ("40") instead of UUIDs — map them back
-  const articleNumToId = new Map<string, string>();
-  articles.forEach((a: any, i: number) => articleNumToId.set(String(i + 1), a.id));
-
-  selection.selectedArticleIds = (selection.selectedArticleIds || []).map((idOrNum: string) => {
-    const str = String(idOrNum).trim();
-    // If it looks like a number (1-999), map to UUID
-    if (/^\d{1,3}$/.test(str) && articleNumToId.has(str)) {
-      return articleNumToId.get(str)!;
-    }
-    return str;
-  });
-
-  console.log(`✅ Selected ${selection.selectedArticleIds.length} articles`);
-  console.log(`   IDs: ${selection.selectedArticleIds.map((id: string) => id.substring(0, 8)).join(", ")}`);
+  console.log(`✅ Selected ${groups.length} groups:`);
+  for (const g of groups) {
+    console.log(`   📦 [${g.articleIds.length} articles] ${g.topic || g.articleIds[0].substring(0, 8)}`);
+  }
   console.log(`   Reasoning: ${(selection.rankingReasoning || "").substring(0, 150)}`);
 
   // ══════════════════════════════════════════════════════════════
-  // LLM CALL 2: Write scripts + extract entities for selected articles
+  // LLM CALL 2: Write scripts + extract entities for grouped articles
   // ══════════════════════════════════════════════════════════════
-  // Build article details ONLY for selected articles (in selection order)
-  const articleMap = new Map(articles.map((a: any) => [a.id, a]));
-  const selectedValid = selection.selectedArticleIds.filter((id: string) => articleMap.has(id));
-  console.log(`   Valid: ${selectedValid.length}/${selection.selectedArticleIds.length} IDs match articles`);
-  if (selectedValid.length === 0) {
-    const availSample = articles.slice(0, 3).map((a: any) => a.id.substring(0, 12)).join(", ");
-    const llmSample = selection.selectedArticleIds.slice(0, 3).map((id: string) => String(id).substring(0, 12)).join(", ");
-    console.log(`   Available IDs sample: ${availSample}`);
-    console.log(`   LLM returned: ${llmSample}`);
-    return json({ error: "Invalid article IDs from AI", debug: { available: availSample, llmReturned: llmSample, llmIds: selection.selectedArticleIds.slice(0, 5) } }, 500);
-  }
-  const selectedArticleData = selectedValid.map((id: string, i: number) => {
-    const a = articleMap.get(id)!;
-    const title = a.title_no || a.title_en || a.original_title || "";
-    const content = a.content_no || a.content_en || a.original_content || "";
-    return `ARTICLE ${i + 1} [id: ${id}]:
+  // For groups with multiple articles, combine their content into one segment
+  const selectedValid: string[] = []; // primary article ID per group (for DB references)
+  const selectedArticleData = groups.map((group, i: number) => {
+    const primaryId = group.articleIds[0];
+    selectedValid.push(primaryId);
+
+    if (group.articleIds.length === 1) {
+      // Single article
+      const a = articleMap.get(primaryId)!;
+      const title = a.title_no || a.title_en || a.original_title || "";
+      const content = a.content_no || a.content_en || a.original_content || "";
+      return `SEGMENT ${i + 1} [id: ${primaryId}] (1 article):
+Topic: ${group.topic || title}
 Title: ${title}
 Content: ${content.substring(0, 500)}
 Tags: ${(a.tags || []).join(", ")}`;
+    } else {
+      // Multiple articles merged into one segment
+      const articlesText = group.articleIds.map((id: string, j: number) => {
+        const a = articleMap.get(id)!;
+        const title = a.title_no || a.title_en || a.original_title || "";
+        const content = a.content_no || a.content_en || a.original_content || "";
+        return `  Sub-article ${j + 1}: ${title}\n  ${content.substring(0, 300)}`;
+      }).join("\n");
+      return `SEGMENT ${i + 1} [id: ${primaryId}] (${group.articleIds.length} articles MERGED):
+Topic: ${group.topic}
+IMPORTANT: Write ONE combined script covering ALL sub-articles below as a single coherent story.
+${articlesText}
+Tags: ${[...new Set(group.articleIds.flatMap((id: string) => (articleMap.get(id)?.tags || [])))].join(", ")}`;
+    }
   }).join("\n\n---\n\n");
 
   const scriptPrompt = `You are a Norwegian news anchor for a daily tech news video.
 
-TASK: Write voiceover scripts for exactly ${selectedValid.length} articles listed below. Each script corresponds to the article AT THE SAME POSITION.
+TASK: Write voiceover scripts for exactly ${groups.length} segments listed below. Each script corresponds to the segment AT THE SAME POSITION.
 
-CRITICAL: segmentScripts[0] is for ARTICLE 1, segmentScripts[1] is for ARTICLE 2, etc. Do NOT mix them up.
+CRITICAL: segmentScripts[0] is for SEGMENT 1, segmentScripts[1] is for SEGMENT 2, etc. Do NOT mix them up.
+
+MERGED SEGMENTS: Some segments contain multiple articles about the same company/event. Write ONE coherent script that covers ALL sub-articles as a single story. Don't list them separately — weave them into one narrative.
 
 SCRIPT REQUIREMENTS:
 - Target total duration: ~${targetDuration} seconds
 - Write in Norwegian Bokmål:
   1. "introScript" — opening (~4-5s). Start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha."
-  2. "segmentScripts" — one per article (~12-18s each, ~${wordsPerArticle * 2} words, 3-5 sentences)
+  2. "segmentScripts" — one per segment (~12-18s each, ~${wordsPerArticle * 2} words, 3-5 sentences). Merged segments may be slightly longer (~18-22s).
   3. "outroScript" — closing (~4-5s). Include "Abonner på kanalen og trykk liker-knappen!"
 - Also provide English translations.
 
@@ -870,37 +911,56 @@ Return JSON:
     return { images, sources: srcInfo.join(" ") };
   }
 
-  // ── Run media check for all selected articles ──
+  // ── Run media check for all groups ──
+  // For merged groups: collect images from ALL articles in the group
   type MediaResult = { id: string; imageCount: number; passed: boolean; title: string; images: string[]; sources: string };
   const mediaCheckResults: MediaResult[] = [];
   const finalSelectedIds: string[] = [];
-  const articleImageMap: Record<string, string[]> = {}; // store found images per article
+  const articleImageMap: Record<string, string[]> = {}; // store found images per primary article
 
-  for (const id of validSelectedIds) {
-    const a = articleMap.get(id)!;
-    const title = a.title_no || a.title_en || a.original_title || "";
-    const { images, sources } = await collectArticleImages(a, entityMap[id]);
-    const imageCount = (a.video_url || a.original_video_url) ? images.length + 3 : images.length;
-    const passed = imageCount >= MIN_IMAGES;
+  for (let gi = 0; gi < groups.length; gi++) {
+    const group = groups[gi];
+    const primaryId = group.articleIds[0];
+    const primaryA = articleMap.get(primaryId)!;
+    const title = group.topic || primaryA.title_no || primaryA.title_en || primaryA.original_title || "";
 
-    mediaCheckResults.push({ id, imageCount, passed, title: title.substring(0, 40), images, sources });
-    articleImageMap[id] = images;
+    // Collect images from ALL articles in group
+    let allGroupImages: string[] = [];
+    const allSources: string[] = [];
 
-    if (passed) {
-      finalSelectedIds.push(id);
-      console.log(`  ✅ "${title.substring(0, 40)}" — ${imageCount} images (${sources})`);
-    } else {
-      console.log(`  ❌ "${title.substring(0, 40)}" — only ${imageCount} images (${sources}), need ${MIN_IMAGES}`);
+    for (const id of group.articleIds) {
+      const a = articleMap.get(id)!;
+      const { images, sources } = await collectArticleImages(a, entityMap[primaryId]);
+      for (const img of images) {
+        if (!allGroupImages.includes(img)) allGroupImages.push(img);
+      }
+      allSources.push(sources);
+      await new Promise((r) => setTimeout(r, 200));
     }
 
-    // Small delay to respect Pexels rate limits
-    await new Promise((r) => setTimeout(r, 300));
+    const hasVideo = group.articleIds.some((id: string) => {
+      const a = articleMap.get(id);
+      return a && (a.video_url || a.original_video_url);
+    });
+    const imageCount = hasVideo ? allGroupImages.length + 3 : allGroupImages.length;
+    const passed = imageCount >= MIN_IMAGES;
+    const sourcesStr = allSources.join(" + ");
+
+    mediaCheckResults.push({ id: primaryId, imageCount, passed, title: title.substring(0, 40), images: allGroupImages, sources: sourcesStr });
+    articleImageMap[primaryId] = allGroupImages;
+
+    if (passed) {
+      finalSelectedIds.push(primaryId);
+      const groupLabel = group.articleIds.length > 1 ? ` [${group.articleIds.length} merged]` : "";
+      console.log(`  ✅ "${title.substring(0, 40)}"${groupLabel} — ${imageCount} images (${sourcesStr})`);
+    } else {
+      console.log(`  ❌ "${title.substring(0, 40)}" — only ${imageCount} images (${sourcesStr}), need ${MIN_IMAGES}`);
+    }
   }
 
-  // ── Skip rejected articles (don't replace — keeps scripts aligned) ──
-  const rejectedCount = validSelectedIds.length - finalSelectedIds.length;
+  const rejectedCount = groups.length - finalSelectedIds.length;
   if (rejectedCount > 0) {
-    console.log(`  ⏭ Skipping ${rejectedCount} articles without enough images (no replacement to avoid script mismatch)`);
+    console.log(`  ⏭ Skipping ${rejectedCount} groups without enough images`);
   }
 
   // ── Media check report to Telegram ──
