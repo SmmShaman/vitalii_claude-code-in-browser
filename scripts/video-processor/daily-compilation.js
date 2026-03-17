@@ -581,7 +581,6 @@ async function notifyBotComplete(dateStr, youtubeUrl) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SUPABASE_URL) { console.log('⚠️ SUPABASE_URL not set, skipping bot notification'); return; }
-  if (!youtubeUrl) { console.log('⚠️ No YouTube URL, skipping bot notification'); return; }
 
   try {
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/daily-video-bot?action=notify_complete`, {
@@ -590,7 +589,7 @@ async function notifyBotComplete(dateStr, youtubeUrl) {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ target_date: dateStr, youtube_url: youtubeUrl }),
+      body: JSON.stringify({ target_date: dateStr, youtube_url: youtubeUrl || "" }),
     });
     const body = await resp.text();
     if (!resp.ok) {

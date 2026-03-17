@@ -3043,17 +3043,21 @@ async function notifyComplete(targetDate: string, youtubeUrl: string): Promise<R
     .from("daily_video_drafts")
     .update({
       status: "completed",
-      youtube_url: youtubeUrl,
-      youtube_video_id: youtubeUrl.split("v=")[1] || "",
+      youtube_url: youtubeUrl || null,
+      youtube_video_id: youtubeUrl ? (youtubeUrl.split("v=")[1] || "") : null,
     })
     .eq("target_date", targetDate);
 
   const chatId = draft?.telegram_chat_id || TELEGRAM_CHAT_ID;
   const displayDate = formatDateNorwegian(targetDate);
 
-  await sendMessage(chatId, `🎉 <b>Відео готове!</b>\n\n📺 ${displayDate}\n🔗 ${youtubeUrl}\n\nЩоденне відео успішно опубліковано на YouTube!`, {
-    disable_web_page_preview: false,
-  });
+  if (youtubeUrl) {
+    await sendMessage(chatId, `🎉 <b>Відео готове!</b>\n\n📺 ${displayDate}\n🔗 ${youtubeUrl}\n\nЩоденне відео успішно опубліковано на YouTube!`, {
+      disable_web_page_preview: false,
+    });
+  } else {
+    await sendMessage(chatId, `✅ <b>Відео зрендерено!</b>\n\n📺 ${displayDate}\n📦 Збережено на GitHub (YouTube пропущено)`);
+  }
 
   return json({ ok: true });
 }
