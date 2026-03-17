@@ -488,6 +488,19 @@ Return JSON:
     return json({ error: "AI returned empty selection" }, 500);
   }
 
+  // LLM may return article NUMBERS ("40") instead of UUIDs — map them back
+  const articleNumToId = new Map<string, string>();
+  articles.forEach((a: any, i: number) => articleNumToId.set(String(i + 1), a.id));
+
+  selection.selectedArticleIds = (selection.selectedArticleIds || []).map((idOrNum: string) => {
+    const str = String(idOrNum).trim();
+    // If it looks like a number (1-999), map to UUID
+    if (/^\d{1,3}$/.test(str) && articleNumToId.has(str)) {
+      return articleNumToId.get(str)!;
+    }
+    return str;
+  });
+
   console.log(`✅ Selected ${selection.selectedArticleIds.length} articles`);
   console.log(`   IDs: ${selection.selectedArticleIds.map((id: string) => id.substring(0, 8)).join(", ")}`);
   console.log(`   Reasoning: ${(selection.rankingReasoning || "").substring(0, 150)}`);
@@ -500,8 +513,11 @@ Return JSON:
   const selectedValid = selection.selectedArticleIds.filter((id: string) => articleMap.has(id));
   console.log(`   Valid: ${selectedValid.length}/${selection.selectedArticleIds.length} IDs match articles`);
   if (selectedValid.length === 0) {
-    console.log(`   Available IDs sample: ${articles.slice(0, 3).map((a: any) => a.id.substring(0, 12)).join(", ")}`);
-    console.log(`   LLM returned: ${selection.selectedArticleIds.slice(0, 3).map((id: string) => String(id).substring(0, 12)).join(", ")}`);
+    const availSample = articles.slice(0, 3).map((a: any) => a.id.substring(0, 12)).join(", ");
+    const llmSample = selection.selectedArticleIds.slice(0, 3).map((id: string) => String(id).substring(0, 12)).join(", ");
+    console.log(`   Available IDs sample: ${availSample}`);
+    console.log(`   LLM returned: ${llmSample}`);
+    return json({ error: "Invalid article IDs from AI", debug: { available: availSample, llmReturned: llmSample, llmIds: selection.selectedArticleIds.slice(0, 5) } }, 500);
   }
   const selectedArticleData = selectedValid.map((id: string, i: number) => {
     const a = articleMap.get(id)!;
