@@ -886,33 +886,10 @@ Return JSON:
     await new Promise((r) => setTimeout(r, 300));
   }
 
-  // ── Replace rejected articles with next from pool (also search internet) ──
-  let replacementIdx = 0;
+  // ── Skip rejected articles (don't replace — keeps scripts aligned) ──
   const rejectedCount = validSelectedIds.length - finalSelectedIds.length;
-  if (rejectedCount > 0 && remainingIds.length > 0) {
-    console.log(`  🔄 Replacing ${rejectedCount} articles — searching internet for replacements...`);
-    let replacementsNeeded = rejectedCount;
-
-    while (replacementsNeeded > 0 && replacementIdx < remainingIds.length) {
-      const replId = remainingIds[replacementIdx++];
-      const replA = articleMap.get(replId)!;
-      const replTitle = replA.title_no || replA.title_en || replA.original_title || "";
-
-      // Full internet search for replacement too!
-      const { images, sources } = await collectArticleImages(replA);
-      const replCount = (replA.video_url || replA.original_video_url) ? images.length + 3 : images.length;
-
-      if (replCount >= MIN_IMAGES) {
-        finalSelectedIds.push(replId);
-        articleImageMap[replId] = images;
-        replacementsNeeded--;
-        console.log(`  ✅ Replacement: "${replTitle.substring(0, 40)}" — ${replCount} images (${sources})`);
-      } else {
-        console.log(`  ⏭ Skip replacement "${replTitle.substring(0, 40)}" — only ${replCount} images`);
-      }
-
-      await new Promise((r) => setTimeout(r, 300));
-    }
+  if (rejectedCount > 0) {
+    console.log(`  ⏭ Skipping ${rejectedCount} articles without enough images (no replacement to avoid script mismatch)`);
   }
 
   // ── Media check report to Telegram ──
