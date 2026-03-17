@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-17-v30-fix-script-alignment";
+const VERSION = "2026-03-17-v31-split-llm-quiet-telegram";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -398,8 +398,8 @@ async function autoDigest(targetDate?: string, youtubePrivacy = "public"): Promi
     return json({ ok: true, message: "Only 1 article, need 2+" });
   }
 
-  // Notify moderator that auto-digest is starting
-  await sendMessage(TELEGRAM_CHAT_ID, `🤖 <b>Авто-дайджест за ${formatDateNorwegian(date)}</b>\n\n📰 Знайдено <b>${articles.length}</b> статей\n⏳ LLM аналізує та обирає топ-${Math.min(MAX_DETAILED, articles.length)}...\n\nЦе може зайняти 30-60 секунд.`);
+  // Log start (no Telegram message to reduce noise)
+  console.log(`📰 Found ${articles.length} articles, LLM selecting top-${Math.min(MAX_DETAILED, articles.length)}...`);
 
   const displayDate = formatDateNorwegian(date);
 
@@ -438,10 +438,12 @@ Tags: ${(a.tags || []).join(", ")}`;
   const wordTarget = Math.round(targetDuration * 2);
   const wordsPerArticle = Math.round(wordTarget / (topN + 2));
 
-  // Single LLM call: rank + select top-N + write script
-  const systemPrompt = `You are a professional news editor AND Norwegian news anchor for a daily tech news video.
+  // ══════════════════════════════════════════════════════════════
+  // LLM CALL 1: Select top-N articles (IDs only, no scripts)
+  // ══════════════════════════════════════════════════════════════
+  const selectPrompt = `You are a professional news editor for a daily tech news video.
 
-TASK: From ${articles.length} articles, select the TOP ${topN} most newsworthy stories and write the voiceover script.
+TASK: From ${articles.length} articles, select the TOP ${topN} most newsworthy stories. Return ONLY the article IDs.
 
 TARGET AUDIENCE: Business professionals, tech entrepreneurs, startup founders, AI/e-commerce/marketing specialists.
 The channel "vitalii.no" covers BUSINESS & TECH news — NOT general world news.
@@ -453,184 +455,125 @@ RANKING CRITERIA (all three matter equally):
 
 CONTENT FILTER (CRITICAL):
 - PRIORITIZE: tech innovations, AI/ML breakthroughs, startup funding/launches, e-commerce trends, marketing strategies, SaaS products, fintech, business strategy, digital transformation, developer tools
-- DEPRIORITIZE: wars, military conflicts, geopolitics, elections, crime, natural disasters, celebrity gossip, sports — even if they have high trending scores
-- Exception: political/regulatory news DIRECTLY affecting tech/business (e.g., AI regulation, antitrust, data privacy laws) IS relevant
-- If an article about war/politics has high scores but low business relevance, SKIP IT in favor of a lower-scoring business article
-
-SCRIPT REQUIREMENTS:
-- Target duration: ~${targetDuration} seconds
-- Write SEPARATE scripts for each part in Norwegian Bokmål:
-  1. "introScript" — news digest opening (~4-5s, ~${wordsPerArticle} words). MUST start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha." then mention today's news count.
-  2. "segmentScripts" — one narration per selected article (~12-18s each, ~${wordsPerArticle * 2} words). 3-5 clear sentences each.
-  3. "outroScript" — closing with CTA (~4-5s). MUST include "Abonner på kanalen og trykk liker-knappen!"
-
-LANGUAGE QUALITY:
-- Clean Norwegian Bokmål (NOT Nynorsk). Avoid English loanwords when Norwegian exists.
-- "kunstig intelligens" not "AI", "programvare" not "software", "nettside" not "website"
-- Technical terms with no Norwegian equivalent (blockchain, API, GPU) may stay in English.
-- Text will be read by TTS — write phonetically clear, natural-sounding Norwegian.
-- Short, clear sentences. No complex compounds.
-
-Also provide English translations for moderator review.
-
-RULES:
-- selectedArticleIds.length MUST equal ${topN}
-- segmentScripts.length MUST equal ${topN}
-- segmentTranslationsEn.length MUST equal ${topN}
-- articleEntities.length MUST equal ${topN} (one per selected article, same order)
-- Each segmentScript stands alone (no cross-references)
-- Order articles by importance (most impactful first)
-- Be engaging, professional, conversational
-
-ENTITY EXTRACTION (for image search):
-For each selected article, extract CONCRETE entities that can be used as image search queries.
-Think: who is in this story? what company? what product? where did it happen?
-The goal is to find REAL photos (not stock) — so queries must be specific enough to match news images.
+- DEPRIORITIZE: wars, military conflicts, geopolitics, elections, crime, natural disasters, celebrity gossip, sports
+- Exception: political/regulatory news DIRECTLY affecting tech/business IS relevant
+- Avoid selecting multiple articles about the SAME topic/event (e.g. don't pick 3 Nvidia articles from the same conference)
 
 Return JSON:
 {
   "selectedArticleIds": ["uuid1", "uuid2", ...],
-  "rankingReasoning": "Brief explanation of why these ${topN} were chosen and why others were excluded",
-  "introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha...",
-  "segmentScripts": ["...", "...", ...],
-  "outroScript": "Det var alt for i dag...",
-  "introTranslationEn": "Welcome to today's news digest from Vitalii Berbeha...",
-  "segmentTranslationsEn": ["...", "...", ...],
-  "outroTranslationEn": "That's all for today...",
-  "articleEntities": [
-    {
-      "people": ["Sam Altman", "Satya Nadella"],
-      "companies": ["OpenAI", "Microsoft"],
-      "products": ["GPT-5", "Azure AI"],
-      "locations": ["San Francisco"],
-      "imageQueries": ["Sam Altman speaking conference", "OpenAI headquarters San Francisco", "GPT-5 artificial intelligence"]
-    }
-  ]
+  "rankingReasoning": "Brief explanation of why these were chosen"
 }`;
 
-  let aiResponse = await callAI(systemPrompt, `Rank and write script for ${displayDate}:\n\n${articleData}`, 8000);
-  let plan: any;
+  console.log(`📋 LLM Call 1: Selecting top-${topN} articles...`);
+  let selectResponse = await callAI(selectPrompt, `Select top ${topN} from ${displayDate}:\n\n${articleData}`, 2000);
+  let selection: any;
   try {
-    plan = JSON.parse(aiResponse);
+    selection = JSON.parse(selectResponse);
   } catch {
-    // Fallback: extract JSON from markdown code blocks or mixed text
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    const jsonMatch = selectResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      try {
-        plan = JSON.parse(jsonMatch[0]);
-        console.log("✅ Extracted JSON from mixed response");
-      } catch {
-        console.error(`❌ AI returned invalid JSON: ${aiResponse.substring(0, 300)}`);
-        await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка авто-дайджесту:</b> AI повернув невалідний JSON.\n\nСпробуйте ще раз або використайте ручний режим.`);
-        return json({ error: "Invalid AI JSON response" }, 500);
+      try { selection = JSON.parse(jsonMatch[0]); } catch {
+        await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (вибір статей).`);
+        return json({ error: "Invalid AI JSON in selection" }, 500);
       }
     } else {
-      console.error(`❌ No JSON found in AI response: ${aiResponse.substring(0, 300)}`);
-      await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка авто-дайджесту:</b> AI повернув невалідний JSON.\n\nСпробуйте ще раз або використайте ручний режим.`);
-      return json({ error: "Invalid AI JSON response" }, 500);
+      await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (вибір статей).`);
+      return json({ error: "Invalid AI JSON in selection" }, 500);
     }
   }
 
-  if (!plan.selectedArticleIds || plan.selectedArticleIds.length === 0 || !plan.segmentScripts || plan.segmentScripts.length === 0) {
-    console.error("❌ AI returned empty selection or scripts");
+  if (!selection.selectedArticleIds || selection.selectedArticleIds.length === 0) {
     await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI не обрав жодної статті.`);
     return json({ error: "AI returned empty selection" }, 500);
   }
 
-  // Validate selected IDs exist in our articles
+  console.log(`✅ Selected ${selection.selectedArticleIds.length} articles: ${selection.rankingReasoning?.substring(0, 100) || ""}`);
+
+  // ══════════════════════════════════════════════════════════════
+  // LLM CALL 2: Write scripts + extract entities for selected articles
+  // ══════════════════════════════════════════════════════════════
+  // Build article details ONLY for selected articles (in selection order)
   const articleMap = new Map(articles.map((a: any) => [a.id, a]));
-  let validSelectedIds = plan.selectedArticleIds.filter((id: string) => articleMap.has(id));
+  const selectedValid = selection.selectedArticleIds.filter((id: string) => articleMap.has(id));
+  const selectedArticleData = selectedValid.map((id: string, i: number) => {
+    const a = articleMap.get(id)!;
+    const title = a.title_no || a.title_en || a.original_title || "";
+    const content = a.content_no || a.content_en || a.original_content || "";
+    return `ARTICLE ${i + 1} [id: ${id}]:
+Title: ${title}
+Content: ${content.substring(0, 500)}
+Tags: ${(a.tags || []).join(", ")}`;
+  }).join("\n\n---\n\n");
 
-  // ── Verify script-to-article alignment ──
-  // LLM sometimes returns scripts in different order than selectedArticleIds.
-  // Detect and fix by matching script content to article content (same language).
-  if (plan.segmentScripts && plan.segmentScripts.length === validSelectedIds.length) {
-    const reordered: number[] = new Array(validSelectedIds.length).fill(-1);
-    const used = new Set<number>();
+  const scriptPrompt = `You are a Norwegian news anchor for a daily tech news video.
 
-    for (let si = 0; si < validSelectedIds.length; si++) {
-      const a = articleMap.get(validSelectedIds[si]);
-      if (!a) continue;
-      // Use ALL available title languages + description for matching
-      const allText = [
-        a.title_en, a.title_no, a.title_ua, a.original_title,
-        a.description_en, a.description_no,
-      ].filter(Boolean).join(" ");
-      const titleWords = new Set(
-        allText.toLowerCase().split(/[\s,.:;!?\-–—()'"]+/)
-          .filter((w: string) => w.length > 3 && !/^(this|that|with|from|have|been|will|also|their|about|more|than|into|when|each|they|were|which|could|would|should|after|before|other|first|these|being|through|between|those|under|since|while|where|every|still|over|during)$/.test(w))
-      );
+TASK: Write voiceover scripts for exactly ${selectedValid.length} articles listed below. Each script corresponds to the article AT THE SAME POSITION.
 
-      // Find which script best matches this article
-      let bestIdx = si; // default: same index
-      let bestScore = 0;
-      for (let sci = 0; sci < plan.segmentScripts.length; sci++) {
-        if (used.has(sci)) continue;
-        const script = (plan.segmentScripts[sci] || "").toLowerCase();
-        // Also check English translation if available
-        const scriptEn = (plan.segmentTranslationsEn?.[sci] || "").toLowerCase();
-        const combined = script + " " + scriptEn;
-        let score = 0;
-        for (const w of titleWords) {
-          if (combined.includes(w)) score++;
-        }
-        if (score > bestScore) {
-          bestScore = score;
-          bestIdx = sci;
-        }
+CRITICAL: segmentScripts[0] is for ARTICLE 1, segmentScripts[1] is for ARTICLE 2, etc. Do NOT mix them up.
+
+SCRIPT REQUIREMENTS:
+- Target total duration: ~${targetDuration} seconds
+- Write in Norwegian Bokmål:
+  1. "introScript" — opening (~4-5s). Start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha."
+  2. "segmentScripts" — one per article (~12-18s each, ~${wordsPerArticle * 2} words, 3-5 sentences)
+  3. "outroScript" — closing (~4-5s). Include "Abonner på kanalen og trykk liker-knappen!"
+- Also provide English translations.
+
+LANGUAGE: Clean Norwegian Bokmål. Use "kunstig intelligens" not "AI", "programvare" not "software". TTS-friendly.
+
+ENTITY EXTRACTION: For each article, extract entities for image search.
+
+Return JSON:
+{
+  "introScript": "Velkommen...",
+  "segmentScripts": ["script for article 1", "script for article 2", ...],
+  "outroScript": "Det var alt...",
+  "introTranslationEn": "Welcome...",
+  "segmentTranslationsEn": ["translation 1", "translation 2", ...],
+  "outroTranslationEn": "That's all...",
+  "articleEntities": [
+    {"people": [], "companies": [], "products": [], "locations": [], "imageQueries": ["query1", "query2", "query3"]}
+  ]
+}`;
+
+  console.log(`📝 LLM Call 2: Writing scripts for ${selectedValid.length} articles...`);
+  let scriptResponse = await callAI(scriptPrompt, `Write scripts for these ${selectedValid.length} articles:\n\n${selectedArticleData}`, 6000);
+  let plan: any;
+  try {
+    plan = JSON.parse(scriptResponse);
+  } catch {
+    const jsonMatch = scriptResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try { plan = JSON.parse(jsonMatch[0]); console.log("✅ Extracted JSON from mixed response"); } catch {
+        await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (скрипти).`);
+        return json({ error: "Invalid AI JSON in scripts" }, 500);
       }
-      reordered[si] = bestIdx;
-      used.add(bestIdx);
-    }
-
-    // Check if reordering is needed
-    const needsReorder = reordered.some((v, i) => v !== i);
-    if (needsReorder) {
-      console.log(`⚠️ Script-article misalignment detected! Reordering...`);
-      console.log(`   Mapping: ${reordered.map((v, i) => `${i}→${v}`).join(", ")}`);
-      const origScripts = [...plan.segmentScripts];
-      const origTranslations = [...(plan.segmentTranslationsEn || [])];
-      const origEntities = [...(plan.articleEntities || [])];
-      for (let i = 0; i < reordered.length; i++) {
-        plan.segmentScripts[i] = origScripts[reordered[i]] || "";
-        if (origTranslations.length > 0) {
-          plan.segmentTranslationsEn = plan.segmentTranslationsEn || [];
-          plan.segmentTranslationsEn[i] = origTranslations[reordered[i]] || "";
-        }
-        if (origEntities.length > 0) {
-          plan.articleEntities = plan.articleEntities || [];
-          plan.articleEntities[i] = origEntities[reordered[i]] || null;
-        }
-      }
-      console.log(`✅ Scripts reordered to match articles`);
     } else {
-      console.log(`✅ Script-article alignment OK`);
-    }
-
-    // Post-alignment validation: replace scripts that still don't match their article
-    for (let vi = 0; vi < validSelectedIds.length; vi++) {
-      const a = articleMap.get(validSelectedIds[vi]);
-      if (!a) continue;
-      const allTitles = [a.title_no, a.title_en, a.original_title].filter(Boolean).join(" ").toLowerCase();
-      const titleKeywords = allTitles.split(/[\s,.:;!?\-–—()'"]+/).filter((w: string) => w.length > 4);
-      const script = (plan.segmentScripts[vi] || "").toLowerCase();
-      const matchCount = titleKeywords.filter((w: string) => script.includes(w)).length;
-
-      if (matchCount < 1 && plan.segmentScripts[vi]) {
-        // Script doesn't match article at all — replace with article content
-        const title = a.title_no || a.title_en || a.original_title || "";
-        const desc = a.description_no || a.description_en || "";
-        const content = a.content_no || a.content_en || a.original_content || "";
-        console.log(`  ⚠️ Segment ${vi} script mismatch (0 keywords) — replacing with article text`);
-        plan.segmentScripts[vi] = `${title}. ${desc || content.substring(0, 300)}`;
-        if (plan.segmentTranslationsEn) {
-          plan.segmentTranslationsEn[vi] = a.title_en || a.original_title || title;
-        }
-      }
+      await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (скрипти).`);
+      return json({ error: "Invalid AI JSON in scripts" }, 500);
     }
   }
+
+  // Merge selection IDs into plan
+  plan.selectedArticleIds = selectedValid;
+  plan.segmentScripts = plan.segmentScripts || [];
+  plan.segmentTranslationsEn = plan.segmentTranslationsEn || [];
+  plan.articleEntities = plan.articleEntities || [];
+
+  // Pad arrays if LLM returned fewer scripts than articles
+  while (plan.segmentScripts.length < selectedValid.length) {
+    const idx = plan.segmentScripts.length;
+    const a = articleMap.get(selectedValid[idx]);
+    plan.segmentScripts.push(a ? `${a.title_no || a.title_en || ""}. ${(a.description_no || a.description_en || "").substring(0, 200)}` : "");
+    plan.segmentTranslationsEn.push(a?.title_en || "");
+  }
+
+  console.log(`✅ Scripts: ${plan.segmentScripts.length}, Entities: ${plan.articleEntities.length}`);
+
+  // articleMap already created above (line ~525)
+  let validSelectedIds = plan.selectedArticleIds.filter((id: string) => articleMap.has(id));
   if (validSelectedIds.length === 0) {
-    console.error("❌ None of the selected IDs match our articles");
     await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI обрав невідомі ID статей.`);
     return json({ error: "Invalid article IDs from AI" }, 500);
   }
@@ -685,7 +628,7 @@ Return JSON:
   const searchEngines: string[] = [];
   if (SERPER_API_KEY) searchEngines.push("Serper.dev (Google Images)");
   if (PEXELS_KEY) searchEngines.push("Pexels (fallback)");
-  await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Пошук зображень в інтернеті...</b>\nМінімум ${MIN_IMAGES} зображень на новину.\n🔎 ${searchEngines.length > 0 ? searchEngines.join(" + ") : "Тільки source scraping (немає API ключів)"}`);
+  console.log(`🔍 Image search: ${searchEngines.join(" + ") || "source scraping only"}`);
 
   // ── Helper: Serper.dev Image Search (Google Images via API) ──
   async function searchImages(query: string, count = 5): Promise<string[]> {
@@ -925,7 +868,7 @@ Return JSON:
     mediaReport += `\n🔄 Відхилено ${rejectedCount}, замінено ${replaced}`;
   }
   mediaReport += `\n\n✅ <b>Фінальний пул: ${finalSelectedIds.length} новин з медіа</b>`;
-  await sendMessage(TELEGRAM_CHAT_ID, mediaReport);
+  console.log(mediaReport.replace(/<[^>]+>/g, ""));
 
   // Use final selection (or original if media check somehow rejected all)
   if (finalSelectedIds.length === 0) {
@@ -935,33 +878,8 @@ Return JSON:
     validSelectedIds = finalSelectedIds;
   }
 
-  // Map scripts/translations by article ID (not array index) to handle replacements
-  // This prevents the ordering mismatch when media pre-check replaces articles
-  const scriptByArticleId: Record<string, string> = {};
-  const translationByArticleId: Record<string, string> = {};
-  for (let idx = 0; idx < plan.selectedArticleIds.length; idx++) {
-    const aid = plan.selectedArticleIds[idx];
-    scriptByArticleId[aid] = plan.segmentScripts[idx] || "";
-    translationByArticleId[aid] = plan.segmentTranslationsEn?.[idx] || "";
-  }
-
-  // Build final scripts array in validSelectedIds order
-  const finalScripts: string[] = [];
-  const finalTranslations: string[] = [];
-  for (const id of validSelectedIds) {
-    if (scriptByArticleId[id]) {
-      finalScripts.push(scriptByArticleId[id]);
-      finalTranslations.push(translationByArticleId[id] || "");
-    } else {
-      // Replacement article — generate placeholder
-      const a = articleMap.get(id)!;
-      const title = a.title_no || a.title_en || a.original_title || "";
-      finalScripts.push(`${title}. ${(a.description_no || a.description_en || "").substring(0, 200)}`);
-      finalTranslations.push(a.title_en || title);
-    }
-  }
-  plan.segmentScripts = finalScripts;
-  plan.segmentTranslationsEn = finalTranslations;
+  // Scripts are already aligned: validSelectedIds[i] → plan.segmentScripts[i]
+  // (guaranteed by 2-step LLM: Call 1 selects, Call 2 writes scripts in same order)
   plan.selectedArticleIds = validSelectedIds;
 
   // Build headlines from selected articles
@@ -1623,9 +1541,8 @@ Return JSON:
     }
   }
 
-  await sendMessage(targetChatId, segmentsMsg);
-
-  // Message 2: Description + approval buttons
+  // Skip detailed segments message (reduce Telegram noise)
+  // Only send approval buttons
   let descMsg = "";
   if (scenario.scenarioDescription) {
     descMsg = `📋 <b>Візуальний опис:</b>\n\n${escapeHtml(scenario.scenarioDescription)}`;
@@ -1680,7 +1597,7 @@ async function generateDataOverlays(
   console.log(`📊 Generating deep infographic overlays for ${segments.length} segments...`);
 
   if (chatId) {
-    await sendMessage(chatId, `📊 <b>Аналізую кожну новину для інфографіки...</b>\n0/${segments.length} сегментів`);
+    console.log(`📊 Generating overlays for ${segments.length} segments...`);
   }
 
   const overlaySystemPrompt = `You are a data visualization expert for a news video. Your ONLY task: analyze the narrator's script and design animated infographic overlays.
@@ -1805,7 +1722,7 @@ Design the optimal infographic overlays for this segment.`;
   console.log(`✅ Deep overlays complete: ${totalOverlays} overlays across ${segments.length} segments`);
 
   if (chatId) {
-    await sendMessage(chatId, `✅ <b>Інфографіка готова:</b> ${totalOverlays} елементів для ${segments.length} сегментів`);
+    console.log(`✅ Overlays complete: ${totalOverlays} elements for ${segments.length} segments`);
   }
 
   return enrichedSegments;
