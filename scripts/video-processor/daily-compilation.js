@@ -356,9 +356,27 @@ function templateShowScript(articles, dateStr) {
  * Download an image from URL to local file.
  */
 async function downloadImage(url, destPath) {
-  const resp = await fetch(url);
+  const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(15000) });
   if (!resp.ok) throw new Error(`Image download failed: ${resp.status}`);
+  // Validate Content-Type — reject HTML pages, redirects disguised as images
+  const contentType = resp.headers.get('content-type') || '';
+  if (contentType.includes('text/html') || contentType.includes('application/json')) {
+    throw new Error(`Not an image: Content-Type=${contentType}`);
+  }
   const buffer = Buffer.from(await resp.arrayBuffer());
+  // Validate minimum size (< 1KB is likely an error page or placeholder)
+  if (buffer.length < 1024) {
+    throw new Error(`Image too small: ${buffer.length} bytes`);
+  }
+  // Validate image magic bytes (JPEG, PNG, WebP, GIF)
+  const header = buffer.slice(0, 4);
+  const isJPEG = header[0] === 0xFF && header[1] === 0xD8;
+  const isPNG = header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47;
+  const isWebP = buffer.length > 12 && buffer.slice(8, 12).toString() === 'WEBP';
+  const isGIF = header[0] === 0x47 && header[1] === 0x49 && header[2] === 0x46;
+  if (!isJPEG && !isPNG && !isWebP && !isGIF) {
+    throw new Error(`Invalid image format (magic bytes: ${header.toString('hex')})`);
+  }
   await fs.writeFile(destPath, buffer);
   return buffer.length;
 }
