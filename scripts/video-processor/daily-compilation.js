@@ -865,12 +865,20 @@ async function main() {
     for (let i = 0; i < segments.length; i++) {
       if (segments[i].videoSrc) continue;
       const scraped = scrapedMedia[i];
+      const existing = segments[i].alternateImages || [];
       if (scraped && scraped.images.length > 0) {
-        // Merge with existing web images instead of overwriting
-        const existing = segments[i].alternateImages || [];
-        segments[i].alternateImages = [...new Set([...scraped.images, ...existing])];
+        if (existing.length >= 5) {
+          // Already have enough web images (from Serper) — only add original article images (first 2)
+          // Skip "related articles" scraped images to avoid mixing unrelated photos
+          const origOnly = scraped.images.slice(0, 2);
+          segments[i].alternateImages = [...new Set([...existing, ...origOnly])];
+          console.log(`  📸 Segment ${i}: ${existing.length} web + ${origOnly.length} scraped (limited) = ${segments[i].alternateImages.length} total`);
+        } else {
+          // Few web images — merge all scraped images
+          segments[i].alternateImages = [...new Set([...scraped.images, ...existing])];
+          console.log(`  📸 Segment ${i}: ${scraped.images.length} scraped + ${existing.length} web = ${segments[i].alternateImages.length} total`);
+        }
         segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (segments[i].alternateImages.length + 1)));
-        console.log(`  📸 Segment ${i}: ${scraped.images.length} scraped + ${existing.length} web = ${segments[i].alternateImages.length} total`);
       }
     }
   } catch (e) {

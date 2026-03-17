@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-15-v26-media-preview";
+const VERSION = "2026-03-17-v29-serper-image-search";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -36,6 +36,7 @@ const AZURE_KEY = Deno.env.get("AZURE_OPENAI_API_KEY") || "";
 const AZURE_DEPLOYMENT = Deno.env.get("AZURE_OPENAI_DEPLOYMENT") || "Jobbot-gpt-4.1-mini";
 const GEMINI_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
+const SERPER_API_KEY = Deno.env.get("SERPER_API_KEY") || "";
 
 // LLM provider override (set via query param or api_settings)
 let LLM_PROVIDER = "azure"; // default
@@ -476,9 +477,15 @@ RULES:
 - selectedArticleIds.length MUST equal ${topN}
 - segmentScripts.length MUST equal ${topN}
 - segmentTranslationsEn.length MUST equal ${topN}
+- articleEntities.length MUST equal ${topN} (one per selected article, same order)
 - Each segmentScript stands alone (no cross-references)
 - Order articles by importance (most impactful first)
 - Be engaging, professional, conversational
+
+ENTITY EXTRACTION (for image search):
+For each selected article, extract CONCRETE entities that can be used as image search queries.
+Think: who is in this story? what company? what product? where did it happen?
+The goal is to find REAL photos (not stock) — so queries must be specific enough to match news images.
 
 Return JSON:
 {
@@ -489,7 +496,16 @@ Return JSON:
   "outroScript": "Det var alt for i dag...",
   "introTranslationEn": "Welcome to today's news digest from Vitalii Berbeha...",
   "segmentTranslationsEn": ["...", "...", ...],
-  "outroTranslationEn": "That's all for today..."
+  "outroTranslationEn": "That's all for today...",
+  "articleEntities": [
+    {
+      "people": ["Sam Altman", "Satya Nadella"],
+      "companies": ["OpenAI", "Microsoft"],
+      "products": ["GPT-5", "Azure AI"],
+      "locations": ["San Francisco"],
+      "imageQueries": ["Sam Altman speaking conference", "OpenAI headquarters San Francisco", "GPT-5 artificial intelligence"]
+    }
+  ]
 }`;
 
   let aiResponse = await callAI(systemPrompt, `Rank and write script for ${displayDate}:\n\n${articleData}`, 8000);
@@ -530,12 +546,45 @@ Return JSON:
     return json({ error: "Invalid article IDs from AI" }, 500);
   }
 
+  // Build entity map: articleId → extracted entities for image search
+  const entityMap: Record<string, { people: string[]; companies: string[]; products: string[]; locations: string[]; imageQueries: string[] }> = {};
+  const entities = plan.articleEntities || [];
+  for (let i = 0; i < plan.selectedArticleIds.length; i++) {
+    const id = plan.selectedArticleIds[i];
+    if (entities[i] && entities[i].imageQueries?.length > 0) {
+      entityMap[id] = {
+        people: entities[i].people || [],
+        companies: entities[i].companies || [],
+        products: entities[i].products || [],
+        locations: entities[i].locations || [],
+        imageQueries: entities[i].imageQueries || [],
+      };
+    } else {
+      // Fallback: generate imageQueries from article title + tags
+      const a = articleMap.get(id);
+      if (a) {
+        const title = a.title_en || a.original_title || a.title_no || "";
+        const tags = (a.tags || []).slice(0, 3);
+        // Extract likely entity words (capitalized, >3 chars)
+        const words = title.split(/[\s,.:;!?\-–—()]+/).filter((w: string) => w.length > 3 && /^[A-Z]/.test(w));
+        const keyTerms = [...new Set(words)].slice(0, 4).join(" ");
+        entityMap[id] = {
+          people: [], companies: [], products: [], locations: [],
+          imageQueries: [
+            title.substring(0, 60),
+            keyTerms || title.substring(0, 40),
+            ...(tags.length > 0 ? [tags.join(" ")] : []),
+          ].filter(Boolean),
+        };
+      }
+    }
+  }
+  console.log(`🔍 Entity extraction: ${Object.keys(entityMap).length} articles with entities (${entities.length > 0 ? "LLM" : "fallback"})`);
+
   // ── Media Pre-Check: search INTERNET for real news images per article ──
-  // Priority: 1) DB images, 2) Source article scraping, 3) Google Image Search (real news images),
+  // Priority: 1) DB images, 2) Source article scraping, 3) Serper.dev (Google Images),
   // 4) Pexels fallback (stock). Article needs ≥3 images. If not enough — replace from pool.
   const MIN_IMAGES = 3;
-  const GOOGLE_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
-  const GOOGLE_CSE_ID = Deno.env.get("GOOGLE_CSE_ID") || "";
   const PEXELS_KEY = Deno.env.get("PEXELS_API_KEY") || "";
 
   // Sorted remaining articles by relevance for replacements
@@ -545,52 +594,43 @@ Return JSON:
     .filter((id: string) => !selectedSet.has(id));
 
   const searchEngines: string[] = [];
-  if (GOOGLE_KEY && GOOGLE_CSE_ID) searchEngines.push("Google Images");
+  if (SERPER_API_KEY) searchEngines.push("Serper.dev (Google Images)");
   if (PEXELS_KEY) searchEngines.push("Pexels (fallback)");
   await sendMessage(TELEGRAM_CHAT_ID, `🔍 <b>Пошук зображень в інтернеті...</b>\nМінімум ${MIN_IMAGES} зображень на новину.\n🔎 ${searchEngines.length > 0 ? searchEngines.join(" + ") : "Тільки source scraping (немає API ключів)"}`);
 
-  // ── Helper: Google Custom Search Image API (finds REAL news images) ──
-  // Uses combo query: "original title" + source domain + dateRestrict=d7
-  async function searchGoogleImages(query: string, count = 5, sourceDomain = ""): Promise<string[]> {
-    if (!GOOGLE_KEY || !GOOGLE_CSE_ID) return [];
+  // ── Helper: Serper.dev Image Search (Google Images via API) ──
+  async function searchImages(query: string, count = 5): Promise<string[]> {
+    if (!SERPER_API_KEY) {
+      console.log(`  ⚠️ SERPER_API_KEY not set, skipping image search`);
+      return [];
+    }
     try {
-      // Build combo query: quoted title + source domain for relevance
-      let searchQ = `"${query}"`;
-      if (sourceDomain) searchQ += ` ${sourceDomain}`;
-      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(searchQ)}&searchType=image&num=${Math.min(count, 10)}&imgSize=large&safe=active&dateRestrict=d7`;
+      console.log(`    📡 Serper query: "${query}" (count=${count})`);
       const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 8000);
-      const res = await fetch(url, { signal: ctrl.signal });
+      const timeout = setTimeout(() => ctrl.abort(), 10000);
+      const res = await fetch("https://google.serper.dev/images", {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "X-API-KEY": SERPER_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ q: query, num: Math.min(count * 2, 20) }),
+      });
       clearTimeout(timeout);
       if (!res.ok) {
-        console.log(`  ⚠️ Google Images API ${res.status}: ${await res.text().catch(() => "")}`);
-        // Fallback: retry without quotes and domain (broader search)
-        if (sourceDomain || query.length > 60) {
-          return searchGoogleImages(query.substring(0, 60), count, "");
-        }
+        console.log(`  ⚠️ Serper API ${res.status}: ${await res.text().catch(() => "")}`);
         return [];
       }
       const data = await res.json();
-      const results = (data.items || [])
-        .map((item: any) => item.link)
-        .filter((link: string) => link && link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(link))
+      const results = (data.images || [])
+        .map((img: any) => img.imageUrl)
+        .filter((url: string) => url && url.startsWith("http"))
         .slice(0, count);
-      // If quoted search found nothing, retry without quotes
-      if (results.length === 0 && (sourceDomain || query.includes('"'))) {
-        console.log(`  🔄 No results with quotes, retrying broader...`);
-        const broaderUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&searchType=image&num=${Math.min(count, 10)}&imgSize=large&safe=active&dateRestrict=d14`;
-        const res2 = await fetch(broaderUrl, { signal: AbortSignal.timeout(8000) });
-        if (res2.ok) {
-          const data2 = await res2.json();
-          return (data2.items || [])
-            .map((item: any) => item.link)
-            .filter((link: string) => link && link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(link))
-            .slice(0, count);
-        }
-      }
+      console.log(`    📡 Serper found: ${results.length} images`);
       return results;
     } catch (e: any) {
-      console.log(`  ⚠️ Google Images error: ${e.message}`);
+      console.log(`  ⚠️ Serper error: ${e.message}`);
       return [];
     }
   }
@@ -647,8 +687,9 @@ Return JSON:
   }
 
   // ── Helper: collect all images for an article ──
-  // Priority: DB → source page → Google Images (real) → Pexels (stock fallback)
-  async function collectArticleImages(a: any): Promise<{ images: string[]; sources: string }> {
+  // Priority: DB → source page → Google Images (entity-based) → Pexels (entity fallback)
+  type ArticleEntities = { people: string[]; companies: string[]; products: string[]; locations: string[]; imageQueries: string[] };
+  async function collectArticleImages(a: any, entities?: ArticleEntities): Promise<{ images: string[]; sources: string }> {
     const images: string[] = [];
     const srcInfo: string[] = [];
 
@@ -674,35 +715,73 @@ Return JSON:
     }
     if (sourceImages.length > 0) srcInfo.push(`Src:${sourceImages.length}`);
 
-    // 4. Google Image Search — find DIVERSE images using multiple queries
+    // 4. Google Image Search — use LLM-extracted entities for SPECIFIC queries
     const title = a.original_title || a.title_en || a.title_no || "";
     let sourceDomain = "";
     try { if (a.source_link) sourceDomain = new URL(a.source_link).hostname.replace("www.", ""); } catch { /* */ }
-    if (title && images.length < MIN_IMAGES + 2) {
-      // Query 1: exact title + source (finds the article's main image)
-      const googleImages1 = await searchGoogleImages(title, 2, sourceDomain);
-      for (const img of googleImages1) {
-        if (!images.includes(img)) images.push(img);
-      }
 
-      // Query 2: extract key entities/topics for broader visual diversity
-      const tags = (a.tags || []).slice(0, 3).join(" ");
-      const shortTitle = title.split(/[:.!?\-–—]/).slice(0, 2).join(" ").trim().substring(0, 40);
-      if (images.length < MIN_IMAGES + 2) {
-        const googleImages2 = await searchGoogleImages(`${shortTitle} ${tags}`, 3, "");
-        for (const img of googleImages2) {
+    // 4. Google Image Search — ALWAYS run (even if DB has images, we want diverse real photos)
+    const TARGET_IMAGES = 8; // aim for 8 diverse images per segment
+    if (title) {
+      let serperTotal = 0;
+
+      if (entities && entities.imageQueries.length > 0) {
+        // Entity-based queries: LLM provided specific search terms
+        console.log(`    🔍 Entity queries: ${entities.imageQueries.join(" | ")}`);
+
+        // Run ALL entity queries (up to 3) — each finds different visual aspect
+        for (let qi = 0; qi < Math.min(entities.imageQueries.length, 3); qi++) {
+          const cnt = qi === 0 ? 5 : 3;
+          const sImgs = await searchImages(entities.imageQueries[qi], cnt);
+          for (const img of sImgs) {
+            if (!images.includes(img)) images.push(img);
+          }
+          serperTotal += sImgs.length;
+        }
+
+        // Bonus: search for key person by name (portrait/photo)
+        if (entities.people.length > 0 && images.length < TARGET_IMAGES) {
+          const personQuery = `${entities.people[0]} ${entities.companies[0] || ""}`.trim();
+          console.log(`    👤 Person query: "${personQuery}"`);
+          const personImgs = await searchImages(personQuery, 3);
+          for (const img of personImgs) {
+            if (!images.includes(img)) images.push(img);
+          }
+          serperTotal += personImgs.length;
+        }
+      } else {
+        // Fallback: title-based queries (no entities available)
+        const sImgs = await searchImages(title, 5);
+        for (const img of sImgs) {
           if (!images.includes(img)) images.push(img);
         }
+        serperTotal += sImgs.length;
+
+        // Second: broader keyword search with tags
+        if (images.length < TARGET_IMAGES) {
+          const tags = (a.tags || []).slice(0, 3).join(" ");
+          const shortTitle = title.split(/[:.!?\-–—]/).slice(0, 2).join(" ").trim().substring(0, 40);
+          const sImgs2 = await searchImages(`${shortTitle} ${tags}`, 4);
+          for (const img of sImgs2) {
+            if (!images.includes(img)) images.push(img);
+          }
+          serperTotal += sImgs2.length;
+        }
       }
-      const totalGoogle = googleImages1.length + (images.length >= MIN_IMAGES + 2 ? 0 : 3);
-      if (totalGoogle > 0) srcInfo.push(`Google:${totalGoogle}`);
+
+      if (serperTotal > 0) srcInfo.push(`Serper:${serperTotal}`);
     }
 
-    // 5. Pexels fallback — only if still not enough after Google
-    if (title && images.length < MIN_IMAGES) {
-      // Use tags for Pexels to get visually diverse stock images
-      const tags = (a.tags || []).slice(0, 2).join(" ");
-      const pexelsQuery = tags || title.substring(0, 40);
+    // 5. Pexels fallback — use entity queries for more relevant stock images
+    if (title && images.length < TARGET_IMAGES) {
+      let pexelsQuery: string;
+      if (entities && entities.imageQueries.length > 0) {
+        // Use entity-based query for Pexels too (more specific than tags)
+        pexelsQuery = entities.imageQueries[entities.imageQueries.length - 1]; // last query = most visual/abstract
+      } else {
+        const tags = (a.tags || []).slice(0, 2).join(" ");
+        pexelsQuery = tags || title.substring(0, 40);
+      }
       const pexelsImages = await searchPexels(pexelsQuery, 5);
       for (const img of pexelsImages) {
         if (!images.includes(img)) images.push(img);
@@ -722,7 +801,7 @@ Return JSON:
   for (const id of validSelectedIds) {
     const a = articleMap.get(id)!;
     const title = a.title_no || a.title_en || a.original_title || "";
-    const { images, sources } = await collectArticleImages(a);
+    const { images, sources } = await collectArticleImages(a, entityMap[id]);
     const imageCount = (a.video_url || a.original_video_url) ? images.length + 3 : images.length;
     const passed = imageCount >= MIN_IMAGES;
 
@@ -846,6 +925,7 @@ Return JSON:
         scriptUa: "", // We use English translations now
         scriptEn: plan.segmentTranslationsEn?.[i] || "",
         webImages: webImagesPerArticle[id] || [],
+        entities: entityMap[id] || null,
       })),
       outro_script: plan.outroScript,
       llm_provider: LLM_PROVIDER,
@@ -867,6 +947,14 @@ Return JSON:
     const hasVideo = !!(a?.video_url || a?.original_video_url);
     const mediaIcon = hasVideo ? "🎥" : imgCount >= MIN_IMAGES ? "✅" : imgCount > 0 ? "⚠️" : "❌";
     msg += `${mediaIcon} <b>${i + 1}.</b> ${escapeHtml(title.substring(0, 80))}\n`;
+    const ent = entityMap[validSelectedIds[i]];
+    if (ent) {
+      const entParts: string[] = [];
+      if (ent.people.length > 0) entParts.push(`👤${ent.people.slice(0, 2).join(", ")}`);
+      if (ent.companies.length > 0) entParts.push(`🏢${ent.companies.slice(0, 2).join(", ")}`);
+      if (ent.products.length > 0) entParts.push(`📦${ent.products[0]}`);
+      if (entParts.length > 0) msg += `   ${entParts.join(" | ")}\n`;
+    }
     msg += `   📸 ${imgCount} зобр.${hasVideo ? " + відео" : ""}\n`;
   }
 
@@ -1739,47 +1827,45 @@ async function researchArticleImages(targetDate: string, articleIndex: number, c
 
   if (!article) throw new Error(`Article not found: ${articleId}`);
 
-  // Re-run Google Image Search with different query variations
-  const GOOGLE_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
-  const GOOGLE_CSE_ID = Deno.env.get("GOOGLE_CSE_ID") || "";
+  // Re-search images using Serper.dev + source scraping + Pexels fallback
   const PEXELS_KEY = Deno.env.get("PEXELS_API_KEY") || "";
 
   const title = article.original_title || article.title_en || article.title_no || "";
   let sourceDomain = "";
   try { if (article.source_link) sourceDomain = new URL(article.source_link).hostname.replace("www.", ""); } catch { /* */ }
 
+  // Get saved entities from draft
+  const draftScripts: any[] = draft.segment_scripts || [];
+  const savedEntities = draftScripts[articleIndex]?.entities;
+  const entityQueries: string[] = savedEntities?.imageQueries || [];
+
+  if (entityQueries.length > 0) {
+    console.log(`  🔍 Using entity queries: ${entityQueries.join(" | ")}`);
+  }
+
   const allImages: string[] = [];
 
-  // 1. Google with original title + domain
-  if (GOOGLE_KEY && GOOGLE_CSE_ID) {
-    const q1 = sourceDomain ? `"${title}" ${sourceDomain}` : `"${title}"`;
-    try {
-      const url1 = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(q1)}&searchType=image&num=10&imgSize=large&safe=active&dateRestrict=d14`;
-      const r1 = await fetch(url1);
-      if (r1.ok) {
-        const d1 = await r1.json();
-        for (const item of (d1.items || [])) {
-          if (item.link && item.link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(item.link) && !allImages.includes(item.link)) {
-            allImages.push(item.link);
-          }
-        }
-      }
-    } catch { /* */ }
+  // 1. Serper.dev image search — entity queries or title fallback
+  if (SERPER_API_KEY) {
+    const queries = entityQueries.length > 0
+      ? entityQueries.slice(0, 3)
+      : [title];
 
-    // 2. Google without quotes (broader)
-    if (allImages.length < 5) {
-      try {
-        const url2 = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(title)}&searchType=image&num=10&imgSize=large&safe=active`;
-        const r2 = await fetch(url2);
-        if (r2.ok) {
-          const d2 = await r2.json();
-          for (const item of (d2.items || [])) {
-            if (item.link && item.link.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(item.link) && !allImages.includes(item.link)) {
-              allImages.push(item.link);
-            }
-          }
-        }
-      } catch { /* */ }
+    for (const q of queries) {
+      if (allImages.length >= 10) break;
+      const sImgs = await searchImages(q, 5);
+      for (const img of sImgs) {
+        if (!allImages.includes(img)) allImages.push(img);
+      }
+    }
+
+    // Additional: search by person + company if entities available
+    if (allImages.length < 5 && savedEntities?.people?.length > 0) {
+      const personQ = `${savedEntities.people[0]} ${savedEntities.companies?.[0] || ""}`.trim();
+      const pImgs = await searchImages(personQ, 3);
+      for (const img of pImgs) {
+        if (!allImages.includes(img)) allImages.push(img);
+      }
     }
   }
 
@@ -1808,10 +1894,11 @@ async function researchArticleImages(targetDate: string, articleIndex: number, c
     } catch { /* */ }
   }
 
-  // 4. Pexels fallback
+  // 4. Pexels fallback — use entity query if available
   if (PEXELS_KEY && allImages.length < 3) {
+    const pexelsQ = entityQueries.length > 0 ? entityQueries[entityQueries.length - 1] : title;
     try {
-      const pUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(title)}&per_page=10&orientation=landscape&size=large`;
+      const pUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(pexelsQ)}&per_page=10&orientation=landscape&size=large`;
       const pRes = await fetch(pUrl, { headers: { Authorization: PEXELS_KEY } });
       if (pRes.ok) {
         const pData = await pRes.json();
@@ -1825,24 +1912,53 @@ async function researchArticleImages(targetDate: string, articleIndex: number, c
 
   console.log(`  🔍 Found ${allImages.length} images for article #${articleIndex + 1}`);
 
-  // Send top images as photo album (max 5)
-  const topImages = allImages.slice(0, 5);
-  if (topImages.length > 0) {
-    // Send as individual photos with index
-    for (let j = 0; j < topImages.length; j++) {
-      try {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: targetChatId,
-            photo: topImages[j],
-            caption: j === 0 ? `🔍 Нові зображення для: <b>${escapeHtml(title.substring(0, 80))}</b>\n📸 ${j + 1}/${topImages.length}` : `📸 ${j + 1}/${topImages.length}`,
-            parse_mode: "HTML",
-          }),
-        });
-      } catch { /* skip failed image */ }
-    }
+  // Send ALL found images as album (media group) — up to 10
+  const topImages = allImages.slice(0, 10);
+  if (topImages.length >= 2) {
+    // Send as album (media group)
+    const albumCaption = `🔍 Нові зображення для: <b>${escapeHtml(title.substring(0, 80))}</b>\n📸 ${topImages.length} знайдено${entityQueries.length > 0 ? "\n🔍 " + entityQueries.slice(0, 2).join(" | ") : ""}`;
+    const mediaGroup = topImages.map((url: string, j: number) => ({
+      type: "photo" as const,
+      media: url,
+      ...(j === 0 ? { caption: albumCaption, parse_mode: "HTML" } : {}),
+    }));
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: targetChatId, media: mediaGroup }),
+      });
+      const result = await resp.json();
+      if (!result.ok) {
+        // Fallback: send first few individually
+        for (let j = 0; j < Math.min(topImages.length, 3); j++) {
+          try {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: targetChatId,
+                photo: topImages[j],
+                ...(j === 0 ? { caption: albumCaption, parse_mode: "HTML" } : {}),
+              }),
+            });
+          } catch { /* skip */ }
+        }
+      }
+    } catch { /* */ }
+  } else if (topImages.length === 1) {
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: targetChatId,
+          photo: topImages[0],
+          caption: `🔍 Нові зображення для: <b>${escapeHtml(title.substring(0, 80))}</b>\n📸 1 знайдено`,
+          parse_mode: "HTML",
+        }),
+      });
+    } catch { /* */ }
   }
 
   // Update draft with new images
@@ -1999,39 +2115,73 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
       caption += `📊 [${statsType}] ${facts.map((f: any) => `${f.value} (${f.label})`).join(" · ")}\n`;
     }
 
+    // Entity info line
+    const segEntities = script.entities;
+    if (segEntities) {
+      const entParts: string[] = [];
+      if (segEntities.people?.length > 0) entParts.push(`👤${segEntities.people.slice(0, 2).join(", ")}`);
+      if (segEntities.companies?.length > 0) entParts.push(`🏢${segEntities.companies.slice(0, 2).join(", ")}`);
+      if (segEntities.products?.length > 0) entParts.push(`📦${segEntities.products[0]}`);
+      if (entParts.length > 0) caption += `🔍 ${entParts.join(" | ")}\n`;
+    }
+
     // Duration & script preview
     caption += `⏱️ ~${estDuration}с | ${wordCount} слів`;
 
-    // Send photo with caption, or text-only if no image
-    const bestImage = allImages[0]; // DB image or first web image
-    if (bestImage) {
+    // Send ALL images as album (media group) — moderator sees exactly what goes into video
+    if (allImages.length >= 2) {
+      // Telegram sendMediaGroup: 2-10 photos, caption on the first one
+      const albumImages = allImages.slice(0, 10); // Telegram max 10 per group
+      const mediaGroup = albumImages.map((url: string, j: number) => ({
+        type: "photo" as const,
+        media: url,
+        ...(j === 0 ? { caption, parse_mode: "HTML" } : {}),
+      }));
+
       try {
-        const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: targetChatId,
-            photo: bestImage,
-            caption,
-            parse_mode: "HTML",
+            media: mediaGroup,
           }),
         });
         const result = await resp.json();
         if (!result.ok) {
-          // Try next image if first fails
-          const fallbackImg = allImages[1];
-          if (fallbackImg) {
-            const r2 = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: targetChatId, photo: fallbackImg, caption, parse_mode: "HTML" }),
-            });
-            const r2j = await r2.json();
-            if (!r2j.ok) await sendMessage(targetChatId, caption);
-          } else {
-            await sendMessage(targetChatId, caption);
+          console.log(`  ⚠️ Album failed for segment ${i + 1}: ${result.description}`);
+          // Fallback: try sending valid images one by one (some URLs may be broken)
+          let sentAny = false;
+          for (const url of albumImages.slice(0, 3)) {
+            try {
+              const r2 = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: targetChatId,
+                  photo: url,
+                  ...(!sentAny ? { caption, parse_mode: "HTML" } : {}),
+                }),
+              });
+              const r2j = await r2.json();
+              if (r2j.ok) sentAny = true;
+            } catch { /* skip broken image */ }
           }
+          if (!sentAny) await sendMessage(targetChatId, caption);
         }
+      } catch {
+        await sendMessage(targetChatId, `${caption}\n\n⚠️ Альбом не відправлено`);
+      }
+    } else if (allImages.length === 1) {
+      // Single image — just send as photo
+      try {
+        const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: targetChatId, photo: allImages[0], caption, parse_mode: "HTML" }),
+        });
+        const result = await resp.json();
+        if (!result.ok) await sendMessage(targetChatId, caption);
       } catch {
         await sendMessage(targetChatId, `${caption}\n\n⚠️ Зображення не відправлено`);
       }
@@ -2049,6 +2199,9 @@ async function prepareImages(targetDate: string, chatId?: number, messageId?: nu
       [
         { text: "🎬 Рендерити", callback_data: `dv_rok_${targetDate}` },
         { text: "🔄 Сценарій", callback_data: `dv_vrg_${targetDate}` },
+      ],
+      [
+        { text: "🔍 Перешукати зображення", callback_data: `dv_rsi_${targetDate}` },
       ],
     ],
   };
