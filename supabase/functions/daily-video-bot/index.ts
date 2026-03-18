@@ -720,7 +720,7 @@ Return JSON:
           "X-API-KEY": SERPER_API_KEY,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ q: query, num: Math.min(count * 2, 20) }),
+        body: JSON.stringify({ q: query, num: Math.min(count * 2, 20), tbs: "qdr:m" }),
       });
       clearTimeout(timeout);
       if (!res.ok) {
