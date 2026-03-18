@@ -878,22 +878,7 @@ Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berb
       if (serperTotal > 0) srcInfo.push(`Serper:${serperTotal}`);
     }
 
-    // 5. Pexels fallback — use entity queries for more relevant stock images
-    if (title && images.length < TARGET_IMAGES) {
-      let pexelsQuery: string;
-      if (entities && entities.imageQueries.length > 0) {
-        // Use entity-based query for Pexels too (more specific than tags)
-        pexelsQuery = entities.imageQueries[entities.imageQueries.length - 1]; // last query = most visual/abstract
-      } else {
-        const tags = (a.tags || []).slice(0, 2).join(" ");
-        pexelsQuery = tags || title.substring(0, 40);
-      }
-      const pexelsImages = await searchPexels(pexelsQuery, 5);
-      for (const img of pexelsImages) {
-        if (!images.includes(img)) images.push(img);
-      }
-      if (pexelsImages.length > 0) srcInfo.push(`Pexels:${pexelsImages.length}`);
-    }
+    // Pexels disabled — only real news photos from Serper + scraping
 
     return { images, sources: srcInfo.join(" ") };
   }

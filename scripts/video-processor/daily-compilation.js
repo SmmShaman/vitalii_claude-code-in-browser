@@ -884,39 +884,11 @@ async function main() {
     console.log(`⚠️ Article scraping failed, continuing: ${e.message}`);
   }
 
-  // Step 4a-2: Pexels fallback — only for segments with <2 scraped images + b-roll for all
-  if (process.env.PEXELS_API_KEY) {
-    const needsPexels = segments.some((s, i) => !s.videoSrc && (!s.alternateImages || s.alternateImages.length < 3));
-    if (needsPexels) {
-      console.log('\n🖼️ Step 3a-2: Pexels fallback for segments with few article images...');
-      try {
-        const pexelsSegments = segments.map((s, idx) => ({
-          headline: detailedArticles[idx]?.title_en || detailedArticles[idx]?.original_title || s.headline,
-          category: s.category,
-          keyQuote: s.keyQuote,
-          imageSearchQueries: s.imageSearchQueries || [],
-        }));
-        const pexelsMedia = await downloadPexelsMedia(pexelsSegments, publicDir);
-
-        for (let i = 0; i < segments.length; i++) {
-          if (segments[i].videoSrc) continue;
-          const media = pexelsMedia[i];
-          const existing = segments[i].alternateImages || [];
-
-          // Add Pexels images only if article scraping yielded <2
-          if (existing.length < 3 && media && media.images.length > 0) {
-            segments[i].alternateImages = [...existing, ...media.images];
-            segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (segments[i].alternateImages.length + 1)));
-            console.log(`  🖼️ Segment ${i}: +${media.images.length} Pexels images (fallback)`);
-          }
-
-          // B-roll video from Pexels for all non-video segments
-          if (media && media.videos.length > 0 && !segments[i].bRollVideos) {
-            segments[i].bRollVideos = media.videos;
-          }
-        }
-      } catch (e) {
-        console.log(`⚠️ Pexels fallback failed, continuing: ${e.message}`);
+  // Pexels disabled — only real news photos from Serper + article scraping
+  if (false) {
+    // Kept for reference but disabled
+    if (false) {
+      console.log('Pexels disabled');
       }
     } else {
       console.log('\n✅ All segments have enough article images, skipping Pexels');
