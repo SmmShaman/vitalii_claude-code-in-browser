@@ -885,15 +885,7 @@ async function main() {
   }
 
   // Pexels disabled — only real news photos from Serper + article scraping
-  if (false) {
-    // Kept for reference but disabled
-    if (false) {
-      console.log('Pexels disabled');
-      }
-    } else {
-      console.log('\n✅ All segments have enough article images, skipping Pexels');
-    }
-  }
+  console.log('\n⏭️ Pexels disabled — using only real news photos');
 
   // Step 4a-3: Deduplicate images per segment
   // Problem: same photo from DB, Google Search, and article scraping creates duplicates.
