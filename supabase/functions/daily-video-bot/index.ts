@@ -568,78 +568,65 @@ Tags: ${[...new Set(group.articleIds.flatMap((id: string) => (articleMap.get(id)
     }
   }).join("\n\n---\n\n");
 
-  const scriptPrompt = `You are a Norwegian news anchor for a daily tech news video.
+  // ── Per-segment LLM calls (guarantees script matches article) ──
+  console.log(`📝 LLM Call 2: Writing scripts PER SEGMENT (${groups.length} calls)...`);
 
-TASK: Write voiceover scripts for exactly ${groups.length} segments listed below. Each script corresponds to the segment AT THE SAME POSITION.
-
-CRITICAL: segmentScripts[0] is for SEGMENT 1, segmentScripts[1] is for SEGMENT 2, etc. Do NOT mix them up.
-
-MERGED SEGMENTS: Some segments contain multiple articles about the same company/event. Write ONE coherent script that covers ALL sub-articles as a single story. Don't list them separately — weave them into one narrative.
-
-SCRIPT REQUIREMENTS:
-- Target total duration: ~${targetDuration} seconds
-- Write in Norwegian Bokmål:
-  1. "introScript" — opening (~4-5s). Start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha."
-  2. "segmentScripts" — one per segment (~12-18s each, ~${wordsPerArticle * 2} words, 3-5 sentences). Merged segments may be slightly longer (~18-22s).
-  3. "outroScript" — closing (~4-5s). Include "Abonner på kanalen og trykk liker-knappen!"
-- Also provide English translations.
-
-LANGUAGE: Clean Norwegian Bokmål. Use "kunstig intelligens" not "AI", "programvare" not "software". TTS-friendly.
-
-ENTITY EXTRACTION: For each article, create 3-4 Google Image search queries that will find REAL NEWS PHOTOS.
-
-IMAGE QUERY RULES (CRITICAL):
-- Queries must find REAL photos from news articles, press conferences, events — NOT flags, logos, icons, stock illustrations
-- GOOD: "He Lifeng trade talks Paris 2026", "China US trade delegation meeting", "Paris economic forum speakers"
-- BAD: "China flag", "USA flag", "trade concept", "handshake business" (these return generic stock/icons)
-- For people: use "FULL NAME + context" (e.g. "Jensen Huang GTC keynote" NOT just "Jensen Huang")
-- For companies: use "COMPANY + event/product" (e.g. "Nvidia GTC 2026 conference" NOT "Nvidia logo")
-- For events: describe the SCENE (e.g. "trade delegation meeting room" NOT "trade concept")
-- Each query should find a DIFFERENT visual aspect of the story
-
+  const perSegPrompt = `You are a Norwegian news anchor. Write a voiceover script for ONE news segment.
+LANGUAGE: Clean Norwegian Bokmål. "kunstig intelligens" not "AI", "programvare" not "software". TTS-friendly. Short clear sentences.
+Also extract 3-4 Google Image search queries for REAL NEWS PHOTOS (not flags/logos/icons).
 Return JSON:
 {
-  "introScript": "Velkommen...",
-  "segmentScripts": ["script for article 1", "script for article 2", ...],
-  "outroScript": "Det var alt...",
-  "introTranslationEn": "Welcome...",
-  "segmentTranslationsEn": ["translation 1", "translation 2", ...],
-  "outroTranslationEn": "That's all...",
-  "articleEntities": [
-    {"people": [], "companies": [], "products": [], "locations": [], "imageQueries": ["news photo query 1", "news photo query 2", "news photo query 3"]}
-  ]
+  "scriptNo": "Norwegian script (3-5 sentences, ~${wordsPerArticle * 2} words)",
+  "scriptEn": "English translation",
+  "entities": {"people": [], "companies": [], "products": [], "locations": [], "imageQueries": ["news photo query 1", "query 2", "query 3"]}
 }`;
 
-  console.log(`📝 LLM Call 2: Writing scripts for ${selectedValid.length} articles...`);
-  let scriptResponse = await callAI(scriptPrompt, `Write scripts for these ${selectedValid.length} articles:\n\n${selectedArticleData}`, 6000);
-  let plan: any;
+  const plan: any = {
+    selectedArticleIds: selectedValid,
+    segmentScripts: [] as string[],
+    segmentTranslationsEn: [] as string[],
+    articleEntities: [] as any[],
+    introScript: "",
+    outroScript: "",
+  };
+
+  // Generate intro + outro first
   try {
-    plan = JSON.parse(scriptResponse);
+    const introResponse = await callAI(
+      `You are a Norwegian news anchor. Write intro and outro for a daily news digest with ${groups.length} stories.
+Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha. ...", "outroScript": "Det var alt for i dag. Abonner på kanalen og trykk liker-knappen! ...", "introTranslationEn": "...", "outroTranslationEn": "..."}`,
+      `Write intro/outro for ${displayDate} digest with ${groups.length} stories`,
+      1000,
+    );
+    const intro = JSON.parse(introResponse.match(/\{[\s\S]*\}/)?.[0] || introResponse);
+    plan.introScript = intro.introScript || `Velkommen til dagens nyhetsdigest fra Vitalii Berbeha. I dag har vi ${groups.length} saker.`;
+    plan.outroScript = intro.outroScript || "Det var alt for i dag. Abonner på kanalen og trykk liker-knappen!";
+    plan.introTranslationEn = intro.introTranslationEn || "";
+    plan.outroTranslationEn = intro.outroTranslationEn || "";
   } catch {
-    const jsonMatch = scriptResponse.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try { plan = JSON.parse(jsonMatch[0]); console.log("✅ Extracted JSON from mixed response"); } catch {
-        await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (скрипти).`);
-        return json({ error: "Invalid AI JSON in scripts" }, 500);
-      }
-    } else {
-      await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (скрипти).`);
-      return json({ error: "Invalid AI JSON in scripts" }, 500);
-    }
+    plan.introScript = `Velkommen til dagens nyhetsdigest fra Vitalii Berbeha. I dag har vi ${groups.length} saker.`;
+    plan.outroScript = "Det var alt for i dag. Abonner på kanalen og trykk liker-knappen!";
   }
 
-  // Merge selection IDs into plan
-  plan.selectedArticleIds = selectedValid;
-  plan.segmentScripts = plan.segmentScripts || [];
-  plan.segmentTranslationsEn = plan.segmentTranslationsEn || [];
-  plan.articleEntities = plan.articleEntities || [];
-
-  // Pad arrays if LLM returned fewer scripts than articles
-  while (plan.segmentScripts.length < selectedValid.length) {
-    const idx = plan.segmentScripts.length;
-    const a = articleMap.get(selectedValid[idx]);
-    plan.segmentScripts.push(a ? `${a.title_no || a.title_en || ""}. ${(a.description_no || a.description_en || "").substring(0, 200)}` : "");
-    plan.segmentTranslationsEn.push(a?.title_en || "");
+  // Generate script for each segment individually
+  for (let si = 0; si < groups.length; si++) {
+    const segData = selectedArticleData.split("\n\n---\n\n")[si] || "";
+    try {
+      const segResponse = await callAI(perSegPrompt, `Write script for this segment:\n\n${segData}`, 1500);
+      const parsed = JSON.parse(segResponse.match(/\{[\s\S]*\}/)?.[0] || segResponse);
+      plan.segmentScripts.push(parsed.scriptNo || "");
+      plan.segmentTranslationsEn.push(parsed.scriptEn || "");
+      plan.articleEntities.push(parsed.entities || null);
+      console.log(`  ✅ Segment ${si + 1}/${groups.length}: ${(parsed.scriptNo || "").substring(0, 50)}...`);
+    } catch (e: any) {
+      console.log(`  ❌ Segment ${si + 1} failed: ${e.message}`);
+      const a = articleMap.get(selectedValid[si]);
+      plan.segmentScripts.push(a ? `${a.title_no || a.title_en || ""}. ${(a.description_no || a.description_en || "").substring(0, 200)}` : "");
+      plan.segmentTranslationsEn.push(a?.title_en || "");
+      plan.articleEntities.push(null);
+    }
+    // Small delay between calls
+    if (si < groups.length - 1) await new Promise(r => setTimeout(r, 200));
   }
 
   console.log(`✅ Scripts: ${plan.segmentScripts.length}, Entities: ${plan.articleEntities.length}`);
