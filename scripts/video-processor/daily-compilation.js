@@ -793,7 +793,7 @@ async function main() {
     // Duration: voiceover-driven — each segment lasts as long as its narration
     const vo = segmentVoiceovers[i];
     const voDurationRaw = vo ? Number(vo.durationSeconds) : 0;
-    const voDuration = (voDurationRaw > 0 ? voDurationRaw : 10) + 1;
+    const voDuration = voDurationRaw > 0 ? voDurationRaw : 10;
     let segDuration;
     if (videoFilename && videoDurationSec > 0) {
       // Video segment: use voiceover duration (not video duration!) — video plays as background, clipped to voice
@@ -966,10 +966,10 @@ async function main() {
 
   // Calculate total duration from actual segment durations
   // Dynamic intro/outro duration based on TTS (minimum 4s)
-  const introDuration = introVoiceover ? Math.max(Number(introVoiceover.durationSeconds) + 1, 8) : 8;
-  const roundupDuration = roundupVoiceover ? Math.max(Number(roundupVoiceover.durationSeconds) + 1, 5) : 0;
-  const outroDuration = outroVoiceover ? Math.max(Number(outroVoiceover.durationSeconds) + 1, 4) : 4;
-  const overflowDuration = overflowVoiceover ? Math.max(Number(overflowVoiceover.durationSeconds) + 1, 4) : 0;
+  const introDuration = introVoiceover ? Math.max(Number(introVoiceover.durationSeconds), 8) : 8;
+  const roundupDuration = roundupVoiceover ? Math.max(Number(roundupVoiceover.durationSeconds), 5) : 0;
+  const outroDuration = outroVoiceover ? Math.max(Number(outroVoiceover.durationSeconds), 4) : 4;
+  const overflowDuration = overflowVoiceover ? Math.max(Number(overflowVoiceover.durationSeconds), 4) : 0;
   const dividerDuration = 3.5;
   const segmentsTotalDuration = segments.reduce((sum, s) => sum + Number(s.durationSeconds), 0);
   const dividersTotalDuration = segments.length * dividerDuration;
