@@ -521,6 +521,31 @@ async function dispatchThumbnailGeneration(dateStr, clickbaitTitle) {
 }
 
 /**
+ * Send a step-by-step Telegram report during pipeline execution.
+ * Each step notifies the user about progress.
+ */
+async function sendTelegramStep(text) {
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+  if (!BOT_TOKEN || !CHAT_ID) return;
+
+  try {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      }),
+    });
+  } catch (e) {
+    console.log(`⚠️ Telegram step notification failed: ${e.message}`);
+  }
+}
+
+/**
  * Send direct Telegram notification (for cron/manual runs without DRAFT_ID).
  */
 async function notifyTelegramDirect(dateStr, youtubeUrl) {
@@ -618,6 +643,31 @@ async function main() {
     plan = await directDailyShow(articles, displayDate);
   }
 
+  // ── Telegram Step 1: Selected articles ──
+  const detailedArticlesForBot = articles.slice(0, MAX_DETAILED);
+  const step1Lines = detailedArticlesForBot.map((a, i) => {
+    const title = a.title_no || a.title_en || '';
+    const slug = a.slug_en ? `https://vitalii.no/news/${a.slug_en}` : '';
+    return `${i + 1}. ${title}${slug ? `\n   🔗 ${slug}` : ''}`;
+  });
+  await sendTelegramStep(
+    `📰 <b>Дайджест ${displayDate}</b>\n\n` +
+    `Обрано ${detailedArticlesForBot.length} з ${articles.length} новин:\n\n` +
+    step1Lines.join('\n\n'),
+  );
+
+  // ── Telegram Step 2: Scripts (NO + UA summary) ──
+  const scriptPreview = (plan.segmentScripts || []).map((s, i) => {
+    const seg = plan.segments?.[i] || {};
+    return `<b>${i + 1}. ${seg.headline || ''}</b>\n${s.substring(0, 200)}${s.length > 200 ? '...' : ''}`;
+  }).join('\n\n');
+  await sendTelegramStep(
+    `🎙️ <b>Сценарій (${LANGUAGE.toUpperCase()}):</b>\n\n` +
+    `${plan.introScript || ''}\n\n` +
+    scriptPreview + '\n\n' +
+    `${plan.outroScript || ''}`,
+  );
+
   // Step 3: Generate per-article voiceovers (Norwegian)
   console.log('\n🎙️ Step 2: Generating per-segment voiceovers...');
   const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
@@ -678,10 +728,22 @@ async function main() {
       plan.segmentScripts || [],
       plan.segments || [],
       segmentVoiceovers,
+      detailedArticlesForBot, // full article context for per-segment AI prompts
     );
   } catch (e) {
     console.log(`  ⚠️ Visual Director failed, using defaults: ${e.message}`);
   }
+
+  // ── Telegram Step 3: Visual Director results ──
+  const vdSummary = visualDirectives.map((vd, i) => {
+    const blocks = vd?.visualBlocks?.length || 0;
+    const overlays = vd?.dataOverlays?.length || 0;
+    const scenes = (vd?.visualBlocks || []).slice(0, 2).map(b =>
+      `  • ${(b.sceneDescription || b.visualMetaphor || '').substring(0, 100)}`
+    ).join('\n');
+    return `<b>Seg ${i + 1}</b> [${vd?.mood}|${vd?.transition}]: ${blocks} scenes, ${overlays} overlays\n${scenes}`;
+  }).join('\n\n');
+  await sendTelegramStep(`🎨 <b>Visual Director:</b>\n\n${vdSummary}`);
 
   // Step 4: Download images + prepare Remotion assets
   console.log('\n📥 Step 3: Downloading images...');

@@ -349,92 +349,91 @@ function dataPointToOverlay(dp, showAt, hideAt, position) {
 //  AI Visual Director (Azure OpenAI)
 // ═══════════════════════════════════════════════════════════════════
 
-async function aiDirectVisuals(segmentScripts, segments) {
+/**
+ * Per-segment AI Visual Director call.
+ * Each segment gets its own prompt with FULL article context + creative hints.
+ */
+async function aiDirectSingleSegment(script, article, segmentMeta, segIndex, totalSegs) {
   const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
   const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
   const DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'Jobbot-gpt-4.1-mini';
 
   if (!AZURE_ENDPOINT || !AZURE_KEY) return null;
 
-  const segDescs = segmentScripts.map((script, i) => {
-    const seg = segments[i] || {};
-    return `SEGMENT ${i + 1} [${seg.category || 'news'}]:\n${script}`;
-  }).join('\n\n---\n\n');
+  const title = article?.title_en || article?.title_no || segmentMeta?.headline || '';
+  const content = (article?.content_en || article?.content_no || article?.original_content || '').substring(0, 1500);
+  const category = segmentMeta?.category || 'news';
 
-  const systemPrompt = `You are a cinematic Visual Director for a news video digest. You think in SCENES, not slides. Each phrase of narration becomes a unique visual moment with specific effects, animations, and motion graphics.
+  const systemPrompt = `You are a cinematic Visual Director creating a FRAME-BY-FRAME visual breakdown for scene ${segIndex + 1} of ${totalSegs} in a news video.
 
-Given ${segmentScripts.length} voiceover scripts, create a detailed SCENE-BY-SCENE visual plan.
+ARTICLE CONTEXT:
+Title: ${title}
+Category: ${category}
+Content: ${content}
 
-For each segment, split the script into phrases (3-4 seconds each) and for EACH phrase write:
-1. "text" — the exact phrase from the script
-2. "sceneDescription" — DETAILED cinematic description: what appears on screen, what animates, what transforms. Be SPECIFIC: "3D wireframe globe rotating with neon grid, light pulses moving across surface" NOT "globe animation".
-3. "renderHint" — specific Remotion implementation hints: which effects, transforms, interpolations to use.
-4. "metaphor" — the visual metaphor category
-5. "textEffect" — how the phrase text animates on screen
-6. "graphicType" + "graphicData" — if numbers present, extract for animated infographics
-7. "backgroundEffect" — how the background behaves
-8. "triggerImageChange" — cycle to next image
+VOICEOVER SCRIPT (what the narrator says):
+${script}
 
-VISUAL THINKING GUIDE — translate MEANING into MOTION:
-- Numbers/stats → animated counters ticking up, bar charts growing with spring, dashboard panels
-- Comparisons → split-screen with animated divider, before/after dissolve, A→B transformation
-- Growth/launch → scale-up from center, particle burst, icons assembling
-- Decline/crisis → elements shattering into particles, red color shift, vignette darkening
-- Technology/AI → glitch effects, data streams, Matrix-style code rain, circuit board patterns
-- Geography/global → panning across regions, map highlights, flags appearing
-- Lists/multiple items → staggered icon parade, items popping in one by one
-- Urgency/breaking → rapid cuts, screen shake, alert pulses, red accent flashes
-- Transition/change → morph dissolve old→new, pixel reassembly, shape transformation
+YOUR TASK: Split the voiceover into phrases (3-5 seconds each). For EACH phrase, design a unique CINEMATIC scene.
 
-SCENE DESCRIPTION EXAMPLES:
-- GOOD: "Split screen with glass divider. Left: factory conveyor SVG with robotic arm. Right: dashboard with bar charts growing spring-animated, counter ticking 0→87%. Divider pulses accent color."
-- BAD: "Shows manufacturing and marketing data"
-- GOOD: "Large '8.6 milliarder' text center-screen with counter tick-up animation. Background: architectural blueprint wireframe rotating slowly. Glass card slides in from right showing cost breakdown bar chart."
-- BAD: "Displays the budget number"
+For each phrase write:
+1. "text" — exact phrase from the script
+2. "sceneDescription" — DETAILED visual scene (min 3 sentences): what appears, what animates, what transforms. Think like a FILM DIRECTOR: "Giant counter ticks from 0 to 3,000,000 center-screen with spring bounce. Behind it — a grid of tiny chat bubble icons filling the screen like a mosaic, each popping in with stagger delay. Dark background, bubbles glow soft blue." NOT "shows a counter".
+3. "renderHint" — Remotion implementation: "AnimatedCounter value=3000000 with spring(damping:10). Background: Particles rate=1.2 max=40 with bubble shapes. Each bubble Sequence with stagger 2 frames."
+4. "metaphor" — visual metaphor category
+5. "textEffect" — text animation: typewriter | fadeUp | blurReveal | springPop | splitScale
+6. "graphicType" — infographic: counter | keyFigure | comparison | barChart | bulletList | none
+7. "graphicData" — data for graphic (ONLY real numbers from the article, NEVER invent)
+8. "backgroundEffect" — kenBurns | zoomPulse | slowPan | colorShift
+9. "triggerImageChange" — true to cycle background image
 
-VARIETY RULES:
-- Adjacent segments MUST differ in mood, transition, textReveal
-- Adjacent phrases MUST differ in textEffect and backgroundEffect
-- Every phrase must have a UNIQUE visual treatment — no two scenes look the same
+CREATIVE DIRECTION for this article:
+- What are the KEY NUMBERS? → Each number becomes an animated counter or chart
+- What is the CENTRAL METAPHOR? → Translate it into visual motion
+- What CONTRASTS exist? → Split-screen, before/after, A→B transformation
+- What is the EMOTIONAL TONE? → Drives color palette, animation speed, particle density
+- What OBJECTS represent this story? → Icons, symbols, shapes that animate on screen
 
-Available values:
-- mood: ${MOODS.join(', ')}
-- transition: ${TRANSITIONS.join(', ')}
-- textReveal: ${HEADLINE_REVEALS.join(', ')}
-- textEffect: ${TEXT_EFFECTS.join(', ')}
-- graphicType: counter | barChart | comparison | bulletList | keyFigure | none
-- backgroundEffect: ${BACKGROUND_EFFECTS.join(', ')}
+SCENE STYLE GUIDE:
+- Numbers: ALWAYS animated counters ticking up from 0, NEVER static text
+- Comparisons: split-screen with animated glass divider, values on each side
+- Growth: elements scaling up, particle burst, assembling icons
+- Decline: shattering particles, red color shift, vignette darkening
+- Technology: glitch effects, data streams, circuit patterns, code rain
+- Geography: map panning, region highlights, flag icons
+- Lists: staggered icon parade, items popping in one by one
+- Urgency: rapid transitions, screen shake, red alert pulses
 
-Output JSON:
+Available textEffects: typewriter, fadeUp, blurReveal, springPop, splitScale
+Available backgroundEffects: kenBurns, zoomPulse, slowPan, colorShift
+
+RULES:
+- Adjacent phrases MUST use different textEffect and backgroundEffect
+- sceneDescription: minimum 3 sentences, cinematic and SPECIFIC
+- renderHint: reference Remotion functions (interpolate, spring, Sequence, Particles)
+- graphicData: ONLY from actual article numbers, NEVER invent
+- triggerImageChange: approximately every other phrase
+
+Return JSON:
 {
-  "segments": [
+  "mood": "urgent|energetic|positive|analytical|serious|contemplative|lighthearted|cautionary",
+  "transition": "fade|wipeLeft|wipeRight|slideUp|slideDown|zoomIn|zoomOut|filmBurn|glitchWipe",
+  "textReveal": "default|typewriter|splitFade|splitScale",
+  "statsVisualType": "list|counters|bars",
+  "phrases": [
     {
-      "mood": "...",
-      "transition": "...",
-      "textReveal": "...",
-      "statsVisualType": "list|counters|bars",
-      "phrases": [
-        {
-          "text": "exact phrase from script",
-          "sceneDescription": "Detailed cinematic description of what appears on screen...",
-          "renderHint": "Remotion implementation: interpolate scale 0→1 with spring(damping:10), CSS filter hue-rotate, particles rate 0.8...",
-          "metaphor": "data|comparison|growth|decline|technology|geography|urgency|narrative",
-          "textEffect": "typewriter|fadeUp|blurReveal|springPop|splitScale",
-          "graphicType": "counter|keyFigure|comparison|barChart|bulletList|none",
-          "graphicData": { "value": "87%", "label": "Markedsandel" },
-          "backgroundEffect": "kenBurns|zoomPulse|slowPan|colorShift",
-          "triggerImageChange": true
-        }
-      ]
+      "text": "exact phrase",
+      "sceneDescription": "detailed 3+ sentence cinematic description...",
+      "renderHint": "Remotion: interpolate(), spring(), Particles...",
+      "metaphor": "data",
+      "textEffect": "springPop",
+      "graphicType": "counter",
+      "graphicData": { "value": "3000000", "label": "daglige søk" },
+      "backgroundEffect": "zoomPulse",
+      "triggerImageChange": false
     }
   ]
-}
-
-Rules:
-- sceneDescription MUST be detailed and cinematic — minimum 2 sentences per phrase
-- graphicData only when graphicType ≠ "none", values from ACTUAL script text only
-- triggerImageChange ≈ true every other phrase
-- renderHint should reference Remotion primitives: interpolate, spring, CSS filter, opacity, scale, translateX/Y`;
+}`;
 
   try {
     const url = `${AZURE_ENDPOINT}/openai/deployments/${DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
@@ -445,37 +444,60 @@ Rules:
       body: JSON.stringify({
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Generate visual directives:\n\n${segDescs}` },
+          { role: 'user', content: 'Generate the frame-by-frame visual breakdown for this segment.' },
         ],
-        temperature: 0.6,
-        max_tokens: 8000,
+        temperature: 0.7,
+        max_tokens: 2000,
         response_format: { type: 'json_object' },
       }),
     });
 
-    if (!res.ok) throw new Error(`Azure ${res.status}: ${await res.text()}`);
+    if (!res.ok) throw new Error(`Azure ${res.status}`);
 
     const json = await res.json();
     const raw = json.choices?.[0]?.message?.content?.trim();
-    if (!raw) throw new Error('Empty AI response');
+    if (!raw) throw new Error('Empty response');
 
     const parsed = JSON.parse(raw);
-    const arr = Array.isArray(parsed)
-      ? parsed
-      : (parsed.segments || parsed.directives || []);
-
-    if (arr.length === 0) throw new Error('Empty directives array');
-
     const usage = json.usage;
     if (usage) {
-      console.log(`  💰 Visual Director tokens: ${usage.prompt_tokens} in + ${usage.completion_tokens} out`);
+      console.log(`    💰 Seg ${segIndex + 1} tokens: ${usage.prompt_tokens}+${usage.completion_tokens}`);
     }
-    return arr;
+    return parsed;
 
   } catch (err) {
-    console.error(`  ⚠️ AI Visual Director failed: ${err.message}`);
+    console.error(`    ⚠️ AI Seg ${segIndex + 1} failed: ${err.message}`);
     return null;
   }
+}
+
+/**
+ * AI Visual Director — per-segment calls with full article context.
+ * Each segment gets its own AI call for detailed cinematic scenes.
+ */
+async function aiDirectVisuals(segmentScripts, segments, articles) {
+  const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
+  const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
+  if (!AZURE_ENDPOINT || !AZURE_KEY) return null;
+
+  const totalSegs = segmentScripts.length;
+  const results = [];
+
+  for (let i = 0; i < totalSegs; i++) {
+    console.log(`  🎬 Directing segment ${i + 1}/${totalSegs}...`);
+    const article = articles?.[i] || {};
+    const result = await aiDirectSingleSegment(
+      segmentScripts[i], article, segments[i], i, totalSegs,
+    );
+    results.push(result);
+  }
+
+  // Check if we got enough valid results
+  const validCount = results.filter(Boolean).length;
+  if (validCount === 0) return null;
+
+  console.log(`  ✅ AI visual directives: ${validCount}/${totalSegs} segments`);
+  return results;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -724,19 +746,27 @@ function buildOverlaysFromBlocks(visualBlocks, segDuration) {
  * @param {string[]}  segmentScripts     Voiceover script per segment
  * @param {object[]}  segments           Segment metadata from AI director
  * @param {object[]}  segmentVoiceovers  TTS output per segment
+ * @param {object[]}  articles           Full article objects (for per-segment AI context)
  * @returns {Promise<object[]>}          Visual directives per segment
  */
-export async function directVisuals(segmentScripts, segments, segmentVoiceovers) {
+export async function directVisuals(segmentScripts, segments, segmentVoiceovers, articles = []) {
   console.log(`\n🎨 Visual Director: planning ${segmentScripts.length} segments...`);
 
-  // Try AI path first
-  let directives = await aiDirectVisuals(segmentScripts, segments);
+  // Try AI path first — per-segment calls with full article context
+  let directives = await aiDirectVisuals(segmentScripts, segments, articles);
 
-  if (directives && directives.length >= segmentScripts.length) {
-    console.log('  ✅ AI visual directives received');
+  if (directives && directives.length > 0) {
+    // Merge per-segment AI results with subtitle timestamps
+    // Some segments may have null (AI failed) — use fallback for those
+    const fallback = fallbackDirectVisuals(segmentScripts, segments, segmentVoiceovers);
 
-    // Merge AI phrase classifications with subtitle timestamps
-    for (let i = 0; i < directives.length; i++) {
+    for (let i = 0; i < segmentScripts.length; i++) {
+      if (!directives[i]) {
+        // AI failed for this segment — use heuristic fallback
+        directives[i] = fallback[i] || {};
+        continue;
+      }
+
       const subs = segmentVoiceovers[i]?.subtitles || [];
       const segDur = segments[i]?.durationSeconds ||
         Number(segmentVoiceovers[i]?.durationSeconds) || 15;
@@ -744,22 +774,19 @@ export async function directVisuals(segmentScripts, segments, segmentVoiceovers)
       directives[i].visualBlocks = mergeAIWithTimestamps(
         directives[i], segmentScripts[i], subs,
       );
-      delete directives[i].phrases; // cleanup raw AI field
+      delete directives[i].phrases;
 
-      // Build dataOverlays from blocks if AI didn't provide them
       if (!directives[i].dataOverlays || directives[i].dataOverlays.length === 0) {
         directives[i].dataOverlays = buildOverlaysFromBlocks(
           directives[i].visualBlocks, segDur,
         );
       }
 
-      // Defaults
       directives[i].mood ??= 'positive';
       directives[i].transition ??= 'fade';
       directives[i].textReveal ??= 'default';
       directives[i].statsVisualType ??= 'list';
 
-      // Image cycling adapted to block count
       const blockCount = directives[i].visualBlocks.length;
       directives[i].imageCycleDuration = Math.max(2, Math.min(4,
         Math.round(segDur / Math.max(blockCount, 3)),
