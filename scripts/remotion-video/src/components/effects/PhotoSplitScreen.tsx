@@ -11,7 +11,6 @@ import {
   useVideoConfig,
   interpolate,
   spring,
-  staticFile,
 } from "remotion";
 import { colors, glass, clampBoth } from "../../design-system";
 
@@ -31,8 +30,9 @@ export const PhotoSplitScreen: React.FC<PhotoSplitScreenProps> = ({
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
 
-  const resolve = (src: string) =>
-    src.startsWith("http") ? src : staticFile(src);
+  // Images arrive already resolved from VisualBlockScene
+  const identity = (src: string) =>
+    src;
 
   const count = Math.min(images.length, 4);
   if (count === 0) return null;
@@ -136,7 +136,7 @@ export const PhotoSplitScreen: React.FC<PhotoSplitScreenProps> = ({
           return (
             <div key={i} style={getPanelStyle(i)}>
               <Img
-                src={resolve(src)}
+                src={identity(src)}
                 style={{
                   width: "100%",
                   height: "100%",

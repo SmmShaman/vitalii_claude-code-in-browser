@@ -11,7 +11,6 @@ import {
   useVideoConfig,
   interpolate,
   spring,
-  staticFile,
 } from "remotion";
 import { colors, typography, clampBoth } from "../../design-system";
 
@@ -33,8 +32,9 @@ export const PhotoCompareSlider: React.FC<PhotoCompareSliderProps> = ({
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
 
-  const resolve = (src: string) =>
-    src.startsWith("http") ? src : staticFile(src);
+  // Images arrive already resolved from VisualBlockScene
+  const identity = (src: string) =>
+    src;
 
   // Slider moves from 20% to 80% then settles at 50%
   const rawProgress = interpolate(
@@ -66,7 +66,7 @@ export const PhotoCompareSlider: React.FC<PhotoCompareSliderProps> = ({
     <AbsoluteFill style={{ opacity: fadeIn * fadeOut }}>
       {/* After image (full background) */}
       <Img
-        src={resolve(imageAfter)}
+        src={identity(imageAfter)}
         style={{
           width: "100%",
           height: "100%",
@@ -84,7 +84,7 @@ export const PhotoCompareSlider: React.FC<PhotoCompareSliderProps> = ({
         }}
       >
         <Img
-          src={resolve(imageBefore)}
+          src={identity(imageBefore)}
           style={{
             width: "100%",
             height: "100%",

@@ -10,7 +10,6 @@ import {
   useCurrentFrame,
   useVideoConfig,
   interpolate,
-  staticFile,
 } from "remotion";
 import { clampBoth } from "../../design-system";
 
@@ -31,8 +30,9 @@ export const PhotoVerticalScroll: React.FC<PhotoVerticalScrollProps> = ({
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
-  const resolve = (src: string) =>
-    src.startsWith("http") ? src : staticFile(src);
+  // Images arrive already resolved from VisualBlockScene
+  const identity = (src: string) =>
+    src;
 
   const progress = interpolate(
     frame,
@@ -60,7 +60,7 @@ export const PhotoVerticalScroll: React.FC<PhotoVerticalScrollProps> = ({
   return (
     <AbsoluteFill style={{ opacity: fadeIn * fadeOut, overflow: "hidden" }}>
       <Img
-        src={resolve(imageSrc)}
+        src={identity(imageSrc)}
         style={{
           width: "100%",
           height: "180%",
