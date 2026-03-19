@@ -407,6 +407,18 @@ SCENE STYLE GUIDE:
 Available textEffects: typewriter, fadeUp, blurReveal, springPop, splitScale
 Available backgroundEffects: kenBurns, zoomPulse, slowPan, colorShift
 
+SCENE EFFECTS — use these keywords in sceneDescription to trigger visual components:
+- "counter ticks from 0 to N" → giant animated counter center-screen with mosaic grid background
+- "split screen" or "split-screen" or "glass divider" → screen divides into left/right panels with animated divider
+- "icons appear with stagger" or "popping in" → 3-6 category icons with spring-pop + glow circles
+- "grid" or "mosaic" or "filling the screen" → background grid of cells assembling center-outward
+- "dissolves pixel-by-pixel" or "reassembles" or "shatters" → pixel dissolve/reassemble transition
+- "circuit" or "data stream" or "code rain" → animated SVG circuit board traces with glowing dots
+- "timeline" or "roadmap" or "milestones" → horizontal line with milestone dots popping in
+- "pulse" or "alert" or "breaking" or "flash" → red edge vignette pulsing with border sweep
+
+USE THESE in your sceneDescription! Each keyword triggers a real rendered component.
+
 RULES:
 - Adjacent phrases MUST use different textEffect and backgroundEffect
 - sceneDescription: minimum 3 sentences, cinematic and SPECIFIC

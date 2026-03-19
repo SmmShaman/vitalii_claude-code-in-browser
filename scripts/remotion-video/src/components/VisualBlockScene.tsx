@@ -42,6 +42,7 @@ import {
 import { getMoodConfig } from "../design-system/moods";
 import { Particles, Spawner, Behavior } from "remotion-bits";
 import type { VisualBlock } from "../compositions/DailyNewsShow";
+import { resolveSceneEffect, SceneEffectRenderer } from "./effects";
 
 // ── Props ──
 
@@ -350,14 +351,29 @@ const BlockContent: React.FC<{
   const showText =
     block.visualMetaphor !== "narrative" || hasGraphic;
 
+  // Resolve scene effect from sceneDescription/renderHint keywords
+  const sceneEffect = resolveSceneEffect(block);
+  const hasSceneEffect = sceneEffect !== null;
+
   return (
     <AbsoluteFill style={{ opacity, zIndex: 5 }}>
+      {/* Scene effect layer (behind text, above background) */}
+      {hasSceneEffect && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 4 }}>
+          <SceneEffectRenderer
+            type={sceneEffect}
+            block={block}
+            accentColor={accentColor}
+          />
+        </div>
+      )}
+
       {/* Phrase text effect */}
       {showText && (
         <PhraseText
           block={block}
           isVertical={isVertical}
-          hasGraphic={hasGraphic}
+          hasGraphic={hasGraphic || hasSceneEffect}
         />
       )}
 
