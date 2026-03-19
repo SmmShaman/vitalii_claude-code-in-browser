@@ -16,22 +16,32 @@ import { ProgressTimeline, parseMilestones } from "./ProgressTimeline";
 import { Globe3D } from "./Globe3D";
 import { NoiseWave } from "./NoiseWave";
 import { DataDashboard, extractValues } from "./DataDashboard";
+import { PhotoSplitScreen } from "./PhotoSplitScreen";
+import { PhotoZoomReveal } from "./PhotoZoomReveal";
+import { PhotoCollage } from "./PhotoCollage";
+import { PhotoCompareSlider } from "./PhotoCompareSlider";
+import { PhotoVerticalScroll } from "./PhotoVerticalScroll";
+import { PhotoFilterTransition } from "./PhotoFilterTransition";
 
 interface SceneEffectRendererProps {
   type: SceneEffectType;
   block: VisualBlock;
   accentColor: string;
+  /** Available images for photo-native effects */
+  images?: string[];
 }
 
 export const SceneEffectRenderer: React.FC<SceneEffectRendererProps> = ({
   type,
   block,
   accentColor,
+  images = [],
 }) => {
   if (!type) return null;
 
   const desc = block.sceneDescription || "";
   const data = (block.graphicData || {}) as Record<string, unknown>;
+  const primaryImage = images[0] || "";
 
   switch (type) {
     case "alertPulse":
@@ -120,6 +130,76 @@ export const SceneEffectRenderer: React.FC<SceneEffectRendererProps> = ({
     case "dataDashboard": {
       const values = extractValues(data);
       return <DataDashboard accentColor={accentColor} values={values} />;
+    }
+
+    // ── Photo-native effects ──
+
+    case "photoSplitScreen":
+      return images.length >= 2 ? (
+        <PhotoSplitScreen
+          images={images}
+          accentColor={accentColor}
+          layout={desc.includes("vertical") ? "vertical" : desc.includes("grid") ? "grid" : "horizontal"}
+        />
+      ) : null;
+
+    case "photoZoomReveal": {
+      // Parse focus point from description if possible
+      let fx = 0.5, fy = 0.4;
+      const focusMatch = desc.match(/focus\s*(?:on\s*)?(?:the\s*)?(\w+)/i);
+      if (focusMatch) {
+        const area = focusMatch[1].toLowerCase();
+        if (area.includes("left")) fx = 0.25;
+        if (area.includes("right")) fx = 0.75;
+        if (area.includes("top")) fy = 0.25;
+        if (area.includes("bottom")) fy = 0.75;
+      }
+      return primaryImage ? (
+        <PhotoZoomReveal
+          imageSrc={primaryImage}
+          focusX={fx}
+          focusY={fy}
+          direction={desc.includes("zoom in") || desc.includes("close-up") ? "in" : "out"}
+          accentColor={accentColor}
+        />
+      ) : null;
+    }
+
+    case "photoCollage":
+      return images.length >= 2 ? (
+        <PhotoCollage images={images} accentColor={accentColor} />
+      ) : null;
+
+    case "photoCompareSlider":
+      return images.length >= 2 ? (
+        <PhotoCompareSlider
+          imageBefore={images[0]}
+          imageAfter={images[1]}
+          accentColor={accentColor}
+        />
+      ) : null;
+
+    case "photoVerticalScroll":
+      return primaryImage ? (
+        <PhotoVerticalScroll
+          imageSrc={primaryImage}
+          direction={desc.includes("down") ? "down" : "up"}
+          accentColor={accentColor}
+        />
+      ) : null;
+
+    case "photoFilterTransition": {
+      let mode: "grayscaleToColor" | "blurToSharp" | "darkToLight" | "sepiaToVivid" = "grayscaleToColor";
+      if (desc.includes("blur")) mode = "blurToSharp";
+      else if (desc.includes("dark")) mode = "darkToLight";
+      else if (desc.includes("sepia")) mode = "sepiaToVivid";
+      return primaryImage ? (
+        <PhotoFilterTransition
+          imageSrc={primaryImage}
+          mode={mode}
+          accentColor={accentColor}
+        />
+      ) : null;
     }
 
     default:

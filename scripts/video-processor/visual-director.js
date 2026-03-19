@@ -428,10 +428,19 @@ SCENE EFFECTS — use these keywords in sceneDescription to trigger REAL rendere
 - "timeline" or "roadmap" or "milestones" → horizontal line with milestone dots popping in
 - "pulse" or "alert" or "breaking" → red edge vignette pulsing with border sweep + screen shake
 
+📸 PHOTO-NATIVE (work WITH the article images, not over them):
+- "photos side by side" or "split screen photos" → 2-4 photos in panels with glass dividers
+- "zoom into detail" or "close-up" or "focus on part" → cinematic zoom into specific area of photo
+- "photo collage" or "scattered photos" → 3-6 photos as scattered cards with spring pop
+- "before after slider" or "compare slider" → two photos with animated comparison slider
+- "vertical scroll" or "scrolling through" → photo scrolls vertically like a webpage
+- "grayscale to color" or "blur to sharp" or "filter transition" → photo transforms through CSS filters
+
 IMPORTANT: USE THESE KEYWORDS in sceneDescription! Each triggers a real rendered component.
+Prefer PHOTO-NATIVE effects when article has good images — they look more professional.
 Prefer "rotating globe" over generic "global" when you want the 3D effect.
 Prefer "dashboard with analytics panels" over "shows numbers" for rich data viz.
-Prefer "circuit board traces" over "technology" for the digital pattern.
+Prefer "photos side by side" over "split screen" when you want photos in panels (not text panels).
 
 RULES:
 - Adjacent phrases MUST use different textEffect and backgroundEffect

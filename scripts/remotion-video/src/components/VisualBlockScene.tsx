@@ -264,6 +264,7 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
               accentColor={accentColor}
               isVertical={isVertical}
               moodTempo={moodCfg.tempo}
+              images={allImages}
             />
           </Sequence>
         );
@@ -333,7 +334,8 @@ const BlockContent: React.FC<{
   accentColor: string;
   isVertical: boolean;
   moodTempo?: number;
-}> = ({ block, accentColor, isVertical, moodTempo = 1.0 }) => {
+  images?: string[];
+}> = ({ block, accentColor, isVertical, moodTempo = 1.0, images = [] }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
@@ -368,6 +370,7 @@ const BlockContent: React.FC<{
             type={sceneEffect}
             block={block}
             accentColor={accentColor}
+            images={images}
           />
         </div>
       )}
