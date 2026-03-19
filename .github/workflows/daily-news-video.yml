@@ -51,6 +51,22 @@ on:
           - public
           - unlisted
           - private
+      skip_images:
+        description: 'Skip background images (effects-only mode)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      skip_youtube:
+        description: 'Skip YouTube upload (save as artifact only)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
   # ── Job 1: Auto Digest (cron + manual auto_digest mode) ──
@@ -175,7 +191,8 @@ jobs:
           TARGET_DATE: ${{ github.event.client_payload.target_date || github.event.inputs.target_date || '' }}
           DRAFT_ID: ${{ github.event.client_payload.draft_id || '' }}
           YOUTUBE_PRIVACY: ${{ github.event.client_payload.youtube_privacy || github.event.inputs.youtube_privacy || 'public' }}
-          SKIP_YOUTUBE: ${{ github.event.client_payload.skip_youtube || 'false' }}
+          SKIP_YOUTUBE: ${{ github.event.client_payload.skip_youtube || github.event.inputs.skip_youtube || 'false' }}
+          SKIP_IMAGES: ${{ github.event.client_payload.skip_images || github.event.inputs.skip_images || 'false' }}
         run: node daily-compilation.js
 
       - name: Upload video to Supabase Storage (YouTube fallback)
