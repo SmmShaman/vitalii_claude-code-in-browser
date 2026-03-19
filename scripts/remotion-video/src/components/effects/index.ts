@@ -8,3 +8,6 @@ export { SplitScreenPanel } from "./SplitScreenPanel";
 export { PixelDissolve } from "./PixelDissolve";
 export { CircuitBoard } from "./CircuitBoard";
 export { ProgressTimeline } from "./ProgressTimeline";
+export { Globe3D } from "./Globe3D";
+export { NoiseWave } from "./NoiseWave";
+export { DataDashboard } from "./DataDashboard";

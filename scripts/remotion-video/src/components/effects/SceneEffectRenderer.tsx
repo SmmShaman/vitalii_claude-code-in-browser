@@ -13,6 +13,9 @@ import { SplitScreenPanel } from "./SplitScreenPanel";
 import { PixelDissolve } from "./PixelDissolve";
 import { CircuitBoard } from "./CircuitBoard";
 import { ProgressTimeline, parseMilestones } from "./ProgressTimeline";
+import { Globe3D } from "./Globe3D";
+import { NoiseWave } from "./NoiseWave";
+import { DataDashboard, extractValues } from "./DataDashboard";
 
 interface SceneEffectRendererProps {
   type: SceneEffectType;
@@ -106,6 +109,17 @@ export const SceneEffectRenderer: React.FC<SceneEffectRendererProps> = ({
           accentColor={accentColor}
         />
       );
+    }
+
+    case "globe3D":
+      return <Globe3D accentColor={accentColor} />;
+
+    case "noiseWave":
+      return <NoiseWave accentColor={accentColor} />;
+
+    case "dataDashboard": {
+      const values = extractValues(data);
+      return <DataDashboard accentColor={accentColor} values={values} />;
     }
 
     default:

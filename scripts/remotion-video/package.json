@@ -8,22 +8,30 @@
     "render": "npx remotion render NewsVideo out.mp4"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.5.0",
+    "@remotion/animation-utils": "^4.0.438",
     "@remotion/bundler": "^4.0.0",
     "@remotion/captions": "^4.0.435",
     "@remotion/cli": "^4.0.0",
     "@remotion/google-fonts": "^4.0.0",
+    "@remotion/layout-utils": "^4.0.438",
+    "@remotion/lottie": "^4.0.438",
     "@remotion/motion-blur": "^4.0.435",
+    "@remotion/noise": "^4.0.438",
     "@remotion/paths": "^4.0.435",
     "@remotion/player": "^4.0.0",
     "@remotion/shapes": "^4.0.435",
+    "@remotion/three": "^4.0.438",
     "@remotion/transitions": "^4.0.435",
     "@storybynumbers_/remotion-glitch-effect": "^1.1.0",
+    "@types/three": "^0.183.1",
     "culori": "^4.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "remotion": "^4.0.0",
     "remotion-animated": "^2.2.0",
-    "remotion-bits": "^0.2.0"
+    "remotion-bits": "^0.2.0",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",

@@ -407,17 +407,31 @@ SCENE STYLE GUIDE:
 Available textEffects: typewriter, fadeUp, blurReveal, springPop, splitScale
 Available backgroundEffects: kenBurns, zoomPulse, slowPan, colorShift
 
-SCENE EFFECTS — use these keywords in sceneDescription to trigger visual components:
+SCENE EFFECTS — use these keywords in sceneDescription to trigger REAL rendered components:
+
+🌍 3D & SPATIAL:
+- "rotating globe" or "wireframe sphere" or "earth" → 3D wireframe globe with neon grid + pulse dots (Three.js)
+- "wave" or "liquid flow" or "aurora" or "organic pattern" → flowing Perlin noise wave layers
+
+📊 DATA VISUALIZATION:
 - "counter ticks from 0 to N" → giant animated counter center-screen with mosaic grid background
-- "split screen" or "split-screen" or "glass divider" → screen divides into left/right panels with animated divider
-- "icons appear with stagger" or "popping in" → 3-6 category icons with spring-pop + glow circles
+- "dashboard" or "analytics panels" or "multiple charts" → multi-panel glass dashboard with counters + bars
+- "split screen" or "glass divider" → screen divides into left/right panels with animated divider
+
+🎨 MOTION GRAPHICS:
+- "icons appear with stagger" or "popping in" → 3-6 SVG category icons with spring-pop + glow circles
 - "grid" or "mosaic" or "filling the screen" → background grid of cells assembling center-outward
-- "dissolves pixel-by-pixel" or "reassembles" or "shatters" → pixel dissolve/reassemble transition
+- "dissolves pixel-by-pixel" or "shatters" → pixel dissolve/reassemble transition
+
+⚡ TECH & ATMOSPHERE:
 - "circuit" or "data stream" or "code rain" → animated SVG circuit board traces with glowing dots
 - "timeline" or "roadmap" or "milestones" → horizontal line with milestone dots popping in
-- "pulse" or "alert" or "breaking" or "flash" → red edge vignette pulsing with border sweep
+- "pulse" or "alert" or "breaking" → red edge vignette pulsing with border sweep + screen shake
 
-USE THESE in your sceneDescription! Each keyword triggers a real rendered component.
+IMPORTANT: USE THESE KEYWORDS in sceneDescription! Each triggers a real rendered component.
+Prefer "rotating globe" over generic "global" when you want the 3D effect.
+Prefer "dashboard with analytics panels" over "shows numbers" for rich data viz.
+Prefer "circuit board traces" over "technology" for the digital pattern.
 
 RULES:
 - Adjacent phrases MUST use different textEffect and backgroundEffect

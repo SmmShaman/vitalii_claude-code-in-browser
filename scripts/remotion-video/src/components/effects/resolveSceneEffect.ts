@@ -13,9 +13,15 @@ export type SceneEffectType =
   | "circuitBoard"
   | "progressTimeline"
   | "alertPulse"
+  | "globe3D"
+  | "noiseWave"
+  | "dataDashboard"
   | null;
 
 const PATTERNS: [RegExp, SceneEffectType][] = [
+  [/globe|earth|world\s*map|rotating\s*sphere|planet|wireframe\s*sphere/i, "globe3D"],
+  [/dashboard|multiple\s*charts|analytics\s*panel|several\s*metrics|multi[\s-]panel/i, "dataDashboard"],
+  [/wave|flow|liquid|aurora|organic\s*pattern|undulat/i, "noiseWave"],
   [/counter\s*tick|giant counter|tick-up|counting\s*up|ticks?\s*from\s*0/i, "counterMosaic"],
   [/split[\s-]?screen|glass divider|left.*side.*right|two\s*halves/i, "splitScreen"],
   [/dissolve|pixel[\s-]by[\s-]pixel|reassembl|shatter|scatter/i, "pixelDissolve"],
