@@ -123,6 +123,10 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
   }
   const curImgIdx = imageIndexPerBlock[activeIdx] ?? 0;
 
+  // When a scene effect is active, dim the background image so effects are visible
+  const activeBlockHasEffect = resolveSceneEffect(visualBlocks[activeIdx] || {} as VisualBlock) !== null;
+  const bgDimFactor = activeBlockHasEffect ? 0.3 : 1.0; // 30% opacity when effect active
+
   // Crossfade near block boundary when image changes
   const nextIdx = Math.min(activeIdx + 1, visualBlocks.length - 1);
   const nextImgIdx = imageIndexPerBlock[nextIdx] ?? curImgIdx;
@@ -210,7 +214,7 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
               height: "100%",
               objectFit: "cover",
               transform: bgTransform(bgEffect, curImgIdx),
-              filter: bgFilter(bgEffect),
+              filter: [bgFilter(bgEffect), activeBlockHasEffect ? `brightness(${bgDimFactor})` : ''].filter(Boolean).join(' ') || undefined,
               opacity: isXfading ? 1 - xfadeProgress : 1,
             }}
           />

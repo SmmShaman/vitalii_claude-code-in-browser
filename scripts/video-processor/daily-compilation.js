@@ -796,7 +796,8 @@ async function main() {
     const article = detailedArticles[i];
     const segment = plan.segments[i] || { headline: article.title_no || article.title_en || '', category: 'news', accentColor: '#FF7A00' };
 
-    const imageUrl = article.processed_image_url || article.image_url;
+    const SKIP_IMAGES = process.env.SKIP_IMAGES === 'true';
+    const imageUrl = SKIP_IMAGES ? null : (article.processed_image_url || article.image_url);
     let imageFilename = '';
 
     if (imageUrl) {
@@ -1023,7 +1024,8 @@ async function main() {
 
   // Calculate total duration from actual segment durations
   // Dynamic intro/outro duration based on TTS (minimum 4s)
-  const introDuration = introVoiceover ? Math.max(Number(introVoiceover.durationSeconds), 8) : 8;
+  // Cap intro at 6s — no long black screen with just text
+  const introDuration = introVoiceover ? Math.min(Math.max(Number(introVoiceover.durationSeconds), 4), 6) : 5;
   const roundupDuration = roundupVoiceover ? Math.max(Number(roundupVoiceover.durationSeconds), 5) : 0;
   const outroDuration = outroVoiceover ? Math.max(Number(outroVoiceover.durationSeconds), 4) : 4;
   const overflowDuration = overflowVoiceover ? Math.max(Number(overflowVoiceover.durationSeconds), 4) : 0;
