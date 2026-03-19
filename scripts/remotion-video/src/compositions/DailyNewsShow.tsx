@@ -92,6 +92,10 @@ export interface VisualBlock {
   endTime: number;
   /** Duration in seconds */
   duration: number;
+  /** Detailed cinematic description of the visual scene */
+  sceneDescription?: string;
+  /** Remotion implementation hints (interpolate, spring, CSS filters) */
+  renderHint?: string;
   /** Classified visual metaphor for this phrase */
   visualMetaphor: string;
   /** Text animation effect for this block */

@@ -361,45 +361,69 @@ async function aiDirectVisuals(segmentScripts, segments) {
     return `SEGMENT ${i + 1} [${seg.category || 'news'}]:\n${script}`;
   }).join('\n\n---\n\n');
 
-  const systemPrompt = `You are a Visual Director for a news video digest. Given voiceover scripts for ${segmentScripts.length} segments, output a JSON object with key "segments" containing an array of visual directives.
+  const systemPrompt = `You are a cinematic Visual Director for a news video digest. You think in SCENES, not slides. Each phrase of narration becomes a unique visual moment with specific effects, animations, and motion graphics.
 
-For each segment:
-1. Split the script into phrases (2-4 sec each, roughly by sentence).
-2. Classify each phrase's visual metaphor: data | comparison | growth | decline | enumeration | technology | geography | timeline | focus | urgency | narrative.
-3. For phrases with numbers, extract the actual data for animated infographics (graphicType + graphicData). NEVER invent numbers.
-4. Assign segment-level mood, transition, textReveal — ensuring ADJACENT segments differ.
+Given ${segmentScripts.length} voiceover scripts, create a detailed SCENE-BY-SCENE visual plan.
+
+For each segment, split the script into phrases (3-4 seconds each) and for EACH phrase write:
+1. "text" — the exact phrase from the script
+2. "sceneDescription" — DETAILED cinematic description: what appears on screen, what animates, what transforms. Be SPECIFIC: "3D wireframe globe rotating with neon grid, light pulses moving across surface" NOT "globe animation".
+3. "renderHint" — specific Remotion implementation hints: which effects, transforms, interpolations to use.
+4. "metaphor" — the visual metaphor category
+5. "textEffect" — how the phrase text animates on screen
+6. "graphicType" + "graphicData" — if numbers present, extract for animated infographics
+7. "backgroundEffect" — how the background behaves
+8. "triggerImageChange" — cycle to next image
+
+VISUAL THINKING GUIDE — translate MEANING into MOTION:
+- Numbers/stats → animated counters ticking up, bar charts growing with spring, dashboard panels
+- Comparisons → split-screen with animated divider, before/after dissolve, A→B transformation
+- Growth/launch → scale-up from center, particle burst, icons assembling
+- Decline/crisis → elements shattering into particles, red color shift, vignette darkening
+- Technology/AI → glitch effects, data streams, Matrix-style code rain, circuit board patterns
+- Geography/global → panning across regions, map highlights, flags appearing
+- Lists/multiple items → staggered icon parade, items popping in one by one
+- Urgency/breaking → rapid cuts, screen shake, alert pulses, red accent flashes
+- Transition/change → morph dissolve old→new, pixel reassembly, shape transformation
+
+SCENE DESCRIPTION EXAMPLES:
+- GOOD: "Split screen with glass divider. Left: factory conveyor SVG with robotic arm. Right: dashboard with bar charts growing spring-animated, counter ticking 0→87%. Divider pulses accent color."
+- BAD: "Shows manufacturing and marketing data"
+- GOOD: "Large '8.6 milliarder' text center-screen with counter tick-up animation. Background: architectural blueprint wireframe rotating slowly. Glass card slides in from right showing cost breakdown bar chart."
+- BAD: "Displays the budget number"
 
 VARIETY RULES:
-- Adjacent segments MUST differ in transition AND textReveal AND mood.
-- Adjacent phrases MUST differ in textEffect.
-- Distribute ALL available options; don't repeat the same 2-3 everywhere.
+- Adjacent segments MUST differ in mood, transition, textReveal
+- Adjacent phrases MUST differ in textEffect and backgroundEffect
+- Every phrase must have a UNIQUE visual treatment — no two scenes look the same
 
 Available values:
 - mood: ${MOODS.join(', ')}
 - transition: ${TRANSITIONS.join(', ')}
 - textReveal: ${HEADLINE_REVEALS.join(', ')}
-- statsVisualType: ${STATS_VISUAL_TYPES.join(', ')}
 - textEffect: ${TEXT_EFFECTS.join(', ')}
 - graphicType: counter | barChart | comparison | bulletList | keyFigure | none
 - backgroundEffect: ${BACKGROUND_EFFECTS.join(', ')}
 
-Output format:
+Output JSON:
 {
   "segments": [
     {
       "mood": "...",
       "transition": "...",
       "textReveal": "...",
-      "statsVisualType": "...",
+      "statsVisualType": "list|counters|bars",
       "phrases": [
         {
-          "text": "phrase text",
-          "metaphor": "data",
-          "textEffect": "springPop",
-          "graphicType": "counter",
+          "text": "exact phrase from script",
+          "sceneDescription": "Detailed cinematic description of what appears on screen...",
+          "renderHint": "Remotion implementation: interpolate scale 0→1 with spring(damping:10), CSS filter hue-rotate, particles rate 0.8...",
+          "metaphor": "data|comparison|growth|decline|technology|geography|urgency|narrative",
+          "textEffect": "typewriter|fadeUp|blurReveal|springPop|splitScale",
+          "graphicType": "counter|keyFigure|comparison|barChart|bulletList|none",
           "graphicData": { "value": "87%", "label": "Markedsandel" },
-          "backgroundEffect": "zoomPulse",
-          "triggerImageChange": false
+          "backgroundEffect": "kenBurns|zoomPulse|slowPan|colorShift",
+          "triggerImageChange": true
         }
       ]
     }
@@ -407,9 +431,10 @@ Output format:
 }
 
 Rules:
-- graphicData only when graphicType ≠ "none".
-- triggerImageChange ≈ true every other phrase (keep visuals fresh).
-- graphicData values MUST come from the actual script text.`;
+- sceneDescription MUST be detailed and cinematic — minimum 2 sentences per phrase
+- graphicData only when graphicType ≠ "none", values from ACTUAL script text only
+- triggerImageChange ≈ true every other phrase
+- renderHint should reference Remotion primitives: interpolate, spring, CSS filter, opacity, scale, translateX/Y`;
 
   try {
     const url = `${AZURE_ENDPOINT}/openai/deployments/${DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
@@ -422,8 +447,8 @@ Rules:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Generate visual directives:\n\n${segDescs}` },
         ],
-        temperature: 0.5,
-        max_tokens: 4000,
+        temperature: 0.6,
+        max_tokens: 8000,
         response_format: { type: 'json_object' },
       }),
     });
@@ -657,6 +682,8 @@ function mergeAIWithTimestamps(aiDirective, scriptText, subtitles) {
       startTime: tp.startTime,
       endTime: tp.endTime,
       duration: tp.duration,
+      sceneDescription: ap.sceneDescription || '',
+      renderHint: ap.renderHint || '',
       visualMetaphor: ap.metaphor || 'narrative',
       textEffect: ap.textEffect || 'fadeUp',
       graphicType: ap.graphicType || 'none',

@@ -140,99 +140,73 @@ async function directDailyShow(articles, dateStr) {
     return `ARTICLE ${i + 1}${marker}${videoMarker}:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`;
   }).join('\n\n');
 
-  // ~15 seconds per detailed article + 12s intro/outro + roundup if needed
-  const roundupDuration = hasOverflow ? Math.min(articles.length * 1.5, 25) : 0;
+  // ~20 seconds per detailed article (narrative needs more time) + 8s intro/outro
+  const roundupDuration = 0; // NO roundup — narrative style, not headline listing
   const overflowDurationEst = hasOverflow ? 4 : 0;
-  const targetDuration = detailedCount * 15 + 12 + roundupDuration + overflowDurationEst;
+  const targetDuration = detailedCount * 20 + 12 + overflowDurationEst;
   const wordTarget = Math.round(targetDuration * 2);
 
   const wordsPerArticle = Math.round(wordTarget / (detailedCount + 2)); // +2 for intro/outro
 
-  const roundupPromptBlock = hasOverflow ? `
-2. "roundupScript" — quick teaser listing ALL ${articles.length} headlines (~${Math.round(roundupDuration)} seconds). Format: "I dag dekker vi ${articles.length} nyheter. Blant annet: [headline 1], [headline 2], ..." Name each story in 3-5 words. This is a FAST-PACED cold open preview.` : '';
-
   const overflowPromptBlock = hasOverflow ? `
-${hasOverflow ? '5' : '4'}. "overflowScript" — brief CTA mentioning ${overflowCount} additional stories (~4 seconds). Example: "Du finner ${overflowCount} flere nyheter på vitalii punkt no."` : '';
+3. "overflowScript" — brief CTA mentioning ${overflowCount} additional stories (~4 seconds). Example: "Du finner ${overflowCount} flere nyheter på vitalii punkt no."` : '';
 
-  const segmentCountNote = hasOverflow
-    ? `Write detailed scripts ONLY for the first ${detailedCount} articles. Articles ${detailedCount + 1}-${articles.length} are overflow — mention them briefly in the roundupScript only.`
-    : '';
+  const systemPrompt = `You are a professional Norwegian news journalist narrating a daily tech & business digest video.
 
-  const systemPrompt = `You are a professional Norwegian news anchor writing a daily news summary video script.
+You have ${articles.length} articles from ${dateStr}. Select the TOP ${detailedCount} most interesting stories and write a COHESIVE NARRATIVE — not a list of headlines.
 
-The video is a compilation of ${articles.length} news stories from ${dateStr}.${hasOverflow ? ` Only the first ${detailedCount} get detailed coverage; the rest are mentioned in the headlines roundup.` : ''}
-Target duration: ~${Math.round(targetDuration)} seconds. There is NO maximum length — take the time needed to cover each story properly.
-${segmentCountNote}
+NARRATIVE STYLE:
+- Write like a journalist telling a STORY, not reading a news ticker
+- Connect stories thematically where possible ("Mens Samsung dominerer mobilmarkedet, satser OpenAI på en helt annen front...")
+- Each segment should FLOW — use context, analysis, impact, not just facts
+- Think of it as a documentary narrator, not a news anchor reading headlines
+- NEVER list articles ("Sak nummer 1...", "Neste nyhet..."). Instead, use natural transitions ("I en relatert utvikling...", "På den andre siden av teknologilandskapet...", "Et av de mest overraskende funnene i dag...")
 
-You must write SEPARATE scripts for each part of the show:
-1. "introScript" — news digest opening (~4-5 seconds, ~${wordsPerArticle} words). Start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha." then a brief mention of today's news count (${articles.length} saker).${roundupPromptBlock}
-${hasOverflow ? '3' : '2'}. "segmentScripts" — one narration script for each of the ${detailedCount} detailed articles (~12-18 seconds each, ~${wordsPerArticle * 2} words each)
-${hasOverflow ? '4' : '3'}. "outroScript" — closing with subscribe CTA (~4-5 seconds, ~${wordsPerArticle} words). End with "Abonner på kanalen og trykk liker-knappen! Vi ses i morgen."${overflowPromptBlock}
-${hasOverflow ? '6' : '4'}. "segments" — visual metadata for each of the ${detailedCount} detailed stories
+You must write SEPARATE scripts for each part:
+1. "introScript" — atmospheric opening (~5-6 seconds). Start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha." Then set the MOOD of the day — what themes dominate? What's the big picture? Do NOT list headlines.
+2. "segmentScripts" — one narrative script per each of the ${detailedCount} stories (~15-25 seconds each, ~${wordsPerArticle * 2} words). Each must be a self-contained mini-story with hook → context → impact.${overflowPromptBlock}
+${hasOverflow ? '4' : '3'}. "outroScript" — reflective closing (~5-6 seconds). Wrap up the day's themes, end with "Abonner på kanalen og trykk liker-knappen! Vi ses i morgen."
+${hasOverflow ? '5' : '4'}. "segments" — visual metadata for each of the ${detailedCount} stories
 
 SCRIPT RULES:
-- introScript: Must start with "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha." followed by today's news count.${hasOverflow ? '\n- roundupScript: Quick-fire listing of ALL headlines. Each story name 3-5 words. Fast pace, building anticipation.' : ''}
-- Each segmentScript: transition + 3-5 sentences covering key points. Natural conversational tone. Don't rush.
-- outroScript: Must include "Abonner på kanalen og trykk liker-knappen!" (subscribe and like CTA).${hasOverflow ? '\n- overflowScript: Brief mention that more stories are on the website.' : ''}
-- Each script is a SEPARATE voiceover audio — they must stand alone (no references to "previous" or "next")
-- Write at a calm, natural pace — ikke hastverk. Use natural pauses between sentences.
+- introScript: Set the atmosphere. "Today the tech world woke up to..." style. No headline listing.
+- NO "roundupScript" — we do NOT read all headlines. The intro sets the mood, then we dive into stories.
+- Each segmentScript: hook sentence → 2-3 sentences of context/analysis → impact/takeaway. Natural, flowing, JOURNALISTIC.
+- outroScript: Reflect on the day's themes. "Abonner på kanalen og trykk liker-knappen!"
+- Each script is SEPARATE voiceover audio — they must stand alone
+- Write at a calm, natural pace. Use pauses. Let information breathe.
 
 LANGUAGE QUALITY:
-- Write in clean Norwegian Bokmål (NOT Nynorsk). AVOID English loanwords when a Norwegian equivalent exists.
+- Write in clean Norwegian Bokmål (NOT Nynorsk). AVOID English loanwords when Norwegian equivalent exists.
 - Use "kunstig intelligens" not "AI", "programvare" not "software", "nettside" not "website", "bruker" not "user", "oppdatering" not "update", "selskap" not "company" (when contextually appropriate).
-- Technical terms with no established Norwegian equivalent (like "blockchain", "API", "GPU") may remain in English.
-- The text will be read aloud by TTS — write phonetically clear Norwegian that sounds natural when spoken.
-- Avoid complex compound sentences. Use short, clear sentences with natural pauses.
+- Technical terms with no established Norwegian equivalent ("blockchain", "API", "GPU") may remain in English.
+- TTS-optimized: phonetically clear, short sentences, natural pauses.
 
-SEGMENTS array — one object per article with VISUAL DIRECTIVES:
+SEGMENTS array — one object per story with VISUAL DIRECTIVES:
 {
-  "headline": "Norwegian headline (5-10 words)",
-  "keyQuote": "Most impactful sentence from the CORRESPONDING segmentScript (Norwegian)",
+  "headline": "Norwegian headline (5-10 words, punchy)",
+  "keyQuote": "Most impactful sentence from the CORRESPONDING segmentScript",
   "category": "tech|business|ai|startup|science|politics|crypto|health|news",
-  "accentColor": "#hex (warm orange tones preferred: #FF7A00, #FF8C42, #FF6B35; match category mood)",
+  "accentColor": "#hex (warm orange preferred: #FF7A00, #FF8C42, #FF6B35)",
   "mood": "urgent|energetic|positive|analytical|serious|contemplative|lighthearted|cautionary",
   "transition": "fade|wipeLeft|wipeRight|slideUp|slideDown|zoomIn|zoomOut",
   "textReveal": "default|typewriter|splitFade|splitScale"
 }
 
-MOOD GUIDE (choose based on story tone):
-- "urgent": breaking news, crises → fast animations
-- "energetic": startups, launches, achievements → quick & lively
-- "positive": good news, growth → balanced pace
-- "analytical": research, data, reports → measured & steady
-- "serious": politics, legal, regulation → formal pacing
-- "contemplative": opinion, human interest → slow & thoughtful
-- "lighthearted": entertainment, culture, fun → playful bounce
-- "cautionary": warnings, risks, security → measured tension
-
-TRANSITION GUIDE (how the segment enters):
-- "fade": calm, default transition
-- "wipeLeft": forward momentum (launches, growth stories)
-- "slideUp": data-heavy, stats-focused pieces
-- "zoomIn": breaking news, urgent stories
-- Use "fade" if unsure
-
-TEXT REVEAL GUIDE (how headline text appears):
-- "default": word-by-word spring punch (most stories)
-- "typewriter": character-by-character typing (building tension, breaking news)
-- "splitFade": words fade up one by one (thoughtful, analytical)
-- "splitScale": words scale in (energetic, startup news)
+MOOD/TRANSITION/REVEAL: Choose based on story TONE. Adjacent segments MUST differ.
 
 RULES:
-- Write in clean Norwegian Bokmål (NOT Nynorsk), avoid unnecessary anglicisms
-- Each script must be plain text — no [brackets], timestamps, or stage directions
-- segmentScripts array length MUST equal ${detailedCount} (one per detailed article, same order)
-- segments array length MUST equal ${detailedCount}
-- Be engaging, professional, conversational — like a modern news podcast
-- If an article has notable numbers/stats, mention them
-- Each segment MUST include mood, transition, and textReveal fields
-- Take your time with each story — don't compress information unnecessarily
+- segmentScripts.length MUST equal ${detailedCount}
+- segments.length MUST equal ${detailedCount}
+- Plain text only — no [brackets], timestamps, stage directions
+- Mention numbers/stats when available — they become animated infographics
+- Each segment MUST include mood, transition, textReveal
 
-Return valid JSON with this structure:
+Return valid JSON:
 {
-  "introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha...",${hasOverflow ? '\n  "roundupScript": "I dag dekker vi N nyheter. Blant annet: ...",' : ''}
-  "segmentScripts": ["La oss starte med...", "Videre til...", ...],
-  "outroScript": "Det var dagens nyheter...",${hasOverflow ? '\n  "overflowScript": "Du finner N flere nyheter på vitalii punkt no.",' : ''}
+  "introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha...",
+  "segmentScripts": ["...", "...", ...],
+  "outroScript": "...",${hasOverflow ? '\n  "overflowScript": "Du finner N flere nyheter på vitalii punkt no.",' : ''}
   "segments": [{headline, keyQuote, category, accentColor, mood, transition, textReveal}, ...],
   "showTitle": "Daglig Nyhetsoppdatering"
 }`;
