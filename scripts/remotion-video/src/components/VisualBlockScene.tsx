@@ -130,8 +130,11 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
   const framesLeft = (blockEnd - currentTime) * fps;
   const isXfading =
     framesLeft > 0 && framesLeft < XFADE && nextImgIdx !== curImgIdx;
+  // interpolate requires monotonically increasing inputRange: [0, XFADE]
+  // framesElapsedInCrossfade goes from 0 (start) to XFADE (end)
+  const framesElapsedInXfade = XFADE - framesLeft;
   const xfadeProgress = isXfading
-    ? interpolate(framesLeft, [XFADE, 0], [0, 1], clampBoth)
+    ? interpolate(framesElapsedInXfade, [0, XFADE], [0, 1], clampBoth)
     : 0;
 
   // ── Background effect (from active block) ──
