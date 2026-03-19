@@ -29,6 +29,7 @@ import { generateAIThumbnail } from './generate-ai-thumbnail.js';
 import { generateAllAvatarClips } from './generate-avatar.js';
 import { downloadPexelsMedia } from './pexels-media.js';
 import { scrapeAllArticleImages } from './scrape-article-images.js';
+import { directVisuals } from './visual-director.js';
 
 // ── Config ──
 
@@ -695,6 +696,19 @@ async function main() {
     outroVoiceover = await generateVoiceover(plan.outroScript, LANGUAGE, { gender: 'male' });
   }
 
+  // Step 2.5: Visual Director — phrase-level visual planning
+  console.log('\n🎨 Step 2.5: Visual direction...');
+  let visualDirectives = [];
+  try {
+    visualDirectives = await directVisuals(
+      plan.segmentScripts || [],
+      plan.segments || [],
+      segmentVoiceovers,
+    );
+  } catch (e) {
+    console.log(`  ⚠️ Visual Director failed, using defaults: ${e.message}`);
+  }
+
   // Step 4: Download images + prepare Remotion assets
   console.log('\n📥 Step 3: Downloading images...');
   const remotionProjectDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../remotion-video');
@@ -804,6 +818,9 @@ async function main() {
       console.log(`     📐 Segment ${i} duration: ${segDuration.toFixed(1)}s (voice: ${voDuration.toFixed(1)}s)`);
     }
 
+    // Merge Visual Director enrichments (overrides basic AI director choices)
+    const vd = visualDirectives[i] || {};
+
     segments.push({
       headline: segment.headline || article.title_no || article.title_en || '',
       imageSrc: imageFilename,
@@ -815,14 +832,18 @@ async function main() {
       voiceoverSrc: audioFiles[i] || '',
       subtitles: vo ? vo.subtitles : [],
       slug: article.slug_en || '',
-      // Visual directives from AI director
-      mood: segment.mood || 'positive',
-      transition: segment.transition || 'fade',
-      textReveal: segment.textReveal || 'default',
+      // Visual directives — Visual Director overrides basic AI director
+      mood: vd.mood || segment.mood || 'positive',
+      transition: vd.transition || segment.transition || 'fade',
+      textReveal: vd.textReveal || segment.textReveal || 'default',
+      statsVisualType: vd.statsVisualType || undefined,
+      facts: vd.facts || undefined,
       // AI-generated image search queries for Pexels (from visual scenario)
       imageSearchQueries: segment.imageSearchQueries || [],
-      // Animated infographic overlays (charts, tables, key figures)
-      dataOverlays: segment.dataOverlays || [],
+      // Animated infographic overlays — Visual Director or basic AI director
+      dataOverlays: (vd.dataOverlays && vd.dataOverlays.length > 0) ? vd.dataOverlays : (segment.dataOverlays || []),
+      // Visual Director: phrase-level visual blocks (consumed by future VisualBlock renderer)
+      visualBlocks: vd.visualBlocks || [],
     });
   }
 
