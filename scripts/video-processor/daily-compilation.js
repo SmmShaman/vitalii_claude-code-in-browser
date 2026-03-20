@@ -768,28 +768,8 @@ async function main() {
         try {
           let imgUrl = null;
 
-          if (GOOGLE_KEY && GOOGLE_CSE) {
-            // Google Custom Search API
-            const params = new URLSearchParams({
-              key: GOOGLE_KEY, cx: GOOGLE_CSE, q: query,
-              searchType: 'image', num: '3', imgSize: 'large', safe: 'active',
-            });
-            const resp = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`);
-            if (resp.ok) {
-              const data = await resp.json();
-              imgUrl = data.items?.[0]?.link;
-              if (!imgUrl && i === 0 && j === 0) {
-                // Log first failure for debugging
-                console.log(`    ⚠️ CSE returned no images for: "${query.substring(0, 60)}" (items: ${data.items?.length || 0})`);
-              }
-            } else {
-              if (i === 0 && j === 0) {
-                const errBody = await resp.text().catch(() => '');
-                console.log(`    ⚠️ CSE HTTP ${resp.status}: ${errBody.substring(0, 200)}`);
-              }
-            }
-          } else if (SERPER_KEY) {
-            // Serper fallback
+          // Try Serper first (best quality), then Google CSE, then DuckDuckGo (free)
+          if (SERPER_KEY) {
             const resp = await fetch('https://google.serper.dev/images', {
               method: 'POST',
               headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
@@ -799,6 +779,42 @@ async function main() {
               const data = await resp.json();
               imgUrl = data.images?.[0]?.imageUrl;
             }
+          }
+
+          if (!imgUrl && GOOGLE_KEY && GOOGLE_CSE) {
+            try {
+              const params = new URLSearchParams({
+                key: GOOGLE_KEY, cx: GOOGLE_CSE, q: query,
+                searchType: 'image', num: '3', imgSize: 'large', safe: 'active',
+              });
+              const resp = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`);
+              if (resp.ok) {
+                const data = await resp.json();
+                imgUrl = data.items?.[0]?.link;
+              }
+            } catch { /* skip */ }
+          }
+
+          // DuckDuckGo free fallback (no API key needed)
+          if (!imgUrl) {
+            try {
+              // DDG vqd token + image search
+              const tokenResp = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`, {
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                redirect: 'follow',
+              });
+              const tokenHtml = await tokenResp.text();
+              const vqdMatch = tokenHtml.match(/vqd=['"]([^'"]+)['"]/);
+              if (vqdMatch) {
+                const ddgResp = await fetch(`https://duckduckgo.com/i.js?l=wt-wt&o=json&q=${encodeURIComponent(query)}&vqd=${vqdMatch[1]}&f=size:Large`, {
+                  headers: { 'User-Agent': 'Mozilla/5.0' },
+                });
+                if (ddgResp.ok) {
+                  const ddgData = await ddgResp.json();
+                  imgUrl = ddgData.results?.[0]?.image;
+                }
+              }
+            } catch { /* skip DDG fallback */ }
           }
 
           if (imgUrl) {
