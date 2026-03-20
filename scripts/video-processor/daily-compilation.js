@@ -753,7 +753,12 @@ async function main() {
   const SERPER_KEY = process.env.SERPER_API_KEY || process.env.GOOGLE_SERPER_API_KEY;
   const hasImageSearch = (GOOGLE_KEY && GOOGLE_CSE) || SERPER_KEY;
 
-  if (hasImageSearch) {
+  console.log(`  🔑 Image search: GOOGLE_KEY=${!!GOOGLE_KEY}, CSE=${!!GOOGLE_CSE}, SERPER=${!!SERPER_KEY}`);
+  const totalBlocks = visualDirectives.reduce((s, vd) => s + (vd?.visualBlocks?.length || 0), 0);
+  const totalQueries = visualDirectives.reduce((s, vd) => s + (vd?.visualBlocks || []).filter(b => b.imageSearchQuery).length, 0);
+  console.log(`  📊 Total blocks: ${totalBlocks}, with imageSearchQuery: ${totalQueries}`);
+
+  if (hasImageSearch && totalQueries > 0) {
     for (let i = 0; i < visualDirectives.length; i++) {
       const blocks = visualDirectives[i]?.visualBlocks || [];
       let phraseImagesFound = 0;
