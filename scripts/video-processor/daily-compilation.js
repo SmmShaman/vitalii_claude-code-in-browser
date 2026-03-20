@@ -795,26 +795,17 @@ async function main() {
             } catch { /* skip */ }
           }
 
-          // DuckDuckGo free fallback (no API key needed)
-          if (!imgUrl) {
+          // Pexels fallback (free API, good quality stock photos)
+          if (!imgUrl && process.env.PEXELS_API_KEY) {
             try {
-              // DDG vqd token + image search
-              const tokenResp = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`, {
-                headers: { 'User-Agent': 'Mozilla/5.0' },
-                redirect: 'follow',
+              const pxResp = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`, {
+                headers: { 'Authorization': process.env.PEXELS_API_KEY },
               });
-              const tokenHtml = await tokenResp.text();
-              const vqdMatch = tokenHtml.match(/vqd=['"]([^'"]+)['"]/);
-              if (vqdMatch) {
-                const ddgResp = await fetch(`https://duckduckgo.com/i.js?l=wt-wt&o=json&q=${encodeURIComponent(query)}&vqd=${vqdMatch[1]}&f=size:Large`, {
-                  headers: { 'User-Agent': 'Mozilla/5.0' },
-                });
-                if (ddgResp.ok) {
-                  const ddgData = await ddgResp.json();
-                  imgUrl = ddgData.results?.[0]?.image;
-                }
+              if (pxResp.ok) {
+                const pxData = await pxResp.json();
+                imgUrl = pxData.photos?.[0]?.src?.large2x || pxData.photos?.[0]?.src?.large;
               }
-            } catch { /* skip DDG fallback */ }
+            } catch { /* skip */ }
           }
 
           if (imgUrl) {
