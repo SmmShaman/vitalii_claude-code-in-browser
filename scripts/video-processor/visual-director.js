@@ -364,90 +364,77 @@ async function aiDirectSingleSegment(script, article, segmentMeta, segIndex, tot
   const content = (article?.content_en || article?.content_no || article?.original_content || '').substring(0, 1500);
   const category = segmentMeta?.category || 'news';
 
-  const systemPrompt = `You are a cinematic Visual Director creating a FRAME-BY-FRAME visual breakdown for scene ${segIndex + 1} of ${totalSegs} in a news video.
+  const systemPrompt = `You are a Visual Director for segment ${segIndex + 1}/${totalSegs} of a news video.
 
-ARTICLE CONTEXT:
+ARTICLE:
 Title: ${title}
 Category: ${category}
 Content: ${content}
 
-VOICEOVER SCRIPT (what the narrator says):
+VOICEOVER:
 ${script}
 
-YOUR TASK: Split the voiceover into phrases (3-5 seconds each). For EACH phrase, design a unique CINEMATIC scene.
+TASK: Split voiceover into phrases (3-5 sec each). For EACH phrase, choose ONE effect that is CONTEXTUALLY MEANINGFUL to what the phrase says. An effect must ILLUSTRATE the specific content — never be generic decoration.
 
-For each phrase write:
-1. "text" — exact phrase from the script
-2. "sceneDescription" — DETAILED visual scene (min 3 sentences): what appears, what animates, what transforms. Think like a FILM DIRECTOR: "Giant counter ticks from 0 to 3,000,000 center-screen with spring bounce. Behind it — a grid of tiny chat bubble icons filling the screen like a mosaic, each popping in with stagger delay. Dark background, bubbles glow soft blue." NOT "shows a counter".
-3. "renderHint" — Remotion implementation: "AnimatedCounter value=3000000 with spring(damping:10). Background: Particles rate=1.2 max=40 with bubble shapes. Each bubble Sequence with stagger 2 frames."
-4. "metaphor" — visual metaphor category
-5. "textEffect" — text animation: typewriter | fadeUp | blurReveal | springPop | splitScale
-6. "graphicType" — infographic: counter | keyFigure | comparison | barChart | bulletList | none
-7. "graphicData" — data for graphic (ONLY real numbers from the article, NEVER invent)
-8. "backgroundEffect" — kenBurns | zoomPulse | slowPan | colorShift
-9. "triggerImageChange" — true to cycle background image
+CRITICAL RULE — CONTEXT OVER DECORATION:
+❌ BAD: "rotating globe" (generic, doesn't relate to article)
+✅ GOOD: "rotating globe highlighting Norway and Canada" (specific to the story's countries)
 
-CREATIVE DIRECTION for this article:
-- What are the KEY NUMBERS? → Each number becomes an animated counter or chart
-- What is the CENTRAL METAPHOR? → Translate it into visual motion
-- What CONTRASTS exist? → Split-screen, before/after, A→B transformation
-- What is the EMOTIONAL TONE? → Drives color palette, animation speed, particle density
-- What OBJECTS represent this story? → Icons, symbols, shapes that animate on screen
+❌ BAD: "counter ticks from 0 to 87" (just a number without meaning)
+✅ GOOD: "counter ticks from 0 to 87% labeled 'Markedsandel foldbare telefoner'" (labeled, contextual)
 
-SCENE STYLE GUIDE:
-- Numbers: ALWAYS animated counters ticking up from 0, NEVER static text
-- Comparisons: split-screen with animated glass divider, values on each side
-- Growth: elements scaling up, particle burst, assembling icons
-- Decline: shattering particles, red color shift, vignette darkening
-- Technology: glitch effects, data streams, circuit patterns, code rain
-- Geography: map panning, region highlights, flag icons
-- Lists: staggered icon parade, items popping in one by one
-- Urgency: rapid transitions, screen shake, red alert pulses
+❌ BAD: "icons appear with stagger" (generic icons)
+✅ GOOD: "icons appear with stagger: laptop for tech sector, medical cross for healthcare, palette for creative industries" (specific to article's industries)
 
-Available textEffects: typewriter, fadeUp, blurReveal, springPop, splitScale
-Available backgroundEffects: kenBurns, zoomPulse, slowPan, colorShift
+❌ BAD: "circuit board traces" (generic tech feel)
+✅ GOOD: "circuit board traces forming the shape of a drone" (specific to article about drones)
 
-SCENE EFFECTS — use these keywords in sceneDescription to trigger REAL rendered components:
+EFFECT MUST MATCH PHRASE MEANING — ask yourself: "If I remove the voiceover, can the viewer understand what this scene is about just from the visuals?" If NO — the effect is too generic.
 
-🌍 3D & SPATIAL:
-- "rotating globe" or "wireframe sphere" or "earth" → 3D wireframe globe with neon grid + pulse dots (Three.js)
-- "wave" or "liquid flow" or "aurora" or "organic pattern" → flowing Perlin noise wave layers
+VARIETY RULE: You have 17 effects. Use AT LEAST 3 DIFFERENT effects across your 4-6 phrases. NEVER use the same effect twice in a row.
 
-📊 DATA VISUALIZATION:
-- "counter ticks from 0 to N" → giant animated counter center-screen with mosaic grid background
-- "dashboard" or "analytics panels" or "multiple charts" → multi-panel glass dashboard with counters + bars
-- "split screen" or "glass divider" → screen divides into left/right panels with animated divider
+AVAILABLE EFFECTS (use exact keywords in sceneDescription):
 
-🎨 MOTION GRAPHICS:
-- "icons appear with stagger" or "popping in" → 3-6 SVG category icons with spring-pop + glow circles
-- "grid" or "mosaic" or "filling the screen" → background grid of cells assembling center-outward
-- "dissolves pixel-by-pixel" or "shatters" → pixel dissolve/reassemble transition
+📸 PHOTO-NATIVE (preferred — use article photos creatively):
+- "zoom into detail" + describe what area to focus on
+- "photos side by side" + describe what each panel shows
+- "photo collage" with specific photo descriptions
+- "vertical scroll" for long/detailed images
+- "grayscale to color" or "blur to sharp" for dramatic reveals
+- "before after slider" for comparisons
 
-⚡ TECH & ATMOSPHERE:
-- "circuit" or "data stream" or "code rain" → animated SVG circuit board traces with glowing dots
-- "timeline" or "roadmap" or "milestones" → horizontal line with milestone dots popping in
-- "pulse" or "alert" or "breaking" → red edge vignette pulsing with border sweep + screen shake
+📊 DATA (only when article has REAL numbers):
+- "counter ticks from 0 to [NUMBER]" + meaningful label
+- "dashboard with analytics panels" + specific metrics from article
+- "split screen" with labeled left/right values from article
 
-📸 PHOTO-NATIVE (work WITH the article images, not over them):
-- "photos side by side" or "split screen photos" → 2-4 photos in panels with glass dividers
-- "zoom into detail" or "close-up" or "focus on part" → cinematic zoom into specific area of photo
-- "photo collage" or "scattered photos" → 3-6 photos as scattered cards with spring pop
-- "before after slider" or "compare slider" → two photos with animated comparison slider
-- "vertical scroll" or "scrolling through" → photo scrolls vertically like a webpage
-- "grayscale to color" or "blur to sharp" or "filter transition" → photo transforms through CSS filters
+🎨 CONTEXTUAL GRAPHICS:
+- "icons appear with stagger: [icon1], [icon2], [icon3]" — name specific icons relevant to story
+- "timeline with milestones: [step1], [step2], [step3]" — name actual milestones from article
+- "rotating globe highlighting [COUNTRY/REGION]" — name the actual places
 
-IMPORTANT: USE THESE KEYWORDS in sceneDescription! Each triggers a real rendered component.
-Prefer PHOTO-NATIVE effects when article has good images — they look more professional.
-Prefer "rotating globe" over generic "global" when you want the 3D effect.
-Prefer "dashboard with analytics panels" over "shows numbers" for rich data viz.
-Prefer "photos side by side" over "split screen" when you want photos in panels (not text panels).
+🌊 ATMOSPHERE (use sparingly, max 1 per segment):
+- "wave flow" for organic/fluid topics
+- "circuit board traces" ONLY for actual tech/AI articles
+- "alert pulse" ONLY for genuine breaking/urgent news
+- "dissolves pixel-by-pixel" for transformation stories
+
+PHRASE FIELDS:
+- "text": exact phrase
+- "sceneDescription": WHAT the viewer sees, tied to article content (2-3 sentences)
+- "renderHint": Remotion implementation details
+- "metaphor": visual category
+- "textEffect": typewriter | fadeUp | blurReveal | springPop | splitScale (vary between phrases!)
+- "graphicType": counter | keyFigure | comparison | barChart | bulletList | none
+- "graphicData": ONLY real numbers from article with meaningful labels
+- "backgroundEffect": kenBurns | zoomPulse | slowPan | colorShift (vary!)
+- "triggerImageChange": true every other phrase
 
 RULES:
-- Adjacent phrases MUST use different textEffect and backgroundEffect
-- sceneDescription: minimum 3 sentences, cinematic and SPECIFIC
-- renderHint: reference Remotion functions (interpolate, spring, Sequence, Particles)
-- graphicData: ONLY from actual article numbers, NEVER invent
-- triggerImageChange: approximately every other phrase
+- NO effect without specific context — every effect must illustrate the phrase's MEANING
+- Adjacent phrases: different textEffect AND different backgroundEffect
+- graphicData labels must be DESCRIPTIVE (not empty "", but "Daglige ChatGPT-søk" or "Markedsandel")
+- Use 3+ DIFFERENT effect types per segment — don't repeat the same pattern
 
 Return JSON:
 {
