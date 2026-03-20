@@ -421,7 +421,15 @@ AVAILABLE EFFECTS (use exact keywords in sceneDescription):
 
 PHRASE FIELDS:
 - "text": exact phrase
-- "sceneDescription": WHAT the viewer sees, tied to article content (2-3 sentences)
+- "sceneDescription": WHAT the viewer sees, tied to article content (2-3 sentences). Write like a film director's storyboard.
+- "imageSearchQuery": Google Images search query to find the PERFECT background photo for THIS phrase. Be SPECIFIC to the content:
+  ❌ BAD: "technology" (too generic)
+  ✅ GOOD: "NTNU Trondheim university campus aerial view"
+  ❌ BAD: "map" (too generic)
+  ✅ GOOD: "Norway Canada trade route map arctic cooperation"
+  ❌ BAD: "drone" (too generic)
+  ✅ GOOD: "hydrogen powered delivery drone flying over city"
+  Write the query as if YOU are searching Google Images to find a photo that PERFECTLY illustrates this specific sentence.
 - "renderHint": Remotion implementation details
 - "metaphor": visual category
 - "textEffect": typewriter | fadeUp | blurReveal | springPop | splitScale (vary between phrases!)
@@ -445,12 +453,13 @@ Return JSON:
   "phrases": [
     {
       "text": "exact phrase",
-      "sceneDescription": "detailed 3+ sentence cinematic description...",
-      "renderHint": "Remotion: interpolate(), spring(), Particles...",
+      "sceneDescription": "detailed cinematic description...",
+      "imageSearchQuery": "NTNU Trondheim campus aerial winter",
+      "renderHint": "Remotion: interpolate(), spring()...",
       "metaphor": "data",
       "textEffect": "springPop",
       "graphicType": "counter",
-      "graphicData": { "value": "3000000", "label": "daglige søk" },
+      "graphicData": { "value": "3000000", "label": "Daglige ChatGPT-søk" },
       "backgroundEffect": "zoomPulse",
       "triggerImageChange": false
     }
@@ -727,6 +736,7 @@ function mergeAIWithTimestamps(aiDirective, scriptText, subtitles) {
       endTime: tp.endTime,
       duration: tp.duration,
       sceneDescription: ap.sceneDescription || '',
+      imageSearchQuery: ap.imageSearchQuery || '',
       renderHint: ap.renderHint || '',
       visualMetaphor: ap.metaphor || 'narrative',
       textEffect: ap.textEffect || 'fadeUp',

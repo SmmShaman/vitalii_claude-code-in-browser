@@ -105,7 +105,13 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
     : [];
   const hasImages = allImages.length > 0;
 
-  // ── Image index driven by block boundaries ──
+  // ── Per-phrase images: each block can have its own contextual photo ──
+  // Priority: block.phraseImageSrc > cycling from allImages
+  const phraseImages: (string | null)[] = visualBlocks.map(b =>
+    b.phraseImageSrc ? resolve(b.phraseImageSrc) : null,
+  );
+
+  // ── Fallback image index driven by block boundaries ──
   const imageIndexPerBlock: number[] = [];
   let imgIdx = 0;
   for (let i = 0; i < visualBlocks.length; i++) {
@@ -121,6 +127,9 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
   for (let i = 0; i < visualBlocks.length; i++) {
     if (currentTime >= visualBlocks[i].startTime) activeIdx = i;
   }
+
+  // Active image: per-phrase photo if available, else cycling
+  const activePhraseImage = phraseImages[activeIdx];
   const curImgIdx = imageIndexPerBlock[activeIdx] ?? 0;
 
   // When a scene effect is active, dim the background image so effects are visible
@@ -203,11 +212,11 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           volume={0}
         />
-      ) : hasImages ? (
+      ) : (activePhraseImage || hasImages) ? (
         <>
           <Img
-            key={`vb-bg-${curImgIdx}`}
-            src={allImages[curImgIdx]}
+            key={`vb-bg-${activePhraseImage || curImgIdx}`}
+            src={activePhraseImage || allImages[curImgIdx]}
             style={{
               position: "absolute",
               width: "100%",

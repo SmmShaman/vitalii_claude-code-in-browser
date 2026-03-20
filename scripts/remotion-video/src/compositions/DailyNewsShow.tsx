@@ -94,6 +94,10 @@ export interface VisualBlock {
   duration: number;
   /** Detailed cinematic description of the visual scene */
   sceneDescription?: string;
+  /** Google Images search query for this phrase's background photo */
+  imageSearchQuery?: string;
+  /** Local filename of the downloaded per-phrase image */
+  phraseImageSrc?: string;
   /** Remotion implementation hints (interpolate, spring, CSS filters) */
   renderHint?: string;
   /** Classified visual metaphor for this phrase */

@@ -745,6 +745,42 @@ async function main() {
   }).join('\n\n');
   await sendTelegramStep(`🎨 <b>Visual Director:</b>\n\n${vdSummary}`);
 
+  // Step 3.1: Per-phrase image search (from Visual Director imageSearchQuery)
+  console.log('\n🔍 Step 2.6: Per-phrase image search...');
+  const SERPER_API_KEY = process.env.SERPER_API_KEY || process.env.GOOGLE_SERPER_API_KEY;
+  if (SERPER_API_KEY) {
+    for (let i = 0; i < visualDirectives.length; i++) {
+      const blocks = visualDirectives[i]?.visualBlocks || [];
+      let phraseImagesFound = 0;
+      for (let j = 0; j < blocks.length; j++) {
+        const query = blocks[j].imageSearchQuery;
+        if (!query) continue;
+        try {
+          const resp = await fetch('https://google.serper.dev/images', {
+            method: 'POST',
+            headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q: query, num: 3, tbs: 'qdr:m' }),
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const imgUrl = data.images?.[0]?.imageUrl;
+            if (imgUrl) {
+              blocks[j].phraseImageUrl = imgUrl; // store URL for later download
+              phraseImagesFound++;
+            }
+          }
+        } catch (e) {
+          // Skip failed searches silently
+        }
+      }
+      if (phraseImagesFound > 0) {
+        console.log(`  🔍 Seg ${i + 1}: ${phraseImagesFound}/${blocks.length} phrase images found`);
+      }
+    }
+  } else {
+    console.log('  ⚠️ No SERPER_API_KEY — skipping per-phrase image search');
+  }
+
   // Step 4: Download images + prepare Remotion assets
   console.log('\n📥 Step 3: Downloading images...');
   const remotionProjectDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../remotion-video');
@@ -996,6 +1032,36 @@ async function main() {
       segments[i].alternateImages = unique;
       segments[i].imageCycleDuration = Math.max(3, Math.round(Number(segments[i].durationSeconds) / (unique.length + 1)));
       console.log(`  🔍 Segment ${i}: ${removed} duplicates removed, ${unique.length} unique images`);
+    }
+  }
+
+  // Step 4a-4: Download per-phrase images (from Visual Director imageSearchQuery)
+  console.log('\n📸 Step 3a-4: Downloading per-phrase images...');
+  for (let i = 0; i < segments.length; i++) {
+    const blocks = visualDirectives[i]?.visualBlocks || [];
+    let downloaded = 0;
+    for (let j = 0; j < blocks.length; j++) {
+      const imgUrl = blocks[j].phraseImageUrl;
+      if (!imgUrl) continue;
+      const filename = `daily_phrase_${i}_${j}_${Date.now()}.jpg`;
+      try {
+        await downloadImage(imgUrl, path.join(publicDir, filename));
+        blocks[j].phraseImageSrc = filename;
+        downloaded++;
+      } catch {
+        // Skip failed downloads
+      }
+    }
+    if (downloaded > 0) {
+      console.log(`  📸 Seg ${i + 1}: ${downloaded} phrase images downloaded`);
+      // Update segment's visualBlocks with the downloaded image filenames
+      if (segments[i].visualBlocks) {
+        for (let j = 0; j < segments[i].visualBlocks.length; j++) {
+          if (blocks[j]?.phraseImageSrc) {
+            segments[i].visualBlocks[j].phraseImageSrc = blocks[j].phraseImageSrc;
+          }
+        }
+      }
     }
   }
 
