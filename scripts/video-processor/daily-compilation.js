@@ -778,6 +778,15 @@ async function main() {
             if (resp.ok) {
               const data = await resp.json();
               imgUrl = data.items?.[0]?.link;
+              if (!imgUrl && i === 0 && j === 0) {
+                // Log first failure for debugging
+                console.log(`    ⚠️ CSE returned no images for: "${query.substring(0, 60)}" (items: ${data.items?.length || 0})`);
+              }
+            } else {
+              if (i === 0 && j === 0) {
+                const errBody = await resp.text().catch(() => '');
+                console.log(`    ⚠️ CSE HTTP ${resp.status}: ${errBody.substring(0, 200)}`);
+              }
             }
           } else if (SERPER_KEY) {
             // Serper fallback
