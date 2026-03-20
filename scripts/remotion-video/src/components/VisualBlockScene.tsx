@@ -270,26 +270,41 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
         );
       })}
 
-      {/* ─── Layer 3: Subtitles (always present) ─── */}
+      {/* ─── Layer 3: Subtitles (HIDE when scene effect or graphic active) ─── */}
       {subtitles.length > 0 && (
-        <div style={{ position: "absolute", inset: 0, zIndex: 10 }}>
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 10,
+          // Hide subtitles when active block has scene effect or graphic — avoid text clutter
+          opacity: activeBlockHasEffect || (visualBlocks[activeIdx]?.graphicType !== 'none' && visualBlocks[activeIdx]?.graphicData != null) ? 0 : 1,
+        }}>
           <AnimatedSubtitles subtitles={subtitles} isVertical={isVertical} />
         </div>
       )}
 
-      {/* ─── Layer 4: Persistent overlays ─── */}
+      {/* ─── Layer 4: CategoryBadge — only first 2 seconds ─── */}
       {category && (
-        <CategoryBadge category={category} accentColor={accentColor} />
+        <div style={{
+          opacity: interpolate(frame, [0, 5, Math.round(fps * 2), Math.round(fps * 2.5)], [0, 1, 1, 0], clampBoth),
+        }}>
+          <CategoryBadge category={category} accentColor={accentColor} />
+        </div>
       )}
 
+      {/* ─── Layer 4: LowerThird — only first 3 seconds, then hide ─── */}
       {headline && segmentNumber != null && totalSegments != null && (
-        <LowerThird
-          headline={headline}
-          category={category}
-          segmentNumber={segmentNumber}
-          totalSegments={totalSegments}
-          accentColor={accentColor}
-        />
+        <div style={{
+          opacity: interpolate(frame, [0, 8, Math.round(fps * 3), Math.round(fps * 3.5)], [0, 1, 1, 0], clampBoth),
+        }}>
+          <LowerThird
+            headline={headline}
+            category={category}
+            segmentNumber={segmentNumber}
+            totalSegments={totalSegments}
+            accentColor={accentColor}
+          />
+        </div>
       )}
 
       {/* Ambient particles (mood-driven density: urgent → more, analytical → fewer) */}
@@ -353,13 +368,15 @@ const BlockContent: React.FC<{
   const hasGraphic =
     block.graphicType !== "none" && block.graphicData != null;
 
-  // Skip text overlay for plain narrative blocks (subtitles are enough)
-  const showText =
-    block.visualMetaphor !== "narrative" || hasGraphic;
-
   // Resolve scene effect from sceneDescription/renderHint keywords
   const sceneEffect = resolveSceneEffect(block);
   const hasSceneEffect = sceneEffect !== null;
+
+  // Rule "max 2 text elements": show PhraseText ONLY when it adds value
+  // - YES: when there's a graphic card WITHOUT scene effect (text labels the data)
+  // - NO: for narrative blocks (subtitles already show the words)
+  // - NO: when a scene effect is active (effect IS the visual, don't cover it with text)
+  const showText = hasGraphic && !hasSceneEffect;
 
   return (
     <AbsoluteFill style={{ opacity, zIndex: 5 }}>
