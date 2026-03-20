@@ -746,9 +746,14 @@ async function main() {
   await sendTelegramStep(`🎨 <b>Visual Director:</b>\n\n${vdSummary}`);
 
   // Step 3.1: Per-phrase image search (from Visual Director imageSearchQuery)
+  // Uses Google Custom Search API (GOOGLE_API_KEY + GOOGLE_CSE_ID) or Serper as fallback
   console.log('\n🔍 Step 2.6: Per-phrase image search...');
-  const SERPER_API_KEY = process.env.SERPER_API_KEY || process.env.GOOGLE_SERPER_API_KEY;
-  if (SERPER_API_KEY) {
+  const GOOGLE_KEY = process.env.GOOGLE_API_KEY;
+  const GOOGLE_CSE = process.env.GOOGLE_CSE_ID;
+  const SERPER_KEY = process.env.SERPER_API_KEY || process.env.GOOGLE_SERPER_API_KEY;
+  const hasImageSearch = (GOOGLE_KEY && GOOGLE_CSE) || SERPER_KEY;
+
+  if (hasImageSearch) {
     for (let i = 0; i < visualDirectives.length; i++) {
       const blocks = visualDirectives[i]?.visualBlocks || [];
       let phraseImagesFound = 0;
@@ -756,20 +761,37 @@ async function main() {
         const query = blocks[j].imageSearchQuery;
         if (!query) continue;
         try {
-          const resp = await fetch('https://google.serper.dev/images', {
-            method: 'POST',
-            headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ q: query, num: 3, tbs: 'qdr:m' }),
-          });
-          if (resp.ok) {
-            const data = await resp.json();
-            const imgUrl = data.images?.[0]?.imageUrl;
-            if (imgUrl) {
-              blocks[j].phraseImageUrl = imgUrl; // store URL for later download
-              phraseImagesFound++;
+          let imgUrl = null;
+
+          if (GOOGLE_KEY && GOOGLE_CSE) {
+            // Google Custom Search API
+            const params = new URLSearchParams({
+              key: GOOGLE_KEY, cx: GOOGLE_CSE, q: query,
+              searchType: 'image', num: '3', imgSize: 'large', safe: 'active',
+            });
+            const resp = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`);
+            if (resp.ok) {
+              const data = await resp.json();
+              imgUrl = data.items?.[0]?.link;
+            }
+          } else if (SERPER_KEY) {
+            // Serper fallback
+            const resp = await fetch('https://google.serper.dev/images', {
+              method: 'POST',
+              headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ q: query, num: 3 }),
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              imgUrl = data.images?.[0]?.imageUrl;
             }
           }
-        } catch (e) {
+
+          if (imgUrl) {
+            blocks[j].phraseImageUrl = imgUrl;
+            phraseImagesFound++;
+          }
+        } catch {
           // Skip failed searches silently
         }
       }
@@ -778,7 +800,7 @@ async function main() {
       }
     }
   } else {
-    console.log('  ⚠️ No SERPER_API_KEY — skipping per-phrase image search');
+    console.log('  ⚠️ No image search API — skipping per-phrase search');
   }
 
   // Step 4: Download images + prepare Remotion assets
