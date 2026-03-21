@@ -1480,19 +1480,21 @@ For each article segment, specify ALL of these fields:
   * "list" — simple dot + value + label
   * "counters" — animated tick-up numbers (for impressive stats like funding, users)
   * "bars" — horizontal bar chart (for comparisons, percentages)
-- imageSearchQueries: array of 3-4 English search queries for finding DIVERSE stock photos on Pexels.
-  CRITICAL RULES:
-  1. Each query must show a DIFFERENT VISUAL ASPECT of the story — NOT variations of the same image!
-  2. Think about: WHO (people involved), WHERE (location/setting), WHAT (objects/technology), IMPACT (consequences/results)
-  3. Mix close-ups, wide shots, abstract concepts, and concrete objects
+- imageSearchQueries: array of 4-5 SPECIFIC Google Image search queries. NOT stock photos — REAL photos of the actual people, places, products in this article.
 
-  BAD (all similar): ["tired woman laptop", "exhausted office worker", "stressed person computer"]
-  GOOD (diverse aspects): ["brain scan neural activity", "corporate office panoramic", "coffee cup desk morning", "person walking park break"]
+  RULES:
+  1. Use REAL NAMES of people, companies, products, locations from the article
+  2. Each query = different visual aspect: WHO / WHERE / WHAT / CONTEXT
+  3. Search for NEWS PHOTOS, not abstract concepts
 
-  BAD (all similar): ["oil rig ocean", "oil platform sea", "oil refinery"]
-  GOOD (diverse aspects): ["oil tanker ship aerial", "stock market trading floor", "gas station price display", "middle east city skyline"]
+  BAD: ["technology innovation", "data center", "AI concept"]
+  GOOD: ["Jensen Huang NVIDIA GTC keynote 2026", "Amazon Bedrock console interface", "NVIDIA H200 GPU chip close-up", "Amazon Web Services data center Virginia"]
 
-  Each image in the video should tell a DIFFERENT part of the story!
+  BAD: ["bridge construction", "university research", "safety testing"]
+  GOOD: ["NTNU Trondheim campus aerial", "Norway bridge crash test railing", "concrete bridge edge beam repair Norway", "aluminum vs steel bridge railing"]
+
+  BAD: ["oil rig ocean", "stock market", "Middle East conflict"]
+  GOOD: ["Equinor Johan Sverdrup oil platform", "Oslo Børs stock exchange trading floor", "Iran oil terminal Kharg Island aerial"]
 
 VISUAL DIRECTION RULES:
 - Headlines and keyQuotes in clean Norwegian Bokmål — avoid unnecessary anglicisms
@@ -1503,7 +1505,20 @@ VISUAL DIRECTION RULES:
 - Use "bars" when comparing multiple values
 - Each segment should feel visually distinct from its neighbors
 
-Also provide a DETAILED Ukrainian description of the complete visual flow for moderator review. Describe for each segment: what the viewer sees, what animations play, what mood the scene conveys, not just the headline text.
+Also provide a ПОКАДРОВА РОЗКЛАДКА (frame-by-frame breakdown) in Ukrainian for moderator review.
+For EACH segment write what SPECIFIC PHOTOS the viewer sees every 3-5 seconds:
+
+ПРАВИЛЬНИЙ ФОРМАТ:
+"1. NVIDIA Nemotron на Amazon Bedrock:
+  0-5с: Фото Jensen Huang на сцені GTC → zoom in на обличчя
+  5-10с: Скріншот Amazon Bedrock console, split screen з логотипами NVIDIA | Amazon
+  10-15с: Фото GPU H200 крупним планом → counter тікає 0→4x швидше
+  15-20с: Фото дата-центру Amazon → slowPan зліва направо"
+
+НЕПРАВИЛЬНИЙ ФОРМАТ (НЕ ПИСАТИ ТАК):
+"Відео починається з динамічного ефекту wipeLeft з енергійною анімацією..."
+
+Кожен рядок = конкретне фото + що з ним відбувається. НЕ описуй абстрактні ефекти.
 
 Return JSON:
 {
@@ -1519,10 +1534,10 @@ Return JSON:
       "transition": "...",
       "textReveal": "...",
       "statsVisualType": "list",
-      "imageSearchQueries": ["concrete visual query 1", "concrete visual query 2"]
+      "imageSearchQueries": ["Jensen Huang GTC keynote 2026", "Amazon Bedrock console dashboard", "NVIDIA H200 GPU close-up", "Amazon data center Virginia aerial"]
     }
   ],
-  "scenarioDescription": "Детальний покроковий опис візуального сценарію українською з описом анімацій, настрою та ефектів кожного сегменту..."
+  "scenarioDescription": "Покадрова розкладка: що КОНКРЕТНО бачить глядач кожні 3-5 секунд (які фото, які люди, які місця)..."
 }`;
 
   const aiResponse = await callAI(
