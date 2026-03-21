@@ -721,17 +721,22 @@ async function main() {
   }
 
   // Step 2.5: Visual Director — phrase-level visual planning
-  console.log('\n🎨 Step 2.5: Visual direction...');
+  // In DRAFT mode: skip re-generation, draft already has visual_scenario approved by moderator
   let visualDirectives = [];
-  try {
-    visualDirectives = await directVisuals(
-      plan.segmentScripts || [],
-      plan.segments || [],
-      segmentVoiceovers,
-      detailedArticlesForBot, // full article context for per-segment AI prompts
-    );
-  } catch (e) {
-    console.log(`  ⚠️ Visual Director failed, using defaults: ${e.message}`);
+  if (DRAFT_ID) {
+    console.log('\n🎨 Step 2.5: Using approved visual scenario from draft (no re-generation)');
+  } else {
+    console.log('\n🎨 Step 2.5: Visual direction...');
+    try {
+      visualDirectives = await directVisuals(
+        plan.segmentScripts || [],
+        plan.segments || [],
+        segmentVoiceovers,
+        detailedArticlesForBot,
+      );
+    } catch (e) {
+      console.log(`  ⚠️ Visual Director failed, using defaults: ${e.message}`);
+    }
   }
 
   // ── Telegram Step 3: Visual Director results ──
