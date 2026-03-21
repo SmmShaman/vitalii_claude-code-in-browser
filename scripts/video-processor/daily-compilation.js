@@ -439,14 +439,18 @@ async function loadFromDraft(draftId) {
   const dateStr = draft.target_date;
   const displayDate = formatDateNorwegian(dateStr);
 
-  // Fetch articles
-  const { data: articles, error: artError } = await supabase
+  // Fetch articles — PRESERVE draft order (don't re-sort by created_at!)
+  // Scripts are ordered by LLM selection, articles must match that order
+  const { data: rawArticles, error: artError } = await supabase
     .from('news')
     .select('id, title_en, title_no, original_title, original_content, content_en, content_no, description_en, description_no, image_url, processed_image_url, video_url, video_type, original_video_url, tags, created_at, slug_en, source_link, source_links, images, original_url')
-    .in('id', draft.article_ids)
-    .order('created_at', { ascending: true });
+    .in('id', draft.article_ids);
 
-  if (artError || !articles) throw new Error(`Failed to fetch articles: ${artError?.message}`);
+  if (artError || !rawArticles) throw new Error(`Failed to fetch articles: ${artError?.message}`);
+
+  // Re-order to match draft.article_ids order (LLM selection order)
+  const articleMap = new Map(rawArticles.map(a => [a.id, a]));
+  const articles = draft.article_ids.map(id => articleMap.get(id)).filter(Boolean);
 
   // Build plan from draft data
   const segmentScripts = (draft.segment_scripts || []).map(s => s.scriptNo || s);
