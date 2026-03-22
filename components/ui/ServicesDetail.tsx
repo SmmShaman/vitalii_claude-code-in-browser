@@ -246,7 +246,7 @@ export const ServicesDetail = ({ categories, isOpen, onClose }: ServicesDetailPr
                           letterSpacing: '0.1em',
                         }}
                       >
-                        {cat.icon} {cat.category}
+                        {cat.category}
                       </h4>
                     </div>
 

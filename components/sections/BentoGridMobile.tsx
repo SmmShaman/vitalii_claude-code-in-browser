@@ -183,7 +183,7 @@ const ServicesExplosionOverlay = ({
                 className="font-bold uppercase mb-3 px-1"
                 style={{ color, fontSize: 'clamp(0.8rem, 3.5vw, 1rem)', letterSpacing: '0.1em' }}
               >
-                {cat.icon} {cat.category}
+                {cat.category}
               </motion.h2>
 
               <div className="space-y-3">

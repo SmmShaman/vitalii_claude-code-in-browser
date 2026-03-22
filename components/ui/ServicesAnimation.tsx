@@ -46,10 +46,15 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
     const container = containerRef.current;
     const containerHeight = container.clientHeight;
 
+    const containerWidth = container.clientWidth;
     const numCategories = categories.length;
     const lineHeight = 1.3;
     const isUkrainian = currentLanguage.toLowerCase() === 'ua';
     const gapBetweenLines = isUkrainian ? 5 : 10;
+
+    // Find longest category name to constrain by width too
+    const longestName = Math.max(...categories.map(c => c.category.length));
+    const charWidthRatio = 0.55;
 
     let fontSize = 48;
     const minFontSize = 12;
@@ -57,8 +62,9 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
     while (fontSize > minFontSize) {
       const estimatedLineHeight = fontSize * lineHeight;
       const totalHeight = (estimatedLineHeight * numCategories) + (gapBetweenLines * (numCategories - 1));
+      const estimatedWidth = longestName * fontSize * charWidthRatio;
 
-      if (totalHeight < containerHeight * 0.9) {
+      if (totalHeight < containerHeight * 0.9 && estimatedWidth < containerWidth * 0.85) {
         break;
       }
       fontSize -= 2;
@@ -401,7 +407,7 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
                   whiteSpace: 'normal',
                 }}
               >
-                {cat.icon} {cat.category}
+                {cat.category}
               </div>
             </div>
         ))}
