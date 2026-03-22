@@ -3207,20 +3207,42 @@ Deno.serve(async (req) => {
         return await triggerRender(targetDate, chatId, messageId, youtubePrivacy);
 
       case "auto_chain": {
-        // Auto-advance: run generate_scenario → prepare_images → trigger_render sequentially
+        // Step 1 of auto chain: generate scenario, then dispatch step 2
         if (!targetDate) return json({ error: "target_date required" }, 400);
-        const tgChat = Number(TELEGRAM_CHAT_ID);
-        console.log(`🤖 Auto-chain: scenario → images → render for ${targetDate}`);
+        const tgChat1 = Number(TELEGRAM_CHAT_ID);
+        console.log(`🤖 Auto-chain step 1: generateScenario for ${targetDate}`);
         try {
-          await generateScenario(targetDate, tgChat, 0);
-          await prepareImages(targetDate, tgChat, 0);
-          await triggerRender(targetDate, tgChat, 0, youtubePrivacy);
+          await generateScenario(targetDate, tgChat1, 0);
+          // Dispatch step 2 (fire-and-forget, separate invocation)
+          const baseUrl1 = Deno.env.get("SUPABASE_URL")!;
+          const srvKey1 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          fetch(`${baseUrl1}/functions/v1/daily-video-bot?action=auto_chain_2&target_date=${targetDate}`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${srvKey1}`, "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          }).catch(e => console.error(`⚠️ auto_chain_2 dispatch failed: ${e.message}`));
+          return json({ ok: true, message: "Scenario done, dispatching images+render" });
+        } catch (e: any) {
+          console.error(`❌ Auto-chain step 1 failed: ${e.message}`);
+          await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Auto-chain failed (scenario):</b> ${e.message}`);
+          return json({ error: e.message }, 500);
+        }
+      }
+
+      case "auto_chain_2": {
+        // Step 2: prepare images + trigger render
+        if (!targetDate) return json({ error: "target_date required" }, 400);
+        const tgChat2 = Number(TELEGRAM_CHAT_ID);
+        console.log(`🤖 Auto-chain step 2: prepareImages + triggerRender for ${targetDate}`);
+        try {
+          await prepareImages(targetDate, tgChat2, 0);
+          await triggerRender(targetDate, tgChat2, 0, youtubePrivacy);
           console.log(`✅ Auto-chain complete for ${targetDate}`);
-          return json({ ok: true, message: "Auto-chain complete, render dispatched" });
-        } catch (chainErr: any) {
-          console.error(`❌ Auto-chain failed: ${chainErr.message}`);
-          await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Auto-chain failed:</b> ${chainErr.message}\n\nВикористайте кнопки для ручного продовження.`);
-          return json({ error: `Auto-chain failed: ${chainErr.message}` }, 500);
+          return json({ ok: true, message: "Images prepared, render dispatched" });
+        } catch (e: any) {
+          console.error(`❌ Auto-chain step 2 failed: ${e.message}`);
+          await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Auto-chain failed (images/render):</b> ${e.message}`);
+          return json({ error: e.message }, 500);
         }
       }
 
