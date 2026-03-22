@@ -1,0 +1,93 @@
+name: Sync Social Media Metrics
+
+on:
+  # Run every 6 hours
+  schedule:
+    - cron: '0 */6 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+  # Repository dispatch for programmatic triggering
+  repository_dispatch:
+    types: [sync-metrics]
+
+jobs:
+  sync-metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Sync Metrics from Social Platforms
+        continue-on-error: ${{ github.event_name == 'schedule' }}
+        run: |
+          echo "📊 Starting social media metrics sync..."
+          echo "Time: $(date -u)"
+
+          MAX_RETRIES=3
+          RETRY_DELAY=15
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT of $MAX_RETRIES..."
+
+            CURL_EXIT=0
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+              "${{ secrets.SUPABASE_URL }}/functions/v1/sync-social-metrics" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              -H "Content-Type: application/json" \
+              --max-time 300) || CURL_EXIT=$?
+
+            if [ $CURL_EXIT -ne 0 ]; then
+              echo "⚠️ curl failed with exit code $CURL_EXIT (28=timeout)"
+              HTTP_CODE=0
+              BODY=""
+              if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+                echo "Retrying in ${RETRY_DELAY}s..."
+                sleep $RETRY_DELAY
+              fi
+              continue
+            fi
+
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+
+            # If not a 5xx error, break out of retry loop
+            if [ "$HTTP_CODE" -lt 500 ] 2>/dev/null; then
+              break
+            fi
+
+            echo "⚠️ Server error (HTTP $HTTP_CODE), retrying in ${RETRY_DELAY}s..."
+            if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+              sleep $RETRY_DELAY
+            fi
+          done
+
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "❌ Metrics sync failed with status $HTTP_CODE after $ATTEMPT attempts"
+            exit 1
+          fi
+
+          # Parse response for summary
+          SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+          TOTAL_SYNCED=$(echo "$BODY" | jq -r '.totalPostsSynced // 0')
+
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✅ Metrics sync completed successfully"
+            echo "📊 Posts synced: $TOTAL_SYNCED"
+          else
+            ERROR=$(echo "$BODY" | jq -r '.error // "Unknown error"')
+            echo "❌ Metrics sync failed: $ERROR"
+            exit 1
+          fi
+
+      - name: Report Status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Workflow completed successfully"
+          else
+            echo "❌ Workflow failed"
+          fi

@@ -599,6 +599,164 @@ export async function replyToInstagramComment(
 }
 
 // ============================================================
+// Insights / Analytics Functions
+// ============================================================
+
+export interface PostInsights {
+  impressions: number;
+  reach: number;
+  engagement: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  clicks: number;
+}
+
+/**
+ * Get insights (metrics) for a Facebook Page post
+ * Requires read_insights permission on the Page token
+ */
+export async function getFacebookPostInsights(postId: string): Promise<PostInsights | null> {
+  const pageAccessToken = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN");
+
+  if (!pageAccessToken) {
+    console.error("❌ Facebook credentials not configured");
+    return null;
+  }
+
+  try {
+    // Fetch post-level insights
+    const insightsResponse = await fetch(
+      `${GRAPH_API_BASE}/${postId}/insights?metric=post_impressions,post_impressions_unique,post_engaged_users,post_clicks&access_token=${pageAccessToken}`
+    );
+
+    if (!insightsResponse.ok) {
+      const error = await insightsResponse.json();
+      // Error 100 with subcode 33 means insights not available for this post type
+      if (error?.error?.code === 100) {
+        console.warn(`⚠️ Insights not available for post ${postId}: ${error.error.message}`);
+        return null;
+      }
+      console.error(`❌ Failed to get FB insights for ${postId}:`, error);
+      return null;
+    }
+
+    const insightsData = await insightsResponse.json();
+    const metrics: Record<string, number> = {};
+
+    for (const entry of insightsData.data || []) {
+      // Each insight has values array; lifetime value is at index 0
+      const value = entry.values?.[0]?.value ?? 0;
+      metrics[entry.name] = value;
+    }
+
+    // Fetch basic engagement counts (likes/comments/shares) from the post object
+    const postResponse = await fetch(
+      `${GRAPH_API_BASE}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${pageAccessToken}`
+    );
+
+    let likes = 0, comments = 0, shares = 0;
+
+    if (postResponse.ok) {
+      const postData = await postResponse.json();
+      likes = postData.likes?.summary?.total_count ?? 0;
+      comments = postData.comments?.summary?.total_count ?? 0;
+      shares = postData.shares?.count ?? 0;
+    }
+
+    return {
+      impressions: metrics['post_impressions'] ?? 0,
+      reach: metrics['post_impressions_unique'] ?? 0,
+      engagement: metrics['post_engaged_users'] ?? 0,
+      likes,
+      comments,
+      shares,
+      saves: 0, // Facebook doesn't expose saves for page posts
+      clicks: metrics['post_clicks'] ?? 0,
+    };
+  } catch (error: any) {
+    console.error(`❌ FB insights error for ${postId}:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Get insights (metrics) for an Instagram media post
+ * Available for IMAGE, VIDEO, CAROUSEL_ALBUM, REELS
+ */
+export async function getInstagramMediaInsights(mediaId: string): Promise<PostInsights | null> {
+  const pageAccessToken = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN");
+
+  if (!pageAccessToken) {
+    console.error("❌ Instagram credentials not configured");
+    return null;
+  }
+
+  try {
+    // First get basic media fields (like_count, comments_count, media_type)
+    const mediaResponse = await fetch(
+      `${GRAPH_API_BASE}/${mediaId}?fields=like_count,comments_count,media_type&access_token=${pageAccessToken}`
+    );
+
+    let likes = 0, comments = 0;
+    let mediaType = 'IMAGE';
+
+    if (mediaResponse.ok) {
+      const mediaData = await mediaResponse.json();
+      likes = mediaData.like_count ?? 0;
+      comments = mediaData.comments_count ?? 0;
+      mediaType = mediaData.media_type ?? 'IMAGE';
+    }
+
+    // Choose metrics based on media type
+    // REELS have different insight metrics than IMAGE/CAROUSEL
+    let metricsParam: string;
+    if (mediaType === 'REELS') {
+      metricsParam = 'plays,reach,saved,shares,total_interactions';
+    } else if (mediaType === 'VIDEO') {
+      metricsParam = 'impressions,reach,saved,video_views';
+    } else {
+      // IMAGE, CAROUSEL_ALBUM
+      metricsParam = 'impressions,reach,saved';
+    }
+
+    const insightsResponse = await fetch(
+      `${GRAPH_API_BASE}/${mediaId}/insights?metric=${metricsParam}&access_token=${pageAccessToken}`
+    );
+
+    const metrics: Record<string, number> = {};
+
+    if (insightsResponse.ok) {
+      const insightsData = await insightsResponse.json();
+
+      for (const entry of insightsData.data || []) {
+        const value = entry.values?.[0]?.value ?? 0;
+        metrics[entry.name] = value;
+      }
+    } else {
+      // Stories and some older posts may not have insights
+      const error = await insightsResponse.json();
+      console.warn(`⚠️ IG insights not available for ${mediaId} (${mediaType}): ${error?.error?.message || 'unknown'}`);
+    }
+
+    return {
+      impressions: metrics['impressions'] ?? metrics['plays'] ?? 0,
+      reach: metrics['reach'] ?? 0,
+      engagement: metrics['total_interactions'] ?? (likes + comments + (metrics['saved'] ?? 0)),
+      likes,
+      comments,
+      shares: metrics['shares'] ?? 0,
+      saves: metrics['saved'] ?? 0,
+      clicks: 0, // Not available for IG media insights
+    };
+  } catch (error: any) {
+    console.error(`❌ IG insights error for ${mediaId}:`, error.message);
+    return null;
+  }
+}
+
+// ============================================================
 // Utility Functions
 // ============================================================
 

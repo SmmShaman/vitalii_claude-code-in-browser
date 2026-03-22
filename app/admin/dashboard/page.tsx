@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { LogOut, Newspaper, BookOpen, BarChart3, Home, Settings, List, Share2, MessageSquare, Users, Sparkles, Image, Activity, ChevronLeft, ChevronRight, Loader2, TrendingUp } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { NewsManager } from '@/components/admin/NewsManager'
 import { BlogManager } from '@/components/admin/BlogManager'
@@ -23,8 +23,9 @@ import { SocialMediaCommentsManager } from '@/components/admin/SocialMediaCommen
 import { SocialMediaAccountsManager } from '@/components/admin/SocialMediaAccountsManager'
 import { NewsMonitorManager } from '@/components/admin/news-monitor'
 import { TagFrequencyTable } from '@/components/admin/TagFrequencyTable'
+import { SocialAnalyticsDashboard } from '@/components/admin/SocialAnalyticsDashboard'
 
-type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'comments' | 'skills' | 'settings'
+type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'analytics' | 'comments' | 'skills' | 'settings'
 type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'tags' | 'debug'
 
 interface HeaderStats {
@@ -112,6 +113,7 @@ export default function AdminDashboardPage() {
     { id: 'blog' as TabType, label: 'Blog', icon: BookOpen },
     { id: 'monitor' as TabType, label: 'Monitor', icon: Activity },
     { id: 'social' as TabType, label: 'Social', icon: Share2 },
+    { id: 'analytics' as TabType, label: 'Analytics', icon: TrendingUp },
     { id: 'comments' as TabType, label: 'Comments', icon: MessageSquare },
     { id: 'skills' as TabType, label: 'Skills', icon: Sparkles },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
@@ -345,6 +347,7 @@ export default function AdminDashboardPage() {
             {activeTab === 'blog' && <BlogManager />}
             {activeTab === 'monitor' && <NewsMonitorManager />}
             {activeTab === 'social' && <SocialMediaPostsManager />}
+            {activeTab === 'analytics' && <SocialAnalyticsDashboard />}
             {activeTab === 'comments' && <SocialMediaCommentsManager />}
             {activeTab === 'skills' && <SkillsManager />}
             {activeTab === 'settings' && (
