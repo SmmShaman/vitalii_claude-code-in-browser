@@ -3,12 +3,13 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage'
 
-const BASE_SPEED = 25
-const SPEED_VAR = 10
-const COLLISION_DIST = 6
-const INTERSECTION_NEAR = 8
-const TURN_CHANCE = 0.5
-const COOLDOWN_FRAMES = 40
+// --- Tuning ---
+const BASE_SPEED = 22
+const SPEED_VAR = 8
+const MIN_GAP_PX = 20 // minimum pixel gap between badge edges (~3 chars)
+const INTERSECTION_NEAR = 10
+const TURN_CHANCE = 0.45
+const COOLDOWN_FRAMES = 50
 
 const CAT_COLORS: Record<string, { bg: string; color: string }> = {
   development: { bg: 'rgba(34,197,94,0.22)', color: '#4ade80' },
@@ -23,40 +24,26 @@ type Street = { id: string; axis: 'h' | 'v'; fixed: number; min: number; max: nu
 type INode = { streets: { sid: string; pos: number }[] }
 type Ant = { sid: string; pos: number; dir: 1 | -1; speed: number; cd: number; w: number; h: number }
 
-// Full city grid: 3 horizontal streets × 4 vertical streets = 12 intersections
+// Only INTERNAL gap streets — badges stay strictly between sections
 function calcStreets(w: number, h: number, gap: number) {
   const colW = (w - 2 * gap) / 3
   const rowH = (h - gap) / 2
 
-  // 4 vertical X positions: left edge, gap1 center, gap2 center, right edge
-  const vX = [0, colW + gap / 2, 2 * colW + gap + gap / 2, w]
-  // 3 horizontal Y positions: top edge, gap center, bottom edge
-  const hY = [0, rowH + gap / 2, h]
+  // Internal gap centers only
+  const hY = rowH + gap / 2 // horizontal gap between row 1 and 2
+  const v1X = colW + gap / 2 // vertical gap between col 1 and 2
+  const v2X = 2 * colW + gap + gap / 2 // vertical gap between col 2 and 3
 
   const streets: Street[] = [
-    // 3 horizontal streets (full width)
-    { id: 'h0', axis: 'h', fixed: hY[0], min: 0, max: w },
-    { id: 'h1', axis: 'h', fixed: hY[1], min: 0, max: w },
-    { id: 'h2', axis: 'h', fixed: hY[2], min: 0, max: w },
-    // 4 vertical streets (full height)
-    { id: 'v0', axis: 'v', fixed: vX[0], min: 0, max: h },
-    { id: 'v1', axis: 'v', fixed: vX[1], min: 0, max: h },
-    { id: 'v2', axis: 'v', fixed: vX[2], min: 0, max: h },
-    { id: 'v3', axis: 'v', fixed: vX[3], min: 0, max: h },
+    { id: 'h', axis: 'h', fixed: hY, min: 0, max: w },
+    { id: 'v1', axis: 'v', fixed: v1X, min: 0, max: h },
+    { id: 'v2', axis: 'v', fixed: v2X, min: 0, max: h },
   ]
 
-  // 12 intersections: each hY × vX combination
-  const nodes: INode[] = []
-  for (let hi = 0; hi < hY.length; hi++) {
-    for (let vi = 0; vi < vX.length; vi++) {
-      nodes.push({
-        streets: [
-          { sid: `h${hi}`, pos: vX[vi] },
-          { sid: `v${vi}`, pos: hY[hi] },
-        ]
-      })
-    }
-  }
+  const nodes: INode[] = [
+    { streets: [{ sid: 'h', pos: v1X }, { sid: 'v1', pos: hY }] },
+    { streets: [{ sid: 'h', pos: v2X }, { sid: 'v2', pos: hY }] },
+  ]
 
   return { streets, nodes }
 }
@@ -72,7 +59,6 @@ function clampAnt(ant: Ant, streets: Street[]) {
   ant.pos = Math.max(s.min + 5, Math.min(s.max - 5, ant.pos))
 }
 
-// Position badge with rotation on vertical streets
 function positionBadge(el: HTMLDivElement, ant: Ant, streets: Street[]) {
   const [x, y] = antXY(ant, streets)
   const seg = streets.find(s => s.id === ant.sid)
@@ -82,6 +68,62 @@ function positionBadge(el: HTMLDivElement, ant: Ant, streets: Street[]) {
   } else {
     el.style.transform = `translate(${x - ant.w / 2}px, ${y - ant.h / 2}px)`
   }
+}
+
+// Smart initialization: place ants evenly along streets without overlap
+function spawnAnts(streets: Street[], count: number, badgeW: number): Ant[] {
+  const ants: Ant[] = []
+  const spacing = badgeW + MIN_GAP_PX
+
+  // Calculate how many fit per street
+  const streetLengths = streets.map(s => s.max - s.min)
+  const totalLen = streetLengths.reduce((a, b) => a + b, 0)
+
+  let placed = 0
+  for (let si = 0; si < streets.length && placed < count; si++) {
+    const s = streets[si]
+    const len = s.max - s.min
+    // Proportional allocation
+    const share = Math.max(1, Math.round((len / totalLen) * count))
+    const toPlace = Math.min(share, count - placed)
+
+    // Two lanes: half go forward (+1), half backward (-1)
+    // Forward ants start from min, backward from max
+    const fwd = Math.ceil(toPlace / 2)
+    const bwd = toPlace - fwd
+
+    // Forward lane
+    for (let j = 0; j < fwd && placed < count; j++) {
+      ants.push({
+        sid: s.id,
+        pos: s.min + 10 + j * spacing,
+        dir: 1,
+        speed: BASE_SPEED + Math.random() * SPEED_VAR,
+        cd: 0, w: badgeW, h: 16,
+      })
+      placed++
+    }
+    // Backward lane
+    for (let j = 0; j < bwd && placed < count; j++) {
+      ants.push({
+        sid: s.id,
+        pos: s.max - 10 - j * spacing,
+        dir: -1,
+        speed: BASE_SPEED + Math.random() * SPEED_VAR,
+        cd: 0, w: badgeW, h: 16,
+      })
+      placed++
+    }
+  }
+
+  // Clamp all to street bounds
+  for (const ant of ants) clampAnt(ant, streets)
+  return ants
+}
+
+// Get minimum safe distance between two ants on the same street
+function safeDist(a: Ant, b: Ant): number {
+  return (a.w + b.w) / 2 + MIN_GAP_PX
 }
 
 interface Props {
@@ -114,21 +156,6 @@ export function SkillsMarquee({ gridRef }: Props) {
     return () => window.removeEventListener('marquee-toggle', handler)
   }, [])
 
-  const initAnts = useCallback((streets: Street[], count: number) => {
-    const ants: Ant[] = []
-    for (let i = 0; i < count; i++) {
-      const s = streets[i % streets.length]
-      const range = s.max - s.min - 10
-      ants.push({
-        sid: s.id, pos: s.min + 5 + Math.random() * range,
-        dir: Math.random() < 0.5 ? 1 : -1,
-        speed: BASE_SPEED + Math.random() * SPEED_VAR,
-        cd: 0, w: 60, h: 16,
-      })
-    }
-    return ants
-  }, [])
-
   const measure = useCallback(() => {
     const grid = gridRef.current
     const container = containerRef.current
@@ -143,7 +170,6 @@ export function SkillsMarquee({ gridRef }: Props) {
     const offY = rect.top - cRect.top
     const { streets, nodes } = calcStreets(rect.width, rect.height, gap)
 
-    // Offset to container coords
     for (const s of streets) {
       if (s.axis === 'h') { s.fixed += offY; s.min += offX; s.max += offX }
       else { s.fixed += offX; s.min += offY; s.max += offY }
@@ -159,9 +185,31 @@ export function SkillsMarquee({ gridRef }: Props) {
     streetsRef.current = streets
     nodesRef.current = nodes
 
+    // Responsive badge sizing
+    const fontSize = Math.max(8, Math.min(11, gap * 0.5))
+    const padV = Math.max(1, Math.round(gap * 0.08))
+    const padH = Math.max(4, Math.round(gap * 0.3))
+    for (let i = 0; i < badgeRefs.current.length; i++) {
+      const el = badgeRefs.current[i]
+      if (!el) continue
+      el.style.fontSize = `${fontSize}px`
+      el.style.lineHeight = `${Math.round(fontSize * 1.5)}px`
+      el.style.padding = `${padV}px ${padH}px`
+    }
+
+    // Measure average badge width after font update
+    let totalW = 0; let measured = 0
+    for (let i = 0; i < badgeRefs.current.length; i++) {
+      const el = badgeRefs.current[i]
+      if (el) { totalW += el.offsetWidth; measured++ }
+    }
+    const avgW = measured > 0 ? totalW / measured : 60
+
     if (antsRef.current.length === 0 && skillsRef.current.length > 0) {
-      antsRef.current = initAnts(streets, skillsRef.current.length)
+      // Smart spawn: no overlaps
+      antsRef.current = spawnAnts(streets, skillsRef.current.length, avgW)
     } else if (oldStreets.length > 0) {
+      // Remap on resize
       for (const ant of antsRef.current) {
         const oldS = oldStreets.find(s => s.id === ant.sid)
         const newS = streets.find(s => s.id === ant.sid)
@@ -173,20 +221,13 @@ export function SkillsMarquee({ gridRef }: Props) {
       }
     }
 
-    // Responsive badge sizing based on gap
-    const fontSize = Math.max(8, Math.min(11, gap * 0.5))
-    const padV = Math.max(1, Math.round(gap * 0.08))
-    const padH = Math.max(4, Math.round(gap * 0.3))
+    // Update actual badge sizes on ants
     for (let i = 0; i < badgeRefs.current.length; i++) {
       const el = badgeRefs.current[i]
-      if (!el) continue
-      el.style.fontSize = `${fontSize}px`
-      el.style.lineHeight = `${Math.round(fontSize * 1.5)}px`
-      el.style.padding = `${padV}px ${padH}px`
       const ant = antsRef.current[i]
-      if (ant) { ant.w = el.offsetWidth; ant.h = el.offsetHeight }
+      if (el && ant) { ant.w = el.offsetWidth; ant.h = el.offsetHeight }
     }
-  }, [gridRef, initAnts])
+  }, [gridRef])
 
   const tick = useCallback((time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time
@@ -214,10 +255,11 @@ export function SkillsMarquee({ gridRef }: Props) {
             const conn = node.streets.find(c => c.sid === ant.sid)
             if (!conn) continue
             if (Math.abs(ant.pos - conn.pos) < INTERSECTION_NEAR) {
+              // Check intersection blocked by any ant on connected streets
               const blocked = ants.some((other, oi) => {
                 if (oi === i) return false
                 for (const oc of node.streets) {
-                  if (other.sid === oc.sid && Math.abs(other.pos - oc.pos) < INTERSECTION_NEAR * 2) return true
+                  if (other.sid === oc.sid && Math.abs(other.pos - oc.pos) < INTERSECTION_NEAR * 2.5) return true
                 }
                 return false
               })
@@ -238,14 +280,22 @@ export function SkillsMarquee({ gridRef }: Props) {
           }
         }
 
-        // Collision
-        let minAhead = Infinity
+        // Collision: find closest ant AHEAD on same street, enforce gap
+        let closestDist = Infinity
+        let closestW = 0
         for (let j = 0; j < ants.length; j++) {
           if (j === i || ants[j].sid !== ant.sid) continue
-          const diff = (ants[j].pos - ant.pos) * ant.dir
-          if (diff > 0 && diff < minAhead) minAhead = diff
+          const diff = (ants[j].pos - newPos) * ant.dir
+          if (diff > 0 && diff < closestDist) {
+            closestDist = diff
+            closestW = ants[j].w
+          }
         }
-        if (minAhead < (ant.w + COLLISION_DIST) / 2 + 10) newPos = ant.pos
+        const minDist = (ant.w + closestW) / 2 + MIN_GAP_PX
+        if (closestDist < minDist) {
+          // Stop: maintain gap
+          newPos = ant.pos
+        }
 
         // Bounce at edges
         if (newPos <= seg.min + 5) { ant.dir = 1; newPos = seg.min + 5 }
@@ -277,7 +327,12 @@ export function SkillsMarquee({ gridRef }: Props) {
     }
 
     setTimeout(() => {
-      antsRef.current = initAnts(streetsRef.current, skillsRef.current.length)
+      // Measure widths for re-spawn
+      let totalW = 0; let n = 0
+      for (const el of badgeRefs.current) {
+        if (el) { totalW += el.offsetWidth; n++ }
+      }
+      antsRef.current = spawnAnts(streetsRef.current, skillsRef.current.length, n > 0 ? totalW / n : 60)
       for (let i = 0; i < badgeRefs.current.length; i++) {
         const el = badgeRefs.current[i]
         if (!el) continue
@@ -291,7 +346,7 @@ export function SkillsMarquee({ gridRef }: Props) {
       }
       explodingRef.current = false
     }, 900)
-  }, [initAnts])
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
