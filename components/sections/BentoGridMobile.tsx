@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useAnimation } from 'framer-motion'
 import { useTranslations } from '@/contexts/TranslationContext'
@@ -141,14 +141,15 @@ const AboutExplosionOverlay = ({
 
 // Services Explosion Overlay Component
 const ServicesExplosionOverlay = ({
-  services,
+  categories,
   onClose,
   color
 }: {
-  services: { title: string; description?: string; detailedDescription?: string; simpleExplanation?: string }[]
+  categories: { category: string; icon: string; services: { title: string; description?: string; detailedDescription?: string; simpleExplanation?: string }[] }[]
   onClose: () => void
   color: string
 }) => {
+  let itemIndex = 0
   return (
     <motion.div
       className="fixed inset-0 z-50 bg-[#1A1730]"
@@ -171,50 +172,71 @@ const ServicesExplosionOverlay = ({
 
       {/* Scrollable content */}
       <div className="h-full overflow-y-auto pt-16 pb-8 px-4">
-        <div className="space-y-4">
-          {services.map((service, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                duration: 0.4,
-                delay: index * 0.08,
-                ease: [0.25, 0.46, 0.45, 0.94],
-              }}
-              className="bg-gradient-to-br from-[#141225] to-[#0F0D1A] rounded-2xl p-4 shadow-sm border border-[#2D2A40]"
-            >
-              {/* Service title */}
-              <h3
-                className="font-bold uppercase mb-2"
-                style={{ color, fontSize: 'clamp(0.9rem, 4vw, 1.1rem)' }}
+        <div className="space-y-6">
+          {categories.map((cat, catIdx) => (
+            <div key={catIdx}>
+              {/* Category header */}
+              <motion.h2
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: catIdx * 0.1 }}
+                className="font-bold uppercase mb-3 px-1"
+                style={{ color, fontSize: 'clamp(0.8rem, 3.5vw, 1rem)', letterSpacing: '0.1em' }}
               >
-                {service.title}
-              </h3>
+                {cat.icon} {cat.category}
+              </motion.h2>
 
-              {/* Short description */}
-              {service.description && (
-                <p className="text-[#9B97B0] text-xs mb-3 italic">
-                  {service.description}
-                </p>
-              )}
+              <div className="space-y-3">
+                {cat.services.map((service, sIndex) => {
+                  const delay = itemIndex * 0.06
+                  itemIndex++
+                  return (
+                    <motion.div
+                      key={sIndex}
+                      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{
+                        duration: 0.4,
+                        delay,
+                        ease: [0.25, 0.46, 0.45, 0.94],
+                      }}
+                      className="bg-gradient-to-br from-[#141225] to-[#0F0D1A] rounded-2xl p-4 shadow-sm border border-[#2D2A40] ml-2"
+                    >
+                      {/* Service title */}
+                      <h3
+                        className="font-bold uppercase mb-2"
+                        style={{ color, fontSize: 'clamp(0.9rem, 4vw, 1.1rem)' }}
+                      >
+                        {service.title}
+                      </h3>
 
-              {/* Detailed description */}
-              {service.detailedDescription && (
-                <p className="text-[#C8C5D6] text-sm leading-relaxed mb-2">
-                  {service.detailedDescription}
-                </p>
-              )}
+                      {/* Short description */}
+                      {service.description && (
+                        <p className="text-[#9B97B0] text-xs mb-3 italic">
+                          {service.description}
+                        </p>
+                      )}
 
-              {/* Simple explanation */}
-              {service.simpleExplanation && (
-                <div className="mt-3 pt-3 border-t border-[#2D2A40]">
-                  <p className="text-[#9B97B0] text-xs leading-relaxed">
-                    💡 {service.simpleExplanation}
-                  </p>
-                </div>
-              )}
-            </motion.div>
+                      {/* Detailed description */}
+                      {service.detailedDescription && (
+                        <p className="text-[#C8C5D6] text-sm leading-relaxed mb-2">
+                          {service.detailedDescription}
+                        </p>
+                      )}
+
+                      {/* Simple explanation */}
+                      {service.simpleExplanation && (
+                        <div className="mt-3 pt-3 border-t border-[#2D2A40]">
+                          <p className="text-[#9B97B0] text-xs leading-relaxed">
+                            {service.simpleExplanation}
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -1306,6 +1328,12 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
   const langKey = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
 
+  // Flatten services categories into a flat list for mobile rotation
+  const flatServicesList = useMemo(() =>
+    translations[langKey].services_categories.flatMap(cat => cat.services),
+    [langKey]
+  )
+
   // Set mounted for portal
   useEffect(() => {
     setIsMounted(true)
@@ -1375,7 +1403,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
   // Services rotation
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentServiceIndex(prev => (prev + 1) % translations[langKey].services_list.length)
+      setCurrentServiceIndex(prev => (prev + 1) % flatServicesList.length)
     }, 3000)
     return () => clearInterval(interval)
   }, [langKey])
@@ -1541,10 +1569,10 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                       className="font-bold text-[#EEEDF5] uppercase"
                       style={{ fontSize: 'clamp(1rem, 5vw, 1.5rem)', lineHeight: 1.2 }}
                     >
-                      {translations[langKey].services_list[currentServiceIndex]?.title}
+                      {flatServicesList[currentServiceIndex]?.title}
                     </h3>
                     <p className="text-[#9B97B0] text-xs mt-2 italic">
-                      {translations[langKey].services_list[currentServiceIndex]?.description}
+                      {flatServicesList[currentServiceIndex]?.description}
                     </p>
                   </motion.div>
                 </AnimatePresence>
@@ -1552,7 +1580,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
               {/* Progress dots */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                {translations[langKey].services_list.map((_, i) => (
+                {flatServicesList.map((_, i) => (
                   <div
                     key={i}
                     className={`w-2 h-2 rounded-full transition-all ${i === currentServiceIndex ? 'bg-pink-500 w-4' : 'bg-pink-300'}`}
@@ -1936,7 +1964,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
         <AnimatePresence>
           {isServicesExpanded && (
             <ServicesExplosionOverlay
-              services={translations[langKey].services_list}
+              categories={translations[langKey].services_categories}
               onClose={() => setIsServicesExpanded(false)}
               color={sectionColors.services.icon}
             />
