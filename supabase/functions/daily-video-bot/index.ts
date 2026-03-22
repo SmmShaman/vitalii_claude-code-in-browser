@@ -1005,51 +1005,39 @@ Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berb
 
   if (upsertError) throw new Error(`Draft upsert: ${upsertError.message}`);
 
-  // ── Send to Telegram: article titles + images preview (compact, no scripts) ──
-  let msg = `📺 <b>Дайджест — ${displayDate}</b>\n`;
-  msg += `📊 Обрано <b>${validSelectedIds.length}</b> з ${articles.length} статей\n\n`;
+  // ── Telegram Message 1: Article list with site links ──
+  let msg1 = `📰 <b>Дайджест ${displayDate}</b>\n\n`;
+  msg1 += `Обрано ${validSelectedIds.length} з ${articles.length} новин:\n\n`;
 
   for (let i = 0; i < validSelectedIds.length; i++) {
     const a = selectedArticles[i];
-    const title = a?.title_no || a?.title_en || a?.original_title || `Sak ${i + 1}`;
-    const imgCount = (webImagesPerArticle[validSelectedIds[i]] || []).length;
-    const hasVideo = !!(a?.video_url || a?.original_video_url);
-    const mediaIcon = hasVideo ? "🎥" : imgCount >= MIN_IMAGES ? "✅" : imgCount > 0 ? "⚠️" : "❌";
-    msg += `${mediaIcon} <b>${i + 1}.</b> ${escapeHtml(title.substring(0, 80))}\n`;
-    const ent = entityMap[validSelectedIds[i]];
-    if (ent) {
-      const entParts: string[] = [];
-      if (ent.people.length > 0) entParts.push(`👤${ent.people.slice(0, 2).join(", ")}`);
-      if (ent.companies.length > 0) entParts.push(`🏢${ent.companies.slice(0, 2).join(", ")}`);
-      if (ent.products.length > 0) entParts.push(`📦${ent.products[0]}`);
-      if (entParts.length > 0) msg += `   ${entParts.join(" | ")}\n`;
-    }
-    msg += `   📸 ${imgCount} зобр.${hasVideo ? " + відео" : ""}\n`;
+    const title = a?.title_en || a?.title_no || a?.original_title || `Article ${i + 1}`;
+    const slug = a?.slug_en || "";
+    const link = slug ? `https://vitalii.no/news/${slug}` : "";
+    msg1 += `${i + 1}. ${escapeHtml(title.substring(0, 80))}`;
+    if (link) msg1 += `\n   🔗 ${link}`;
+    msg1 += "\n\n";
   }
 
-  msg += `\n🖼️ Зображення знайдено через: ${searchEngines.join(", ") || "source scraping"}`;
-
-  if (msg.length > 4000) {
-    const cutIdx = msg.lastIndexOf("\n", 3900);
-    msg = msg.substring(0, cutIdx > 0 ? cutIdx : 3900) + "\n<i>... (скорочено)</i>";
+  if (msg1.length > 4000) {
+    msg1 = msg1.substring(0, msg1.lastIndexOf("\n\n", 3900)) + "\n\n<i>... (скорочено)</i>";
   }
 
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: "✅ Погоджую", callback_data: `dv_sok_${date}` },
-        { text: "🔍 Знайти інші картинки", callback_data: `dv_rsi_${date}` },
-      ],
-    ],
-  };
+  await sendMessage(TELEGRAM_CHAT_ID, msg1);
 
-  const previewMsgId = await sendMessage(TELEGRAM_CHAT_ID, msg, { reply_markup: keyboard });
+  // ── Telegram Message 2: Narrator script in UKRAINIAN (for bot only) ──
+  // Note: actual TTS and video use Norwegian — Ukrainian is just for Telegram preview
+  let msg2 = `🎙️ <b>Текст диктора (UA переклад):</b>\n\n`;
+  for (let i = 0; i < plan.segmentScripts.length; i++) {
+    const translationEn = plan.segmentTranslationsEn?.[i] || plan.segmentScripts[i] || "";
+    msg2 += `<b>${i + 1}.</b> ${escapeHtml(translationEn.substring(0, 200))}${translationEn.length > 200 ? "..." : ""}\n\n`;
+  }
 
-  // Save message ID
-  await supabase
-    .from("daily_video_drafts")
-    .update({ telegram_message_ids: [previewMsgId] })
-    .eq("id", draft.id);
+  if (msg2.length > 4000) {
+    msg2 = msg2.substring(0, msg2.lastIndexOf("\n\n", 3900)) + "\n\n<i>... (скорочено)</i>";
+  }
+
+  await sendMessage(TELEGRAM_CHAT_ID, msg2);
 
   console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, media preview sent`);
 
@@ -1601,83 +1589,25 @@ Return JSON:
     .update({ visual_scenario: enrichedSegments })
     .eq("target_date", targetDate);
 
-  // Send scenario to Telegram — split into 2 messages to avoid 4096 char limit
-
-  // Message 1: Segment details (no buttons)
-  let segmentsMsg = `🎨 <b>Візуальний сценарій — ${displayDate}</b>\n\n`;
-
-  enrichedSegments.forEach((seg: any, i: number) => {
-    const catEmoji: Record<string, string> = {
-      tech: "💻", business: "💼", ai: "🤖", startup: "🚀",
-      science: "🔬", politics: "🏛", crypto: "₿", health: "🏥", news: "📰",
-    };
-    const emoji = catEmoji[seg.category] || "📰";
-    segmentsMsg += `${i + 1}. ${emoji} <b>${escapeHtml(seg.headline || "")}</b>\n`;
-    if (seg.summary) {
-      segmentsMsg += `   📝 ${escapeHtml(seg.summary)}\n`;
-    }
-    segmentsMsg += `   ${seg.category} | ${seg.accentColor} | ${seg.mood || "positive"} | ${seg.transition || "fade"}\n`;
-    if (seg.keyQuote) {
-      segmentsMsg += `   💬 <i>"${escapeHtml(seg.keyQuote)}"</i>\n`;
-    }
-    if (seg.facts && seg.facts.length > 0) {
-      const statsType = seg.statsVisualType ? ` [${seg.statsVisualType}]` : "";
-      segmentsMsg += `   📊${statsType} ${seg.facts.map((f: any) => `${f.value} (${f.label})`).join(", ")}\n`;
-    }
-    // Show infographic overlays
-    if (seg.dataOverlays && seg.dataOverlays.length > 0) {
-      const overlayTypes: Record<string, string> = {
-        keyFigure: "🔢", barChart: "📊", bulletList: "📋", miniTable: "📑", comparison: "⚖️",
-      };
-      const overlayDesc = seg.dataOverlays.map((o: any) => {
-        const icon = overlayTypes[o.type] || "📌";
-        const label = o.type === "keyFigure" ? o.data?.value : o.type === "barChart" ? `${o.data?.items?.length || 0} bars` : o.type === "bulletList" ? `${o.data?.items?.length || 0} pts` : o.type === "miniTable" ? `${o.data?.rows?.length || 0} rows` : "vs";
-        return `${icon}${label}`;
-      }).join(" ");
-      segmentsMsg += `   🎨 Інфографіка: ${overlayDesc}\n`;
-    }
-    segmentsMsg += "\n";
-  });
-
-  // Trim segments message if still too long
-  if (segmentsMsg.length > 4000) {
-    // Cut at last complete segment (find last double newline before 4000)
-    const cutIdx = segmentsMsg.lastIndexOf("\n\n", 3900);
-    if (cutIdx > 0) {
-      segmentsMsg = segmentsMsg.substring(0, cutIdx) + "\n\n<i>... (скорочено)</i>";
-    }
-  }
-
-  // Skip detailed segments message (reduce Telegram noise)
-  // Only send approval buttons
-  let descMsg = "";
-  if (scenario.scenarioDescription) {
-    descMsg = `📋 <b>Візуальний опис:</b>\n\n${escapeHtml(scenario.scenarioDescription)}`;
+  // In auto-mode (no chatId from button press), skip Telegram messages
+  // Manual mode (user clicked button) — show scenario for review
+  if (chatId && chatId !== Number(TELEGRAM_CHAT_ID)) {
+    // Manual mode: show scenario + buttons
+    let descMsg = scenario.scenarioDescription
+      ? `📋 <b>Візуальний опис:</b>\n\n${escapeHtml(scenario.scenarioDescription)}`
+      : `📋 <b>Сценарій готовий — ${scenario.segments.length} сегментів</b>`;
     if (descMsg.length > 3800) {
-      // Cut at last paragraph before 3800
-      const cutIdx = descMsg.lastIndexOf("\n", 3700);
-      descMsg = descMsg.substring(0, cutIdx > 0 ? cutIdx : 3700) + "\n\n<i>... (скорочено)</i>";
+      descMsg = descMsg.substring(0, descMsg.lastIndexOf("\n", 3700)) + "\n\n<i>... (скорочено)</i>";
     }
-  } else {
-    descMsg = `📋 <b>Сценарій готовий — ${scenario.segments.length} сегментів</b>`;
-  }
-
-  const keyboard = {
-    inline_keyboard: [
-      [
+    const keyboard = {
+      inline_keyboard: [[
         { text: "✅ Рендерити", callback_data: `dv_ren_${targetDate}` },
         { text: "🔄 Перегенерувати", callback_data: `dv_vrg_${targetDate}` },
-      ],
-    ],
-  };
-
-  const scenarioMsgId = await sendMessage(targetChatId, descMsg, { reply_markup: keyboard });
-
-  const existingMsgIds = draft.telegram_message_ids || [];
-  await supabase
-    .from("daily_video_drafts")
-    .update({ telegram_message_ids: [...existingMsgIds, scenarioMsgId] })
-    .eq("target_date", targetDate);
+      ]],
+    };
+    await sendMessage(chatId, descMsg, { reply_markup: keyboard });
+  }
+  // Auto-mode: no Telegram messages, just save to DB and continue
 
   console.log(`✅ Visual scenario sent for approval`);
   return json({ ok: true, segments: scenario.segments.length });
@@ -2378,6 +2308,9 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
 
     return json({ ok: false, error: result.error });
   }
+
+  // Always notify: render started (message 3 of 4)
+  await sendMessage(TELEGRAM_CHAT_ID, `🎬 <b>Рендер запущено!</b>\n\nВідео за ${targetDate} рендериться. Це займе 15-20 хвилин.`);
 
   console.log(`✅ Render triggered`);
   return json({ ok: true });

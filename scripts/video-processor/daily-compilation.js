@@ -647,30 +647,9 @@ async function main() {
     plan = await directDailyShow(articles, displayDate);
   }
 
-  // ── Telegram Step 1: Selected articles ──
+  // Articles reference for Visual Director context
   const detailedArticlesForBot = articles.slice(0, MAX_DETAILED);
-  const step1Lines = detailedArticlesForBot.map((a, i) => {
-    const title = a.title_no || a.title_en || '';
-    const slug = a.slug_en ? `https://vitalii.no/news/${a.slug_en}` : '';
-    return `${i + 1}. ${title}${slug ? `\n   🔗 ${slug}` : ''}`;
-  });
-  await sendTelegramStep(
-    `📰 <b>Дайджест ${displayDate}</b>\n\n` +
-    `Обрано ${detailedArticlesForBot.length} з ${articles.length} новин:\n\n` +
-    step1Lines.join('\n\n'),
-  );
-
-  // ── Telegram Step 2: Scripts (NO + UA summary) ──
-  const scriptPreview = (plan.segmentScripts || []).map((s, i) => {
-    const seg = plan.segments?.[i] || {};
-    return `<b>${i + 1}. ${seg.headline || ''}</b>\n${s.substring(0, 200)}${s.length > 200 ? '...' : ''}`;
-  }).join('\n\n');
-  await sendTelegramStep(
-    `🎙️ <b>Сценарій (${LANGUAGE.toUpperCase()}):</b>\n\n` +
-    `${plan.introScript || ''}\n\n` +
-    scriptPreview + '\n\n' +
-    `${plan.outroScript || ''}`,
-  );
+  // Note: Telegram notifications are sent by daily-video-bot, not here
 
   // Step 3: Generate per-article voiceovers (Norwegian)
   console.log('\n🎙️ Step 2: Generating per-segment voiceovers...');
@@ -743,16 +722,7 @@ async function main() {
     }
   }
 
-  // ── Telegram Step 3: Visual Director results ──
-  const vdSummary = visualDirectives.map((vd, i) => {
-    const blocks = vd?.visualBlocks?.length || 0;
-    const overlays = vd?.dataOverlays?.length || 0;
-    const scenes = (vd?.visualBlocks || []).slice(0, 2).map(b =>
-      `  • ${(b.sceneDescription || b.visualMetaphor || '').substring(0, 100)}`
-    ).join('\n');
-    return `<b>Seg ${i + 1}</b> [${vd?.mood}|${vd?.transition}]: ${blocks} scenes, ${overlays} overlays\n${scenes}`;
-  }).join('\n\n');
-  await sendTelegramStep(`🎨 <b>Visual Director:</b>\n\n${vdSummary}`);
+  // Visual Director results — log only, no Telegram (bot handles notifications)
 
   // Step 3.1: Per-phrase image search (from Visual Director imageSearchQuery)
   // Uses Google Custom Search API (GOOGLE_API_KEY + GOOGLE_CSE_ID) or Serper as fallback
