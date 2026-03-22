@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Search } from 'lucide-react';
+import { Globe, Search, Pause, Play } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, type Language } from '@/contexts/TranslationContext';
 import { heroContrastColors } from '@/components/sections/BentoGrid';
@@ -23,6 +23,18 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Marquee pause/play
+  const [marqueePaused, setMarqueePaused] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail) setMarqueePaused(detail.paused);
+    };
+    window.addEventListener('marquee-state', handler);
+    return () => window.removeEventListener('marquee-state', handler);
+  }, []);
 
   const handleSearchToggle = () => {
     if (searchOpen && searchQuery.trim()) {
@@ -300,6 +312,22 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               )}
             </AnimatePresence>
           </div>
+          {/* Marquee pause/play */}
+          {!isMobile && (
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('marquee-toggle'));
+                setMarqueePaused(p => !p);
+              }}
+              className="p-2 rounded-lg transition-all duration-300 bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90 hover:text-[#C8C5D6]"
+              aria-label={marqueePaused ? 'Play skills marquee' : 'Pause skills marquee'}
+            >
+              {marqueePaused
+                ? <Play className="w-4 h-4" />
+                : <Pause className="w-4 h-4" />
+              }
+            </button>
+          )}
           {/* Language buttons */}
           {languages.map((lang) => (
             <button

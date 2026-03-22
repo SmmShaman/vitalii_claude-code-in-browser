@@ -9,6 +9,7 @@ import { ProjectsCarousel } from '@/components/ui/ProjectsCarousel';
 import { ProjectsModal } from '@/components/ui/ProjectsModal';
 import { ServicesAnimation } from '@/components/ui/ServicesAnimation';
 import { SkillsAnimation } from '@/components/ui/SkillsAnimation';
+import { SkillsMarquee } from '@/components/ui/SkillsMarquee';
 import { AboutAnimation } from '@/components/ui/AboutAnimation';
 import { ServicesDetail } from '@/components/ui/ServicesDetail';
 import { NewsSection } from '@/components/sections/NewsSection';
@@ -1070,6 +1071,11 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                     );
                   })}
               </AnimatePresence>
+
+              {/* Skills Marquee - flows through grid gaps */}
+              {!isMobile && !selectedNewsId && !selectedBlogId && (
+                <SkillsMarquee gridRef={gridContainerRef} />
+              )}
 
               {/* Services Detail - renders inside grid */}
               <ServicesDetail
