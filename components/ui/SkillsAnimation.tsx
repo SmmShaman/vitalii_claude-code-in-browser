@@ -259,7 +259,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
           /* Normal text badges view */
           <motion.div
             key="badges"
-            className="relative h-full w-full flex flex-wrap items-center justify-center content-center gap-0.5 sm:gap-1 z-10 px-1 py-0.5"
+            className="relative h-full w-full flex flex-wrap justify-center content-evenly gap-x-1 gap-y-0 z-10 px-2 py-1"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
