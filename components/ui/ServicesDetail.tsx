@@ -186,8 +186,16 @@ export const ServicesDetail = ({ categories, isOpen, onClose }: ServicesDetailPr
   const detailTextColor = getTextColor(detailColor);
   const simpleTextColor = getTextColor(simpleColor);
 
-  // Track running global index for mapping categories → sub-services
-  let globalIndex = 0;
+  // Pre-compute category start indices (no mutable variable during render)
+  const categoryStartIndices = useMemo(() => {
+    const indices: number[] = [];
+    let running = 0;
+    for (const cat of categories) {
+      indices.push(running);
+      running += cat.services.length;
+    }
+    return indices;
+  }, [categories]);
 
   return (
     <AnimatePresence>
@@ -216,7 +224,7 @@ export const ServicesDetail = ({ categories, isOpen, onClose }: ServicesDetailPr
             {/* Left side: Categories with sub-services (1/3 width) */}
             <div className="w-1/3 h-full flex flex-col justify-center gap-1 overflow-y-auto py-8">
               {categories.map((cat, catIndex) => {
-                const categoryStartIndex = globalIndex;
+                const categoryStartIndex = categoryStartIndices[catIndex];
                 const isCategoryActive = activeGlobalIndex >= categoryStartIndex &&
                   activeGlobalIndex < categoryStartIndex + cat.services.length;
 
@@ -247,13 +255,7 @@ export const ServicesDetail = ({ categories, isOpen, onClose }: ServicesDetailPr
                       const thisGlobalIndex = categoryStartIndex + sIndex;
                       const isActive = activeGlobalIndex === thisGlobalIndex;
 
-                      // Track ref for active item
                       const refProp = isActive ? activeServiceRef : null;
-
-                      // Need to advance globalIndex at the end of the last sub-service of each category
-                      if (sIndex === cat.services.length - 1) {
-                        globalIndex = categoryStartIndex + cat.services.length;
-                      }
 
                       return (
                         <div

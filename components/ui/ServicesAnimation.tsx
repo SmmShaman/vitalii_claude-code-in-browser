@@ -39,30 +39,24 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
   const splitTextsRef = useRef<SplitText[]>([]);
 
 
-  // Calculate optimal font size for all categories to fit
+  // Calculate optimal font size for all categories to fit on hover
   useEffect(() => {
     if (!containerRef.current || !isHovered) return;
 
     const container = containerRef.current;
     const containerHeight = container.clientHeight;
 
-    // 3 categories + sub-services labels
-    const totalItems = categories.length;
-    const subItemsCount = categories.reduce((sum, cat) => sum + cat.services.length, 0);
+    const numCategories = categories.length;
     const lineHeight = 1.3;
     const isUkrainian = currentLanguage.toLowerCase() === 'ua';
-    const gapBetweenLines = isUkrainian ? 3 : 5;
+    const gapBetweenLines = isUkrainian ? 5 : 10;
 
-    // Category titles are bigger, sub-items are smaller
-    let fontSize = 32;
-    const minFontSize = 10;
-    const subFontRatio = 0.45;
+    let fontSize = 48;
+    const minFontSize = 12;
 
     while (fontSize > minFontSize) {
-      const categoryHeight = fontSize * lineHeight * totalItems;
-      const subItemHeight = fontSize * subFontRatio * lineHeight * subItemsCount;
-      const gaps = gapBetweenLines * (totalItems + subItemsCount - 1);
-      const totalHeight = categoryHeight + subItemHeight + gaps;
+      const estimatedLineHeight = fontSize * lineHeight;
+      const totalHeight = (estimatedLineHeight * numCategories) + (gapBetweenLines * (numCategories - 1));
 
       if (totalHeight < containerHeight * 0.9) {
         break;
@@ -85,19 +79,16 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
 
       debugLog(`🎯 Starting animation for category ${index}`);
 
-      // Hide all services first
       gsap.set(serviceElements, { autoAlpha: 0 });
 
       const currentElement = serviceElements[index] as HTMLElement;
       if (!currentElement) return;
 
-      // Show current service
       gsap.set(currentElement, { autoAlpha: 1 });
 
       const chars = currentElement.querySelectorAll('.char');
       if (!chars || chars.length === 0) return;
 
-      // IMPORTANT: Set initial scattered positions for current chars
       gsap.set(chars, {
         opacity: 0,
         x: () => (Math.random() - 0.5) * 800,
@@ -106,7 +97,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         scale: 0,
       });
 
-      // Animate chars gathering
       const tl = gsap.timeline();
 
       tl.to(chars, {
@@ -127,10 +117,8 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
       timelineRef.current = tl;
     };
 
-    // Start with current index
     animateService(currentIndex);
 
-    // Set interval for rotation
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -139,7 +127,7 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
     }, 3000);
   }, [currentIndex, categories.length]);
 
-  // Main initialization effect - runs when categories change (language change)
+  // Main initialization effect
   useEffect(() => {
     if (!containerRef.current) {
       debugWarn('ServicesAnimation: Container not ready');
@@ -148,13 +136,11 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
 
     const container = containerRef.current;
 
-    // Cleanup previous SplitText instances before creating new ones
     if (splitTextsRef.current.length > 0) {
       splitTextsRef.current.forEach((split) => split.revert());
       splitTextsRef.current = [];
     }
 
-    // Function to check if elements have text content
     const hasTextContent = (elements: NodeListOf<Element>): boolean => {
       return Array.from(elements).some(el => {
         const text = el.querySelector('.service-text');
@@ -162,7 +148,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
       });
     };
 
-    // Function to initialize split texts
     const initSplitTexts = (): boolean => {
       const serviceElements = container.querySelectorAll('.service-item');
 
@@ -176,7 +161,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         return false;
       }
 
-      // Create SplitText for all services
       splitTextsRef.current = [];
       serviceElements.forEach((element) => {
         const text = element.querySelector('.service-text');
@@ -198,7 +182,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
       return splitTextsRef.current.length > 0;
     };
 
-    // Retry logic for initialization
     const tryInit = () => {
       requestAnimationFrame(() => {
         const success = initSplitTexts();
@@ -228,7 +211,7 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
       splitTextsRef.current.forEach((split) => split.revert());
       splitTextsRef.current = [];
     };
-  }, [categories]); // Removed startRotation to prevent infinite loop
+  }, [categories]);
 
   // Effect for currentIndex changes (rotation)
   useEffect(() => {
@@ -240,13 +223,11 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
 
       debugLog('🔄 ANIMATION CYCLE - Starting transition to index:', currentIndex);
 
-      // Hide all services
       gsap.set(serviceElements, { autoAlpha: 0 });
 
       const currentElement = serviceElements[currentIndex] as HTMLElement;
       if (!currentElement) return;
 
-      // Show current service
       gsap.set(currentElement, { autoAlpha: 1 });
 
       const chars = currentElement.querySelectorAll('.char');
@@ -254,7 +235,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
 
       debugLog(`✨ Animating category ${currentIndex} with ${chars.length} chars`);
 
-      // IMPORTANT: Set initial scattered positions for chars
       gsap.set(chars, {
         opacity: 0,
         x: () => (Math.random() - 0.5) * 800,
@@ -263,7 +243,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         scale: 0,
       });
 
-      // Animate chars
       if (timelineRef.current) {
         timelineRef.current.kill();
       }
@@ -303,7 +282,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
     if (!serviceElements || serviceElements.length === 0) return;
 
     if (isHovered) {
-      // Pause rotation
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -312,14 +290,12 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         timelineRef.current.pause();
       }
 
-      // Show all services
       gsap.to(serviceElements, {
         autoAlpha: 1,
         duration: 0.3,
         stagger: 0.05,
       });
 
-      // Animate all chars to gathered state
       serviceElements.forEach((element) => {
         const chars = element.querySelectorAll('.char');
         if (!chars || chars.length === 0) return;
@@ -339,15 +315,12 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         });
       });
     } else {
-      // IMPORTANT: ANIMATE scatter of all chars BEFORE resuming rotation to prevent piling
       debugLog('🌪️ Mouse left - scattering all chars before rotation');
 
-      // Kill any ongoing timelines
       if (timelineRef.current) {
         timelineRef.current.kill();
       }
 
-      // Collect all chars from all services
       const allChars: Element[] = [];
       serviceElements.forEach((element) => {
         const chars = element.querySelectorAll('.char');
@@ -355,7 +328,6 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
       });
 
       if (allChars.length > 0) {
-        // Animate scatter with stagger for smooth effect
         gsap.to(allChars, {
           opacity: 0,
           x: () => (Math.random() - 0.5) * 800,
@@ -398,57 +370,19 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         }
       `}</style>
 
-      {isHovered ? (
-        /* Hover state: show all categories with sub-services */
-        <div className="relative w-full h-full flex flex-col justify-center px-4 gap-1">
-          {categories.map((cat, catIndex) => (
-            <div key={catIndex} className="mb-1">
-              {/* Category title */}
-              <div
-                className="service-item relative"
-                style={{ visibility: 'visible', opacity: 1 }}
-              >
-                <div
-                  className="service-text font-bold uppercase"
-                  style={{
-                    fontSize: hoverFontSize,
-                    fontWeight: 900,
-                    color: '#c24628',
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {cat.icon} {cat.category}
-                </div>
-              </div>
-              {/* Sub-services */}
-              {cat.services.map((service, sIndex) => (
-                <div
-                  key={sIndex}
-                  className="pl-6"
-                  style={{ opacity: 0.7 }}
-                >
-                  <span
-                    style={{
-                      fontSize: `calc(${hoverFontSize} * 0.45)`,
-                      fontWeight: 500,
-                      color: '#9B97B0',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {service.title}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      ) : (
-        /* Default state: rotate through category names */
-        <div className="relative w-full h-full flex items-center justify-center">
-          {categories.map((cat, index) => (
+      {/* Same DOM structure for both states — only CSS changes based on isHovered */}
+      <div
+        className={`relative w-full h-full flex items-center justify-center ${
+          isHovered ? `flex-col ${currentLanguage.toLowerCase() === 'ua' ? 'gap-1' : 'gap-2'}` : ''
+        }`}
+        style={{
+          padding: isHovered ? '1rem' : '0',
+        }}
+      >
+        {categories.map((cat, index) => (
             <div
               key={index}
-              className="service-item absolute inset-0 flex items-center justify-center"
+              className={`service-item ${isHovered ? 'relative' : 'absolute inset-0'} flex items-center justify-center`}
               style={{
                 visibility: 'hidden',
                 opacity: 0,
@@ -457,7 +391,7 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
               <div
                 className="service-text font-bold uppercase text-center px-4"
                 style={{
-                  fontSize: 'clamp(1.2rem, 3.5vw, 2.5rem)',
+                  fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
                   fontWeight: 900,
                   color: '#EEEDF5',
                   lineHeight: 1.3,
@@ -470,9 +404,8 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
                 {cat.icon} {cat.category}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 };
