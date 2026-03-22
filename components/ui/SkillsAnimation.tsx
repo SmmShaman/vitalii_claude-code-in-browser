@@ -102,28 +102,31 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
   };
 
   // Calculate evenly distributed positions for logos across grid area
-  // Fixed 5x5 grid layout (25 positions for up to 25 skills)
-  const getLogoPosition = (index: number, _total: number) => {
+  // Dynamic grid: auto-fit columns/rows based on total skill count
+  const getLogoPosition = (index: number, total: number) => {
     if (!gridBounds) {
-      debugLog(`⚠️ Logo ${index}: No gridBounds, using center`);
+      debugLog(`Logo ${index}: No gridBounds, using center`);
       return { left: '50%', top: '50%' };
     }
 
-    const cols = 5; // Fixed: 5 columns
-    const rows = 5; // Fixed: 5 rows
+    // Auto-calculate grid dimensions to fit all skills
+    const cols = Math.ceil(Math.sqrt(total * (gridBounds.width / gridBounds.height)));
+    const rows = Math.ceil(total / cols);
 
     const col = index % cols;
     const row = Math.floor(index / cols);
 
-    // Distribute evenly across grid bounds
-    const xPercent = (col / (cols - 1 || 1));
-    const yPercent = (row / (rows - 1 || 1));
+    // 15% padding on each side to keep logos within visible area
+    const pad = 0.15;
+    const usable = 1 - pad * 2;
+    const xPercent = cols > 1 ? (col / (cols - 1)) : 0.5;
+    const yPercent = rows > 1 ? (row / (rows - 1)) : 0.5;
 
-    const left = gridBounds.left + (gridBounds.width * xPercent * 0.9) + (gridBounds.width * 0.05);
-    const top = gridBounds.top + (gridBounds.height * yPercent * 0.9) + (gridBounds.height * 0.05);
+    const left = gridBounds.left + gridBounds.width * (pad + usable * xPercent);
+    const top = gridBounds.top + gridBounds.height * (pad + usable * yPercent);
 
     const position = { left: `${left}px`, top: `${top}px` };
-    if (index === 0) debugLog(`📍 Logo ${index} position:`, position, { col, row, xPercent, yPercent });
+    if (index === 0) debugLog(`Logo ${index} position:`, position, { col, row, cols, rows });
     return position;
   };
 
@@ -223,12 +226,12 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                   <img
                     src={getSkillLogo(skill.name)}
                     alt={skill.name}
-                    className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-contain"
+                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain"
                     style={{
-                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))'
+                      filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))'
                     }}
-                    onLoad={() => index === 0 && debugLog('✅ First logo image loaded')}
-                    onError={() => debugError(`❌ Logo failed to load: ${skill.name}`)}
+                    onLoad={() => index === 0 && debugLog('First logo image loaded')}
+                    onError={() => debugError(`Logo failed to load: ${skill.name}`)}
                   />
                 </motion.div>
               );
@@ -256,7 +259,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
           /* Normal text badges view */
           <motion.div
             key="badges"
-            className="relative h-full w-full flex flex-wrap items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5 z-10 px-1 sm:px-1.5 py-0.5 sm:py-1"
+            className="relative h-full w-full flex flex-wrap items-center justify-center content-center gap-0.5 sm:gap-1 z-10 px-1 py-0.5"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -282,7 +285,7 @@ export const SkillsAnimation = ({ skills, backgroundText, isExploding = false, g
                 >
                   <span
                     className={`font-semibold ${colors.text} whitespace-nowrap`}
-                    style={{ fontSize: 'clamp(1rem, 1.6vw, 1.25rem)' }}
+                    style={{ fontSize: 'clamp(0.6rem, 1vw, 0.85rem)' }}
                   >
                     {skill.name}
                   </span>
