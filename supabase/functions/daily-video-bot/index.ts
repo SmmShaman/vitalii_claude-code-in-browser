@@ -1053,20 +1053,18 @@ Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berb
 
   console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, media preview sent`);
 
-  // AUTO-ADVANCE: skip manual approval, proceed to next steps automatically
-  console.log(`🤖 Auto-advancing: generate_scenario → prepare_images → trigger_render`);
-  try {
-    // Step 2: Generate scenario
-    await generateScenario(date, Number(TELEGRAM_CHAT_ID), 0);
-    // Step 3: Prepare images
-    await prepareImages(date, Number(TELEGRAM_CHAT_ID), 0);
-    // Step 4: Trigger render
-    await triggerRender(date, Number(TELEGRAM_CHAT_ID), 0);
-    console.log(`✅ Auto-advance complete: render triggered for ${date}`);
-  } catch (autoErr: any) {
-    console.error(`⚠️ Auto-advance failed at some step: ${autoErr.message}`);
-    await sendMessage(TELEGRAM_CHAT_ID, `⚠️ Auto-advance failed: ${autoErr.message}\n\nНатисніть кнопку вручну для продовження.`);
-  }
+  // AUTO-ADVANCE: chain next steps via separate Edge Function calls (async, non-blocking)
+  // Can't do all steps in one request — Supabase 150s timeout would hit
+  console.log(`🤖 Auto-advancing: dispatching generate_scenario...`);
+  const baseUrl = Deno.env.get("SUPABASE_URL")!;
+  const srvKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // Fire-and-forget: call generate_scenario which will chain to next steps
+  fetch(`${baseUrl}/functions/v1/daily-video-bot?action=auto_chain&target_date=${date}`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${srvKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  }).catch(e => console.error(`⚠️ Auto-chain dispatch failed: ${e.message}`));
 
   return json({ ok: true, draftId: draft.id, selected: validSelectedIds.length, total: articles.length });
 }
@@ -3207,6 +3205,24 @@ Deno.serve(async (req) => {
       case "trigger_render":
         if (!targetDate) return json({ error: "target_date required" }, 400);
         return await triggerRender(targetDate, chatId, messageId, youtubePrivacy);
+
+      case "auto_chain": {
+        // Auto-advance: run generate_scenario → prepare_images → trigger_render sequentially
+        if (!targetDate) return json({ error: "target_date required" }, 400);
+        const tgChat = Number(TELEGRAM_CHAT_ID);
+        console.log(`🤖 Auto-chain: scenario → images → render for ${targetDate}`);
+        try {
+          await generateScenario(targetDate, tgChat, 0);
+          await prepareImages(targetDate, tgChat, 0);
+          await triggerRender(targetDate, tgChat, 0, youtubePrivacy);
+          console.log(`✅ Auto-chain complete for ${targetDate}`);
+          return json({ ok: true, message: "Auto-chain complete, render dispatched" });
+        } catch (chainErr: any) {
+          console.error(`❌ Auto-chain failed: ${chainErr.message}`);
+          await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Auto-chain failed:</b> ${chainErr.message}\n\nВикористайте кнопки для ручного продовження.`);
+          return json({ error: `Auto-chain failed: ${chainErr.message}` }, 500);
+        }
+      }
 
       case "skip":
         if (!targetDate) return json({ error: "target_date required" }, 400);
