@@ -3,7 +3,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage'
 
-// --- Constants ---
 const BASE_SPEED = 25
 const SPEED_VAR = 10
 const COLLISION_DIST = 6
@@ -24,22 +23,41 @@ type Street = { id: string; axis: 'h' | 'v'; fixed: number; min: number; max: nu
 type INode = { streets: { sid: string; pos: number }[] }
 type Ant = { sid: string; pos: number; dir: 1 | -1; speed: number; cd: number; w: number; h: number }
 
+// Full city grid: 3 horizontal streets × 4 vertical streets = 12 intersections
 function calcStreets(w: number, h: number, gap: number) {
   const colW = (w - 2 * gap) / 3
   const rowH = (h - gap) / 2
-  const hY = rowH + gap / 2
-  const v1X = colW + gap / 2
-  const v2X = 2 * colW + gap + gap / 2
+
+  // 4 vertical X positions: left edge, gap1 center, gap2 center, right edge
+  const vX = [0, colW + gap / 2, 2 * colW + gap + gap / 2, w]
+  // 3 horizontal Y positions: top edge, gap center, bottom edge
+  const hY = [0, rowH + gap / 2, h]
 
   const streets: Street[] = [
-    { id: 'h', axis: 'h', fixed: hY, min: 0, max: w },
-    { id: 'v1', axis: 'v', fixed: v1X, min: 0, max: h },
-    { id: 'v2', axis: 'v', fixed: v2X, min: 0, max: h },
+    // 3 horizontal streets (full width)
+    { id: 'h0', axis: 'h', fixed: hY[0], min: 0, max: w },
+    { id: 'h1', axis: 'h', fixed: hY[1], min: 0, max: w },
+    { id: 'h2', axis: 'h', fixed: hY[2], min: 0, max: w },
+    // 4 vertical streets (full height)
+    { id: 'v0', axis: 'v', fixed: vX[0], min: 0, max: h },
+    { id: 'v1', axis: 'v', fixed: vX[1], min: 0, max: h },
+    { id: 'v2', axis: 'v', fixed: vX[2], min: 0, max: h },
+    { id: 'v3', axis: 'v', fixed: vX[3], min: 0, max: h },
   ]
-  const nodes: INode[] = [
-    { streets: [{ sid: 'h', pos: v1X }, { sid: 'v1', pos: hY }] },
-    { streets: [{ sid: 'h', pos: v2X }, { sid: 'v2', pos: hY }] },
-  ]
+
+  // 12 intersections: each hY × vX combination
+  const nodes: INode[] = []
+  for (let hi = 0; hi < hY.length; hi++) {
+    for (let vi = 0; vi < vX.length; vi++) {
+      nodes.push({
+        streets: [
+          { sid: `h${hi}`, pos: vX[vi] },
+          { sid: `v${vi}`, pos: hY[hi] },
+        ]
+      })
+    }
+  }
+
   return { streets, nodes }
 }
 
@@ -48,12 +66,22 @@ function antXY(ant: Ant, streets: Street[]): [number, number] {
   return s.axis === 'h' ? [ant.pos, s.fixed] : [s.fixed, ant.pos]
 }
 
-// Clamp ant position to current street bounds
 function clampAnt(ant: Ant, streets: Street[]) {
   const s = streets.find(s => s.id === ant.sid)
   if (!s) return
-  if (ant.pos < s.min + 5) ant.pos = s.min + 5
-  if (ant.pos > s.max - 5) ant.pos = s.max - 5
+  ant.pos = Math.max(s.min + 5, Math.min(s.max - 5, ant.pos))
+}
+
+// Position badge with rotation on vertical streets
+function positionBadge(el: HTMLDivElement, ant: Ant, streets: Street[]) {
+  const [x, y] = antXY(ant, streets)
+  const seg = streets.find(s => s.id === ant.sid)
+  if (seg && seg.axis === 'v') {
+    const rot = ant.dir === 1 ? 90 : -90
+    el.style.transform = `translate(${x - ant.h / 2}px, ${y - ant.w / 2}px) rotate(${rot}deg)`
+  } else {
+    el.style.transform = `translate(${x - ant.w / 2}px, ${y - ant.h / 2}px)`
+  }
 }
 
 interface Props {
@@ -66,7 +94,6 @@ export function SkillsMarquee({ gridRef }: Props) {
   const antsRef = useRef<Ant[]>([])
   const streetsRef = useRef<Street[]>([])
   const nodesRef = useRef<INode[]>([])
-  const gapRef = useRef(20)
   const rafRef = useRef(0)
   const lastTimeRef = useRef(0)
   const pausedRef = useRef(false)
@@ -75,8 +102,7 @@ export function SkillsMarquee({ gridRef }: Props) {
   const skillsRef = useRef<{ name: string; category: string }[]>([])
 
   useEffect(() => {
-    const stored = getStoredSkills()
-    skillsRef.current = convertSkillsForAnimation(stored)
+    skillsRef.current = convertSkillsForAnimation(getStoredSkills())
   }, [])
 
   useEffect(() => {
@@ -108,11 +134,8 @@ export function SkillsMarquee({ gridRef }: Props) {
     const container = containerRef.current
     if (!grid || !container) return
 
-    // Read actual gap from CSS Grid computed style
     const computed = getComputedStyle(grid)
-    const gapStr = computed.gap || computed.rowGap || '20px'
-    const gap = parseInt(gapStr) || 20
-    gapRef.current = gap
+    const gap = parseInt(computed.gap || computed.rowGap || '20px') || 20
 
     const rect = grid.getBoundingClientRect()
     const cRect = container.getBoundingClientRect()
@@ -139,7 +162,6 @@ export function SkillsMarquee({ gridRef }: Props) {
     if (antsRef.current.length === 0 && skillsRef.current.length > 0) {
       antsRef.current = initAnts(streets, skillsRef.current.length)
     } else if (oldStreets.length > 0) {
-      // Remap ant positions proportionally on resize
       for (const ant of antsRef.current) {
         const oldS = oldStreets.find(s => s.id === ant.sid)
         const newS = streets.find(s => s.id === ant.sid)
@@ -151,7 +173,7 @@ export function SkillsMarquee({ gridRef }: Props) {
       }
     }
 
-    // Measure + update badge sizes; also set responsive font
+    // Responsive badge sizing based on gap
     const fontSize = Math.max(8, Math.min(11, gap * 0.5))
     const padV = Math.max(1, Math.round(gap * 0.08))
     const padH = Math.max(4, Math.round(gap * 0.3))
@@ -166,7 +188,6 @@ export function SkillsMarquee({ gridRef }: Props) {
     }
   }, [gridRef, initAnts])
 
-  // Animation loop
   const tick = useCallback((time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time
     const dt = Math.min(time - lastTimeRef.current, 33) / 1000
@@ -186,7 +207,7 @@ export function SkillsMarquee({ gridRef }: Props) {
 
         let newPos = ant.pos + ant.dir * ant.speed * dt
 
-        // Check intersections
+        // Intersections
         if (ant.cd === 0) {
           for (let ni = 0; ni < nodes.length; ni++) {
             const node = nodes[ni]
@@ -217,7 +238,7 @@ export function SkillsMarquee({ gridRef }: Props) {
           }
         }
 
-        // Collision with ant ahead
+        // Collision
         let minAhead = Infinity
         for (let j = 0; j < ants.length; j++) {
           if (j === i || ants[j].sid !== ant.sid) continue
@@ -233,10 +254,7 @@ export function SkillsMarquee({ gridRef }: Props) {
         ant.pos = newPos
 
         const el = badgeRefs.current[i]
-        if (el) {
-          const [x, y] = antXY(ant, streets)
-          el.style.transform = `translate(${x - ant.w / 2}px, ${y - ant.h / 2}px)`
-        }
+        if (el) positionBadge(el, ant, streets)
       }
     }
 
@@ -246,13 +264,11 @@ export function SkillsMarquee({ gridRef }: Props) {
   const explode = useCallback(() => {
     if (explodingRef.current) return
     explodingRef.current = true
-    const ants = antsRef.current
-    const streets = streetsRef.current
 
-    for (let i = 0; i < ants.length; i++) {
+    for (let i = 0; i < antsRef.current.length; i++) {
       const el = badgeRefs.current[i]
       if (!el) continue
-      const [cx, cy] = antXY(ants[i], streets)
+      const [cx, cy] = antXY(antsRef.current[i], streetsRef.current)
       const angle = Math.random() * Math.PI * 2
       const dist = 120 + Math.random() * 200
       el.style.transition = 'transform 0.7s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.7s ease-out'
@@ -262,7 +278,6 @@ export function SkillsMarquee({ gridRef }: Props) {
 
     setTimeout(() => {
       antsRef.current = initAnts(streetsRef.current, skillsRef.current.length)
-      // Re-measure badge sizes for new ants
       for (let i = 0; i < badgeRefs.current.length; i++) {
         const el = badgeRefs.current[i]
         if (!el) continue
@@ -271,8 +286,7 @@ export function SkillsMarquee({ gridRef }: Props) {
         const ant = antsRef.current[i]
         if (ant) {
           ant.w = el.offsetWidth; ant.h = el.offsetHeight
-          const [x, y] = antXY(ant, streetsRef.current)
-          el.style.transform = `translate(${x - ant.w / 2}px, ${y - ant.h / 2}px)`
+          positionBadge(el, ant, streetsRef.current)
         }
       }
       explodingRef.current = false
@@ -287,14 +301,9 @@ export function SkillsMarquee({ gridRef }: Props) {
 
     const onResize = () => {
       measure()
-      // Immediately update positions after resize
-      const ants = antsRef.current
-      const streets = streetsRef.current
-      for (let i = 0; i < ants.length; i++) {
+      for (let i = 0; i < antsRef.current.length; i++) {
         const el = badgeRefs.current[i]
-        if (!el) continue
-        const [x, y] = antXY(ants[i], streets)
-        el.style.transform = `translate(${x - ants[i].w / 2}px, ${y - ants[i].h / 2}px)`
+        if (el) positionBadge(el, antsRef.current[i], streetsRef.current)
       }
     }
     window.addEventListener('resize', onResize)
@@ -340,6 +349,7 @@ export function SkillsMarquee({ gridRef }: Props) {
               willChange: 'transform',
               backdropFilter: 'blur(4px)',
               border: `1px solid ${cat.color}33`,
+              transformOrigin: 'center center',
             }}
             onMouseEnter={() => { hoveredRef.current = true }}
             onMouseLeave={() => { hoveredRef.current = false }}
