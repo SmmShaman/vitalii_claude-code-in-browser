@@ -57,36 +57,48 @@ export const categoryLabels: Record<SkillCategory, string> = {
   integration: 'Integration',
 };
 
-// Default skills matching the current translations.ts
+// Default skills derived from GitHub repos analysis (SmmShaman/*)
 export const defaultSkills: Skill[] = [
-  // Frontend
-  { id: '1', name: 'React', category: 'development' },
-  { id: '2', name: 'TypeScript', category: 'development' },
-  { id: '3', name: 'Tailwind CSS', category: 'development' },
-  // Backend
+  // Development — core languages & frameworks (10+ repos evidence)
+  { id: '1', name: 'TypeScript', category: 'development' },
+  { id: '2', name: 'React', category: 'development' },
+  { id: '3', name: 'Next.js', category: 'development' },
   { id: '4', name: 'Python', category: 'development' },
-  { id: '5', name: 'FastAPI', category: 'development' },
-  { id: '6', name: 'Docker', category: 'development' },
-  { id: '7', name: 'Supabase', category: 'integration' },
-  { id: '8', name: 'Firebase', category: 'integration' },
-  // AI / NLP
-  { id: '9', name: 'Azure OpenAI', category: 'ai' },
-  { id: '10', name: 'Claude MCP', category: 'ai' },
-  { id: '11', name: 'spaCy', category: 'ai' },
-  { id: '12', name: 'ElevenLabs API', category: 'ai' },
-  { id: '13', name: 'Zvukogram API', category: 'ai' },
-  { id: '14', name: 'OCR.space', category: 'ai' },
-  // Automation
-  { id: '15', name: 'n8n', category: 'automation' },
-  // Marketing
-  { id: '16', name: 'Helium10', category: 'marketing' },
-  { id: '17', name: 'Meta Ads Manager', category: 'marketing' },
-  // DevOps / Hosting
-  { id: '18', name: 'Vercel', category: 'integration' },
-  { id: '19', name: 'Netlify', category: 'integration' },
-  // Other tools
-  { id: '20', name: 'Bolt.new', category: 'ui' },
-  { id: '21', name: 'Canva', category: 'ui' },
+  { id: '5', name: 'Tailwind CSS', category: 'development' },
+  { id: '6', name: 'Node.js', category: 'development' },
+  { id: '7', name: 'Vite', category: 'development' },
+  { id: '8', name: 'Express.js', category: 'development' },
+  { id: '9', name: 'PostgreSQL', category: 'development' },
+  { id: '10', name: 'Deno', category: 'development' },
+  // UI/Design — animation & visualization libraries
+  { id: '11', name: 'Framer Motion', category: 'ui' },
+  { id: '12', name: 'GSAP', category: 'ui' },
+  { id: '13', name: 'Three.js', category: 'ui' },
+  { id: '14', name: 'Radix UI', category: 'ui' },
+  { id: '15', name: 'Recharts', category: 'ui' },
+  { id: '16', name: 'Remotion', category: 'ui' },
+  // AI/ML — AI providers & tools
+  { id: '17', name: 'Azure OpenAI', category: 'ai' },
+  { id: '18', name: 'Google Gemini', category: 'ai' },
+  { id: '19', name: 'OpenAI API', category: 'ai' },
+  { id: '20', name: 'HuggingFace', category: 'ai' },
+  { id: '21', name: 'Tesseract.js', category: 'ai' },
+  { id: '22', name: 'Claude Code', category: 'ai' },
+  // Automation — CI/CD & workflow tools
+  { id: '23', name: 'GitHub Actions', category: 'automation' },
+  { id: '24', name: 'Docker', category: 'automation' },
+  { id: '25', name: 'n8n', category: 'automation' },
+  { id: '26', name: 'Playwright', category: 'automation' },
+  // Marketing — APIs & platforms
+  { id: '27', name: 'Telegram Bot API', category: 'marketing' },
+  { id: '28', name: 'LinkedIn API', category: 'marketing' },
+  { id: '29', name: 'Meta Ads Manager', category: 'marketing' },
+  // Integration — BaaS & hosting
+  { id: '30', name: 'Supabase', category: 'integration' },
+  { id: '31', name: 'Netlify', category: 'integration' },
+  { id: '32', name: 'Fly.io', category: 'integration' },
+  { id: '33', name: 'Drizzle ORM', category: 'integration' },
+  { id: '34', name: 'Vercel', category: 'integration' },
 ];
 
 const STORAGE_KEY = 'vitalii_skills_list';
