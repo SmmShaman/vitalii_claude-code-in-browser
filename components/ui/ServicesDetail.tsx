@@ -54,6 +54,17 @@ export const ServicesDetail = ({ categories, isOpen, onClose }: ServicesDetailPr
 
   const totalServices = flatServices.length;
 
+  // Pre-compute category start indices (no mutable variable during render)
+  const categoryStartIndices = useMemo(() => {
+    const indices: number[] = [];
+    let running = 0;
+    for (const cat of categories) {
+      indices.push(running);
+      running += cat.services.length;
+    }
+    return indices;
+  }, [categories]);
+
   // Handle wheel scroll to navigate between services
   useEffect(() => {
     if (!isOpen || !containerRef.current) return;
@@ -185,17 +196,6 @@ export const ServicesDetail = ({ categories, isOpen, onClose }: ServicesDetailPr
 
   const detailTextColor = getTextColor(detailColor);
   const simpleTextColor = getTextColor(simpleColor);
-
-  // Pre-compute category start indices (no mutable variable during render)
-  const categoryStartIndices = useMemo(() => {
-    const indices: number[] = [];
-    let running = 0;
-    for (const cat of categories) {
-      indices.push(running);
-      running += cat.services.length;
-    }
-    return indices;
-  }, [categories]);
 
   return (
     <AnimatePresence>
