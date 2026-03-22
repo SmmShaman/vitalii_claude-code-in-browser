@@ -23,83 +23,116 @@ type Street = { id: string; axis: 'h' | 'v'; fixed: number; min: number; max: nu
 type INode = { streets: { sid: string; pos: number }[] }
 type Ant = { sid: string; pos: number; dir: 1 | -1; speed: number; cd: number; w: number; h: number }
 
-// Measure actual grid layout from DOM computed styles
-function measureLayout(gridEl: HTMLElement, cRect: DOMRect) {
-  const gs = getComputedStyle(gridEl)
-  const gap = parseInt(gs.gap || gs.columnGap || '20') || 20
-  const cols = gs.gridTemplateColumns.split(/\s+/).map(parseFloat).filter(v => !isNaN(v))
-  const rows = gs.gridTemplateRows.split(/\s+/).map(parseFloat).filter(v => !isNaN(v))
+// Measure streets directly from section elements — no formulas
+function measureFromSections(gridEl: HTMLElement, origin: DOMRect) {
+  // Get visible grid cell children (the 6 section windows)
+  const kids = Array.from(gridEl.children).filter(el => {
+    const s = getComputedStyle(el as HTMLElement)
+    return s.position !== 'absolute' && s.position !== 'fixed' && s.display !== 'none'
+  }) as HTMLElement[]
 
-  const gr = gridEl.getBoundingClientRect()
-  const gL = gr.left - cRect.left
-  const gT = gr.top - cRect.top
-  const gR = gr.right - cRect.left
-  const gB = gr.bottom - cRect.top
-  const cW = cRect.width
-  const cH = cRect.height
+  if (kids.length < 4) return null
 
-  // Internal vertical gap X centers (between columns)
-  const vIntX: number[] = []
-  let cx = gL
-  for (let i = 0; i < cols.length - 1; i++) {
-    cx += cols[i]
-    vIntX.push(cx + gap / 2)
-    cx += gap
+  const rects = kids.map(el => {
+    const r = el.getBoundingClientRect()
+    return { l: r.left - origin.left, r: r.right - origin.left, t: r.top - origin.top, b: r.bottom - origin.top }
+  })
+
+  // Group into rows by Y position (tolerance 5px)
+  const rows: typeof rects[] = []
+  for (const r of rects) {
+    const row = rows.find(g => Math.abs(g[0].t - r.t) < 5)
+    if (row) row.push(r); else rows.push([r])
+  }
+  rows.sort((a, b) => a[0].t - b[0].t)
+  for (const row of rows) row.sort((a, b) => a.l - b.l)
+
+  if (rows.length < 2 || rows[0].length < 2) return null
+
+  const row1 = rows[0] // top row sections
+  const row2 = rows[1] // bottom row sections
+
+  // --- Horizontal streets: gaps between rows ---
+  const hYs: number[] = []
+  const hIds: string[] = []
+
+  // Top edge: midpoint between container top and row1 top
+  const topMargin = row1[0].t
+  if (topMargin > 3) {
+    hYs.push(row1[0].t - topMargin / 2)
+    hIds.push('hT')
   }
 
-  // Internal horizontal gap Y centers (between rows)
-  const hIntY: number[] = []
-  let cy = gT
-  for (let i = 0; i < rows.length - 1; i++) {
-    cy += rows[i]
-    hIntY.push(cy + gap / 2)
-    cy += gap
+  // Between row1 and row2: midpoint of the gap
+  const gapH = row2[0].t - row1[0].b
+  if (gapH > 3) {
+    hYs.push(row1[0].b + gapH / 2)
+    hIds.push('hM')
   }
 
-  // Edge streets: centered in the margin space around the grid
-  const marginTop = gT
-  const marginBot = cH - gB
-  const marginLeft = gL
-  const marginRight = cW - gR
+  // Bottom edge: midpoint between row2 bottom and container bottom
+  const botMargin = origin.height - row2[0].b
+  if (botMargin > 3) {
+    hYs.push(row2[0].b + botMargin / 2)
+    hIds.push('hB')
+  }
 
-  const hTopY = marginTop > 4 ? gT - marginTop / 2 : gT - 2
-  const hBotY = marginBot > 4 ? gB + marginBot / 2 : gB + 2
-  const vLeftX = marginLeft > 4 ? gL - marginLeft / 2 : gL - 2
-  const vRightX = marginRight > 4 ? gR + marginRight / 2 : gR + 2
+  // --- Vertical streets: gaps between columns ---
+  // Use the row with the most columns for gap detection
+  const widestRow = rows.reduce((a, b) => a.length >= b.length ? a : b)
 
-  // All street positions
-  const hYs = [hTopY, ...hIntY, hBotY]
-  const hIds = ['hT', ...hIntY.map((_, i) => `hM${i}`), 'hB']
-  const vXs = [vLeftX, ...vIntX, vRightX]
-  const vIds = ['vL', ...vIntX.map((_, i) => `v${i}`), 'vR']
+  const vXs: number[] = []
+  const vIds: string[] = []
 
-  // Bounding rectangle: streets confined to the area around the 6 windows
-  const minX = vLeftX
-  const maxX = vRightX
-  const minY = hTopY
-  const maxY = hBotY
+  // Left edge
+  const leftMargin = widestRow[0].l
+  if (leftMargin > 3) {
+    vXs.push(widestRow[0].l - leftMargin / 2)
+    vIds.push('vL')
+  }
+
+  // Between columns
+  for (let i = 0; i < widestRow.length - 1; i++) {
+    const gapW = widestRow[i + 1].l - widestRow[i].r
+    if (gapW > 3) {
+      vXs.push(widestRow[i].r + gapW / 2)
+      vIds.push(`v${i}`)
+    }
+  }
+
+  // Right edge
+  const rightMargin = origin.width - widestRow[widestRow.length - 1].r
+  if (rightMargin > 3) {
+    vXs.push(widestRow[widestRow.length - 1].r + rightMargin / 2)
+    vIds.push('vR')
+  }
+
+  if (hYs.length === 0 || vXs.length === 0) return null
+
+  // Bounding box: streets confined to the rectangle around all sections
+  const minX = vXs[0]
+  const maxX = vXs[vXs.length - 1]
+  const minY = hYs[0]
+  const maxY = hYs[hYs.length - 1]
 
   const streets: Street[] = [
-    ...hIds.map((id, i) => ({
-      id, axis: 'h' as const, fixed: hYs[i], min: minX, max: maxX
-    })),
-    ...vIds.map((id, i) => ({
-      id, axis: 'v' as const, fixed: vXs[i], min: minY, max: maxY
-    })),
+    ...hIds.map((id, i) => ({ id, axis: 'h' as const, fixed: hYs[i], min: minX, max: maxX })),
+    ...vIds.map((id, i) => ({ id, axis: 'v' as const, fixed: vXs[i], min: minY, max: maxY })),
   ]
 
-  // 12 intersections: every h × v crossing
+  // Intersections: every h × v crossing
   const nodes: INode[] = []
   for (let hi = 0; hi < hYs.length; hi++) {
     for (let vi = 0; vi < vXs.length; vi++) {
-      nodes.push({
-        streets: [
-          { sid: hIds[hi], pos: vXs[vi] },
-          { sid: vIds[vi], pos: hYs[hi] },
-        ]
-      })
+      nodes.push({ streets: [
+        { sid: hIds[hi], pos: vXs[vi] },
+        { sid: vIds[vi], pos: hYs[hi] },
+      ]})
     }
   }
+
+  // Measure the gap width (for badge sizing)
+  const gap = gapH > 3 ? gapH : 20
 
   return { streets, nodes, gap }
 }
@@ -130,17 +163,16 @@ function spawnAnts(streets: Street[], count: number, badgeW: number): Ant[] {
   const ants: Ant[] = []
   const spacing = badgeW + MIN_GAP_PX
   const lengths = streets.map(s => Math.max(0, s.max - s.min))
-  const total = lengths.reduce((a, b) => a + b, 0)
+  const total = lengths.reduce((a, b) => a + b, 0) || 1
   let placed = 0
 
   for (let si = 0; si < streets.length && placed < count; si++) {
     const s = streets[si]
     const len = s.max - s.min
-    if (len < spacing) continue
+    if (len < spacing * 0.5) continue
     const share = Math.max(1, Math.round((len / total) * count))
-    const toPlace = Math.min(share, count - placed)
-    const fwd = Math.ceil(toPlace / 2)
-    const bwd = toPlace - fwd
+    const n = Math.min(share, count - placed)
+    const fwd = Math.ceil(n / 2); const bwd = n - fwd
 
     for (let j = 0; j < fwd && placed < count; j++) {
       ants.push({ sid: s.id, pos: s.min + 10 + j * spacing, dir: 1,
@@ -153,7 +185,6 @@ function spawnAnts(streets: Street[], count: number, badgeW: number): Ant[] {
       placed++
     }
   }
-
   for (const ant of ants) clampAnt(ant, streets)
   return ants
 }
@@ -188,14 +219,13 @@ export function SkillsMarquee() {
     if (!container || !gridEl) return
 
     const cRect = container.getBoundingClientRect()
-    const layout = measureLayout(gridEl, cRect)
+    const layout = measureFromSections(gridEl, cRect)
     if (!layout) return
 
-    const oldStreets = streetsRef.current
+    const old = streetsRef.current
     streetsRef.current = layout.streets
     nodesRef.current = layout.nodes
 
-    // Responsive badge sizing
     const fs = Math.max(8, Math.min(11, layout.gap * 0.5))
     const pv = Math.max(1, Math.round(layout.gap * 0.08))
     const ph = Math.max(4, Math.round(layout.gap * 0.3))
@@ -212,11 +242,16 @@ export function SkillsMarquee() {
 
     if (antsRef.current.length === 0 && skillsRef.current.length > 0) {
       antsRef.current = spawnAnts(layout.streets, skillsRef.current.length, avgW)
-    } else if (oldStreets.length > 0) {
+    } else if (old.length > 0) {
       for (const ant of antsRef.current) {
-        const os = oldStreets.find(s => s.id === ant.sid)
+        const os = old.find(s => s.id === ant.sid)
         const ns = layout.streets.find(s => s.id === ant.sid)
         if (os && ns) { ant.pos = ns.min + ((ant.pos - os.min) / (os.max - os.min || 1)) * (ns.max - ns.min) }
+        else if (layout.streets.length > 0) {
+          // Street disappeared (e.g. section expanded) — move to first available
+          const fallback = layout.streets[0]
+          ant.sid = fallback.id; ant.pos = fallback.min + Math.random() * (fallback.max - fallback.min)
+        }
         clampAnt(ant, layout.streets)
       }
     }
@@ -241,6 +276,7 @@ export function SkillsMarquee() {
         if (!seg) continue
         let np = ant.pos + ant.dir * ant.speed * dt
 
+        // Intersections
         if (ant.cd === 0) {
           for (const node of nodes) {
             const conn = node.streets.find(c => c.sid === ant.sid)
@@ -264,6 +300,7 @@ export function SkillsMarquee() {
           }
         }
 
+        // Collision: maintain gap
         let cd = Infinity; let cw = 0
         for (let j = 0; j < ants.length; j++) {
           if (j === i || ants[j].sid !== ant.sid) continue
@@ -271,9 +308,12 @@ export function SkillsMarquee() {
           if (d > 0 && d < cd) { cd = d; cw = ants[j].w }
         }
         if (cd < (ant.w + cw) / 2 + MIN_GAP_PX) np = ant.pos
+
+        // Bounce at edges
         if (np <= seg.min + 5) { ant.dir = 1; np = seg.min + 5 }
         if (np >= seg.max - 5) { ant.dir = -1; np = seg.max - 5 }
         ant.pos = np
+
         const el = badgeRefs.current[i]
         if (el) positionBadge(el, ant, streets)
       }
@@ -309,8 +349,7 @@ export function SkillsMarquee() {
   useEffect(() => {
     const t = setTimeout(() => { measure(); rafRef.current = requestAnimationFrame(tick) }, 400)
     const r = () => { measure(); antsRef.current.forEach((ant, i) => {
-      const el = badgeRefs.current[i]; if (el) positionBadge(el, ant, streetsRef.current)
-    })}
+      const el = badgeRefs.current[i]; if (el) positionBadge(el, ant, streetsRef.current) }) }
     window.addEventListener('resize', r)
     return () => { clearTimeout(t); cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', r) }
   }, [measure, tick])
