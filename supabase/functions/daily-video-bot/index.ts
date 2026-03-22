@@ -1052,6 +1052,22 @@ Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berb
     .eq("id", draft.id);
 
   console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, media preview sent`);
+
+  // AUTO-ADVANCE: skip manual approval, proceed to next steps automatically
+  console.log(`🤖 Auto-advancing: generate_scenario → prepare_images → trigger_render`);
+  try {
+    // Step 2: Generate scenario
+    await generateScenario(date, Number(TELEGRAM_CHAT_ID), 0);
+    // Step 3: Prepare images
+    await prepareImages(date, Number(TELEGRAM_CHAT_ID), 0);
+    // Step 4: Trigger render
+    await triggerRender(date, Number(TELEGRAM_CHAT_ID), 0);
+    console.log(`✅ Auto-advance complete: render triggered for ${date}`);
+  } catch (autoErr: any) {
+    console.error(`⚠️ Auto-advance failed at some step: ${autoErr.message}`);
+    await sendMessage(TELEGRAM_CHAT_ID, `⚠️ Auto-advance failed: ${autoErr.message}\n\nНатисніть кнопку вручну для продовження.`);
+  }
+
   return json({ ok: true, draftId: draft.id, selected: validSelectedIds.length, total: articles.length });
 }
 
