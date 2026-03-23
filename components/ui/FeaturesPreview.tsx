@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react';
-import { Brain, Video, Bot, Palette, Server, Layers, FolderOpen } from 'lucide-react';
+import { Brain, Video, Bot, Palette, Server, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Feature, FeatureCategory } from '@/data/features';
 import { categories, getCategoryInfo } from '@/data/features';
@@ -18,7 +18,6 @@ interface FeaturesPreviewProps {
   onFeatureClick: (featureId: string) => void;
 }
 
-// Short category labels that fit the grid
 const shortLabels: Record<FeatureCategory, { en: string; no: string; ua: string }> = {
   ai_automation: { en: 'AI', no: 'AI', ua: 'AI' },
   media_production: { en: 'Media', no: 'Media', ua: 'Медіа' },
@@ -36,7 +35,7 @@ export const FeaturesPreview = ({
 }: FeaturesPreviewProps) => {
   const lang = currentLanguage;
 
-  const latestFeatures = useMemo(() => features.slice(0, 2), [features]);
+  const latestFeatures = useMemo(() => features.slice(0, 3), [features]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -47,54 +46,42 @@ export const FeaturesPreview = ({
   }, [features]);
 
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden">
-      {/* Latest Features — 2 items */}
-      <div className="relative z-10 mb-2">
-        <div className="flex flex-col gap-1.5">
+    <div className="relative w-full h-full flex flex-col justify-between overflow-hidden">
+      {/* Latest Features — 3 items */}
+      <div className="relative z-10">
+        <div className="flex flex-col gap-1">
           {latestFeatures.map((feature) => {
             const catInfo = getCategoryInfo(feature.category);
             return (
               <motion.div
                 key={feature.id}
-                className="flex items-start gap-2 p-2 rounded-md bg-white/5 hover:bg-white/10 cursor-pointer transition-all border border-transparent hover:border-white/10 group"
+                className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-white/5 hover:bg-white/10 cursor-pointer transition-all border border-transparent hover:border-white/10 group"
                 onClick={(e) => {
                   e.stopPropagation();
                   onFeatureClick(feature.id);
                 }}
                 whileHover={{ scale: 1.01 }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`text-[8px] px-1 py-0.5 rounded ${
-                      feature.projectId === 'portfolio'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-amber-500/20 text-amber-400'
-                    }`}>
-                      {feature.projectId === 'portfolio' ? 'Portfolio' : 'JobBot'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] sm:text-xs font-medium text-white/90 truncate group-hover:text-white">
-                    {feature.title[lang]}
-                  </p>
-                </div>
-                <div className="flex gap-0.5 shrink-0 mt-1">
-                  {feature.techStack.slice(0, 2).map((tech) => (
-                    <span
-                      key={tech}
-                      className={`text-[7px] sm:text-[8px] px-1 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text}`}
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
+                <span className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${
+                  feature.projectId === 'portfolio'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-amber-500/20 text-amber-400'
+                }`}>
+                  {feature.projectId === 'portfolio' ? 'P' : 'J'}
+                </span>
+                <p className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate flex-1 group-hover:text-white">
+                  {feature.title[lang]}
+                </p>
+                <span
+                  className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${catInfo.color.bg} ${catInfo.color.text}`}
+                >
+                  {feature.techStack[0]}
+                </span>
               </motion.div>
             );
           })}
         </div>
       </div>
-
-      {/* Separator line */}
-      <div className="relative z-10 h-px bg-white/10 my-1.5" />
 
       {/* Category Folders — 3x2 compact grid */}
       <div className="relative z-10 grid grid-cols-3 gap-1.5">

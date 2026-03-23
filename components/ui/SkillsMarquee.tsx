@@ -56,11 +56,11 @@ function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[];
   const secTop = Math.min(...rects.map(r => r.t))
   const secBottom = Math.max(...rects.map(r => r.b))
 
-  // --- Outer contour (aligned with section edges) ---
+  // --- Outer contour (centered in gap around sections) ---
   const cx1 = Math.max(2, secLeft - halfGap)
   const cx2 = Math.min(origin.width - 2, secRight + halfGap)
-  const cy1 = Math.max(2, secTop)
-  const cy2 = Math.min(origin.height - 2, secBottom)
+  const cy1 = Math.max(2, secTop - halfGap)
+  const cy2 = Math.min(origin.height - 2, secBottom + halfGap)
   const cw = cx2 - cx1
   const ch = cy2 - cy1
 
