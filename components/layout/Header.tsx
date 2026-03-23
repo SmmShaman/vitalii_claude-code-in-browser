@@ -273,7 +273,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
         </motion.div>
 
         {/* Search + Language Switcher */}
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-4">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-6 sm:ml-8">
           {/* Search — before lang buttons, input expands right */}
           <div className="relative z-20">
             <button
