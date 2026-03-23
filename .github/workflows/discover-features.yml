@@ -2,8 +2,8 @@ name: Discover Features
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Every Monday 08:00 Oslo (winter)
-    - cron: '0 5 * * 1'  # Every Monday 08:00 Oslo (summer)
+    - cron: '0 2 * * *'  # 03:00 Oslo (winter CET=UTC+1)
+    - cron: '0 1 * * *'  # 03:00 Oslo (summer CEST=UTC+2)
   workflow_dispatch:
     inputs:
       since:

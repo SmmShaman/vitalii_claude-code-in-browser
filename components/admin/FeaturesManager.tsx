@@ -1,45 +1,113 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Brain, Video, Bot, Palette, Server, Layers } from 'lucide-react'
-import { allFeatures, categories, getCategoryInfo, getProjectInfo } from '@/data/features'
+import { Search, Brain, Video, Bot, Palette, Server, Layers, Check, X, RefreshCw, Globe } from 'lucide-react'
+import { categories, getCategoryInfo } from '@/data/features'
 import type { FeatureCategory, ProjectId } from '@/data/features'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Brain, Video, Bot, Palette, Server, Layers,
 }
 
+interface DbFeature {
+  id: string
+  feature_id: string
+  project_id: string
+  category: string
+  title_en: string
+  title_no: string
+  title_ua: string
+  short_description_en: string
+  tech_stack: string[]
+  hashtags: string[]
+  status: 'pending' | 'published' | 'rejected'
+  discovered_at: string | null
+  published_at: string | null
+  created_at: string
+}
+
+const statusColors: Record<string, string> = {
+  published: 'bg-emerald-500/20 text-emerald-400',
+  pending: 'bg-amber-500/20 text-amber-400',
+  rejected: 'bg-red-500/20 text-red-400',
+}
+
 export const FeaturesManager = () => {
+  const [features, setFeatures] = useState<DbFeature[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<FeatureCategory | 'all'>('all')
   const [projectFilter, setProjectFilter] = useState<ProjectId | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [updating, setUpdating] = useState<string | null>(null)
+
+  const supabase = useMemo(() => createClient(supabaseUrl, supabaseAnonKey), [])
+
+  const loadFeatures = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('features')
+      .select('*')
+      .order('project_id', { ascending: false })
+      .order('feature_id', { ascending: true })
+
+    if (!error && data) setFeatures(data)
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => { loadFeatures() }, [loadFeatures])
+
+  const updateStatus = async (id: string, status: 'published' | 'rejected') => {
+    setUpdating(id)
+    await supabase.from('features').update({
+      status,
+      published_at: status === 'published' ? new Date().toISOString() : null,
+    }).eq('id', id)
+    await loadFeatures()
+    setUpdating(null)
+  }
 
   const filtered = useMemo(() => {
-    return allFeatures.filter((f) => {
+    return features.filter((f) => {
       if (categoryFilter !== 'all' && f.category !== categoryFilter) return false
-      if (projectFilter !== 'all' && f.projectId !== projectFilter) return false
+      if (projectFilter !== 'all' && f.project_id !== projectFilter) return false
+      if (statusFilter !== 'all' && f.status !== statusFilter) return false
       if (search) {
         const q = search.toLowerCase()
-        return (
-          f.title.en.toLowerCase().includes(q) ||
-          f.title.ua.toLowerCase().includes(q) ||
-          f.techStack.some((t) => t.toLowerCase().includes(q))
-        )
+        return f.title_en.toLowerCase().includes(q) || f.tech_stack.some(t => t.toLowerCase().includes(q))
       }
       return true
     })
-  }, [search, categoryFilter, projectFilter])
+  }, [features, search, categoryFilter, projectFilter, statusFilter])
+
+  const counts = useMemo(() => ({
+    total: features.length,
+    published: features.filter(f => f.status === 'published').length,
+    pending: features.filter(f => f.status === 'pending').length,
+    rejected: features.filter(f => f.status === 'rejected').length,
+  }), [features])
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Features ({allFeatures.length})</h2>
+        <h2 className="text-xl font-bold text-white">
+          Features ({counts.total})
+          <span className="text-sm font-normal text-white/40 ml-2">
+            {counts.published} published · {counts.pending} pending · {counts.rejected} rejected
+          </span>
+        </h2>
+        <button onClick={loadFeatures} className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Refresh">
+          <RefreshCw className={`w-4 h-4 text-white/60 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
           <input
@@ -51,24 +119,24 @@ export const FeaturesManager = () => {
           />
         </div>
 
-        {/* Category filter */}
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value as FeatureCategory | 'all')}
-          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20"
-        >
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20">
+          <option value="all">All Status</option>
+          <option value="published">Published</option>
+          <option value="pending">Pending</option>
+          <option value="rejected">Rejected</option>
+        </select>
+
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as FeatureCategory | 'all')}
+          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20">
           <option value="all">All Categories</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>{cat.label.en}</option>
           ))}
         </select>
 
-        {/* Project filter */}
-        <select
-          value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value as ProjectId | 'all')}
-          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20"
-        >
+        <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value as ProjectId | 'all')}
+          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20">
           <option value="all">All Projects</option>
           <option value="portfolio">Portfolio</option>
           <option value="jobbot">JobBot</option>
@@ -78,7 +146,8 @@ export const FeaturesManager = () => {
       {/* Category summary */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {categories.map((cat) => {
-          const count = allFeatures.filter((f) => f.category === cat.id).length
+          const count = features.filter((f) => f.category === cat.id && f.status === 'published').length
+          const pendingCount = features.filter((f) => f.category === cat.id && f.status === 'pending').length
           const Icon = iconMap[cat.icon]
           return (
             <button
@@ -92,7 +161,7 @@ export const FeaturesManager = () => {
             >
               {Icon && <Icon className="w-3.5 h-3.5" />}
               <span>{cat.label.en}</span>
-              <span className="text-white/30">({count})</span>
+              <span className="text-white/30">({count}{pendingCount > 0 ? `+${pendingCount}` : ''})</span>
             </button>
           )
         })}
@@ -101,37 +170,84 @@ export const FeaturesManager = () => {
       {/* Features list */}
       <div className="space-y-2 max-h-[60vh] overflow-y-auto">
         {filtered.map((feature) => {
-          const catInfo = getCategoryInfo(feature.category)
-          const project = getProjectInfo(feature.projectId)
+          const catInfo = getCategoryInfo(feature.category as FeatureCategory)
           return (
             <motion.div
               key={feature.id}
               layout
-              className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10"
+              className={`flex items-start gap-3 p-3 rounded-lg border ${
+                feature.status === 'pending'
+                  ? 'bg-amber-500/5 border-amber-500/20'
+                  : 'bg-white/5 border-white/10'
+              }`}
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] text-white/30 font-mono">{feature.id.toUpperCase()}</span>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-[10px] text-white/30 font-mono">{feature.feature_id.toUpperCase()}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[feature.status]}`}>
+                    {feature.status}
+                  </span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                    feature.projectId === 'portfolio'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-amber-500/20 text-amber-400'
+                    feature.project_id === 'portfolio' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
                   }`}>
-                    {project.name.en}
+                    {feature.project_id}
                   </span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text}`}>
                     {catInfo.label.en}
                   </span>
+                  {feature.discovered_at && (
+                    <span className="text-[10px] text-white/20">
+                      discovered {new Date(feature.discovered_at).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
-                <h4 className="text-sm font-medium text-white">{feature.title.en}</h4>
-                <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{feature.shortDescription.en}</p>
-                <div className="flex gap-1 mt-1.5">
-                  {feature.techStack.slice(0, 4).map((tech) => (
+                <h4 className="text-sm font-medium text-white">{feature.title_en}</h4>
+                <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{feature.short_description_en}</p>
+                <div className="flex gap-1 mt-1.5 flex-wrap">
+                  {feature.tech_stack.slice(0, 5).map((tech) => (
                     <span key={tech} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-white/40">
                       {tech}
                     </span>
                   ))}
                 </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-col gap-1 flex-shrink-0">
+                {feature.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => updateStatus(feature.id, 'published')}
+                      disabled={updating === feature.id}
+                      className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded text-xs transition-colors"
+                      title="Approve & Publish"
+                    >
+                      <Check className="w-3 h-3" /> Approve
+                    </button>
+                    <button
+                      onClick={() => updateStatus(feature.id, 'rejected')}
+                      disabled={updating === feature.id}
+                      className="flex items-center gap-1 px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-xs transition-colors"
+                      title="Reject"
+                    >
+                      <X className="w-3 h-3" /> Reject
+                    </button>
+                  </>
+                )}
+                {feature.status === 'rejected' && (
+                  <button
+                    onClick={() => updateStatus(feature.id, 'published')}
+                    disabled={updating === feature.id}
+                    className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded text-xs transition-colors"
+                  >
+                    <Check className="w-3 h-3" /> Publish
+                  </button>
+                )}
+                {feature.status === 'published' && (
+                  <span className="flex items-center gap-1 px-2 py-1 text-white/20 text-xs">
+                    <Globe className="w-3 h-3" /> Live
+                  </span>
+                )}
               </div>
             </motion.div>
           )
@@ -139,7 +255,7 @@ export const FeaturesManager = () => {
 
         {filtered.length === 0 && (
           <div className="text-center py-8 text-white/40 text-sm">
-            No features match your filters
+            {loading ? 'Loading...' : 'No features match your filters'}
           </div>
         )}
       </div>
