@@ -292,7 +292,6 @@ export function SkillsMarquee() {
               fontWeight: 600,
               letterSpacing: '0.03em',
               willChange: 'transform',
-              backdropFilter: 'blur(4px)',
               border: `1px solid ${c.color}33`,
             }}
             onMouseEnter={onHoverIn}
