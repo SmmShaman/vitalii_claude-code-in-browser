@@ -342,7 +342,7 @@ export function SkillsMarquee() {
   }, [measure, startAnimation])
 
   return (
-    <div ref={containerRef} className="absolute inset-0 z-[5] pointer-events-none overflow-hidden" style={{ gridColumn: '1 / -1', gridRow: '1 / -1' }}>
+    <div ref={containerRef} className="absolute inset-0 z-[8] pointer-events-none overflow-hidden">
       {skills.map((skill, i) => {
         const c = CAT_COLORS[skill.category] || CAT_COLORS.development
         return (

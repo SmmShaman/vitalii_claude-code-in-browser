@@ -55,28 +55,37 @@ export const FeaturesPreview = ({
             return (
               <motion.div
                 key={feature.id}
-                className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-white/5 hover:bg-white/10 cursor-pointer transition-all border border-transparent hover:border-white/10 group"
+                className="p-2 rounded-md bg-white/5 hover:bg-white/10 cursor-pointer transition-all border border-transparent hover:border-white/10 group"
                 onClick={(e) => {
                   e.stopPropagation();
                   onFeatureClick(feature.id);
                 }}
                 whileHover={{ scale: 1.01 }}
               >
-                <span className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${
-                  feature.projectId === 'portfolio'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-amber-500/20 text-amber-400'
-                }`}>
-                  {feature.projectId === 'portfolio' ? 'P' : 'J'}
-                </span>
-                <p className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate flex-1 group-hover:text-white">
-                  {feature.title[lang]}
-                </p>
-                <span
-                  className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${catInfo.color.bg} ${catInfo.color.text}`}
-                >
-                  {feature.techStack[0]}
-                </span>
+                {/* Row 1: badge + title */}
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${
+                    feature.projectId === 'portfolio'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-amber-500/20 text-amber-400'
+                  }`}>
+                    {feature.projectId === 'portfolio' ? 'P' : 'J'}
+                  </span>
+                  <p className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate group-hover:text-white">
+                    {feature.title[lang]}
+                  </p>
+                </div>
+                {/* Row 2: tech stack */}
+                <div className="flex gap-1 mt-1 pl-5">
+                  {feature.techStack.slice(0, 3).map((tech) => (
+                    <span
+                      key={tech}
+                      className={`text-[7px] px-1 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text}`}
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
               </motion.div>
             );
           })}

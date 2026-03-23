@@ -17,7 +17,6 @@ import { ServicesDetail } from '@/components/ui/ServicesDetail';
 import { NewsSection } from '@/components/sections/NewsSection';
 import { BlogSection } from '@/components/sections/BlogSection';
 import { NeonVerticalLabel } from '@/components/ui/NeonVerticalLabel';
-import { SkillsMarquee } from '@/components/ui/SkillsMarquee';
 import { translations } from '@/utils/translations';
 import { debugLog } from '@/utils/debug';
 import { trackSectionClick } from '@/utils/gtm';
@@ -590,9 +589,6 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                 gap: `${isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP}px`,
               }}
             >
-              {/* Marquee — absolute inside grid, z-[5] below sections z-[15] */}
-              {!isMobile && <SkillsMarquee />}
-
               <AnimatePresence mode="sync">
                 {sections
                   // ФІЛЬТРУЄМО Services коли News розширюється
@@ -925,7 +921,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                             debugLog(`❌ BLOG: Умова НЕ виконалась - таймер НЕ встановлено`);
                           }
                         }}
-                        className={`relative z-[15] rounded-lg transition-all duration-300 hover:shadow-2xl active:shadow-xl w-full cursor-pointer ${(section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105 active:scale-[0.98]' : 'active:scale-[0.99]'
+                        className={`relative rounded-lg transition-all duration-300 hover:shadow-2xl active:shadow-xl w-full cursor-pointer ${(section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105 active:scale-[0.98]' : 'active:scale-[0.99]'
                           } ${
                           // Allow scroll when news/blog item is selected, otherwise hide overflow
                           (section.id === 'news' && selectedNewsId) || (section.id === 'blog' && selectedBlogId)
