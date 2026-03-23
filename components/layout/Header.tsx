@@ -238,7 +238,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
             // Full version for normal state
             <div className="space-y-1">
               {/* First line: Name + Subtitle */}
-              <div className="flex flex-wrap items-baseline gap-2">
+              <div className="flex items-baseline gap-2 overflow-hidden">
                 <h1
                   className="font-bold text-red-500 font-comfortaa"
                   style={{
