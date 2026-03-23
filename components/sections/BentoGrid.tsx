@@ -10,8 +10,8 @@ import { ProjectsModal } from '@/components/ui/ProjectsModal';
 import { ServicesAnimation } from '@/components/ui/ServicesAnimation';
 import { FeaturesPreview } from '@/components/ui/FeaturesPreview';
 import { FeatureModal } from '@/components/ui/FeatureModal';
-import { allFeatures } from '@/data/features';
 import type { FeatureCategory } from '@/data/features';
+import { useFeatures } from '@/hooks/useFeatures';
 import { AboutAnimation } from '@/components/ui/AboutAnimation';
 import { ServicesDetail } from '@/components/ui/ServicesDetail';
 import { NewsSection } from '@/components/sections/NewsSection';
@@ -110,6 +110,7 @@ export const oppositeSections: { [key: string]: string } = {
 
 export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoGridProps = {}) => {
   const { t, currentLanguage } = useTranslations();
+  const allFeatures = useFeatures();
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);

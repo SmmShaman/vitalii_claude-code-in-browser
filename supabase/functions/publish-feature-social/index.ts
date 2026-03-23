@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
-import { FEATURES, FEATURE_ORDER } from '../_shared/features-social-data.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,47 +39,48 @@ function getTodayLanguage(): 'en' | 'no' {
   return dayOfYear % 2 === 0 ? 'en' : 'no'
 }
 
-function formatLinkedInPost(feature: typeof FEATURES[0], lang: 'en' | 'no'): string {
-  const title = feature.t[lang]
-  const desc = feature.sd[lang]
-  const tech = feature.ts.join(' · ')
-  const tags = feature.h.join(' ')
-  const project = feature.pid === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
-  const featureNum = FEATURE_ORDER.indexOf(feature.id) + 1
+// deno-lint-ignore no-explicit-any
+type DbFeature = any
+
+function formatLinkedInPost(feature: DbFeature, featureNum: number, totalFeatures: number, lang: 'en' | 'no'): string {
+  const title = lang === 'en' ? feature.title_en : feature.title_no
+  const desc = lang === 'en' ? feature.short_description_en : feature.short_description_no
+  const tech = (feature.tech_stack || []).join(' · ')
+  const tags = (feature.hashtags || []).join(' ')
+  const project = feature.project_id === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
 
   if (lang === 'en') {
-    return `🚀 Real Production Feature #${featureNum}/90\n\n` +
+    return `🚀 Real Production Feature #${featureNum}/${totalFeatures}\n\n` +
       `${title}\n\n` +
       `${desc}\n\n` +
       `This isn't a tutorial project — it's a production system handling real traffic every day.\n\n` +
       `🛠 Built with: ${tech}\n\n` +
-      `👉 See all 90 features: ${project}\n\n` +
+      `👉 See all features: ${project}\n\n` +
       `${tags} #FullStack #OpenSource #ProductionCode #WebDev`
   }
-  return `🚀 Ekte Produksjonsfunksjon #${featureNum}/90\n\n` +
+  return `🚀 Ekte Produksjonsfunksjon #${featureNum}/${totalFeatures}\n\n` +
     `${title}\n\n` +
     `${desc}\n\n` +
     `Dette er ikke et tutorialprosjekt — det er et produksjonssystem som håndterer ekte trafikk hver dag.\n\n` +
     `🛠 Bygget med: ${tech}\n\n` +
-    `👉 Se alle 90 funksjoner: ${project}\n\n` +
+    `👉 Se alle funksjoner: ${project}\n\n` +
     `${tags} #FullStack #OpenSource #ProductionCode #WebDev`
 }
 
-function formatFacebookPost(feature: typeof FEATURES[0], lang: 'en' | 'no'): string {
-  const title = feature.t[lang]
-  const desc = feature.sd[lang]
-  const tags = feature.h.slice(0, 4).join(' ')
-  const featureNum = FEATURE_ORDER.indexOf(feature.id) + 1
-  const project = feature.pid === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
+function formatFacebookPost(feature: DbFeature, featureNum: number, totalFeatures: number, lang: 'en' | 'no'): string {
+  const title = lang === 'en' ? feature.title_en : feature.title_no
+  const desc = lang === 'en' ? feature.short_description_en : feature.short_description_no
+  const tags = (feature.hashtags || []).slice(0, 4).join(' ')
+  const project = feature.project_id === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
 
   if (lang === 'en') {
-    return `🚀 Feature #${featureNum}/90 from my production portfolio\n\n` +
+    return `🚀 Feature #${featureNum}/${totalFeatures} from my production portfolio\n\n` +
       `${title}\n\n` +
       `${desc}\n\n` +
       `👉 ${project}\n\n` +
       `${tags} #FullStack #WebDev`
   }
-  return `🚀 Funksjon #${featureNum}/90 fra min produksjonsportefølje\n\n` +
+  return `🚀 Funksjon #${featureNum}/${totalFeatures} fra min produksjonsportefølje\n\n` +
     `${title}\n\n` +
     `${desc}\n\n` +
     `👉 ${project}\n\n` +
@@ -165,6 +165,19 @@ serve(async (req) => {
     const lang = getTodayLanguage()
     console.log(`Today's language: ${lang}`)
 
+    // Load all published features from DB
+    const { data: allFeatures, error: featErr } = await supabase
+      .from('features')
+      .select('*')
+      .eq('status', 'published')
+      .order('feature_id', { ascending: true })
+
+    if (featErr || !allFeatures?.length) {
+      return json({ ok: false, error: `No features in DB: ${featErr?.message}` }, 500)
+    }
+
+    const featureOrder = allFeatures.map((f: DbFeature) => f.feature_id as string)
+
     // Find all features already posted for this language
     const { data: posted } = await supabase
       .from('feature_social_posts')
@@ -173,21 +186,21 @@ serve(async (req) => {
       .eq('status', 'posted')
 
     const postedIds = new Set((posted || []).map(p => p.feature_id))
-    console.log(`Already posted in ${lang}: ${postedIds.size}/${FEATURE_ORDER.length}`)
+    console.log(`Already posted in ${lang}: ${postedIds.size}/${featureOrder.length}`)
 
     // Find next unpublished feature
-    const nextId = FEATURE_ORDER.find(id => !postedIds.has(id))
+    const nextId = featureOrder.find((id: string) => !postedIds.has(id))
     if (!nextId) {
-      // Full cycle completed — restart
       console.log(`Full cycle completed for ${lang}! Resetting...`)
       await supabase.from('feature_social_posts').delete().eq('language', lang).eq('status', 'posted')
-      await sendTelegram(`📋 <b>Feature Social</b>\n\n✅ Повний цикл ${FEATURE_ORDER.length} фіч завершено для ${lang.toUpperCase()}!\nПочинаю новий цикл.`)
+      await sendTelegram(`📋 <b>Feature Social</b>\n\n✅ Повний цикл ${featureOrder.length} фіч завершено для ${lang.toUpperCase()}!\nПочинаю новий цикл.`)
       return json({ ok: true, message: `Cycle completed for ${lang}, reset done` })
     }
 
-    const feature = FEATURES.find(f => f.id === nextId)!
-    const featureNum = FEATURE_ORDER.indexOf(nextId) + 1
-    console.log(`Publishing feature ${featureNum}/${FEATURE_ORDER.length}: ${nextId} — ${feature.t[lang]}`)
+    const feature = allFeatures.find((f: DbFeature) => f.feature_id === nextId)!
+    const featureNum = featureOrder.indexOf(nextId) + 1
+    const titleField = lang === 'en' ? 'title_en' : 'title_no'
+    console.log(`Publishing feature ${featureNum}/${featureOrder.length}: ${nextId} — ${feature[titleField]}`)
 
     const results: Record<string, { ok: boolean; url?: string; error?: string }> = {}
 
@@ -216,8 +229,8 @@ serve(async (req) => {
         .single()
 
       const content = platform === 'linkedin'
-        ? formatLinkedInPost(feature, lang)
-        : formatFacebookPost(feature, lang)
+        ? formatLinkedInPost(feature, featureNum, featureOrder.length, lang)
+        : formatFacebookPost(feature, featureNum, featureOrder.length, lang)
 
       let postResult: { id?: string; url?: string; error?: string }
 
@@ -251,8 +264,8 @@ serve(async (req) => {
     ).join('\n')
 
     await sendTelegram(
-      `📋 <b>Feature Social [${featureNum}/${FEATURE_ORDER.length}]</b>\n\n` +
-      `🔧 ${feature.t[lang]}\n` +
+      `📋 <b>Feature Social [${featureNum}/${featureOrder.length}]</b>\n\n` +
+      `🔧 ${feature[titleField]}\n` +
       `🌐 ${lang.toUpperCase()}\n\n${statusLines}`
     )
 
