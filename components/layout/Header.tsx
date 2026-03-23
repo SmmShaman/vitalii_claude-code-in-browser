@@ -335,7 +335,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={() => setCurrentLanguage(lang)}
               className={`px-2 py-1 rounded-md transition-all duration-300 font-semibold text-xs ${
                 currentLanguage === lang
-                  ? 'bg-[#221F3A]/80 text-[#EEEDF5] border border-[#2D2A40]'
+                  ? 'bg-[#221F3A]/80 text-[#fbbf24] border border-[#2D2A40]'
                   : 'bg-[#1A1730]/70 text-[#C8C5D6] hover:bg-[#1A1730]/90 hover:text-[#EEEDF5] border border-[#2D2A40]'
               }`}
               aria-label={`Switch to ${lang}`}

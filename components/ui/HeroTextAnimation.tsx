@@ -115,8 +115,8 @@ export const HeroTextAnimation = ({
         style={{
           fontSize,
           fontWeight,
-          color: 'transparent',
-          WebkitTextStroke: '0.5px rgba(79, 70, 229, 0.35)',
+          color: '#fbbf24',
+          WebkitTextStroke: 'none',
         }}
       >
         {text}
