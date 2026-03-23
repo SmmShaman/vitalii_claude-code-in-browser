@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import gsap from 'gsap'
 import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage'
 
@@ -193,19 +193,29 @@ function rotForAngle(angle: number, loop: boolean, dist: number, length: number)
 
 export function SkillsMarquee() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const badgeRefs = useRef<(HTMLDivElement | null)[]>([])
+  const charRefs = useRef<(HTMLSpanElement | null)[]>([])
   const pathsRef = useRef<Path[]>([])
   const tweensRef = useRef<gsap.core.Tween[]>([])
-  // One progress per path
   const progressRefs = useRef<{ value: number }[]>([])
-  // Which badges belong to which path: pathAssignment[badgeIdx] = pathIdx
+  // Per-skill: which path and base offset
   const assignRef = useRef<number[]>([])
-  // Offset of each badge along its path
   const offsetRef = useRef<number[]>([])
-  const badgeWidthsRef = useRef<number[]>([])
+  // Per-char: cumulative offset within its skill
+  const charOffsetsRef = useRef<number[]>([])
   const pausedRef = useRef(false)
-  const hoveredRef = useRef(false)
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [skills] = useState(() => convertSkillsForAnimation(getStoredSkills()))
+
+  // Flat list of characters with skill association
+  const skillChars = useMemo(() => {
+    const result: { char: string; skillIdx: number; category: string }[] = []
+    skills.forEach((skill, si) => {
+      skill.name.split('').forEach(ch => {
+        result.push({ char: ch === ' ' ? '\u00A0' : ch, skillIdx: si, category: skill.category })
+      })
+    })
+    return result
+  }, [skills])
 
   useEffect(() => {
     const handler = () => {
@@ -221,27 +231,28 @@ export function SkillsMarquee() {
 
   const updatePositions = useCallback(() => {
     const paths = pathsRef.current
-    const badges = badgeRefs.current
+    const chars = charRefs.current
     const assigns = assignRef.current
     const offsets = offsetRef.current
+    const charOffsets = charOffsetsRef.current
     const progresses = progressRefs.current
 
-    for (let i = 0; i < badges.length; i++) {
-      const el = badges[i]
+    for (let ci = 0; ci < chars.length; ci++) {
+      const el = chars[ci]
       if (!el) continue
-      const pi = assigns[i]
+      const si = skillChars[ci].skillIdx
+      const pi = assigns[si]
       if (pi === undefined || !paths[pi]) continue
 
       const path = paths[pi]
       const progress = progresses[pi]?.value || 0
-      const dist = progress + offsets[i]
+      const dist = progress + (offsets[si] || 0) + (charOffsets[ci] || 0)
       const pos = posAtDist(dist, path.segments, path.length, path.loop)
       const rot = pos.rot !== undefined ? pos.rot : rotForAngle(pos.angle, path.loop, dist, path.length)
-      const { x, y } = pos
 
-      el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${rot}deg)`
+      el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%) rotate(${rot}deg)`
     }
-  }, [])
+  }, [skillChars])
 
   const measure = useCallback(() => {
     const container = containerRef.current
@@ -254,23 +265,38 @@ export function SkillsMarquee() {
 
     pathsRef.current = layout.paths
 
-    // Badge sizing based on gap
+    // Character sizing based on gap
     const fs = Math.max(8, Math.min(11, layout.gap * 0.45))
-    const padV = Math.max(1, Math.round(layout.gap * 0.06))
-    const padH = Math.max(4, Math.round(layout.gap * 0.28))
-    for (const el of badgeRefs.current) {
+    for (const el of charRefs.current) {
       if (!el) continue
       el.style.fontSize = `${fs}px`
       el.style.lineHeight = `${Math.round(fs * 1.4)}px`
-      el.style.padding = `${padV}px ${padH}px`
-    }
-    for (let i = 0; i < badgeRefs.current.length; i++) {
-      const el = badgeRefs.current[i]
-      if (el) badgeWidthsRef.current[i] = el.offsetWidth
     }
 
-    // Distribute badges across paths proportionally to path length
+    // Measure char widths → cumulative offsets within each skill
+    const charOffsets: number[] = []
+    const skillWidths: number[] = new Array(skills.length).fill(0)
+    let currentSkill = -1
+    let cumWidth = 0
+    const letterGap = fs * 0.08
+
+    for (let ci = 0; ci < skillChars.length; ci++) {
+      const si = skillChars[ci].skillIdx
+      if (si !== currentSkill) {
+        if (currentSkill >= 0) skillWidths[currentSkill] = cumWidth
+        currentSkill = si
+        cumWidth = 0
+      }
+      charOffsets[ci] = cumWidth
+      const el = charRefs.current[ci]
+      cumWidth += (el ? el.offsetWidth : fs * 0.6) + letterGap
+    }
+    if (currentSkill >= 0) skillWidths[currentSkill] = cumWidth
+    charOffsetsRef.current = charOffsets
+
+    // Distribute skills across paths proportionally
     const totalLen = layout.paths.reduce((a, p) => a + p.length, 0)
+    const maxSkillW = Math.max(...skillWidths, 0)
     const assigns: number[] = []
     const offsets: number[] = []
     let bi = 0
@@ -279,7 +305,7 @@ export function SkillsMarquee() {
       const path = layout.paths[pi]
       const share = Math.max(1, Math.round((path.length / totalLen) * skills.length))
       const count = Math.min(share, skills.length - bi)
-      const spacing = Math.max(MIN_GAP_PX + 40, path.length / Math.max(count, 1))
+      const spacing = Math.max(maxSkillW + MIN_GAP_PX, path.length / Math.max(count, 1))
 
       for (let j = 0; j < count && bi < skills.length; j++) {
         assigns[bi] = pi
@@ -287,23 +313,21 @@ export function SkillsMarquee() {
         bi++
       }
     }
-    // Remaining badges go to contour
     while (bi < skills.length) {
       assigns[bi] = 0
-      offsets[bi] = bi * (MIN_GAP_PX + 50)
+      offsets[bi] = bi * (maxSkillW + MIN_GAP_PX)
       bi++
     }
 
     assignRef.current = assigns
     offsetRef.current = offsets
-  }, [skills.length])
+  }, [skills.length, skillChars])
 
   const startAnimation = useCallback(() => {
     for (const tw of tweensRef.current) tw.kill()
     tweensRef.current = []
 
     const paths = pathsRef.current
-    // Ensure we have progress objects for each path
     while (progressRefs.current.length < paths.length) {
       progressRefs.current.push({ value: 0 })
     }
@@ -314,7 +338,6 @@ export function SkillsMarquee() {
       prog.value = 0
 
       if (path.loop) {
-        // Contour: continuous loop
         const tw = gsap.to(prog, {
           value: path.length,
           duration: path.length / SPEED,
@@ -325,9 +348,8 @@ export function SkillsMarquee() {
         if (pausedRef.current) tw.pause()
         tweensRef.current.push(tw)
       } else {
-        // Internal streets: yoyo back and forth
         const tw = gsap.to(prog, {
-          value: path.length * 2, // full yoyo cycle
+          value: path.length * 2,
           duration: (path.length * 2) / SPEED,
           ease: 'none',
           repeat: -1,
@@ -339,38 +361,40 @@ export function SkillsMarquee() {
     }
   }, [updatePositions])
 
+  // Debounced hover to avoid flicker between adjacent chars
   const onHoverIn = useCallback(() => {
-    hoveredRef.current = true
+    if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null }
     for (const tw of tweensRef.current) tw.pause()
   }, [])
 
   const onHoverOut = useCallback(() => {
-    hoveredRef.current = false
-    if (!pausedRef.current) for (const tw of tweensRef.current) tw.resume()
+    hoverTimerRef.current = setTimeout(() => {
+      if (!pausedRef.current) for (const tw of tweensRef.current) tw.resume()
+    }, 50)
   }, [])
 
   const explode = useCallback(() => {
     for (const tw of tweensRef.current) tw.pause()
 
-    for (let i = 0; i < badgeRefs.current.length; i++) {
-      const el = badgeRefs.current[i]
+    for (let i = 0; i < charRefs.current.length; i++) {
+      const el = charRefs.current[i]
       if (!el) continue
       const rect = el.getBoundingClientRect()
       const cRect = containerRef.current!.getBoundingClientRect()
       const cx = rect.left - cRect.left + rect.width / 2
       const cy = rect.top - cRect.top + rect.height / 2
       const a = Math.random() * Math.PI * 2
-      const d = 120 + Math.random() * 200
+      const d = 80 + Math.random() * 160
 
       gsap.to(el, {
         x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d,
         scale: 0.2, rotation: Math.random() * 720 - 360, opacity: 0,
-        duration: 0.7, ease: 'power2.out',
+        duration: 0.6, ease: 'power2.out', delay: i * 0.003,
       })
     }
 
-    gsap.delayedCall(1, () => {
-      for (const el of badgeRefs.current) {
+    gsap.delayedCall(1.2, () => {
+      for (const el of charRefs.current) {
         if (!el) continue
         gsap.set(el, { clearProps: 'all' })
         el.style.willChange = 'transform'
@@ -393,17 +417,15 @@ export function SkillsMarquee() {
 
   return (
     <div ref={containerRef} className="absolute inset-0 z-[8] pointer-events-none overflow-hidden">
-      {skills.map((skill, i) => {
-        const c = CAT_COLORS[skill.category] || CAT_COLORS.development
+      {skillChars.map((ch, i) => {
+        const c = CAT_COLORS[ch.category] || CAT_COLORS.development
         return (
-          <div key={`mq-${i}`} ref={el => { badgeRefs.current[i] = el }}
+          <span key={`ch-${i}`} ref={el => { charRefs.current[i] = el }}
             className="absolute top-0 left-0 pointer-events-auto cursor-pointer select-none"
             style={{ fontFamily: 'Comfortaa, sans-serif', fontSize: '10px', lineHeight: '14px',
-              padding: '0', whiteSpace: 'nowrap',
-              color: c.color, fontWeight: 600,
-              letterSpacing: '0.03em', willChange: 'transform' }}
+              color: c.color, fontWeight: 600, willChange: 'transform' }}
             onMouseEnter={onHoverIn} onMouseLeave={onHoverOut} onClick={explode}
-          >{skill.name}</div>
+          >{ch.char}</span>
         )
       })}
     </div>
