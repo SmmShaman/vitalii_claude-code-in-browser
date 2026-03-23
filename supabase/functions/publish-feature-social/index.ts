@@ -61,12 +61,16 @@ function formatFacebookPost(feature: typeof FEATURES[0], lang: 'en' | 'no'): str
 }
 
 async function postToLinkedIn(text: string, supabase: ReturnType<typeof createClient>): Promise<{ id?: string; url?: string; error?: string }> {
-  const { data: tokenRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'LINKEDIN_ACCESS_TOKEN').single()
-  const { data: urnRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'LINKEDIN_PERSON_URN').single()
-  if (!tokenRow?.key_value || !urnRow?.key_value) return { error: 'LinkedIn credentials not configured' }
-
-  const token = tokenRow.key_value
-  const urn = urnRow.key_value
+  // Try env vars first (Supabase secrets), fallback to api_settings table
+  let token = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || ''
+  let urn = Deno.env.get('LINKEDIN_PERSON_URN') || ''
+  if (!token || !urn) {
+    const { data: tokenRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'LINKEDIN_ACCESS_TOKEN').single()
+    const { data: urnRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'LINKEDIN_PERSON_URN').single()
+    token = tokenRow?.key_value || token
+    urn = urnRow?.key_value || urn
+  }
+  if (!token || !urn) return { error: 'LinkedIn credentials not configured' }
 
   const body = {
     author: urn,
@@ -97,16 +101,22 @@ async function postToLinkedIn(text: string, supabase: ReturnType<typeof createCl
 }
 
 async function postToFacebook(text: string, supabase: ReturnType<typeof createClient>): Promise<{ id?: string; url?: string; error?: string }> {
-  const { data: tokenRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'FACEBOOK_PAGE_ACCESS_TOKEN').single()
-  const { data: pageRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'FACEBOOK_PAGE_ID').single()
-  if (!tokenRow?.key_value || !pageRow?.key_value) return { error: 'Facebook credentials not configured' }
+  let fbToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') || ''
+  let fbPageId = Deno.env.get('FACEBOOK_PAGE_ID') || ''
+  if (!fbToken || !fbPageId) {
+    const { data: tokenRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'FACEBOOK_PAGE_ACCESS_TOKEN').single()
+    const { data: pageRow } = await supabase.from('api_settings').select('key_value').eq('key_name', 'FACEBOOK_PAGE_ID').single()
+    fbToken = tokenRow?.key_value || fbToken
+    fbPageId = pageRow?.key_value || fbPageId
+  }
+  if (!fbToken || !fbPageId) return { error: 'Facebook credentials not configured' }
 
   const truncated = text.length > 2000 ? text.slice(0, 1997) + '...' : text
 
-  const res = await fetch(`https://graph.facebook.com/v18.0/${pageRow.key_value}/feed`, {
+  const res = await fetch(`https://graph.facebook.com/v18.0/${fbPageId}/feed`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: truncated, access_token: tokenRow.key_value }),
+    body: JSON.stringify({ message: truncated, access_token: fbToken }),
   })
 
   if (!res.ok) {
