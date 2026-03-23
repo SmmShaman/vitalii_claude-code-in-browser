@@ -166,10 +166,12 @@ serve(async (req) => {
     console.log(`Today's language: ${lang}`)
 
     // Load all published features from DB
+    // Portfolio first, then JobBot (p01..p48, j01..j42)
     const { data: allFeatures, error: featErr } = await supabase
       .from('features')
       .select('*')
       .eq('status', 'published')
+      .order('project_id', { ascending: false })
       .order('feature_id', { ascending: true })
 
     if (featErr || !allFeatures?.length) {
