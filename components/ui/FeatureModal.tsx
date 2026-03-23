@@ -34,12 +34,14 @@ export const FeatureModal = ({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectId | 'all'>('all');
   const [hashtagFilter, setHashtagFilter] = useState<string | null>(null);
+  const [techFilter, setTechFilter] = useState<string | null>(null);
 
   // Sync state when props change (modal opens with new initialFeatureId/initialCategory)
   React.useEffect(() => {
     if (!open) return;
     setProjectFilter('all');
     setHashtagFilter(null);
+    setTechFilter(null);
     if (initialFeatureId) {
       const feature = features.find((f) => f.id === initialFeatureId);
       if (feature) {
@@ -58,22 +60,26 @@ export const FeatureModal = ({
     onOpenChange(isOpen);
   };
 
+  const activeFilter = hashtagFilter || techFilter;
+
   const filteredFeatures = useMemo(() => {
     return features.filter((f) => {
       if (hashtagFilter) {
-        // When hashtag filter active, show across all categories
-        return f.hashtags.includes(hashtagFilter) || f.techStack.some(t => t.toLowerCase() === hashtagFilter.replace('#', '').toLowerCase());
+        return f.hashtags.some(h => h.toLowerCase() === hashtagFilter.toLowerCase());
+      }
+      if (techFilter) {
+        return f.techStack.some(t => t.toLowerCase() === techFilter.toLowerCase());
       }
       if (f.category !== activeCategory) return false;
       if (projectFilter !== 'all' && f.projectId !== projectFilter) return false;
       return true;
     });
-  }, [features, activeCategory, projectFilter, hashtagFilter]);
+  }, [features, activeCategory, projectFilter, hashtagFilter, techFilter]);
 
   const categoryFeatures = useMemo(() => {
-    if (hashtagFilter) return filteredFeatures;
+    if (activeFilter) return filteredFeatures;
     return features.filter((f) => f.category === activeCategory);
-  }, [features, activeCategory, hashtagFilter, filteredFeatures]);
+  }, [features, activeCategory, activeFilter, filteredFeatures]);
 
   const handleFeatureClick = (feature: Feature) => {
     setSelectedFeature(feature);
@@ -82,6 +88,14 @@ export const FeatureModal = ({
 
   const handleHashtagClick = (tag: string) => {
     setHashtagFilter(tag);
+    setTechFilter(null);
+    setIsDetailOpen(false);
+    setSelectedFeature(null);
+  };
+
+  const handleTechClick = (tech: string) => {
+    setTechFilter(tech);
+    setHashtagFilter(null);
     setIsDetailOpen(false);
     setSelectedFeature(null);
   };
@@ -151,13 +165,14 @@ export const FeatureModal = ({
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
               <Dialog.Title className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-                {hashtagFilter ? (
+                {activeFilter ? (
                   <>
                     <span className="text-sm font-normal text-white/50">{t.title} /</span>
-                    <span className="text-lg">{hashtagFilter}</span>
+                    <span className={`text-lg ${techFilter ? 'text-blue-400' : 'text-white/80'}`}>{activeFilter}</span>
+                    <span className="text-xs text-white/30">({filteredFeatures.length})</span>
                     <button
-                      onClick={() => setHashtagFilter(null)}
-                      className="ml-1 text-white/40 hover:text-white/80 text-sm"
+                      onClick={() => { setHashtagFilter(null); setTechFilter(null); }}
+                      className="ml-1 text-white/40 hover:text-white/80"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -172,7 +187,7 @@ export const FeatureModal = ({
             </div>
 
             {/* Category Tabs */}
-            <div className={`px-4 sm:px-6 pt-4 flex flex-wrap gap-2 ${hashtagFilter ? 'hidden' : ''}`}>
+            <div className={`px-4 sm:px-6 pt-4 flex flex-wrap gap-2 ${activeFilter ? 'hidden' : ''}`}>
               {categories.map((cat) => {
                 const Icon = iconMap[cat.icon];
                 const count = features.filter((f) => f.category === cat.id).length;
@@ -373,12 +388,13 @@ export const FeatureModal = ({
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {selectedFeature.techStack.map((tech) => (
-                          <span
+                          <button
                             key={tech}
-                            className={`text-xs px-2.5 py-1 rounded-md ${catInfo.color.bg} ${catInfo.color.text} border border-current/20`}
+                            onClick={() => handleTechClick(tech)}
+                            className={`text-xs px-2.5 py-1 rounded-md ${catInfo.color.bg} ${catInfo.color.text} border border-current/20 hover:brightness-125 cursor-pointer transition-all`}
                           >
                             {tech}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     </div>
