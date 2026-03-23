@@ -349,10 +349,9 @@ export function SkillsMarquee() {
           <div key={`mq-${i}`} ref={el => { badgeRefs.current[i] = el }}
             className="absolute top-0 left-0 pointer-events-auto cursor-pointer select-none"
             style={{ fontFamily: 'Comfortaa, sans-serif', fontSize: '10px', lineHeight: '14px',
-              padding: '2px 8px', borderRadius: '8px', whiteSpace: 'nowrap',
-              backgroundColor: c.bg, color: c.color, fontWeight: 600,
-              letterSpacing: '0.03em', willChange: 'transform',
-              border: `1px solid ${c.color}33` }}
+              padding: '0', whiteSpace: 'nowrap',
+              color: c.color, fontWeight: 600,
+              letterSpacing: '0.03em', willChange: 'transform' }}
             onMouseEnter={onHoverIn} onMouseLeave={onHoverOut} onClick={explode}
           >{skill.name}</div>
         )
