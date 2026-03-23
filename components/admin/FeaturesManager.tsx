@@ -25,6 +25,7 @@ interface DbFeature {
   short_description_en: string
   tech_stack: string[]
   hashtags: string[]
+  source_commits: string[] | null
   status: 'pending' | 'published' | 'rejected'
   discovered_at: string | null
   published_at: string | null
@@ -32,9 +33,9 @@ interface DbFeature {
 }
 
 const statusColors: Record<string, string> = {
-  published: 'bg-emerald-500/20 text-emerald-400',
-  pending: 'bg-amber-500/20 text-amber-400',
-  rejected: 'bg-red-500/20 text-red-400',
+  published: 'bg-white/10 text-white',
+  pending: 'bg-white/20 text-white font-bold',
+  rejected: 'bg-white/5 text-white/40 line-through',
 }
 
 export const FeaturesManager = () => {
@@ -115,12 +116,12 @@ export const FeaturesManager = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search features..."
-            className="w-full pl-9 pr-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20 focus:border-white/40 outline-none"
+            className="w-full pl-9 pr-3 py-2 bg-black rounded-lg text-white text-sm border border-white/20 focus:border-white/50 outline-none"
           />
         </div>
 
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20">
+          className="px-3 py-2 bg-black rounded-lg text-white text-sm border border-white/20">
           <option value="all">All Status</option>
           <option value="published">Published</option>
           <option value="pending">Pending</option>
@@ -128,7 +129,7 @@ export const FeaturesManager = () => {
         </select>
 
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as FeatureCategory | 'all')}
-          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20">
+          className="px-3 py-2 bg-black rounded-lg text-white text-sm border border-white/20">
           <option value="all">All Categories</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>{cat.label.en}</option>
@@ -136,7 +137,7 @@ export const FeaturesManager = () => {
         </select>
 
         <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value as ProjectId | 'all')}
-          className="px-3 py-2 bg-white/10 rounded-lg text-white text-sm border border-white/20">
+          className="px-3 py-2 bg-black rounded-lg text-white text-sm border border-white/20">
           <option value="all">All Projects</option>
           <option value="portfolio">Portfolio</option>
           <option value="jobbot">JobBot</option>
@@ -155,8 +156,8 @@ export const FeaturesManager = () => {
               onClick={() => setCategoryFilter(categoryFilter === cat.id ? 'all' : cat.id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 categoryFilter === cat.id
-                  ? `${cat.color.bg} ${cat.color.text} border border-current/30`
-                  : 'bg-white/5 text-white/60 hover:bg-white/10 border border-transparent'
+                  ? 'bg-white text-black border border-white'
+                  : 'bg-white/5 text-white/60 hover:bg-white/10 border border-white/10'
               }`}
             >
               {Icon && <Icon className="w-3.5 h-3.5" />}
@@ -177,35 +178,38 @@ export const FeaturesManager = () => {
               layout
               className={`flex items-start gap-3 p-3 rounded-lg border ${
                 feature.status === 'pending'
-                  ? 'bg-amber-500/5 border-amber-500/20'
-                  : 'bg-white/5 border-white/10'
+                  ? 'bg-white/5 border-white/30'
+                  : feature.status === 'rejected'
+                    ? 'bg-black border-white/5 opacity-50'
+                    : 'bg-black border-white/10'
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-[10px] text-white/30 font-mono">{feature.feature_id.toUpperCase()}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[feature.status]}`}>
+                  <span className="text-[10px] text-white/50 font-mono font-bold">{feature.feature_id.toUpperCase()}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded border border-white/20 ${statusColors[feature.status]}`}>
                     {feature.status}
                   </span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                    feature.project_id === 'portfolio' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                  }`}>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/70">
                     {feature.project_id}
                   </span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text}`}>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/50">
                     {catInfo.label.en}
                   </span>
-                  {feature.discovered_at && (
-                    <span className="text-[10px] text-white/20">
-                      discovered {new Date(feature.discovered_at).toLocaleDateString()}
-                    </span>
-                  )}
                 </div>
                 <h4 className="text-sm font-medium text-white">{feature.title_en}</h4>
                 <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{feature.short_description_en}</p>
+                {/* Meta: date, commits, project */}
+                <div className="flex gap-3 mt-1.5 text-[10px] text-white/30">
+                  <span>{new Date(feature.created_at).toLocaleDateString()} {new Date(feature.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {feature.discovered_at && <span>AI discovered</span>}
+                  {feature.source_commits?.length ? (
+                    <span>commits: {feature.source_commits.slice(0, 3).join(', ')}</span>
+                  ) : null}
+                </div>
                 <div className="flex gap-1 mt-1.5 flex-wrap">
                   {feature.tech_stack.slice(0, 5).map((tech) => (
-                    <span key={tech} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-white/40">
+                    <span key={tech} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/10">
                       {tech}
                     </span>
                   ))}
@@ -219,7 +223,7 @@ export const FeaturesManager = () => {
                     <button
                       onClick={() => updateStatus(feature.id, 'published')}
                       disabled={updating === feature.id}
-                      className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded text-xs transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 bg-white text-black hover:bg-white/80 rounded text-xs transition-colors font-medium"
                       title="Approve & Publish"
                     >
                       <Check className="w-3 h-3" /> Approve
@@ -227,7 +231,7 @@ export const FeaturesManager = () => {
                     <button
                       onClick={() => updateStatus(feature.id, 'rejected')}
                       disabled={updating === feature.id}
-                      className="flex items-center gap-1 px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-xs transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 text-white/60 rounded text-xs transition-colors"
                       title="Reject"
                     >
                       <X className="w-3 h-3" /> Reject
@@ -238,9 +242,9 @@ export const FeaturesManager = () => {
                   <button
                     onClick={() => updateStatus(feature.id, 'published')}
                     disabled={updating === feature.id}
-                    className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded text-xs transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 text-white/60 rounded text-xs transition-colors"
                   >
-                    <Check className="w-3 h-3" /> Publish
+                    <Check className="w-3 h-3" /> Restore
                   </button>
                 )}
                 {feature.status === 'published' && (

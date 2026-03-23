@@ -121,14 +121,14 @@ export default function AdminDashboardPage() {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-neutral-950">
         <Loader2 className="w-8 h-8 text-white animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex">
+    <div className="h-screen bg-neutral-950 flex">
       {/* Sidebar */}
       <aside
         className={`
@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
                 className={`
                   w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all
                   ${isActive
-                    ? 'bg-purple-600 text-white shadow-lg'
+                    ? 'bg-white text-black shadow-lg'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }
                   ${sidebarCollapsed ? 'justify-center' : ''}
@@ -196,8 +196,8 @@ export default function AdminDashboardPage() {
                 <span className="text-gray-400">/</span>
                 <span className="text-green-400 font-medium">{headerStats.publishedNews}</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 rounded-lg border border-purple-500/30">
-                <BookOpen className="h-4 w-4 text-purple-400" />
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg border border-white/20">
+                <BookOpen className="h-4 w-4 text-white/60" />
                 <span className="text-white font-medium">{headerStats.totalBlog}</span>
                 <span className="text-gray-400">/</span>
                 <span className="text-green-400 font-medium">{headerStats.publishedBlog}</span>
