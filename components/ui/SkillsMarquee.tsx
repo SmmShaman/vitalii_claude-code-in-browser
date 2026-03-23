@@ -20,7 +20,13 @@ const CAT_COLORS: Record<string, { bg: string; color: string }> = {
 // Returns segments: [{x,y,len,angle}, ...] forming a closed loop
 type Segment = { x: number; y: number; dx: number; dy: number; len: number; angle: number }
 
-function measureContour(gridEl: HTMLElement, origin: DOMRect): { segments: Segment[]; perimeter: number } | null {
+function measureContour(gridEl: HTMLElement, origin: DOMRect): { segments: Segment[]; perimeter: number; gap: number } | null {
+  // Read the actual CSS Grid gap
+  const gs = getComputedStyle(gridEl)
+  const gap = parseInt(gs.gap || gs.columnGap || '20') || 20
+  const halfGap = gap / 2
+
+  // Find visible section children
   const kids = Array.from(gridEl.children).filter(el => {
     const s = getComputedStyle(el as HTMLElement)
     return s.position !== 'absolute' && s.position !== 'fixed' && s.display !== 'none'
@@ -34,36 +40,33 @@ function measureContour(gridEl: HTMLElement, origin: DOMRect): { segments: Segme
   })
 
   // Bounding box of all sections
-  const left = Math.min(...rects.map(r => r.l))
-  const right = Math.max(...rects.map(r => r.r))
-  const top = Math.min(...rects.map(r => r.t))
-  const bottom = Math.max(...rects.map(r => r.b))
+  const secLeft = Math.min(...rects.map(r => r.l))
+  const secRight = Math.max(...rects.map(r => r.r))
+  const secTop = Math.min(...rects.map(r => r.t))
+  const secBottom = Math.max(...rects.map(r => r.b))
 
-  // Contour is centered in the margin around sections
-  // Half-gap outward from section edges
-  const marginL = left
-  const marginR = origin.width - right
-  const marginT = top
-  const marginB = origin.height - bottom
-
-  const cx1 = left - marginL / 2 // contour left X
-  const cx2 = right + marginR / 2 // contour right X
-  const cy1 = top - marginT / 2 // contour top Y
-  const cy2 = bottom + marginB / 2 // contour bottom Y
+  // Contour = half a gap outward from section edges
+  // Clamped to container bounds so we never go outside the visible area
+  const cx1 = Math.max(2, secLeft - halfGap)
+  const cx2 = Math.min(origin.width - 2, secRight + halfGap)
+  const cy1 = Math.max(2, secTop - halfGap)
+  const cy2 = Math.min(origin.height - 2, secBottom + halfGap)
 
   const w = cx2 - cx1
   const h = cy2 - cy1
 
+  if (w < 50 || h < 50) return null
+
   // Clockwise path: top → right → bottom → left
   const segments: Segment[] = [
-    { x: cx1, y: cy1, dx: 1, dy: 0, len: w, angle: 0 },       // top: →
-    { x: cx2, y: cy1, dx: 0, dy: 1, len: h, angle: 90 },      // right: ↓
-    { x: cx2, y: cy2, dx: -1, dy: 0, len: w, angle: 180 },    // bottom: ←
-    { x: cx1, y: cy2, dx: 0, dy: -1, len: h, angle: 270 },    // left: ↑
+    { x: cx1, y: cy1, dx: 1, dy: 0, len: w, angle: 0 },
+    { x: cx2, y: cy1, dx: 0, dy: 1, len: h, angle: 90 },
+    { x: cx2, y: cy2, dx: -1, dy: 0, len: w, angle: 180 },
+    { x: cx1, y: cy2, dx: 0, dy: -1, len: h, angle: 270 },
   ]
 
   const perimeter = 2 * w + 2 * h
-  return { segments, perimeter }
+  return { segments, perimeter, gap }
 }
 
 // Convert distance along perimeter to x, y, angle
@@ -154,12 +157,18 @@ export function SkillsMarquee() {
     segmentsRef.current = layout.segments
     perimeterRef.current = layout.perimeter
 
-    // Responsive badge sizing based on gap
-    const gap = layout.segments.length > 0
-      ? Math.min(layout.segments[0].y, containerRef.current?.getBoundingClientRect().width ? 20 : 20)
-      : 20
+    // Responsive badge sizing: fit within the gap width
+    const fs = Math.max(8, Math.min(11, layout.gap * 0.45))
+    const padV = Math.max(1, Math.round(layout.gap * 0.06))
+    const padH = Math.max(4, Math.round(layout.gap * 0.28))
+    for (const el of badgeRefs.current) {
+      if (!el) continue
+      el.style.fontSize = `${fs}px`
+      el.style.lineHeight = `${Math.round(fs * 1.4)}px`
+      el.style.padding = `${padV}px ${padH}px`
+    }
 
-    // Measure actual badge widths
+    // Measure actual badge widths after resize
     for (let i = 0; i < badgeRefs.current.length; i++) {
       const el = badgeRefs.current[i]
       if (el) badgeWidthsRef.current[i] = el.offsetWidth
