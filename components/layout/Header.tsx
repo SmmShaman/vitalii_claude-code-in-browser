@@ -320,7 +320,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 setMarqueePaused(p => !p);
               }}
               className="p-2 rounded-lg transition-all duration-300 bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90 hover:text-[#C8C5D6]"
-              aria-label={marqueePaused ? 'Play skills marquee' : 'Pause skills marquee'}
+              aria-label={marqueePaused ? 'Play features marquee' : 'Pause features marquee'}
             >
               {marqueePaused
                 ? <Play className="w-4 h-4" />

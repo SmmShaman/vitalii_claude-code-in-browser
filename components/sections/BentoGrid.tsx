@@ -8,7 +8,10 @@ import { TypewriterText } from '@/components/ui/TypewriterText';
 import { ProjectsCarousel } from '@/components/ui/ProjectsCarousel';
 import { ProjectsModal } from '@/components/ui/ProjectsModal';
 import { ServicesAnimation } from '@/components/ui/ServicesAnimation';
-import { SkillsAnimation } from '@/components/ui/SkillsAnimation';
+import { FeaturesPreview } from '@/components/ui/FeaturesPreview';
+import { FeatureModal } from '@/components/ui/FeatureModal';
+import { allFeatures } from '@/data/features';
+import type { FeatureCategory } from '@/data/features';
 import { AboutAnimation } from '@/components/ui/AboutAnimation';
 import { ServicesDetail } from '@/components/ui/ServicesDetail';
 import { NewsSection } from '@/components/sections/NewsSection';
@@ -51,9 +54,9 @@ const sections: Section[] = [
     image: '/images/hero/projects.webp',
   },
   {
-    id: 'skills',
-    titleKey: 'skills_title',
-    contentKey: 'skills_content',
+    id: 'features',
+    titleKey: 'features_title',
+    contentKey: 'features_content',
     image: '/images/hero/skills.webp',
   },
   {
@@ -80,7 +83,7 @@ export const sectionNeonColors: { [key: string]: { primary: string; secondary: s
   about: { primary: '#AF601A', secondary: '#c97a2e' }, // Насичений коричнево-оранжевий
   services: { primary: '#EC008C', secondary: '#ff33a8' }, // Яскравий фуксієвий рожевий
   projects: { primary: '#009B77', secondary: '#00c49a' }, // Emerald
-  skills: { primary: '#F5A0C0', secondary: '#F0B0D0' }, // Rose Pink (підсилений для темного фону)
+  features: { primary: '#F5A0C0', secondary: '#F0B0D0' }, // Rose Pink (підсилений для темного фону)
   news: { primary: '#88B04B', secondary: '#a3c96a' }, // Greenery
   blog: { primary: '#0F4C81', secondary: '#1a6bb3' }, // Classic Blue
 };
@@ -90,7 +93,7 @@ export const heroContrastColors: { [key: string]: string } = {
   about: '#009B77',      // Teal/Cyan для коричнево-оранжевого
   services: '#00FF80',   // Lime Green для фуксії
   projects: '#FF4040',   // Vibrant Red для смарагдового
-  skills: '#0F4C81',     // Navy Blue для світло-рожевого
+  features: '#0F4C81',     // Navy Blue для світло-рожевого
   news: '#734BB0',       // Royal Purple для зеленого
   blog: '#AF601A',       // Warm Orange для синього
 };
@@ -99,8 +102,8 @@ export const heroContrastColors: { [key: string]: string } = {
 export const oppositeSections: { [key: string]: string } = {
   about: 'blog',
   services: 'news',
-  projects: 'skills',
-  skills: 'projects',
+  projects: 'features',
+  features: 'projects',
   news: 'services',
   blog: 'about',
 };
@@ -119,23 +122,24 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   const [projectsHeight, setProjectsHeight] = useState<number>(0);
   const [newsHeight, setNewsHeight] = useState<number>(0);
   const [blogHeight, setBlogHeight] = useState<number>(0);
-  const [skillsNormalHeight, setSkillsNormalHeight] = useState<number>(0);
+  const [featuresNormalHeight, setFeaturesNormalHeight] = useState<number>(0);
+  const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
+  const [selectedFeatureCategory, setSelectedFeatureCategory] = useState<FeatureCategory | undefined>(undefined);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | undefined>(undefined);
   const [blogNormalHeight, setBlogNormalHeight] = useState<number>(0);
   const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [isHidingAllForNews, setIsHidingAllForNews] = useState(false);
   const [isHidingAllForBlog, setIsHidingAllForBlog] = useState(false);
   const [totalGridHeight, setTotalGridHeight] = useState<number>(0);
-  const [isSkillsExploding, setIsSkillsExploding] = useState(false);
-  const [isAboutExploding, setIsAboutExploding] = useState(false);
+    const [isAboutExploding, setIsAboutExploding] = useState(false);
   const [isProjectsExploding, setIsProjectsExploding] = useState(false);
   const [isServicesDetailOpen, setIsServicesDetailOpen] = useState(false);
   const isMobile = useIsMobile();
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
-  const skillsTimeoutRef = useRef<number | null>(null);
-  const projectsHoverTimeoutRef = useRef<number | null>(null);
+    const projectsHoverTimeoutRef = useRef<number | null>(null);
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
 
   // Use the exported neonColors
@@ -155,8 +159,8 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   }, [isAboutExploding]);
 
   useEffect(() => {
-    debugLog('🔔 BentoGrid: isSkillsExploding state changed to:', isSkillsExploding);
-  }, [isSkillsExploding]);
+    // Features section no longer uses explosion animation
+  }, []);
 
   useEffect(() => {
     debugLog('🔔 BentoGrid: isProjectsExploding state changed to:', isProjectsExploding);
@@ -191,11 +195,11 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     if (!isNewsExpanded) {
       // Get heights of all windows
       const servicesEl = cardRefs.current['services'];
-      const skillsEl = cardRefs.current['skills'];
+      const featuresEl = cardRefs.current['features'];
       const newsEl = cardRefs.current['news'];
       const blogEl = cardRefs.current['blog'];
 
-      if (servicesEl && skillsEl && newsEl && blogEl) {
+      if (servicesEl && featuresEl && newsEl && blogEl) {
         // News expands to: its own height + Services height (takes Services space)
         // News becomes 2x bigger (doubles in height)
         const gapSize = isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP;
@@ -204,7 +208,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
         setNewsHeight(newsExpandedHeight);
 
         // Save normal heights of Skills and Blog so they don't stretch when News expands
-        setSkillsNormalHeight(skillsEl.offsetHeight);
+        setFeaturesNormalHeight(featuresEl.offsetHeight);
         setBlogNormalHeight(blogEl.offsetHeight);
       }
 
@@ -261,16 +265,16 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     const aboutEl = cardRefs.current['about'];
     const servicesEl = cardRefs.current['services'];
     const projectsEl = cardRefs.current['projects'];
-    const skillsEl = cardRefs.current['skills'];
+    const featuresEl = cardRefs.current['features'];
     const newsEl = cardRefs.current['news'];
     const blogEl = cardRefs.current['blog'];
 
-    if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
+    if (aboutEl && servicesEl && projectsEl && featuresEl && newsEl && blogEl) {
       const gapSize = isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP;
 
       // Calculate total height: all 6 windows + 5 gaps (between rows)
       const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
-      const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
+      const row2Height = Math.max(featuresEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
       const total = row1Height + row2Height + gapSize;
 
       setTotalGridHeight(total);
@@ -337,16 +341,16 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     const aboutEl = cardRefs.current['about'];
     const servicesEl = cardRefs.current['services'];
     const projectsEl = cardRefs.current['projects'];
-    const skillsEl = cardRefs.current['skills'];
+    const featuresEl = cardRefs.current['features'];
     const newsEl = cardRefs.current['news'];
     const blogEl = cardRefs.current['blog'];
 
-    if (aboutEl && servicesEl && projectsEl && skillsEl && newsEl && blogEl) {
+    if (aboutEl && servicesEl && projectsEl && featuresEl && newsEl && blogEl) {
       const gapSize = isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP;
 
       // Calculate total height: all 6 windows + 5 gaps (between rows)
       const row1Height = Math.max(aboutEl.offsetHeight, servicesEl.offsetHeight, projectsEl.offsetHeight);
-      const row2Height = Math.max(skillsEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
+      const row2Height = Math.max(featuresEl.offsetHeight, newsEl.offsetHeight, blogEl.offsetHeight);
       const total = row1Height + row2Height + gapSize;
 
       setTotalGridHeight(total);
@@ -419,27 +423,24 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     }
   };
 
-  const handleSkillsClick = () => {
-    debugLog('🎯 Skills clicked! Starting explosion animation');
-    debugLog('📦 Grid ref:', gridContainerRef.current);
+  const handleFeaturesClick = () => {
+    debugLog('🎯 Features clicked! Opening features modal');
+    trackSectionClick('features');
+    setSelectedFeatureCategory(undefined);
+    setSelectedFeatureId(undefined);
+    setIsFeaturesModalOpen(true);
+  };
 
-    // Clear any existing timeout
-    if (skillsTimeoutRef.current) {
-      debugLog('⏱️ Clearing existing timeout');
-      clearTimeout(skillsTimeoutRef.current);
-      skillsTimeoutRef.current = null;
-    }
+  const handleFeatureCategoryClick = (category: FeatureCategory) => {
+    setSelectedFeatureCategory(category);
+    setSelectedFeatureId(undefined);
+    setIsFeaturesModalOpen(true);
+  };
 
-    // Start explosion animation
-    debugLog('💥 Setting isSkillsExploding = true');
-    setIsSkillsExploding(true);
-
-    // After 5 seconds, return to normal
-    skillsTimeoutRef.current = window.setTimeout(() => {
-      debugLog('⏰ 5 seconds elapsed, returning to normal');
-      setIsSkillsExploding(false);
-      skillsTimeoutRef.current = null;
-    }, 5000);
+  const handleFeatureItemClick = (featureId: string) => {
+    setSelectedFeatureId(featureId);
+    setSelectedFeatureCategory(undefined);
+    setIsFeaturesModalOpen(true);
   };
 
   const handleServicesClick = () => {
@@ -495,9 +496,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
       return;
     }
 
-    // Handle skills explosion animation
-    if (section.id === 'skills') {
-      handleSkillsClick();
+    // Handle features click - open modal
+    if (section.id === 'features') {
+      handleFeaturesClick();
       return;
     }
 
@@ -644,9 +645,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         return `${totalHeight}px`;
                       }
 
-                      // Skills: fixed height when News is expanded (don't stretch!)
-                      if (section.id === 'skills' && isNewsExpanded && skillsNormalHeight > 0) {
-                        return `${skillsNormalHeight}px`;
+                      // Features: fixed height when News is expanded (don't stretch!)
+                      if (section.id === 'features' && isNewsExpanded && featuresNormalHeight > 0) {
+                        return `${featuresNormalHeight}px`;
                       }
 
                       // Blog: fixed height when News is expanded (don't stretch!)
@@ -654,15 +655,13 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         return `${blogNormalHeight}px`;
                       }
 
-                      // Skills: normal height - same as other windows (News, Blog)
-                      // Skills uses explosion animation, not height expansion
+                      // Features: normal height - same as other windows (News, Blog)
                       return '100%';
                     };
 
                     // Get animated properties for each section
                     const getAnimatedProps = () => {
                       debugLog(`🎬 getAnimatedProps для ${section.id}:`, {
-                        isSkillsExploding,
                         isServicesDetailOpen,
                         selectedNewsId,
                         selectedBlogId,
@@ -672,9 +671,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         isHidingAllForBlog,
                       });
 
-                      // Hide ALL 6 windows when Skills is exploding (logos will show on top)
-                      if (isSkillsExploding) {
-                        debugLog(`💥 ${section.id}: Skills exploding - opacity: 0`);
+                      // Hide ALL 6 windows when features modal is open
+                      if (false /* features no longer explode */) {
+                        debugLog(`💥 ${section.id}: Features modal open - opacity: 0`);
                         return {
                           opacity: 0,
                           scale: 0.95,
@@ -701,9 +700,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
                       // ====== LOCK УМОВИ - ЗАВЖДИ ПЕРШИМИ! ======
 
-                      // Skills: НІКОЛИ не рухається - ПЕРША УМОВА!
-                      if (section.id === 'skills' && !selectedNewsId && !selectedBlogId) {
-                        debugLog(`🔒 Skills LOCK спрацював: opacity: 1, y: 0`);
+                      // Features: НІКОЛИ не рухається - ПЕРША УМОВА!
+                      if (section.id === 'features' && !selectedNewsId && !selectedBlogId) {
+                        debugLog(`🔒 Features LOCK спрацював: opacity: 1, y: 0`);
                         return { opacity: 1, y: 0, scaleY: 1 };
                       }
 
@@ -901,7 +900,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                               debugLog(`✅ NEWS: Таймер спрацював - згортаю News`);
                               setIsNewsExpanded(false);
                               setNewsHeight(0);
-                              setSkillsNormalHeight(0);
+                              setFeaturesNormalHeight(0);
                               setBlogNormalHeight(0);
                               mouseLeaveTimeoutRef.current = null;
                             }, 1500);  // 1.5 seconds - stable, won't collapse accidentally
@@ -934,14 +933,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                           willChange: 'transform',
                           // ЯВНІ grid positions щоб вікна залишалися на місцях
                           // Row 1: About(1,1), Services(2,1), Projects(3,1)
-                          // Row 2: Skills(1,2), News(2,2), Blog(3,2)
+                          // Row 2: Features(1,2), News(2,2), Blog(3,2)
                           // ВИНЯТОК: News та Blog займають ОБИДВА ряди (1-2) коли розширені
                           // On mobile: all sections use auto positioning to stack vertically
                           gridColumn: isMobile ? 'auto' : (
                             section.id === 'about' ? '1' :
                               section.id === 'services' ? '2' :
                                 section.id === 'projects' ? '3' :
-                                  section.id === 'skills' ? '1' :
+                                  section.id === 'features' ? '1' :
                                     section.id === 'news' ? '2' :
                                       section.id === 'blog' ? '3' : 'auto'
                           ),
@@ -963,7 +962,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                         }}
                       >
                         {/* Background - conditional based on section */}
-                        {section.id === 'about' || section.id === 'services' || section.id === 'skills' ? (
+                        {section.id === 'about' || section.id === 'services' || section.id === 'features' ? (
                           <div className="absolute inset-0 bg-[#1A1730]" />
                         ) : section.id === 'news' || section.id === 'blog' ? (
                           <div className="absolute inset-0 bg-gradient-to-br from-[#1A1730] via-[#1A1730] to-[#221F3A]" />
@@ -1035,13 +1034,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                                 currentLanguage={currentLanguage}
                               />
                             </div>
-                          ) : section.id === 'skills' ? (
+                          ) : section.id === 'features' ? (
                             <div className="w-full h-full overflow-hidden">
-                              <SkillsAnimation
-                                skills={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].skills_list}
-                                backgroundText={t('skills_title') as string}
-                                isExploding={isSkillsExploding}
-                                gridContainerRef={gridContainerRef}
+                              <FeaturesPreview
+                                features={allFeatures}
+                                backgroundText={t('features_title') as string}
+                                currentLanguage={currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'}
+                                onCategoryClick={handleFeatureCategoryClick}
+                                onFeatureClick={handleFeatureItemClick}
                               />
                             </div>
                           ) : section.id === 'news' ? (
@@ -1102,6 +1102,16 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
         onOpenChange={setIsProjectsModalOpen}
         projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
         activeProjectIndex={activeProjectIndex}
+      />
+
+      {/* Features Modal */}
+      <FeatureModal
+        open={isFeaturesModalOpen}
+        onOpenChange={setIsFeaturesModalOpen}
+        features={allFeatures}
+        initialCategory={selectedFeatureCategory}
+        initialFeatureId={selectedFeatureId}
+        currentLanguage={currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'}
       />
 
       {/* About Animation */}

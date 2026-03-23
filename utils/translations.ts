@@ -14,52 +14,16 @@ export const translations = {
 
     projects_list: [
       {
-        title: "E-Commerce Platform",
-        short: "Comprehensive e-commerce platform with React, Node.js and MongoDB",
-        full: "A comprehensive e-commerce platform built with React, Node.js and MongoDB. Features include user authentication, product catalog, shopping cart, payment processing, and order management. The platform is fully responsive and optimized for mobile devices. Implemented ML-based recommendation engine that increased average order value by 28%.",
-        image: "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Portfolio Website",
-        short: "Modern portfolio website with smooth animations and interactive elements",
-        full: "A modern portfolio website designed to showcase projects and skills. Features a clean, minimalist design with smooth animations and interactive elements. Built with React and Tailwind CSS, optimized for all devices. Implemented custom 3D elements to highlight technical capabilities.",
+        title: "Portfolio & News Platform",
+        short: "AI-powered multilingual content platform with 48 production features",
+        full: "Full-stack content automation platform running at vitalii.no. Built with Next.js 15, Supabase, and 29 Deno Edge Functions. Features include AI content moderation, multilingual rewriting (EN/NO/UA), video production with Remotion, social media auto-posting to LinkedIn/Instagram/Facebook, BentoGrid UI with GSAP/Three.js animations, and a 10-tab admin dashboard. 48 real production features, 1,234 commits, 20 GitHub Actions workflows.",
         image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=800&q=80&fm=webp"
       },
       {
-        title: "Task Management App",
-        short: "Collaborative task management application for teams",
-        full: "A collaborative task management application that helps teams organize their work. Features include task creation, assignment, due dates, progress tracking, and team communication tools. Built with React, TypeScript, and a Firebase backend. Implemented real-time updates and notifications system.",
-        image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Weather Dashboard",
-        short: "Real-time weather information and forecasts dashboard",
-        full: "A weather dashboard that provides real-time weather information and forecasts. Features include current conditions, 7-day forecast, hourly updates, radar maps, and location-based services. Uses OpenWeatherMap API and built with React. Implemented historical data comparisons and climate trend analysis.",
-        image: "https://images.unsplash.com/photo-1592210454359-9043f067919b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Social Media App",
-        short: "Professional networking platform for tech industry",
-        full: "A social media application focused on connecting professionals in the tech industry. Features include user profiles, posts, comments, likes, and direct messaging. Built with React, Redux, and a Node.js/Express backend. Implemented AI-powered content moderation and spam detection.",
-        image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Fitness Tracker",
-        short: "Comprehensive fitness tracking application with AI recommendations",
-        full: "A comprehensive fitness tracking application that helps users monitor their health and wellness goals. Features include workout logging, nutrition tracking, progress visualization, and personalized recommendations. Built with React Native. Implemented machine learning algorithms to generate custom workout recommendations.",
-        image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Recipe Finder",
-        short: "Discover new dishes based on available ingredients",
-        full: "A recipe finder application that helps users discover new dishes based on ingredients they have. Features include recipe search, filtering by dietary restrictions, save favorites, and meal planning. Integrates with a recipe API and built with React. Implemented advanced filtering algorithms for dietary needs and preferences.",
-        image: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Virtual Learning Platform",
-        short: "E-learning platform for creating and consuming educational content",
-        full: "An e-learning platform designed for creating and consuming educational content. Features include course creation, video lectures, quizzes, progress tracking, and certificates. Built with React, Node.js, and MongoDB. Implemented advanced analytics dashboard for educators to track student progress and engagement.",
-        image: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&q=80&fm=webp"
+        title: "JobBot Norway",
+        short: "AI job hunting automation platform with 42 engineering features",
+        full: "Intelligent job search automation for the Norwegian market. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI analyzes job postings and generates cover letters in Norwegian. Skyvern browser automation fills forms on 10+ recruitment platforms (Webcruiter, Easycruit, Teamtailor, FINN). Telegram bot as primary interface with 2FA bridge. Self-learning form memory system. Dashboard with Leaflet job map and Recharts analytics. Multi-user with PostgreSQL RLS isolation.",
+        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
       },
       {
         title: "AI Content Generator",
@@ -68,28 +32,16 @@ export const translations = {
         image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
       },
       {
+        title: "E-Commerce Platform",
+        short: "Full-stack e-commerce with React, Node.js and MongoDB",
+        full: "A comprehensive e-commerce platform built with React, Node.js and MongoDB. Features include user authentication, product catalog, shopping cart, payment processing, and order management. The platform is fully responsive and optimized for mobile devices. Implemented ML-based recommendation engine that increased average order value by 28%.",
+        image: "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80&fm=webp"
+      },
+      {
         title: "Data Visualization Dashboard",
         short: "Real-time KPIs and metrics monitoring dashboard",
         full: "A comprehensive data visualization dashboard for businesses to monitor KPIs and metrics in real-time. Features include customizable widgets, multiple data source integration, automated reporting, and trend analysis. Built with D3.js, React, and a Python/FastAPI backend that connects to various data sources including SQL databases and APIs.",
         image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80&fm=webp"
-      },
-      {
-        title: "IoT Home Automation",
-        short: "Smart home platform connecting various IoT devices",
-        full: "An Internet of Things (IoT) platform for home automation that connects and controls various smart devices through a single interface. Features include scheduled routines, energy usage monitoring, voice control integration, and remote access. Built with React Native for mobile, with a Node.js backend and MQTT protocol for device communication.",
-        image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Blockchain Wallet",
-        short: "Secure cryptocurrency wallet supporting multiple blockchains",
-        full: "A secure cryptocurrency wallet application supporting multiple blockchain networks. Features include transaction history, multi-wallet management, QR code scanning, and real-time price tracking. Implemented enhanced security features including biometric authentication and cold storage options. Built with React Native and blockchain-specific libraries.",
-        image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Augmented Reality Tour Guide",
-        short: "AR application enhancing historical sites and museum visits",
-        full: "An augmented reality application that enhances the experience of visiting historical sites and museums. Users can point their device at landmarks to see historical information, 3D reconstructions of past appearances, and interactive storytelling elements. Built with Unity, ARKit/ARCore, and a content management system for curators to update information.",
-        image: "https://images.unsplash.com/photo-1617802690658-1173a812650d?w=800&q=80&fm=webp"
       }
     ],
 
@@ -185,46 +137,9 @@ export const translations = {
     ],
     services_label: "my services",
 
-    skills: "Skills",
-    skills_title: "Skills",
-    skills_content: "Technologies and competencies I work with include e-commerce platforms (Amazon, Shopify, WooCommerce), digital marketing tools, analytics platforms, and project management methodologies.",
-
-    skills_list: [
-      { name: "TypeScript", category: "development" },
-      { name: "React", category: "development" },
-      { name: "Next.js", category: "development" },
-      { name: "Python", category: "development" },
-      { name: "Tailwind CSS", category: "development" },
-      { name: "Node.js", category: "development" },
-      { name: "Vite", category: "development" },
-      { name: "Express.js", category: "development" },
-      { name: "PostgreSQL", category: "development" },
-      { name: "Deno", category: "development" },
-      { name: "Framer Motion", category: "ui" },
-      { name: "GSAP", category: "ui" },
-      { name: "Three.js", category: "ui" },
-      { name: "Radix UI", category: "ui" },
-      { name: "Recharts", category: "ui" },
-      { name: "Remotion", category: "ui" },
-      { name: "Azure OpenAI", category: "ai" },
-      { name: "Google Gemini", category: "ai" },
-      { name: "OpenAI API", category: "ai" },
-      { name: "HuggingFace", category: "ai" },
-      { name: "Tesseract.js", category: "ai" },
-      { name: "Claude Code", category: "ai" },
-      { name: "GitHub Actions", category: "automation" },
-      { name: "Docker", category: "automation" },
-      { name: "n8n", category: "automation" },
-      { name: "Playwright", category: "automation" },
-      { name: "Telegram Bot API", category: "marketing" },
-      { name: "LinkedIn API", category: "marketing" },
-      { name: "Meta Ads Manager", category: "marketing" },
-      { name: "Supabase", category: "integration" },
-      { name: "Netlify", category: "integration" },
-      { name: "Fly.io", category: "integration" },
-      { name: "Drizzle ORM", category: "integration" },
-      { name: "Vercel", category: "integration" },
-    ],
+    features: "Features",
+    features_title: "Features",
+    features_content: "Real production features from my projects — 90 engineering cases across AI, automation, frontend, and DevOps.",
 
     news: "News",
     news_title: "News",
@@ -370,80 +285,34 @@ export const translations = {
 
     projects_list: [
       {
-        title: "E-handelsplattform",
-        short: "Omfattende e-handelsplattform med React, Node.js og MongoDB",
-        full: "En omfattende e-handelsplattform bygget med React, Node.js og MongoDB. Funksjoner inkluderer brukerautentisering, produktkatalog, handlekurv, betalingsbehandling og ordrehåndtering. Plattformen er fullstendig responsiv og optimalisert for mobile enheter. Implementert ML-basert anbefalingsmotor som økte gjennomsnittlig ordreverdi med 28%."
+        title: "Portefølje & Nyhetsplattform",
+        short: "AI-drevet flerspråklig innholdsplattform med 48 produksjonsfunksjoner",
+        full: "Full-stack innholdsautomatiseringsplattform som kjører på vitalii.no. Bygget med Next.js 15, Supabase og 29 Deno Edge Functions. Funksjoner inkluderer AI-innholdsmoderering, flerspråklig omskriving (EN/NO/UA), videoproduksjon med Remotion, automatisk publisering til LinkedIn/Instagram/Facebook, BentoGrid UI med GSAP/Three.js-animasjoner og et admin-dashboard med 10 faner. 48 produksjonsfunksjoner, 1234 commits, 20 GitHub Actions-arbeidsflyter.",
+        image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=800&q=80&fm=webp"
       },
       {
-        title: "Porteføljenettsside",
-        short: "Moderne porteføljenettsside med glatte animasjoner og interaktive elementer",
-        full: "En moderne porteføljenettsside designet for å vise frem prosjekter og ferdigheter. Har et rent, minimalistisk design med glatte animasjoner og interaktive elementer. Bygget med React og Tailwind CSS, optimalisert for alle enheter. Implementerte tilpassede 3D-elementer for å fremheve tekniske ferdigheter."
-      },
-      {
-        title: "Oppgavehåndteringsapp",
-        short: "Samarbeidsbasert oppgavehåndteringsapplikasjon for team",
-        full: "En samarbeidsbasert oppgavehåndteringsapplikasjon som hjelper team med å organisere arbeidet sitt. Funksjoner inkluderer opprettelse av oppgaver, tildeling, frister, fremdriftssporing og teamkommunikasjonsverktøy. Bygget med React, TypeScript og Firebase backend. Implementerte sanntidsoppdateringer og varslingssystem.",
-        image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Værdashboard",
-        short: "Sanntidsinformasjon om vær og værmeldinger",
-        full: "Et værdashboard som gir sanntidsinformasjon om vær og værmeldinger. Funksjoner inkluderer nåværende forhold, 7-dagers værmelding, timebaserte oppdateringer, radarkart og lokasjonsbaserte tjenester. Bruker OpenWeatherMap API og bygget med React. Implementert historiske datasammenligninger og klimatrendanalyse.",
-        image: "https://images.unsplash.com/photo-1592210454359-9043f067919b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Sosial medieapp",
-        short: "Profesjonell nettverksplattform for teknologibransjen",
-        full: "En sosial medieapplikasjon fokusert på å koble profesjonelle i teknologibransjen. Funksjoner inkluderer brukerprofiler, innlegg, kommentarer, likes og direkte meldinger. Bygget med React, Redux og Node.js/Express backend. Implementerte AI-drevet innholdsmoderering og spam-deteksjon.",
-        image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Treningssporer",
-        short: "Omfattende treningssporingsapplikasjon med AI-anbefalinger",
-        full: "En omfattende treningssporingsapplikasjon som hjelper brukere med å overvåke helse- og velværemål. Funksjoner inkluderer treningslogging, ernæringssporing, fremdriftsvisualisering og personaliserte anbefalinger. Bygget med React Native. Implementerte maskinlæringsalgoritmer for å generere tilpassede treningsanbefalinger.",
-        image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Oppskriftsfinner",
-        short: "Oppdag nye retter basert på tilgjengelige ingredienser",
-        full: "En oppskriftsfinnerapplikasjon som hjelper brukere med å oppdage nye retter basert på ingredienser de har. Funksjoner inkluderer oppskriftssøk, filtrering etter kostrestriksjoner, lagre favoritter og måltidsplanlegging. Integrerer med oppskrifts-API og bygget med React. Implementerte avanserte filtreringsalgoritmer for kostbehov og preferanser.",
-        image: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Virtuell læringsplattform",
-        short: "E-læringsplattform for å lage og konsumere pedagogisk innhold",
-        full: "En e-læringsplattform designet for å lage og konsumere pedagogisk innhold. Funksjoner inkluderer kursopprettelse, videoforelesninger, quizer, fremdriftssporing og sertifikater. Bygget med React, Node.js og MongoDB. Implementerte avansert analysedashboard for lærere for å spore studentfremgang og engasjement.",
-        image: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&q=80&fm=webp"
+        title: "JobBot Norge",
+        short: "AI-drevet jobbsøk-automatiseringsplattform med 42 funksjoner",
+        full: "Intelligent jobbsøk-automatisering for det norske markedet. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI analyserer stillingsannonser og genererer søknader på norsk. Skyvern-nettleserautomatisering fyller ut skjemaer på 10+ rekrutteringsplattformer (Webcruiter, Easycruit, Teamtailor, FINN). Telegram-bot som primærgrensesnitt med 2FA-bro. Selvlærende skjemaminnessystem. Dashboard med Leaflet jobbkart og Recharts-analyse. Flerbruker med PostgreSQL RLS-isolering.",
+        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
       },
       {
         title: "AI-innholdsgenerator",
         short: "AI-drevet verktøy for innholdsgenerering for markedsførere",
-        full: "Et AI-drevet verktøy for innholdsgenerering som hjelper markedsførere med å lage overbevisende tekster for ulike kanaler. Systemet bruker avanserte NLP-modeller for å generere kontekstuelt relevant innhold basert på minimal input. Funksjoner inkluderer tonejustering, lengdekontroll og innholdstypemaler. Bygget med OpenAI API, React og Node.js backend.",
+        full: "Et AI-drevet verktøy for innholdsgenerering som hjelper markedsførere med å lage overbevisende tekster for ulike kanaler. Systemet bruker avanserte NLP-modeller for å generere kontekstuelt relevant innhold basert på minimal input. Bygget med OpenAI API, React og Node.js backend.",
         image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+      },
+      {
+        title: "E-handelsplattform",
+        short: "Full-stack e-handel med React, Node.js og MongoDB",
+        full: "En omfattende e-handelsplattform bygget med React, Node.js og MongoDB. Funksjoner inkluderer brukerautentisering, produktkatalog, handlekurv, betalingsbehandling og ordrehåndtering. Implementert ML-basert anbefalingsmotor som økte gjennomsnittlig ordreverdi med 28%.",
+        image: "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80&fm=webp"
       },
       {
         title: "Datavisualiseringsdashboard",
         short: "Sanntids KPI- og metrikkovervåkingsdashboard",
-        full: "Et omfattende datavisualiseringsdashboard for bedrifter å overvåke KPI-er og målinger i sanntid. Funksjoner inkluderer tilpassbare widgets, flere datakildeintegrasjoner, automatisert rapportering og trendanalyse. Bygget med D3.js, React og Python/FastAPI backend som kobler til ulike datakilder inkludert SQL-databaser og API-er.",
+        full: "Et omfattende datavisualiseringsdashboard for bedrifter å overvåke KPI-er og målinger i sanntid. Bygget med D3.js, React og Python/FastAPI backend som kobler til ulike datakilder inkludert SQL-databaser og API-er.",
         image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80&fm=webp"
-      },
-      {
-        title: "IoT-hjemmeautomatisering",
-        short: "Smart hjem-plattform som kobler ulike IoT-enheter",
-        full: "En Internet of Things (IoT)-plattform for hjemmeautomatisering som kobler og styrer ulike smarte enheter gjennom ett grensesnitt. Funksjoner inkluderer planlagte rutiner, energiforbruksovervåking, talestyringsintegrasjon og ekstern tilgang. Bygget med React Native for mobil, med Node.js backend og MQTT-protokoll for enhetskommunikasjon.",
-        image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Blockchain-lommebok",
-        short: "Sikker kryptovalutalommebok som støtter flere blokkjeder",
-        full: "En sikker kryptovalutalommebok-applikasjon som støtter flere blokkjedenettverk. Funksjoner inkluderer transaksjonshistorikk, multi-lommebokadministrasjon, QR-kodeskanning og sanntidsprissporing. Implementerte forbedrede sikkerhetsfunksjoner inkludert biometrisk autentisering og cold storage-alternativer. Bygget med React Native og blokkjede-spesifikke biblioteker.",
-        image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Augmented Reality-turguide",
-        short: "AR-applikasjon som forbedrer besøk på historiske steder og museer",
-        full: "En augmented reality-applikasjon som forbedrer opplevelsen av å besøke historiske steder og museer. Brukere kan peke enheten sin på landemerker for å se historisk informasjon, 3D-rekonstruksjoner av tidligere utseende og interaktive fortellingselementer. Bygget med Unity, ARKit/ARCore og et innholdsstyringssystem for kuratorer å oppdatere informasjon.",
-        image: "https://images.unsplash.com/photo-1617802690658-1173a812650d?w=800&q=80&fm=webp"
       }
     ],
 
@@ -539,46 +408,9 @@ export const translations = {
     ],
     services_label: "mine tjenester",
 
-    skills: "Ferdigheter",
-    skills_title: "Ferdigheter",
-    skills_content: "Teknologier og kompetanser jeg jobber med inkluderer e-handelsplattformer (Amazon, Shopify, WooCommerce), digitale markedsføringsverktøy, analyseplattformer og prosjektledelsesmetodikk.",
-
-    skills_list: [
-      { name: "TypeScript", category: "development" },
-      { name: "React", category: "development" },
-      { name: "Next.js", category: "development" },
-      { name: "Python", category: "development" },
-      { name: "Tailwind CSS", category: "development" },
-      { name: "Node.js", category: "development" },
-      { name: "Vite", category: "development" },
-      { name: "Express.js", category: "development" },
-      { name: "PostgreSQL", category: "development" },
-      { name: "Deno", category: "development" },
-      { name: "Framer Motion", category: "ui" },
-      { name: "GSAP", category: "ui" },
-      { name: "Three.js", category: "ui" },
-      { name: "Radix UI", category: "ui" },
-      { name: "Recharts", category: "ui" },
-      { name: "Remotion", category: "ui" },
-      { name: "Azure OpenAI", category: "ai" },
-      { name: "Google Gemini", category: "ai" },
-      { name: "OpenAI API", category: "ai" },
-      { name: "HuggingFace", category: "ai" },
-      { name: "Tesseract.js", category: "ai" },
-      { name: "Claude Code", category: "ai" },
-      { name: "GitHub Actions", category: "automation" },
-      { name: "Docker", category: "automation" },
-      { name: "n8n", category: "automation" },
-      { name: "Playwright", category: "automation" },
-      { name: "Telegram Bot API", category: "marketing" },
-      { name: "LinkedIn API", category: "marketing" },
-      { name: "Meta Ads Manager", category: "marketing" },
-      { name: "Supabase", category: "integration" },
-      { name: "Netlify", category: "integration" },
-      { name: "Fly.io", category: "integration" },
-      { name: "Drizzle ORM", category: "integration" },
-      { name: "Vercel", category: "integration" },
-    ],
+    features: "Funksjoner",
+    features_title: "Funksjoner",
+    features_content: "Ekte produksjonsfunksjoner fra mine prosjekter — 90 ingeniørkasus innen AI, automatisering, frontend og DevOps.",
 
     news: "Nyheter",
     news_title: "Nyheter",
@@ -724,80 +556,34 @@ export const translations = {
 
     projects_list: [
       {
-        title: "E-Commerce платформа",
-        short: "Комплексна платформа електронної комерції на React, Node.js та MongoDB",
-        full: "Комплексна платформа електронної комерції, створена на React, Node.js та MongoDB. Функції включають автентифікацію користувачів, каталог продуктів, кошик покупок, обробку платежів та управління замовленнями. Платформа повністю адаптивна та оптимізована для мобільних пристроїв. Реалізовано ML-систему рекомендацій, яка збільшила середню вартість замовлення на 28%."
+        title: "Портфоліо & Новинна платформа",
+        short: "AI-платформа багатомовного контенту з 48 продакшн-функціями",
+        full: "Full-stack платформа автоматизації контенту на vitalii.no. Побудована на Next.js 15, Supabase та 29 Deno Edge Functions. AI-модерація контенту, багатомовне переписування (EN/NO/UA), відео-продакшн з Remotion, автопублікація в LinkedIn/Instagram/Facebook, BentoGrid UI з анімаціями GSAP/Three.js, адмін-панель з 10 вкладками. 48 продакшн-функцій, 1234 комітів, 20 GitHub Actions воркфлоїв.",
+        image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=800&q=80&fm=webp"
       },
       {
-        title: "Портфоліо вебсайт",
-        short: "Сучасний сайт-портфоліо з плавними анімаціями та інтерактивними елементами",
-        full: "Сучасний сайт-портфоліо, розроблений для демонстрації проєктів та навичок. Має чистий, мінімалістичний дизайн з плавними анімаціями та інтерактивними елементами. Створений на React та Tailwind CSS, оптимізований для всіх пристроїв. Реалізовано власні 3D-елементи для демонстрації технічних можливостей."
-      },
-      {
-        title: "Додаток управління завданнями",
-        short: "Колабораційний додаток для управління завданнями команди",
-        full: "Колабораційний додаток для управління завданнями, який допомагає командам організовувати роботу. Функції включають створення завдань, призначення, терміни, відстеження прогресу та інструменти комунікації команди. Створено на React, TypeScript та Firebase backend. Реалізовано систему оновлень в реальному часі та сповіщень.",
-        image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Погодна панель",
-        short: "Інформаційна панель з даними про погоду в реальному часі",
-        full: "Погодна панель, що надає інформацію про погоду в реальному часі та прогнози. Функції включають поточні умови, 7-денний прогноз, погодинні оновлення, радарні карти та послуги на основі локації. Використовує OpenWeatherMap API та створено на React. Реалізовано порівняння історичних даних та аналіз кліматичних трендів.",
-        image: "https://images.unsplash.com/photo-1592210454359-9043f067919b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Додаток соціальних мереж",
-        short: "Професійна мережева платформа для ІТ-індустрії",
-        full: "Додаток соціальних мереж, орієнтований на з'єднання професіоналів у технологічній індустрії. Функції включають профілі користувачів, публікації, коментарі, вподобання та прямі повідомлення. Створено на React, Redux та Node.js/Express backend. Реалізовано модерацію контенту на основі AI та виявлення спаму.",
-        image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Фітнес-трекер",
-        short: "Комплексний додаток відстеження фітнесу з AI-рекомендаціями",
-        full: "Комплексний додаток відстеження фітнесу, який допомагає користувачам моніторити цілі здоров'я та благополуччя. Функції включають ведення журналу тренувань, відстеження харчування, візуалізацію прогресу та персоналізовані рекомендації. Створено на React Native. Реалізовано алгоритми машинного навчання для генерації індивідуальних рекомендацій тренувань.",
-        image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Пошук рецептів",
-        short: "Відкривайте нові страви на основі наявних інгредієнтів",
-        full: "Додаток пошуку рецептів, який допомагає користувачам відкривати нові страви на основі наявних інгредієнтів. Функції включають пошук рецептів, фільтрацію за дієтичними обмеженнями, збереження улюблених та планування харчування. Інтегрується з API рецептів та створено на React. Реалізовано розширені алгоритми фільтрації для дієтичних потреб та уподобань.",
-        image: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Віртуальна навчальна платформа",
-        short: "Платформа електронного навчання для створення та споживання освітнього контенту",
-        full: "Платформа електронного навчання, розроблена для створення та споживання освітнього контенту. Функції включають створення курсів, відеолекції, тести, відстеження прогресу та сертифікати. Створено на React, Node.js та MongoDB. Реалізовано розширену аналітичну панель для викладачів для відстеження прогресу та залученості студентів.",
-        image: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&q=80&fm=webp"
+        title: "JobBot Norway",
+        short: "AI-платформа автоматизації пошуку роботи з 42 функціями",
+        full: "Інтелектуальна автоматизація пошуку роботи на норвезькому ринку. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI аналізує вакансії та генерує мотиваційні листи норвезькою. Skyvern-автоматизація заповнює форми на 10+ рекрутингових платформах. Telegram-бот як основний інтерфейс з 2FA-мостом. Самонавчальна система пам'яті форм. Multi-user з PostgreSQL RLS ізоляцією.",
+        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
       },
       {
         title: "AI-генератор контенту",
         short: "Інструмент генерації контенту на основі AI для маркетологів",
-        full: "Інструмент генерації контенту на основі AI, який допомагає маркетологам створювати переконливі тексти для різних каналів. Система використовує передові NLP-моделі для генерації контекстуально релевантного контенту на основі мінімального введення. Функції включають налаштування тону, контроль довжини та шаблони типів контенту. Створено з OpenAI API, React та Node.js backend.",
+        full: "AI-інструмент генерації контенту для маркетологів. Використовує NLP-моделі для контекстуально релевантного контенту. Створено з OpenAI API, React та Node.js.",
         image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+      },
+      {
+        title: "E-Commerce платформа",
+        short: "Full-stack e-commerce на React, Node.js та MongoDB",
+        full: "Комплексна платформа електронної комерції. Автентифікація, каталог, кошик, платежі. ML-рекомендації збільшили середнє замовлення на 28%.",
+        image: "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80&fm=webp"
       },
       {
         title: "Панель візуалізації даних",
         short: "Панель моніторингу KPI та метрик в реальному часі",
-        full: "Комплексна панель візуалізації даних для бізнесу для моніторингу KPI та метрик в реальному часі. Функції включають налаштовувані віджети, інтеграцію кількох джерел даних, автоматизовану звітність та аналіз трендів. Створено з D3.js, React та Python/FastAPI backend, що підключається до різних джерел даних, включаючи SQL бази даних та API.",
+        full: "Комплексна панель візуалізації даних для бізнесу. D3.js, React та Python/FastAPI backend.",
         image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80&fm=webp"
-      },
-      {
-        title: "IoT домашня автоматизація",
-        short: "Платформа розумного дому, що з'єднує різні IoT-пристрої",
-        full: "Платформа Інтернету речей (IoT) для домашньої автоматизації, яка підключає та контролює різні розумні пристрої через єдиний інтерфейс. Функції включають заплановані процедури, моніторинг використання енергії, інтеграцію голосового керування та віддалений доступ. Створено на React Native для мобільних пристроїв, з Node.js backend та MQTT протоколом для комунікації пристроїв.",
-        image: "https://images.unsplash.com/photo-1558002038-1055907df827?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Blockchain-гаманець",
-        short: "Безпечний криптовалютний гаманець з підтримкою кількох блокчейнів",
-        full: "Безпечний додаток криптовалютного гаманця з підтримкою кількох блокчейн-мереж. Функції включають історію транзакцій, управління кількома гаманцями, сканування QR-кодів та відстеження цін в реальному часі. Реалізовано розширені функції безпеки, включаючи біометричну автентифікацію та опції холодного зберігання. Створено на React Native та блокчейн-специфічних бібліотеках.",
-        image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&q=80&fm=webp"
-      },
-      {
-        title: "Турист-гід з доповненою реальністю",
-        short: "AR-додаток, що покращує відвідування історичних місць та музеїв",
-        full: "Додаток доповненої реальності, який покращує досвід відвідування історичних місць та музеїв. Користувачі можуть навести пристрій на пам'ятки, щоб побачити історичну інформацію, 3D-реконструкції минулого вигляду та інтерактивні елементи розповіді. Створено з Unity, ARKit/ARCore та системою управління контентом для кураторів для оновлення інформації.",
-        image: "https://images.unsplash.com/photo-1617802690658-1173a812650d?w=800&q=80&fm=webp"
       }
     ],
 
@@ -893,46 +679,9 @@ export const translations = {
     ],
     services_label: "мої послуги",
 
-    skills: "Навички",
-    skills_title: "Навички",
-    skills_content: "Технології та компетенції, з якими я працюю, включають платформи електронної комерції (Amazon, Shopify, WooCommerce), інструменти цифрового маркетингу, аналітичні платформи та методології управління проєктами.",
-
-    skills_list: [
-      { name: "TypeScript", category: "development" },
-      { name: "React", category: "development" },
-      { name: "Next.js", category: "development" },
-      { name: "Python", category: "development" },
-      { name: "Tailwind CSS", category: "development" },
-      { name: "Node.js", category: "development" },
-      { name: "Vite", category: "development" },
-      { name: "Express.js", category: "development" },
-      { name: "PostgreSQL", category: "development" },
-      { name: "Deno", category: "development" },
-      { name: "Framer Motion", category: "ui" },
-      { name: "GSAP", category: "ui" },
-      { name: "Three.js", category: "ui" },
-      { name: "Radix UI", category: "ui" },
-      { name: "Recharts", category: "ui" },
-      { name: "Remotion", category: "ui" },
-      { name: "Azure OpenAI", category: "ai" },
-      { name: "Google Gemini", category: "ai" },
-      { name: "OpenAI API", category: "ai" },
-      { name: "HuggingFace", category: "ai" },
-      { name: "Tesseract.js", category: "ai" },
-      { name: "Claude Code", category: "ai" },
-      { name: "GitHub Actions", category: "automation" },
-      { name: "Docker", category: "automation" },
-      { name: "n8n", category: "automation" },
-      { name: "Playwright", category: "automation" },
-      { name: "Telegram Bot API", category: "marketing" },
-      { name: "LinkedIn API", category: "marketing" },
-      { name: "Meta Ads Manager", category: "marketing" },
-      { name: "Supabase", category: "integration" },
-      { name: "Netlify", category: "integration" },
-      { name: "Fly.io", category: "integration" },
-      { name: "Drizzle ORM", category: "integration" },
-      { name: "Vercel", category: "integration" },
-    ],
+    features: "Функції",
+    features_title: "Функції",
+    features_content: "Реальні продакшн-функції з моїх проектів — 90 інженерних кейсів у AI, автоматизації, фронтенді та DevOps.",
 
     news: "Новини",
     news_title: "Новини",

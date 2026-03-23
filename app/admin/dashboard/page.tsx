@@ -15,7 +15,7 @@ import { CronScheduleSettings } from '@/components/admin/CronScheduleSettings'
 import { NewsQueueManager } from '@/components/admin/NewsQueueManager'
 import { DebugSettings } from '@/components/admin/DebugSettings'
 import { LinkedInPostsManager } from '@/components/admin/LinkedInPostsManager'
-import { SkillsManager } from '@/components/admin/SkillsManager'
+import { FeaturesManager } from '@/components/admin/FeaturesManager'
 import { ImageProcessingSettings } from '@/components/admin/ImageProcessingSettings'
 import { APIKeysSettings } from '@/components/admin/APIKeysSettings'
 import { SocialMediaPostsManager } from '@/components/admin/SocialMediaPostsManager'
@@ -25,7 +25,7 @@ import { NewsMonitorManager } from '@/components/admin/news-monitor'
 import { TagFrequencyTable } from '@/components/admin/TagFrequencyTable'
 import { SocialAnalyticsDashboard } from '@/components/admin/SocialAnalyticsDashboard'
 
-type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'analytics' | 'comments' | 'skills' | 'settings'
+type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'analytics' | 'comments' | 'features' | 'settings'
 type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'tags' | 'debug'
 
 interface HeaderStats {
@@ -115,7 +115,7 @@ export default function AdminDashboardPage() {
     { id: 'social' as TabType, label: 'Social', icon: Share2 },
     { id: 'analytics' as TabType, label: 'Analytics', icon: TrendingUp },
     { id: 'comments' as TabType, label: 'Comments', icon: MessageSquare },
-    { id: 'skills' as TabType, label: 'Skills', icon: Sparkles },
+    { id: 'features' as TabType, label: 'Features', icon: Sparkles },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ]
 
@@ -349,7 +349,7 @@ export default function AdminDashboardPage() {
             {activeTab === 'social' && <SocialMediaPostsManager />}
             {activeTab === 'analytics' && <SocialAnalyticsDashboard />}
             {activeTab === 'comments' && <SocialMediaCommentsManager />}
-            {activeTab === 'skills' && <SkillsManager />}
+            {activeTab === 'features' && <FeaturesManager />}
             {activeTab === 'settings' && (
               <>
                 {settingsSubTab === 'sources' && <NewsSourcesManager />}

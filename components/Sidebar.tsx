@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Calendar, ArrowRight, User } from 'lucide-react'
 import { useTranslations } from '@/contexts/TranslationContext'
 import { getLatestNews, getLatestBlogPosts } from '@/integrations/supabase/client'
-import { getStoredSkills, categoryColors, type Skill } from '@/utils/skillsStorage'
+import { allFeatures, categories, getCategoryInfo } from '@/data/features'
 
 interface SidebarProps {
   currentType: 'news' | 'blog'
@@ -16,7 +16,7 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
   const { t, currentLanguage } = useTranslations()
   const [news, setNews] = useState<any[]>([])
   const [blogs, setBlogs] = useState<any[]>([])
-  const [skills, setSkills] = useState<Skill[]>([])
+  const latestFeatures = allFeatures.slice(0, 4)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
         ])
         setNews(newsData)
         setBlogs(blogData)
-        setSkills(getStoredSkills())
+        // Features loaded from static data
       } catch (error) {
         console.error('Error loading sidebar data:', error)
       } finally {
@@ -167,21 +167,22 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
           </div>
         )}
 
-        {/* Skills Section */}
+        {/* Features Section */}
         <div className="bg-[#1A1730] rounded-2xl p-6 shadow-sm border border-[#2D2A40]">
           <h3 className="font-bold text-[#EEEDF5] mb-4 flex items-center gap-2">
-            🏷️ {currentLanguage === 'UA' ? 'Навички' : currentLanguage === 'NO' ? 'Ferdigheter' : 'Skills'}
+            🏷️ {currentLanguage === 'UA' ? 'Функції' : currentLanguage === 'NO' ? 'Funksjoner' : 'Features'}
           </h3>
-          <div className="flex flex-wrap gap-2">
-            {skills.slice(0, 12).map((skill) => {
-              const colors = categoryColors[skill.category]
+          <div className="space-y-2">
+            {latestFeatures.map((feature) => {
+              const catInfo = getCategoryInfo(feature.category)
+              const langKey = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'
               return (
-                <span
-                  key={skill.id}
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
-                >
-                  {skill.name}
-                </span>
+                <div key={feature.id} className="flex items-start gap-2">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${catInfo.color.bg} ${catInfo.color.text}`}>
+                    {feature.techStack[0]}
+                  </span>
+                  <span className="text-xs text-[#9B97B0] line-clamp-1">{feature.title[langKey]}</span>
+                </div>
               )
             })}
           </div>

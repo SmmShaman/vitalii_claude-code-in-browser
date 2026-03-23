@@ -28,10 +28,11 @@ const ParticlesBackground = dynamic(
   { ssr: false }
 )
 
-const SkillsMarquee = dynamic(
-  () => import('@/components/ui/SkillsMarquee').then(mod => mod.SkillsMarquee),
-  { ssr: false }
-)
+// TODO: Replace with FeaturesMarquee when ready
+// const SkillsMarquee = dynamic(
+//   () => import('@/components/ui/SkillsMarquee').then(mod => mod.SkillsMarquee),
+//   { ssr: false }
+// )
 
 export default function HomePage() {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null)
@@ -104,8 +105,8 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Skills Marquee - page level, behind sections (z-8), visible in gaps */}
-      {!isMobile && <SkillsMarquee />}
+      {/* TODO: FeaturesMarquee - page level, behind sections (z-8), visible in gaps */}
+      {/* {!isMobile && <FeaturesMarquee />} */}
 
       {/* Footer - Only show on desktop, mobile has BottomNavigation */}
       {!isMobile && (

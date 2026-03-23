@@ -8,8 +8,9 @@ import { translations } from '@/utils/translations'
 import { Calendar, Eye, ChevronRight, Sparkles, ArrowLeft, Loader2, Instagram, Send, Facebook, Linkedin, Github, Twitter, Mail, X, Copy, ExternalLink, Check } from 'lucide-react'
 import { getLatestNews, getLatestBlogPosts, getAllNews, getAllBlogPosts, sendContactEmail } from '@/integrations/supabase/client'
 import { BottomNavigation } from '@/components/layout/BottomNavigation'
-import { getSkillLogo } from '@/utils/skillLogos'
-import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage'
+import { allFeatures, categories, getCategoryInfo } from '@/data/features'
+import { FeatureModal } from '@/components/ui/FeatureModal'
+import type { FeatureCategory } from '@/data/features'
 
 // Section colors (same as desktop)
 export const sectionColors: { [key: string]: { bg: string; text: string; icon: string; gradient: string } } = {
@@ -17,7 +18,7 @@ export const sectionColors: { [key: string]: { bg: string; text: string; icon: s
   about: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#AF601A', gradient: 'from-[#1A1730] to-[#141225]' },
   services: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#EC008C', gradient: 'from-[#1A1730] to-[#141225]' },
   projects: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#009B77', gradient: 'from-[#141225] to-[#0F0D1A]' },
-  skills: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#F5A0C0', gradient: 'from-[#1A1730] to-[#141225]' },
+  features: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#F5A0C0', gradient: 'from-[#1A1730] to-[#141225]' },
   news: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#88B04B', gradient: 'from-[#141225] to-[#0F0D1A]' },
   blog: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#0F4C81', gradient: 'from-[#1A1730] to-[#141225]' },
   contact: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#764BB0', gradient: 'from-[#141225] to-[#0F0D1A]' },
@@ -1304,9 +1305,9 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
   const [isAboutExpanded, setIsAboutExpanded] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
-  // Skills section states
-  const [isSkillsExpanded, setIsSkillsExpanded] = useState(false)
-  const [storedSkills, setStoredSkills] = useState<any[]>([])
+  // Features section states
+  const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false)
+  const [selectedFeatureCategory, setSelectedFeatureCategory] = useState<FeatureCategory | undefined>(undefined)
 
   // Projects section states
   const [currentProjectIndex, setCurrentProjectIndex] = useState(0)
@@ -1365,12 +1366,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
     fetchData()
   }, [])
 
-  // Load skills from localStorage
-  useEffect(() => {
-    const stored = getStoredSkills()
-    const converted = convertSkillsForAnimation(stored)
-    setStoredSkills(converted)
-  }, [])
+  // Features loaded from static data - no useEffect needed
 
   // Typewriter effect for About section - shows full content
   useEffect(() => {
@@ -1439,7 +1435,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
     if (!container) return
 
     const handleScroll = () => {
-      const sections = ['home', 'services', 'projects', 'skills', 'news', 'blog', 'contact']
+      const sections = ['home', 'services', 'projects', 'features', 'news', 'blog', 'contact']
       for (const sectionId of sections) {
         const element = sectionRefs.current[sectionId]
         if (element) {
@@ -1493,7 +1489,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
     touchStartRef.current = null
   }
 
-  const skillsToShow = storedSkills.length > 0 ? storedSkills : translations[langKey].skills_list
+  const latestFeatures = allFeatures.slice(0, 4)
   const currentProject = translations[langKey].projects_list[currentProjectIndex]
   const currentColor = projectColors[currentProjectIndex % projectColors.length]
 
@@ -1653,88 +1649,77 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
             </motion.div>
           </section>
 
-          {/* SKILLS Section */}
-          <section ref={el => { sectionRefs.current['skills'] = el }}>
+          {/* FEATURES Section */}
+          <section ref={el => { sectionRefs.current['features'] = el }}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.skills.gradient} shadow-sm relative h-44 overflow-hidden`}
+              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.features.gradient} shadow-sm relative overflow-hidden`}
             >
               {/* Vertical Label */}
-              <VerticalLabel text={t('skills_title') as string} color={sectionColors.skills.icon} />
+              <VerticalLabel text={t('features_title') as string} color={sectionColors.features.icon} />
 
-              {/* Toggle button */}
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={() => setIsSkillsExpanded(!isSkillsExpanded)}
-                  className="text-xs font-medium flex items-center gap-1"
-                  style={{ color: sectionColors.skills.icon }}
-                >
-                  {isSkillsExpanded ? 'Tags' : 'Logos'}
-                  <Sparkles className="w-3 h-3" />
-                </button>
+              {/* Latest features */}
+              <div className="mb-2">
+                {latestFeatures.slice(0, 2).map((feature, idx) => {
+                  const catInfo = getCategoryInfo(feature.category)
+                  return (
+                    <motion.div
+                      key={feature.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      onClick={() => {
+                        setSelectedFeatureCategory(undefined)
+                        setIsFeaturesModalOpen(true)
+                      }}
+                      className="flex items-center gap-2 p-1.5 rounded-md mb-1 bg-white/5 active:bg-white/10"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-medium text-white/90 truncate">{feature.title[langKey as 'en' | 'no' | 'ua']}</p>
+                      </div>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text} shrink-0`}>
+                        {feature.techStack[0]}
+                      </span>
+                    </motion.div>
+                  )
+                })}
               </div>
 
-              <AnimatePresence mode="wait">
-                {!isSkillsExpanded ? (
-                  /* Tags view */
-                  <motion.div
-                    key="tags"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="overflow-x-auto scrollbar-hide -mx-4 px-4"
-                  >
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {skillsToShow.slice(0, 16).map((skill: any, idx: number) => {
-                        const colors = categoryColors[skill.category] || categoryColors.development
-                        return (
-                          <motion.span
-                            key={idx}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: idx * 0.03 }}
-                            whileTap={{ scale: 1.1 }}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
-                          >
-                            {skill.name}
-                          </motion.span>
-                        )
-                      })}
-                    </div>
-                  </motion.div>
-                ) : (
-                  /* Logos grid (explosion) */
-                  <motion.div
-                    key="logos"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="grid grid-cols-5 gap-3 py-2"
-                  >
-                    {skillsToShow.slice(0, 15).map((skill: any, idx: number) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, scale: 0, rotate: -180 }}
-                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                        transition={{ delay: idx * 0.05, type: 'spring', stiffness: 200 }}
-                        className="flex flex-col items-center"
-                      >
-                        <img
-                          src={getSkillLogo(skill.name)}
-                          alt={skill.name}
-                          className="w-10 h-10 object-contain"
-                          style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
-                        />
-                        <span className="text-[9px] text-[#9B97B0] mt-1 text-center line-clamp-1">{skill.name}</span>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Category folders grid */}
+              <div className="grid grid-cols-3 gap-1.5">
+                {categories.map((cat) => {
+                  const count = allFeatures.filter(f => f.category === cat.id).length
+                  return (
+                    <motion.button
+                      key={cat.id}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        setSelectedFeatureCategory(cat.id)
+                        setIsFeaturesModalOpen(true)
+                      }}
+                      className={`flex flex-col items-center p-1.5 rounded-lg ${cat.color.bg} border border-white/5`}
+                    >
+                      <span className={`text-[8px] font-medium ${cat.color.text} text-center leading-tight`}>
+                        {cat.label[langKey as 'en' | 'no' | 'ua']}
+                      </span>
+                      <span className="text-[7px] text-white/30">{count}</span>
+                    </motion.button>
+                  )
+                })}
+              </div>
             </motion.div>
           </section>
+
+          {/* Features Modal (mobile) */}
+          <FeatureModal
+            open={isFeaturesModalOpen}
+            onOpenChange={setIsFeaturesModalOpen}
+            features={allFeatures}
+            initialCategory={selectedFeatureCategory}
+            currentLanguage={langKey as 'en' | 'no' | 'ua'}
+          />
 
           {/* NEWS Section */}
           <section ref={el => { sectionRefs.current['news'] = el }}>
