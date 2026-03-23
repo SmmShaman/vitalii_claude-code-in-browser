@@ -33,14 +33,12 @@ export const FeatureModal = ({
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectId | 'all'>('all');
-  const [hashtagFilter, setHashtagFilter] = useState<string | null>(null);
   const [techFilter, setTechFilter] = useState<string | null>(null);
 
   // Sync state when props change (modal opens with new initialFeatureId/initialCategory)
   React.useEffect(() => {
     if (!open) return;
     setProjectFilter('all');
-    setHashtagFilter(null);
     setTechFilter(null);
     if (initialFeatureId) {
       const feature = features.find((f) => f.id === initialFeatureId);
@@ -60,13 +58,10 @@ export const FeatureModal = ({
     onOpenChange(isOpen);
   };
 
-  const activeFilter = hashtagFilter || techFilter;
+  const activeFilter = techFilter;
 
   const filteredFeatures = useMemo(() => {
     return features.filter((f) => {
-      if (hashtagFilter) {
-        return f.hashtags.some(h => h.toLowerCase() === hashtagFilter.toLowerCase());
-      }
       if (techFilter) {
         return f.techStack.some(t => t.toLowerCase() === techFilter.toLowerCase());
       }
@@ -74,7 +69,7 @@ export const FeatureModal = ({
       if (projectFilter !== 'all' && f.projectId !== projectFilter) return false;
       return true;
     });
-  }, [features, activeCategory, projectFilter, hashtagFilter, techFilter]);
+  }, [features, activeCategory, projectFilter, techFilter]);
 
   const categoryFeatures = useMemo(() => {
     if (activeFilter) return filteredFeatures;
@@ -87,15 +82,13 @@ export const FeatureModal = ({
   };
 
   const handleHashtagClick = (tag: string) => {
-    setHashtagFilter(tag);
-    setTechFilter(null);
-    setIsDetailOpen(false);
-    setSelectedFeature(null);
+    // Navigate to /search with tag filter (news/blog articles)
+    const cleanTag = tag.replace('#', '');
+    window.location.href = `/search?tag=${encodeURIComponent(cleanTag)}`;
   };
 
   const handleTechClick = (tech: string) => {
     setTechFilter(tech);
-    setHashtagFilter(null);
     setIsDetailOpen(false);
     setSelectedFeature(null);
   };
@@ -171,7 +164,7 @@ export const FeatureModal = ({
                     <span className={`text-lg ${techFilter ? 'text-blue-400' : 'text-white/80'}`}>{activeFilter}</span>
                     <span className="text-xs text-white/30">({filteredFeatures.length})</span>
                     <button
-                      onClick={() => { setHashtagFilter(null); setTechFilter(null); }}
+                      onClick={() => setTechFilter(null)}
                       className="ml-1 text-white/40 hover:text-white/80"
                     >
                       <X className="w-4 h-4" />
