@@ -236,13 +236,13 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
             </div>
           ) : (
             // Full version for normal state
-            <div className="space-y-0.5">
-              {/* Line 1: Name + Subtitle — always one line */}
-              <div className="flex items-baseline gap-2 whitespace-nowrap">
+            <div className="space-y-1">
+              {/* First line: Name + Subtitle */}
+              <div className="flex items-baseline gap-2">
                 <h1
-                  className="font-bold text-red-500 font-comfortaa shrink-0"
+                  className="font-bold text-red-500 font-comfortaa"
                   style={{
-                    fontSize: 'clamp(1.25rem, 2.5vw, 2.25rem)',
+                    fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
                     textShadow: '1px 1px 3px rgba(79, 70, 229, 0.3)',
                     lineHeight: '1.2'
                   }}
@@ -255,32 +255,30 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   fillColor={fillColor}
                   isActive={isActive}
                   direction="rtl"
-                  fontSize="clamp(0.8rem, 1.4vw, 1.3rem)"
+                  fontSize="clamp(1rem, 1.7vw, 1.5rem)"
                   fontWeight="600"
                 />
               </div>
-              {/* Line 2: Description — always one line */}
-              <div className="whitespace-nowrap overflow-hidden">
-                <HeroTextAnimation
-                  text={t('description') as string}
-                  fillColor={fillColor}
-                  isActive={isActive}
-                  direction="ltr"
-                  fontSize="clamp(0.8rem, 1.2vw, 1.15rem)"
-                  fontWeight="400"
-                />
-              </div>
+              {/* Second line: Description with liquid fill - LEFT to RIGHT */}
+              <HeroTextAnimation
+                text={t('description') as string}
+                fillColor={fillColor}
+                isActive={isActive}
+                direction="ltr"
+                fontSize="clamp(0.95rem, 1.4vw, 1.35rem)"
+                fontWeight="400"
+              />
             </div>
           )}
         </motion.div>
 
         {/* Search + Language Switcher */}
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-6 sm:ml-8">
+        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
           {/* Search — before lang buttons, input expands right */}
           <div className="relative z-20">
             <button
               onClick={handleSearchToggle}
-              className={`relative z-10 p-2 rounded-lg transition-all duration-300 ${
+              className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
                   ? 'bg-[#6366F1] text-white animate-pulse'
                   : searchOpen
@@ -321,7 +319,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 window.dispatchEvent(new CustomEvent('marquee-toggle'));
                 setMarqueePaused(p => !p);
               }}
-              className="p-2 rounded-lg transition-all duration-300 bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90 hover:text-[#C8C5D6]"
+              className="p-1.5 rounded-lg transition-all duration-300 bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90 hover:text-[#C8C5D6]"
               aria-label={marqueePaused ? 'Play features marquee' : 'Pause features marquee'}
             >
               {marqueePaused
@@ -335,15 +333,14 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
             <button
               key={lang}
               onClick={() => setCurrentLanguage(lang)}
-              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md transition-all duration-300 ${
+              className={`px-2 py-1 rounded-md transition-all duration-300 font-semibold text-xs ${
                 currentLanguage === lang
                   ? 'bg-[#221F3A]/80 text-[#EEEDF5] border border-[#2D2A40]'
                   : 'bg-[#1A1730]/70 text-[#C8C5D6] hover:bg-[#1A1730]/90 hover:text-[#EEEDF5] border border-[#2D2A40]'
               }`}
               aria-label={`Switch to ${lang}`}
             >
-              <Globe className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="font-semibold text-xs sm:text-sm">{lang}</span>
+              {lang}
             </button>
           ))}
         </div>
