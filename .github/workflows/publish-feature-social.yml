@@ -1,0 +1,47 @@
+name: Publish Feature Social
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 15:00 Oslo (winter CET=UTC+1) — 4th social slot
+    - cron: '0 14 * * *'  # 15:00 Oslo (summer CEST=UTC+2)
+  workflow_dispatch:
+
+jobs:
+  publish-feature:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger publish-feature-social Edge Function
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📋 Calling publish-feature-social..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "${SUPABASE_URL}/functions/v1/publish-feature-social" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -X POST -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response ($HTTP_CODE): $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "❌ Feature social publish failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "✅ Feature social published successfully"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Feature Social publish failed!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"

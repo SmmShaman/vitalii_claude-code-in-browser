@@ -13,7 +13,7 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
 const VERSION = '2026-03-14-v2-top-social'
-const SOCIAL_SLOTS = ['09:00', '13:00', '18:00']
+const SOCIAL_SLOTS = ['09:00', '13:00', '15:00', '18:00']  // 4th slot (15:00) = feature social
 
 /**
  * Stream 3: Send Top N articles to Telegram bot for social media posting
