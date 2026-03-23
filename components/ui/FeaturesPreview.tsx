@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Brain, Video, Bot, Palette, Server, Layers, FolderOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Feature, FeatureCategory } from '@/data/features';
-import { categories, getCategoryInfo, getProjectInfo } from '@/data/features';
+import { categories, getCategoryInfo } from '@/data/features';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Brain, Video, Bot, Palette, Server, Layers,
@@ -18,35 +18,25 @@ interface FeaturesPreviewProps {
   onFeatureClick: (featureId: string) => void;
 }
 
-const labels = {
-  en: {
-    latest: 'Latest Features',
-    seeAll: 'See all features in folders',
-    features: 'features',
-  },
-  no: {
-    latest: 'Siste funksjoner',
-    seeAll: 'Se alle funksjoner i mapper',
-    features: 'funksjoner',
-  },
-  ua: {
-    latest: 'Останні функції',
-    seeAll: 'Всі функції в папках',
-    features: 'функцій',
-  },
+// Short category labels that fit the grid
+const shortLabels: Record<FeatureCategory, { en: string; no: string; ua: string }> = {
+  ai_automation: { en: 'AI', no: 'AI', ua: 'AI' },
+  media_production: { en: 'Media', no: 'Media', ua: 'Медіа' },
+  bot_scraping: { en: 'Bots', no: 'Boter', ua: 'Боти' },
+  frontend_ux: { en: 'Frontend', no: 'Frontend', ua: 'Frontend' },
+  devops_infra: { en: 'DevOps', no: 'DevOps', ua: 'DevOps' },
+  other: { en: 'Other', no: 'Annet', ua: 'Інше' },
 };
 
 export const FeaturesPreview = ({
   features,
-  backgroundText,
   currentLanguage,
   onCategoryClick,
   onFeatureClick,
 }: FeaturesPreviewProps) => {
   const lang = currentLanguage;
-  const t = labels[lang];
 
-  const latestFeatures = useMemo(() => features.slice(0, 3), [features]);
+  const latestFeatures = useMemo(() => features.slice(0, 2), [features]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -57,23 +47,12 @@ export const FeaturesPreview = ({
   }, [features]);
 
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden p-3 sm:p-4">
-      {/* Background text */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-        <span className="text-[4rem] sm:text-[6rem] font-black text-white/[0.03] whitespace-nowrap">
-          {backgroundText}
-        </span>
-      </div>
-
-      {/* Latest Features */}
+    <div className="relative w-full h-full flex flex-col justify-center overflow-hidden p-3 sm:p-4">
+      {/* Latest Features — 2 items */}
       <div className="relative z-10 mb-2">
-        <h3 className="text-[10px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider mb-1.5">
-          {t.latest}
-        </h3>
         <div className="flex flex-col gap-1.5">
           {latestFeatures.map((feature) => {
             const catInfo = getCategoryInfo(feature.category);
-            const project = getProjectInfo(feature.projectId);
             return (
               <motion.div
                 key={feature.id}
@@ -97,9 +76,6 @@ export const FeaturesPreview = ({
                   <p className="text-[11px] sm:text-xs font-medium text-white/90 truncate group-hover:text-white">
                     {feature.title[lang]}
                   </p>
-                  <p className="text-[9px] sm:text-[10px] text-white/40 truncate mt-0.5">
-                    {feature.shortDescription[lang]}
-                  </p>
                 </div>
                 <div className="flex gap-0.5 shrink-0 mt-1">
                   {feature.techStack.slice(0, 2).map((tech) => (
@@ -117,24 +93,18 @@ export const FeaturesPreview = ({
         </div>
       </div>
 
-      {/* Separator */}
-      <div className="relative z-10 flex items-center gap-2 my-1.5 sm:my-2">
-        <div className="flex-1 h-px bg-white/10" />
-        <span className="text-[8px] sm:text-[9px] text-white/30 whitespace-nowrap">
-          {t.seeAll}
-        </span>
-        <div className="flex-1 h-px bg-white/10" />
-      </div>
+      {/* Separator line */}
+      <div className="relative z-10 h-px bg-white/10 my-1.5" />
 
-      {/* Category Folders */}
-      <div className="relative z-10 grid grid-cols-3 gap-1.5 sm:gap-2 flex-1 min-h-0">
+      {/* Category Folders — 3x2 compact grid */}
+      <div className="relative z-10 grid grid-cols-3 gap-1.5">
         {categories.map((cat) => {
           const Icon = iconMap[cat.icon];
           const count = categoryCounts[cat.id] || 0;
           return (
             <motion.button
               key={cat.id}
-              className={`flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-lg ${cat.color.bg} border border-white/5 hover:border-white/15 transition-all cursor-pointer group`}
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg ${cat.color.bg} border border-white/5 hover:border-white/15 transition-all cursor-pointer`}
               onClick={(e) => {
                 e.stopPropagation();
                 onCategoryClick(cat.id);
@@ -142,15 +112,12 @@ export const FeaturesPreview = ({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.97 }}
             >
-              <div className="flex items-center gap-1 mb-0.5">
-                <FolderOpen className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${cat.color.text} opacity-70`} />
-                {Icon && <Icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${cat.color.text}`} />}
-              </div>
-              <span className={`text-[8px] sm:text-[9px] font-medium ${cat.color.text} text-center leading-tight`}>
-                {cat.label[lang]}
+              {Icon && <Icon className={`w-3 h-3 ${cat.color.text} shrink-0`} />}
+              <span className={`text-[8px] sm:text-[9px] font-medium ${cat.color.text} truncate`}>
+                {shortLabels[cat.id][lang]}
               </span>
-              <span className="text-[7px] sm:text-[8px] text-white/30 mt-0.5">
-                {count} {t.features}
+              <span className="text-[7px] text-white/30 shrink-0">
+                {count}
               </span>
             </motion.button>
           );

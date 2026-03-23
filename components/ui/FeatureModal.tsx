@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, ChevronLeft, ChevronRight, Brain, Video, Bot, Palette, Server, Layers, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,41 +33,57 @@ export const FeatureModal = ({
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectId | 'all'>('all');
+  const [hashtagFilter, setHashtagFilter] = useState<string | null>(null);
 
-  // Reset state when modal opens
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
-      setActiveCategory(initialCategory || 'ai_automation');
-      setIsDetailOpen(false);
-      setSelectedFeature(null);
-      setProjectFilter('all');
-      if (initialFeatureId) {
-        const feature = features.find((f) => f.id === initialFeatureId);
-        if (feature) {
-          setActiveCategory(feature.category);
-          setSelectedFeature(feature);
-          setIsDetailOpen(true);
-        }
+  // Sync state when props change (modal opens with new initialFeatureId/initialCategory)
+  React.useEffect(() => {
+    if (!open) return;
+    setProjectFilter('all');
+    setHashtagFilter(null);
+    if (initialFeatureId) {
+      const feature = features.find((f) => f.id === initialFeatureId);
+      if (feature) {
+        setActiveCategory(feature.category);
+        setSelectedFeature(feature);
+        setIsDetailOpen(true);
+        return;
       }
     }
+    setActiveCategory(initialCategory || 'ai_automation');
+    setSelectedFeature(null);
+    setIsDetailOpen(false);
+  }, [open, initialFeatureId, initialCategory, features]);
+
+  const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
   };
 
   const filteredFeatures = useMemo(() => {
     return features.filter((f) => {
+      if (hashtagFilter) {
+        // When hashtag filter active, show across all categories
+        return f.hashtags.includes(hashtagFilter) || f.techStack.some(t => t.toLowerCase() === hashtagFilter.replace('#', '').toLowerCase());
+      }
       if (f.category !== activeCategory) return false;
       if (projectFilter !== 'all' && f.projectId !== projectFilter) return false;
       return true;
     });
-  }, [features, activeCategory, projectFilter]);
+  }, [features, activeCategory, projectFilter, hashtagFilter]);
 
   const categoryFeatures = useMemo(() => {
+    if (hashtagFilter) return filteredFeatures;
     return features.filter((f) => f.category === activeCategory);
-  }, [features, activeCategory]);
+  }, [features, activeCategory, hashtagFilter, filteredFeatures]);
 
   const handleFeatureClick = (feature: Feature) => {
     setSelectedFeature(feature);
     setIsDetailOpen(true);
+  };
+
+  const handleHashtagClick = (tag: string) => {
+    setHashtagFilter(tag);
+    setIsDetailOpen(false);
+    setSelectedFeature(null);
   };
 
   const handleDetailClose = () => {
@@ -134,8 +150,21 @@ export const FeatureModal = ({
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-6xl max-h-[90vh] bg-gradient-to-br from-[#1A1730] to-[#221F3A] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-50 overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
-              <Dialog.Title className="text-xl sm:text-2xl font-bold text-white">
-                {t.title}
+              <Dialog.Title className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                {hashtagFilter ? (
+                  <>
+                    <span className="text-sm font-normal text-white/50">{t.title} /</span>
+                    <span className="text-lg">{hashtagFilter}</span>
+                    <button
+                      onClick={() => setHashtagFilter(null)}
+                      className="ml-1 text-white/40 hover:text-white/80 text-sm"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  t.title
+                )}
               </Dialog.Title>
               <Dialog.Close className="text-white/70 hover:text-white transition-colors">
                 <X className="w-6 h-6" />
@@ -143,7 +172,7 @@ export const FeatureModal = ({
             </div>
 
             {/* Category Tabs */}
-            <div className="px-4 sm:px-6 pt-4 flex flex-wrap gap-2">
+            <div className={`px-4 sm:px-6 pt-4 flex flex-wrap gap-2 ${hashtagFilter ? 'hidden' : ''}`}>
               {categories.map((cat) => {
                 const Icon = iconMap[cat.icon];
                 const count = features.filter((f) => f.category === cat.id).length;
@@ -354,14 +383,18 @@ export const FeatureModal = ({
                       </div>
                     </div>
 
-                    {/* Hashtags */}
+                    {/* Hashtags — clickable */}
                     {selectedFeature.hashtags.length > 0 && (
                       <div className="mb-6">
                         <div className="flex flex-wrap gap-1.5">
                           {selectedFeature.hashtags.map((tag) => (
-                            <span key={tag} className="text-xs text-white/30">
+                            <button
+                              key={tag}
+                              onClick={() => handleHashtagClick(tag)}
+                              className="text-xs text-white/40 hover:text-white/80 hover:bg-white/10 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                            >
                               {tag}
-                            </span>
+                            </button>
                           ))}
                         </div>
                       </div>
