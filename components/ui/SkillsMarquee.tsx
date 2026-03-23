@@ -404,19 +404,60 @@ export function SkillsMarquee() {
     })
   }, [startAnimation])
 
+  // Debug: draw paths on canvas
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawDebugPaths = useCallback(() => {
+    const canvas = canvasRef.current
+    const container = containerRef.current
+    if (!canvas || !container) return
+    const rect = container.getBoundingClientRect()
+    canvas.width = rect.width
+    canvas.height = rect.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    const colors = ['#ff0000', '#00ff00', '#0088ff', '#ff8800', '#ff00ff']
+    for (let pi = 0; pi < pathsRef.current.length; pi++) {
+      const path = pathsRef.current[pi]
+      ctx.strokeStyle = colors[pi % colors.length]
+      ctx.lineWidth = 2
+      ctx.setLineDash(pi === 0 ? [] : [6, 4])
+      ctx.beginPath()
+      const steps = Math.max(200, Math.round(path.length / 2))
+      for (let s = 0; s <= steps; s++) {
+        const d = (s / steps) * path.length
+        const pos = posAtDist(d, path.segments, path.length, true)
+        if (s === 0) ctx.moveTo(pos.x, pos.y)
+        else ctx.lineTo(pos.x, pos.y)
+      }
+      if (path.loop) ctx.closePath()
+      ctx.stroke()
+    }
+  }, [])
+
   useEffect(() => {
-    const timer = setTimeout(() => { measure(); startAnimation() }, 500)
-    const onResize = () => { measure(); startAnimation() }
+    const timer = setTimeout(() => {
+      measure()
+      startAnimation()
+      drawDebugPaths()
+    }, 500)
+    const onResize = () => {
+      measure()
+      startAnimation()
+      // drawDebugPaths()
+    }
     window.addEventListener('resize', onResize)
     return () => {
       clearTimeout(timer)
       for (const tw of tweensRef.current) tw.kill()
       window.removeEventListener('resize', onResize)
     }
-  }, [measure, startAnimation])
+  }, [measure, startAnimation, drawDebugPaths])
 
   return (
     <div ref={containerRef} className="absolute inset-0 z-[8] pointer-events-none overflow-hidden">
+      <canvas ref={canvasRef} className="absolute inset-0" style={{ pointerEvents: 'none' }} />
       {skillChars.map((ch, i) => {
         const c = CAT_COLORS[ch.category] || CAT_COLORS.development
         return (
