@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import gsap from 'gsap'
 import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage'
+import { getSkillLogo } from '@/utils/skillLogos'
 
 const SPEED = 80
 const MIN_GAP_PX = 24
@@ -373,35 +376,28 @@ export function SkillsMarquee() {
     }, 50)
   }, [])
 
-  const explode = useCallback(() => {
-    for (const tw of tweensRef.current) tw.pause()
-
-    for (let i = 0; i < charRefs.current.length; i++) {
-      const el = charRefs.current[i]
-      if (!el) continue
-      const rect = el.getBoundingClientRect()
-      const cRect = containerRef.current!.getBoundingClientRect()
-      const cx = rect.left - cRect.left + rect.width / 2
-      const cy = rect.top - cRect.top + rect.height / 2
-      const a = Math.random() * Math.PI * 2
-      const d = 80 + Math.random() * 160
-
-      gsap.to(el, {
-        x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d,
-        scale: 0.2, rotation: Math.random() * 720 - 360, opacity: 0,
-        duration: 0.6, ease: 'power2.out', delay: i * 0.003,
-      })
+  // Skills logo explosion overlay
+  const [showLogos, setShowLogos] = useState(false)
+  const shuffledSkills = useMemo(() => {
+    const arr = [...skills]
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]
     }
+    return arr
+  }, [skills])
 
-    gsap.delayedCall(1.2, () => {
-      for (const el of charRefs.current) {
-        if (!el) continue
-        gsap.set(el, { clearProps: 'x,y,scale,rotation,opacity,transform' })
-      }
-      for (const p of progressRefs.current) p.value = 0
-      startAnimation()
-    })
-  }, [startAnimation])
+  const handleCharClick = useCallback(() => {
+    for (const tw of tweensRef.current) tw.pause()
+    setShowLogos(true)
+  }, [])
+
+  const dismissLogos = useCallback(() => {
+    setShowLogos(false)
+    if (!pausedRef.current) {
+      for (const tw of tweensRef.current) tw.resume()
+    }
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => { measure(); startAnimation() }, 500)
@@ -414,19 +410,81 @@ export function SkillsMarquee() {
     }
   }, [measure, startAnimation])
 
+  // Compute logo grid positions from BentoGrid bounds
+  const gridBounds = useMemo(() => {
+    if (!showLogos) return null
+    const el = document.querySelector('[data-bento-grid]')
+    return el ? el.getBoundingClientRect() : null
+  }, [showLogos])
+
   return (
-    <div ref={containerRef} className="absolute inset-0 z-[8] pointer-events-none overflow-hidden">
-      {skillChars.map((ch, i) => {
-        const c = CAT_COLORS[ch.category] || CAT_COLORS.development
-        return (
-          <span key={`ch-${i}`} ref={el => { charRefs.current[i] = el }}
-            className="absolute top-0 left-0 pointer-events-auto cursor-pointer select-none"
-            style={{ fontFamily: 'Comfortaa, sans-serif', fontSize: '10px', lineHeight: '14px',
-              color: c.color, fontWeight: 600, willChange: 'transform' }}
-            onMouseEnter={onHoverIn} onMouseLeave={onHoverOut} onClick={explode}
-          >{ch.char}</span>
-        )
-      })}
-    </div>
+    <>
+      <div ref={containerRef} className="absolute inset-0 z-[8] pointer-events-none overflow-hidden">
+        {skillChars.map((ch, i) => {
+          const c = CAT_COLORS[ch.category] || CAT_COLORS.development
+          return (
+            <span key={`ch-${i}`} ref={el => { charRefs.current[i] = el }}
+              className="absolute top-0 left-0 pointer-events-auto cursor-pointer select-none"
+              style={{ fontFamily: 'Comfortaa, sans-serif', fontSize: '10px', lineHeight: '14px',
+                color: c.color, fontWeight: 600, willChange: 'transform' }}
+              onMouseEnter={onHoverIn} onMouseLeave={onHoverOut} onClick={handleCharClick}
+            >{ch.char}</span>
+          )
+        })}
+      </div>
+
+      {showLogos && gridBounds && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          <motion.div
+            key="skills-overlay"
+            className="fixed inset-0 z-[99] cursor-pointer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={dismissLogos}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            {shuffledSkills.map((skill, index) => {
+              const total = shuffledSkills.length
+              const cols = Math.ceil(Math.sqrt(total * (gridBounds.width / gridBounds.height)))
+              const rows = Math.ceil(total / cols)
+              const col = index % cols
+              const row = Math.floor(index / cols)
+              const pad = 0.12
+              const usable = 1 - pad * 2
+              const xPct = cols > 1 ? col / (cols - 1) : 0.5
+              const yPct = rows > 1 ? row / (rows - 1) : 0.5
+              const left = gridBounds.left + gridBounds.width * (pad + usable * xPct)
+              const top = gridBounds.top + gridBounds.height * (pad + usable * yPct)
+              const centerX = gridBounds.left + gridBounds.width / 2
+              const centerY = gridBounds.top + gridBounds.height / 2
+
+              return (
+                <motion.div
+                  key={`logo-${skill.name}-${index}`}
+                  className="fixed flex flex-col items-center gap-1"
+                  style={{ zIndex: 200 + index }}
+                  initial={{ left: centerX, top: centerY, x: '-50%', y: '-50%', scale: 0, opacity: 0 }}
+                  animate={{ left, top, x: '-50%', y: '-50%', scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.8, delay: index * 0.03, ease: 'easeOut' }}
+                >
+                  <img
+                    src={getSkillLogo(skill.name)}
+                    alt={skill.name}
+                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain"
+                    style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.6))' }}
+                  />
+                  <span className="text-white/70 text-[9px] sm:text-[10px] font-medium whitespace-nowrap"
+                    style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
+                  >{skill.name}</span>
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
   )
 }
