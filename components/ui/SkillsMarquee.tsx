@@ -22,7 +22,6 @@ type Path = { id: string; segments: Segment[]; length: number; loop: boolean }
 function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[]; gap: number } | null {
   const gs = getComputedStyle(gridEl)
   const gap = parseInt(gs.gap || gs.columnGap || '20') || 20
-  const halfGap = gap / 2
 
   const kids = Array.from(gridEl.children).filter(el => {
     const s = getComputedStyle(el as HTMLElement)
@@ -56,11 +55,27 @@ function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[];
   const secTop = Math.min(...rects.map(r => r.t))
   const secBottom = Math.max(...rects.map(r => r.b))
 
-  // --- Outer contour (centered in gap around sections) ---
-  const cx1 = Math.max(2, secLeft - halfGap)
-  const cx2 = Math.min(origin.width - 2, secRight + halfGap)
-  const cy1 = Math.max(2, secTop - halfGap)
-  const cy2 = Math.min(origin.height - 2, secBottom + halfGap)
+  // --- Anchor: midline between rows (the single Y reference) ---
+  const hGap = row2[0].t - row1[0].b
+  const hMidY = row1[0].b + hGap / 2
+  const hHalf = hGap / 2
+
+  // --- Anchor: midlines between columns (X references) ---
+  const widestRow = rows.reduce((a, b) => a.length >= b.length ? a : b)
+  const vMids: { x: number; half: number }[] = []
+  for (let i = 0; i < widestRow.length - 1; i++) {
+    const vg = widestRow[i + 1].l - widestRow[i].r
+    if (vg > 4) {
+      vMids.push({ x: widestRow[i].r + vg / 2, half: vg / 2 })
+    }
+  }
+  const vHalf = vMids.length > 0 ? vMids[0].half : hHalf
+
+  // --- Outer contour: same offset from sections as internal midlines ---
+  const cx1 = Math.max(2, secLeft - vHalf)
+  const cx2 = Math.min(origin.width - 2, secRight + vHalf)
+  const cy1 = Math.max(2, secTop - hHalf)
+  const cy2 = Math.min(origin.height - 2, secBottom + hHalf)
   const cw = cx2 - cx1
   const ch = cy2 - cy1
 
@@ -78,31 +93,28 @@ function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[];
 
   const paths: Path[] = [contour]
 
-  // --- Internal horizontal street (between row1 and row2) ---
-  const hGap = row2[0].t - row1[0].b
+  // --- Internal horizontal street (exactly at row midline) ---
   if (hGap > 4) {
-    const hY = row1[0].b + hGap / 2
     const hLen = cx2 - cx1
     paths.push({
       id: 'hMid',
       loop: false,
       length: hLen,
-      segments: [{ x: cx1, y: hY, dx: 1, dy: 0, len: hLen, angle: 0 }],
+      segments: [{ x: cx1, y: hMidY, dx: 1, dy: 0, len: hLen, angle: 0 }],
     })
   }
 
-  // --- Internal vertical streets (between columns) ---
-  const widestRow = rows.reduce((a, b) => a.length >= b.length ? a : b)
-  for (let i = 0; i < widestRow.length - 1; i++) {
-    const vGap = widestRow[i + 1].l - widestRow[i].r
-    if (vGap > 4) {
-      const vX = widestRow[i].r + vGap / 2
-      const vLen = cy2 - cy1
+  // --- Internal vertical streets (at column midlines, only in row gap) ---
+  for (let i = 0; i < vMids.length; i++) {
+    const vStart = row1[0].b
+    const vEnd = row2[0].t
+    const vLen = vEnd - vStart
+    if (vLen > 4) {
       paths.push({
         id: `v${i}`,
         loop: false,
         length: vLen,
-        segments: [{ x: vX, y: cy1, dx: 0, dy: 1, len: vLen, angle: 90 }],
+        segments: [{ x: vMids[i].x, y: vStart, dx: 0, dy: 1, len: vLen, angle: 90 }],
       })
     }
   }
@@ -204,7 +216,7 @@ export function SkillsMarquee() {
 
     pathsRef.current = layout.paths
 
-    // Badge sizing
+    // Badge sizing based on gap
     const fs = Math.max(8, Math.min(11, layout.gap * 0.45))
     const padV = Math.max(1, Math.round(layout.gap * 0.06))
     const padH = Math.max(4, Math.round(layout.gap * 0.28))
