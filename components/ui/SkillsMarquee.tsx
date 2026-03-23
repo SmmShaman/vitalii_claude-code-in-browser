@@ -1,14 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
+import gsap from 'gsap'
 import { getStoredSkills, convertSkillsForAnimation } from '@/utils/skillsStorage'
 
-const BASE_SPEED = 22
-const SPEED_VAR = 8
-const MIN_GAP_PX = 20
-const INTERSECTION_NEAR = 10
-const TURN_CHANCE = 0.45
-const COOLDOWN_FRAMES = 50
+const SPEED = 80 // px per second along the contour
+const MIN_GAP_PX = 24
 
 const CAT_COLORS: Record<string, { bg: string; color: string }> = {
   development: { bg: 'rgba(34,197,94,0.22)', color: '#4ade80' },
@@ -19,198 +16,130 @@ const CAT_COLORS: Record<string, { bg: string; color: string }> = {
   integration: { bg: 'rgba(103,232,249,0.22)', color: '#67e8f9' },
 }
 
-type Street = { id: string; axis: 'h' | 'v'; fixed: number; min: number; max: number }
-type INode = { streets: { sid: string; pos: number }[] }
-type Ant = { sid: string; pos: number; dir: 1 | -1; speed: number; cd: number; w: number; h: number }
+// Contour: rectangular path around all 6 sections
+// Returns segments: [{x,y,len,angle}, ...] forming a closed loop
+type Segment = { x: number; y: number; dx: number; dy: number; len: number; angle: number }
 
-// Measure streets directly from section elements — no formulas
-function measureFromSections(gridEl: HTMLElement, origin: DOMRect) {
-  // Get visible grid cell children (the 6 section windows)
+function measureContour(gridEl: HTMLElement, origin: DOMRect): { segments: Segment[]; perimeter: number } | null {
   const kids = Array.from(gridEl.children).filter(el => {
     const s = getComputedStyle(el as HTMLElement)
     return s.position !== 'absolute' && s.position !== 'fixed' && s.display !== 'none'
   }) as HTMLElement[]
 
-  if (kids.length < 4) return null
+  if (kids.length < 2) return null
 
   const rects = kids.map(el => {
     const r = el.getBoundingClientRect()
     return { l: r.left - origin.left, r: r.right - origin.left, t: r.top - origin.top, b: r.bottom - origin.top }
   })
 
-  // Group into rows by Y position (tolerance 5px)
-  const rows: typeof rects[] = []
-  for (const r of rects) {
-    const row = rows.find(g => Math.abs(g[0].t - r.t) < 5)
-    if (row) row.push(r); else rows.push([r])
-  }
-  rows.sort((a, b) => a[0].t - b[0].t)
-  for (const row of rows) row.sort((a, b) => a.l - b.l)
+  // Bounding box of all sections
+  const left = Math.min(...rects.map(r => r.l))
+  const right = Math.max(...rects.map(r => r.r))
+  const top = Math.min(...rects.map(r => r.t))
+  const bottom = Math.max(...rects.map(r => r.b))
 
-  if (rows.length < 2 || rows[0].length < 2) return null
+  // Contour is centered in the margin around sections
+  // Half-gap outward from section edges
+  const marginL = left
+  const marginR = origin.width - right
+  const marginT = top
+  const marginB = origin.height - bottom
 
-  const row1 = rows[0] // top row sections
-  const row2 = rows[1] // bottom row sections
+  const cx1 = left - marginL / 2 // contour left X
+  const cx2 = right + marginR / 2 // contour right X
+  const cy1 = top - marginT / 2 // contour top Y
+  const cy2 = bottom + marginB / 2 // contour bottom Y
 
-  // --- Horizontal streets: gaps between rows ---
-  const hYs: number[] = []
-  const hIds: string[] = []
+  const w = cx2 - cx1
+  const h = cy2 - cy1
 
-  // Top edge: midpoint between container top and row1 top
-  const topMargin = row1[0].t
-  if (topMargin > 3) {
-    hYs.push(row1[0].t - topMargin / 2)
-    hIds.push('hT')
-  }
-
-  // Between row1 and row2: midpoint of the gap
-  const gapH = row2[0].t - row1[0].b
-  if (gapH > 3) {
-    hYs.push(row1[0].b + gapH / 2)
-    hIds.push('hM')
-  }
-
-  // Bottom edge: midpoint between row2 bottom and container bottom
-  const botMargin = origin.height - row2[0].b
-  if (botMargin > 3) {
-    hYs.push(row2[0].b + botMargin / 2)
-    hIds.push('hB')
-  }
-
-  // --- Vertical streets: gaps between columns ---
-  // Use the row with the most columns for gap detection
-  const widestRow = rows.reduce((a, b) => a.length >= b.length ? a : b)
-
-  const vXs: number[] = []
-  const vIds: string[] = []
-
-  // Left edge
-  const leftMargin = widestRow[0].l
-  if (leftMargin > 3) {
-    vXs.push(widestRow[0].l - leftMargin / 2)
-    vIds.push('vL')
-  }
-
-  // Between columns
-  for (let i = 0; i < widestRow.length - 1; i++) {
-    const gapW = widestRow[i + 1].l - widestRow[i].r
-    if (gapW > 3) {
-      vXs.push(widestRow[i].r + gapW / 2)
-      vIds.push(`v${i}`)
-    }
-  }
-
-  // Right edge
-  const rightMargin = origin.width - widestRow[widestRow.length - 1].r
-  if (rightMargin > 3) {
-    vXs.push(widestRow[widestRow.length - 1].r + rightMargin / 2)
-    vIds.push('vR')
-  }
-
-  if (hYs.length === 0 || vXs.length === 0) return null
-
-  // Bounding box: streets confined to the rectangle around all sections
-  const minX = vXs[0]
-  const maxX = vXs[vXs.length - 1]
-  const minY = hYs[0]
-  const maxY = hYs[hYs.length - 1]
-
-  const streets: Street[] = [
-    ...hIds.map((id, i) => ({ id, axis: 'h' as const, fixed: hYs[i], min: minX, max: maxX })),
-    ...vIds.map((id, i) => ({ id, axis: 'v' as const, fixed: vXs[i], min: minY, max: maxY })),
+  // Clockwise path: top → right → bottom → left
+  const segments: Segment[] = [
+    { x: cx1, y: cy1, dx: 1, dy: 0, len: w, angle: 0 },       // top: →
+    { x: cx2, y: cy1, dx: 0, dy: 1, len: h, angle: 90 },      // right: ↓
+    { x: cx2, y: cy2, dx: -1, dy: 0, len: w, angle: 180 },    // bottom: ←
+    { x: cx1, y: cy2, dx: 0, dy: -1, len: h, angle: 270 },    // left: ↑
   ]
 
-  // Intersections: every h × v crossing
-  const nodes: INode[] = []
-  for (let hi = 0; hi < hYs.length; hi++) {
-    for (let vi = 0; vi < vXs.length; vi++) {
-      nodes.push({ streets: [
-        { sid: hIds[hi], pos: vXs[vi] },
-        { sid: vIds[vi], pos: hYs[hi] },
-      ]})
+  const perimeter = 2 * w + 2 * h
+  return { segments, perimeter }
+}
+
+// Convert distance along perimeter to x, y, angle
+function posAtDist(dist: number, segments: Segment[], perimeter: number): { x: number; y: number; angle: number } {
+  let d = ((dist % perimeter) + perimeter) % perimeter // wrap around
+  for (const seg of segments) {
+    if (d <= seg.len) {
+      return {
+        x: seg.x + seg.dx * d,
+        y: seg.y + seg.dy * d,
+        angle: seg.angle,
+      }
     }
+    d -= seg.len
   }
-
-  // Measure the gap width (for badge sizing)
-  const gap = gapH > 3 ? gapH : 20
-
-  return { streets, nodes, gap }
-}
-
-function antXY(ant: Ant, streets: Street[]): [number, number] {
-  const s = streets.find(s => s.id === ant.sid)!
-  return s.axis === 'h' ? [ant.pos, s.fixed] : [s.fixed, ant.pos]
-}
-
-function clampAnt(ant: Ant, streets: Street[]) {
-  const s = streets.find(s => s.id === ant.sid)
-  if (!s) return
-  ant.pos = Math.max(s.min + 5, Math.min(s.max - 5, ant.pos))
-}
-
-function positionBadge(el: HTMLDivElement, ant: Ant, streets: Street[]) {
-  const [x, y] = antXY(ant, streets)
-  const seg = streets.find(s => s.id === ant.sid)
-  if (seg && seg.axis === 'v') {
-    const rot = ant.dir === 1 ? 90 : -90
-    el.style.transform = `translate(${x - ant.h / 2}px, ${y - ant.w / 2}px) rotate(${rot}deg)`
-  } else {
-    el.style.transform = `translate(${x - ant.w / 2}px, ${y - ant.h / 2}px)`
-  }
-}
-
-function spawnAnts(streets: Street[], count: number, badgeW: number): Ant[] {
-  const ants: Ant[] = []
-  const spacing = badgeW + MIN_GAP_PX
-  const lengths = streets.map(s => Math.max(0, s.max - s.min))
-  const total = lengths.reduce((a, b) => a + b, 0) || 1
-  let placed = 0
-
-  for (let si = 0; si < streets.length && placed < count; si++) {
-    const s = streets[si]
-    const len = s.max - s.min
-    if (len < spacing * 0.5) continue
-    const share = Math.max(1, Math.round((len / total) * count))
-    const n = Math.min(share, count - placed)
-    const fwd = Math.ceil(n / 2); const bwd = n - fwd
-
-    for (let j = 0; j < fwd && placed < count; j++) {
-      ants.push({ sid: s.id, pos: s.min + 10 + j * spacing, dir: 1,
-        speed: BASE_SPEED + Math.random() * SPEED_VAR, cd: 0, w: badgeW, h: 16 })
-      placed++
-    }
-    for (let j = 0; j < bwd && placed < count; j++) {
-      ants.push({ sid: s.id, pos: s.max - 10 - j * spacing, dir: -1,
-        speed: BASE_SPEED + Math.random() * SPEED_VAR, cd: 0, w: badgeW, h: 16 })
-      placed++
-    }
-  }
-  for (const ant of ants) clampAnt(ant, streets)
-  return ants
+  // Fallback
+  return { x: segments[0].x, y: segments[0].y, angle: 0 }
 }
 
 export function SkillsMarquee() {
   const containerRef = useRef<HTMLDivElement>(null)
   const badgeRefs = useRef<(HTMLDivElement | null)[]>([])
-  const antsRef = useRef<Ant[]>([])
-  const streetsRef = useRef<Street[]>([])
-  const nodesRef = useRef<INode[]>([])
-  const rafRef = useRef(0)
-  const lastTimeRef = useRef(0)
+  const tweenRef = useRef<gsap.core.Tween | null>(null)
+  const progressRef = useRef({ value: 0 }) // 0 to perimeter, looping
+  const segmentsRef = useRef<Segment[]>([])
+  const perimeterRef = useRef(0)
+  const badgeWidthsRef = useRef<number[]>([])
   const pausedRef = useRef(false)
   const hoveredRef = useRef(false)
-  const explodingRef = useRef(false)
-  const skillsRef = useRef<{ name: string; category: string }[]>([])
+  const [skills] = useState(() => convertSkillsForAnimation(getStoredSkills()))
 
-  useEffect(() => { skillsRef.current = convertSkillsForAnimation(getStoredSkills()) }, [])
-
+  // Header pause/play
   useEffect(() => {
-    const h = () => {
+    const handler = () => {
       pausedRef.current = !pausedRef.current
+      if (tweenRef.current) {
+        pausedRef.current ? tweenRef.current.pause() : tweenRef.current.resume()
+      }
       window.dispatchEvent(new CustomEvent('marquee-state', { detail: { paused: pausedRef.current } }))
     }
-    window.addEventListener('marquee-toggle', h)
-    return () => window.removeEventListener('marquee-toggle', h)
+    window.addEventListener('marquee-toggle', handler)
+    return () => window.removeEventListener('marquee-toggle', handler)
+  }, [])
+
+  // Position all badges along the contour based on progressRef.value
+  const updatePositions = useCallback(() => {
+    const segs = segmentsRef.current
+    const per = perimeterRef.current
+    if (!segs.length || !per) return
+
+    const badges = badgeRefs.current
+    const widths = badgeWidthsRef.current
+    const base = progressRef.current.value
+
+    // Distribute badges evenly, each offset by accumulated width + gap
+    let offset = 0
+    for (let i = 0; i < badges.length; i++) {
+      const el = badges[i]
+      if (!el) continue
+      const w = widths[i] || 60
+      const dist = base + offset
+      const { x, y, angle } = posAtDist(dist, segs, per)
+
+      // Rotation for readability:
+      // Top (0°): normal
+      // Right (90°): rotated 90° CW
+      // Bottom (180°): keep horizontal (text reads right-to-left visually but still LTR)
+      // Left (270°): rotated -90°
+      let rot = 0
+      if (angle === 90) rot = 90
+      else if (angle === 270) rot = -90
+      // On bottom edge, text moves left but stays horizontal (no flip)
+
+      el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${rot}deg)`
+      offset += w + MIN_GAP_PX
+    }
   }, [])
 
   const measure = useCallback(() => {
@@ -219,159 +148,150 @@ export function SkillsMarquee() {
     if (!container || !gridEl) return
 
     const cRect = container.getBoundingClientRect()
-    const layout = measureFromSections(gridEl, cRect)
+    const layout = measureContour(gridEl, cRect)
     if (!layout) return
 
-    const old = streetsRef.current
-    streetsRef.current = layout.streets
-    nodesRef.current = layout.nodes
+    segmentsRef.current = layout.segments
+    perimeterRef.current = layout.perimeter
 
-    const fs = Math.max(8, Math.min(11, layout.gap * 0.5))
-    const pv = Math.max(1, Math.round(layout.gap * 0.08))
-    const ph = Math.max(4, Math.round(layout.gap * 0.3))
-    for (const el of badgeRefs.current) {
-      if (!el) continue
-      el.style.fontSize = `${fs}px`
-      el.style.lineHeight = `${Math.round(fs * 1.5)}px`
-      el.style.padding = `${pv}px ${ph}px`
-    }
+    // Responsive badge sizing based on gap
+    const gap = layout.segments.length > 0
+      ? Math.min(layout.segments[0].y, containerRef.current?.getBoundingClientRect().width ? 20 : 20)
+      : 20
 
-    let tw = 0; let n = 0
-    for (const el of badgeRefs.current) { if (el) { tw += el.offsetWidth; n++ } }
-    const avgW = n > 0 ? tw / n : 60
-
-    if (antsRef.current.length === 0 && skillsRef.current.length > 0) {
-      antsRef.current = spawnAnts(layout.streets, skillsRef.current.length, avgW)
-    } else if (old.length > 0) {
-      for (const ant of antsRef.current) {
-        const os = old.find(s => s.id === ant.sid)
-        const ns = layout.streets.find(s => s.id === ant.sid)
-        if (os && ns) { ant.pos = ns.min + ((ant.pos - os.min) / (os.max - os.min || 1)) * (ns.max - ns.min) }
-        else if (layout.streets.length > 0) {
-          // Street disappeared (e.g. section expanded) — move to first available
-          const fallback = layout.streets[0]
-          ant.sid = fallback.id; ant.pos = fallback.min + Math.random() * (fallback.max - fallback.min)
-        }
-        clampAnt(ant, layout.streets)
-      }
-    }
-
+    // Measure actual badge widths
     for (let i = 0; i < badgeRefs.current.length; i++) {
-      const el = badgeRefs.current[i]; const ant = antsRef.current[i]
-      if (el && ant) { ant.w = el.offsetWidth; ant.h = el.offsetHeight }
+      const el = badgeRefs.current[i]
+      if (el) badgeWidthsRef.current[i] = el.offsetWidth
     }
   }, [])
 
-  const tick = useCallback((time: number) => {
-    if (!lastTimeRef.current) lastTimeRef.current = time
-    const dt = Math.min(time - lastTimeRef.current, 33) / 1000
-    lastTimeRef.current = time
-    const ants = antsRef.current; const streets = streetsRef.current; const nodes = nodesRef.current
+  // Start GSAP animation
+  const startAnimation = useCallback(() => {
+    if (tweenRef.current) tweenRef.current.kill()
 
-    if (!pausedRef.current && !hoveredRef.current && !explodingRef.current && streets.length > 0) {
-      for (let i = 0; i < ants.length; i++) {
-        const ant = ants[i]
-        if (ant.cd > 0) ant.cd--
-        const seg = streets.find(s => s.id === ant.sid)
-        if (!seg) continue
-        let np = ant.pos + ant.dir * ant.speed * dt
+    const per = perimeterRef.current
+    if (!per) return
 
-        // Intersections
-        if (ant.cd === 0) {
-          for (const node of nodes) {
-            const conn = node.streets.find(c => c.sid === ant.sid)
-            if (!conn) continue
-            if (Math.abs(ant.pos - conn.pos) < INTERSECTION_NEAR) {
-              const blocked = ants.some((o, oi) => oi !== i &&
-                node.streets.some(oc => o.sid === oc.sid && Math.abs(o.pos - oc.pos) < INTERSECTION_NEAR * 2.5))
-              if (blocked) { np = ant.pos; break }
-              if (Math.random() < TURN_CHANCE) {
-                const opts = node.streets.filter(c => c.sid !== ant.sid)
-                if (opts.length > 0) {
-                  const pick = opts[Math.floor(Math.random() * opts.length)]
-                  ant.sid = pick.sid; ant.pos = pick.pos
-                  ant.dir = Math.random() < 0.5 ? 1 : -1
-                  ant.cd = COOLDOWN_FRAMES
-                  np = ant.pos + ant.dir * ant.speed * dt; break
-                }
-              }
-              ant.cd = COOLDOWN_FRAMES
-            }
-          }
-        }
+    // Duration = perimeter / speed
+    const duration = per / SPEED
 
-        // Collision: maintain gap
-        let cd = Infinity; let cw = 0
-        for (let j = 0; j < ants.length; j++) {
-          if (j === i || ants[j].sid !== ant.sid) continue
-          const d = (ants[j].pos - np) * ant.dir
-          if (d > 0 && d < cd) { cd = d; cw = ants[j].w }
-        }
-        if (cd < (ant.w + cw) / 2 + MIN_GAP_PX) np = ant.pos
+    tweenRef.current = gsap.to(progressRef.current, {
+      value: per,
+      duration,
+      ease: 'none',
+      repeat: -1,
+      onUpdate: updatePositions,
+    })
 
-        // Bounce at edges
-        if (np <= seg.min + 5) { ant.dir = 1; np = seg.min + 5 }
-        if (np >= seg.max - 5) { ant.dir = -1; np = seg.max - 5 }
-        ant.pos = np
+    if (pausedRef.current) tweenRef.current.pause()
+  }, [updatePositions])
 
-        const el = badgeRefs.current[i]
-        if (el) positionBadge(el, ant, streets)
-      }
-    }
-    rafRef.current = requestAnimationFrame(tick)
+  // Hover: pause/resume
+  const onHoverIn = useCallback(() => {
+    hoveredRef.current = true
+    tweenRef.current?.pause()
   }, [])
 
+  const onHoverOut = useCallback(() => {
+    hoveredRef.current = false
+    if (!pausedRef.current) tweenRef.current?.resume()
+  }, [])
+
+  // Explosion on click
   const explode = useCallback(() => {
-    if (explodingRef.current) return
-    explodingRef.current = true
-    for (let i = 0; i < antsRef.current.length; i++) {
-      const el = badgeRefs.current[i]; if (!el) continue
-      const [cx, cy] = antXY(antsRef.current[i], streetsRef.current)
-      const a = Math.random() * Math.PI * 2; const d = 120 + Math.random() * 200
-      el.style.transition = 'transform 0.7s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.7s ease-out'
-      el.style.transform = `translate(${cx + Math.cos(a) * d}px, ${cy + Math.sin(a) * d}px) scale(0.2) rotate(${Math.random() * 720 - 360}deg)`
-      el.style.opacity = '0'
+    if (!tweenRef.current) return
+    tweenRef.current.pause()
+
+    const badges = badgeRefs.current
+    for (let i = 0; i < badges.length; i++) {
+      const el = badges[i]
+      if (!el) continue
+      const rect = el.getBoundingClientRect()
+      const cRect = containerRef.current!.getBoundingClientRect()
+      const cx = rect.left - cRect.left + rect.width / 2
+      const cy = rect.top - cRect.top + rect.height / 2
+      const angle = Math.random() * Math.PI * 2
+      const dist = 120 + Math.random() * 200
+
+      gsap.to(el, {
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist,
+        scale: 0.2,
+        rotation: Math.random() * 720 - 360,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power2.out',
+      })
     }
-    setTimeout(() => {
-      let tw = 0; let n = 0
-      for (const el of badgeRefs.current) { if (el) { tw += el.offsetWidth; n++ } }
-      antsRef.current = spawnAnts(streetsRef.current, skillsRef.current.length, n > 0 ? tw / n : 60)
-      for (let i = 0; i < badgeRefs.current.length; i++) {
-        const el = badgeRefs.current[i]; if (!el) continue
-        el.style.transition = 'none'; el.style.opacity = '1'
-        const ant = antsRef.current[i]
-        if (ant) { ant.w = el.offsetWidth; ant.h = el.offsetHeight; positionBadge(el, ant, streetsRef.current) }
+
+    // Reset after explosion
+    gsap.delayedCall(1, () => {
+      progressRef.current.value = 0
+      for (const el of badges) {
+        if (!el) continue
+        gsap.set(el, { clearProps: 'all' })
+        el.style.willChange = 'transform'
       }
-      explodingRef.current = false
-    }, 900)
-  }, [])
+      startAnimation()
+    })
+  }, [startAnimation])
 
+  // Init
   useEffect(() => {
-    const t = setTimeout(() => { measure(); rafRef.current = requestAnimationFrame(tick) }, 400)
-    const r = () => { measure(); antsRef.current.forEach((ant, i) => {
-      const el = badgeRefs.current[i]; if (el) positionBadge(el, ant, streetsRef.current) }) }
-    window.addEventListener('resize', r)
-    return () => { clearTimeout(t); cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', r) }
-  }, [measure, tick])
+    const timer = setTimeout(() => {
+      measure()
+      updatePositions()
+      startAnimation()
+    }, 500)
 
-  useEffect(() => { const t = setTimeout(measure, 600); return () => clearTimeout(t) }, [measure])
+    const onResize = () => {
+      measure()
+      // Restart animation with new perimeter
+      startAnimation()
+    }
+    window.addEventListener('resize', onResize)
 
-  const skills = skillsRef.current.length > 0 ? skillsRef.current : convertSkillsForAnimation(getStoredSkills())
+    return () => {
+      clearTimeout(timer)
+      tweenRef.current?.kill()
+      window.removeEventListener('resize', onResize)
+    }
+  }, [measure, updatePositions, startAnimation])
 
   return (
-    <div ref={containerRef} className="absolute inset-0 z-[8] pointer-events-none overflow-hidden">
+    <div
+      ref={containerRef}
+      className="absolute inset-0 z-[8] pointer-events-none overflow-hidden"
+    >
       {skills.map((skill, i) => {
         const c = CAT_COLORS[skill.category] || CAT_COLORS.development
         return (
-          <div key={`mq-${i}`} ref={el => { badgeRefs.current[i] = el }}
+          <div
+            key={`mq-${i}`}
+            ref={el => { badgeRefs.current[i] = el }}
             className="absolute top-0 left-0 pointer-events-auto cursor-pointer select-none"
-            style={{ fontSize: '10px', lineHeight: '15px', padding: '2px 6px', borderRadius: '7px',
-              whiteSpace: 'nowrap', backgroundColor: c.bg, color: c.color, fontWeight: 600,
-              letterSpacing: '0.02em', willChange: 'transform', backdropFilter: 'blur(4px)',
-              border: `1px solid ${c.color}33`, transformOrigin: 'center center' }}
-            onMouseEnter={() => { hoveredRef.current = true }}
-            onMouseLeave={() => { hoveredRef.current = false }}
-            onClick={explode}>{skill.name}</div>
+            style={{
+              fontFamily: 'Comfortaa, sans-serif',
+              fontSize: '10px',
+              lineHeight: '14px',
+              padding: '2px 8px',
+              borderRadius: '8px',
+              whiteSpace: 'nowrap',
+              backgroundColor: c.bg,
+              color: c.color,
+              fontWeight: 600,
+              letterSpacing: '0.03em',
+              willChange: 'transform',
+              backdropFilter: 'blur(4px)',
+              border: `1px solid ${c.color}33`,
+            }}
+            onMouseEnter={onHoverIn}
+            onMouseLeave={onHoverOut}
+            onClick={explode}
+          >
+            {skill.name}
+          </div>
         )
       })}
     </div>
