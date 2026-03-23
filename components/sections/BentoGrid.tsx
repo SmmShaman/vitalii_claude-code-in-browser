@@ -921,7 +921,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                             debugLog(`❌ BLOG: Умова НЕ виконалась - таймер НЕ встановлено`);
                           }
                         }}
-                        className={`relative rounded-lg transition-all duration-300 hover:shadow-2xl active:shadow-xl w-full cursor-pointer ${(section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105 active:scale-[0.98]' : 'active:scale-[0.99]'
+                        className={`relative z-[15] rounded-lg transition-all duration-300 hover:shadow-2xl active:shadow-xl w-full cursor-pointer ${(section.id === 'news' && !isNewsExpanded) || (section.id === 'blog' && !isBlogExpanded) ? 'hover:scale-105 active:scale-[0.98]' : 'active:scale-[0.99]'
                           } ${
                           // Allow scroll when news/blog item is selected, otherwise hide overflow
                           (section.id === 'news' && selectedNewsId) || (section.id === 'blog' && selectedBlogId)
@@ -1035,7 +1035,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                               />
                             </div>
                           ) : section.id === 'features' ? (
-                            <div className="w-full h-full overflow-hidden">
+                            <div className="w-full h-full overflow-hidden self-stretch">
                               <FeaturesPreview
                                 features={allFeatures}
                                 backgroundText={t('features_title') as string}

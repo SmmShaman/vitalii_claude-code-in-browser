@@ -102,10 +102,9 @@ export default function HomePage() {
         ) : (
           <BentoGrid onHoveredSectionChange={handleSectionChange} />
         )}
+        {/* Skills Marquee - inside main, z-[35] above section backgrounds but pointer-events-none */}
+        {!isMobile && <SkillsMarquee />}
       </main>
-
-      {/* Skills Marquee - page level, behind sections (z-8), visible in gaps */}
-      {!isMobile && <SkillsMarquee />}
 
       {/* Footer - Only show on desktop, mobile has BottomNavigation */}
       {!isMobile && (
