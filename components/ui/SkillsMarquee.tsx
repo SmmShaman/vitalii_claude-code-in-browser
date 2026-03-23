@@ -396,8 +396,7 @@ export function SkillsMarquee() {
     gsap.delayedCall(1.2, () => {
       for (const el of charRefs.current) {
         if (!el) continue
-        gsap.set(el, { clearProps: 'all' })
-        el.style.willChange = 'transform'
+        gsap.set(el, { clearProps: 'x,y,scale,rotation,opacity,transform' })
       }
       for (const p of progressRefs.current) p.value = 0
       startAnimation()
