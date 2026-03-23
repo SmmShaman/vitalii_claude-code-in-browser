@@ -17,6 +17,7 @@ import { ServicesDetail } from '@/components/ui/ServicesDetail';
 import { NewsSection } from '@/components/sections/NewsSection';
 import { BlogSection } from '@/components/sections/BlogSection';
 import { NeonVerticalLabel } from '@/components/ui/NeonVerticalLabel';
+import { SkillsMarquee } from '@/components/ui/SkillsMarquee';
 import { translations } from '@/utils/translations';
 import { debugLog } from '@/utils/debug';
 import { trackSectionClick } from '@/utils/gtm';
@@ -589,6 +590,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                 gap: `${isMobile ? GAP_SIZE_MOBILE : GAP_SIZE_DESKTOP}px`,
               }}
             >
+              {/* Marquee — absolute inside grid, z-[5] below sections z-[15] */}
+              {!isMobile && <SkillsMarquee />}
+
               <AnimatePresence mode="sync">
                 {sections
                   // ФІЛЬТРУЄМО Services коли News розширюється
@@ -1035,7 +1039,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                               />
                             </div>
                           ) : section.id === 'features' ? (
-                            <div className="w-full h-full overflow-hidden self-stretch">
+                            <div className="w-full h-full overflow-hidden">
                               <FeaturesPreview
                                 features={allFeatures}
                                 backgroundText={t('features_title') as string}

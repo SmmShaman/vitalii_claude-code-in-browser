@@ -47,7 +47,7 @@ export const FeaturesPreview = ({
   }, [features]);
 
   return (
-    <div className="relative w-full h-full flex flex-col justify-center overflow-hidden">
+    <div className="relative w-full h-full flex flex-col overflow-hidden">
       {/* Latest Features — 2 items */}
       <div className="relative z-10 mb-2">
         <div className="flex flex-col gap-1.5">

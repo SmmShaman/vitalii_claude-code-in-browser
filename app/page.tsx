@@ -28,10 +28,6 @@ const ParticlesBackground = dynamic(
   { ssr: false }
 )
 
-const SkillsMarquee = dynamic(
-  () => import('@/components/ui/SkillsMarquee').then(mod => mod.SkillsMarquee),
-  { ssr: false }
-)
 
 export default function HomePage() {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null)
@@ -102,8 +98,6 @@ export default function HomePage() {
         ) : (
           <BentoGrid onHoveredSectionChange={handleSectionChange} />
         )}
-        {/* Skills Marquee - inside main, z-[35] above section backgrounds but pointer-events-none */}
-        {!isMobile && <SkillsMarquee />}
       </main>
 
       {/* Footer - Only show on desktop, mobile has BottomNavigation */}
