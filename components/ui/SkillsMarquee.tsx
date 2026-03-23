@@ -16,7 +16,10 @@ const CAT_COLORS: Record<string, { bg: string; color: string }> = {
   integration: { bg: 'rgba(103,232,249,0.22)', color: '#67e8f9' },
 }
 
-type Segment = { x: number; y: number; dx: number; dy: number; len: number; angle: number }
+type Segment = {
+  x: number; y: number; dx: number; dy: number; len: number; angle: number
+  arc?: { cx: number; cy: number; r: number; startA: number; endA: number; rotStart: number; rotEnd: number }
+}
 type Path = { id: string; segments: Segment[]; length: number; loop: boolean }
 
 function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[]; gap: number } | null {
@@ -79,15 +82,39 @@ function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[];
   const cw = cx2 - cx1
   const ch = cy2 - cy1
 
+  // Rounded corners: radius = smaller of the two half-gaps
+  const r = Math.min(hHalf, vHalf)
+  const arcLen = r * Math.PI / 2
+  const topLen = cw - 2 * r
+  const rightLen = ch - 2 * r
+  const bottomLen = cw - 2 * r
+  const leftLen = ch - 2 * r
+  const arcSeg = (cx: number, cy: number, startA: number, endA: number, rotStart: number, rotEnd: number): Segment => ({
+    x: 0, y: 0, dx: 0, dy: 0, len: arcLen, angle: -1,
+    arc: { cx, cy, r, startA, endA, rotStart, rotEnd },
+  })
+
   const contour: Path = {
     id: 'contour',
     loop: true,
-    length: 2 * cw + 2 * ch,
+    length: topLen + rightLen + bottomLen + leftLen + 4 * arcLen,
     segments: [
-      { x: cx1, y: cy1, dx: 1, dy: 0, len: cw, angle: 0 },
-      { x: cx2, y: cy1, dx: 0, dy: 1, len: ch, angle: 90 },
-      { x: cx2, y: cy2, dx: -1, dy: 0, len: cw, angle: 180 },
-      { x: cx1, y: cy2, dx: 0, dy: -1, len: ch, angle: 270 },
+      // Top edge (left → right)
+      { x: cx1 + r, y: cy1, dx: 1, dy: 0, len: topLen, angle: 0 },
+      // Top-right arc
+      arcSeg(cx2 - r, cy1 + r, -Math.PI / 2, 0, 0, 90),
+      // Right edge (top → bottom)
+      { x: cx2, y: cy1 + r, dx: 0, dy: 1, len: rightLen, angle: 90 },
+      // Bottom-right arc
+      arcSeg(cx2 - r, cy2 - r, 0, Math.PI / 2, 90, 0),
+      // Bottom edge (right → left)
+      { x: cx2 - r, y: cy2, dx: -1, dy: 0, len: bottomLen, angle: 180 },
+      // Bottom-left arc
+      arcSeg(cx1 + r, cy2 - r, Math.PI / 2, Math.PI, 0, -90),
+      // Left edge (bottom → top)
+      { x: cx1, y: cy2 - r, dx: 0, dy: -1, len: leftLen, angle: 270 },
+      // Top-left arc
+      arcSeg(cx1 + r, cy1 + r, Math.PI, Math.PI * 3 / 2, -90, 0),
     ],
   }
 
@@ -122,7 +149,7 @@ function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[];
   return { paths, gap }
 }
 
-function posAtDist(dist: number, segments: Segment[], length: number, loop: boolean): { x: number; y: number; angle: number } {
+function posAtDist(dist: number, segments: Segment[], length: number, loop: boolean): { x: number; y: number; angle: number; rot?: number } {
   let d: number
   if (loop) {
     d = ((dist % length) + length) % length
@@ -133,6 +160,16 @@ function posAtDist(dist: number, segments: Segment[], length: number, loop: bool
   }
   for (const seg of segments) {
     if (d <= seg.len) {
+      if (seg.arc) {
+        const t = seg.len > 0 ? d / seg.len : 0
+        const a = seg.arc.startA + t * (seg.arc.endA - seg.arc.startA)
+        return {
+          x: seg.arc.cx + seg.arc.r * Math.cos(a),
+          y: seg.arc.cy + seg.arc.r * Math.sin(a),
+          angle: -1,
+          rot: seg.arc.rotStart + t * (seg.arc.rotEnd - seg.arc.rotStart),
+        }
+      }
       return { x: seg.x + seg.dx * d, y: seg.y + seg.dy * d, angle: seg.angle }
     }
     d -= seg.len
@@ -198,8 +235,9 @@ export function SkillsMarquee() {
       const path = paths[pi]
       const progress = progresses[pi]?.value || 0
       const dist = progress + offsets[i]
-      const { x, y, angle } = posAtDist(dist, path.segments, path.length, path.loop)
-      const rot = rotForAngle(angle, path.loop, dist, path.length)
+      const pos = posAtDist(dist, path.segments, path.length, path.loop)
+      const rot = pos.rot !== undefined ? pos.rot : rotForAngle(pos.angle, path.loop, dist, path.length)
+      const { x, y } = pos
 
       el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${rot}deg)`
     }
