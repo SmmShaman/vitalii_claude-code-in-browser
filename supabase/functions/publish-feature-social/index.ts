@@ -45,19 +45,46 @@ function formatLinkedInPost(feature: typeof FEATURES[0], lang: 'en' | 'no'): str
   const desc = feature.sd[lang]
   const tech = feature.ts.join(' · ')
   const tags = feature.h.join(' ')
-  const project = feature.pid === 'portfolio' ? 'Portfolio & News Platform' : 'JobBot Norway'
-  const intro = lang === 'en'
-    ? `🔧 Production Feature from ${project}`
-    : `🔧 Produksjonsfunksjon fra ${project}`
+  const project = feature.pid === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
+  const featureNum = FEATURE_ORDER.indexOf(feature.id) + 1
 
-  return `${intro}\n\n${title}\n\n${desc}\n\n🛠 Tech: ${tech}\n\n${tags} #FullStack #Portfolio\n\nvitalii.no`
+  if (lang === 'en') {
+    return `🚀 Real Production Feature #${featureNum}/90\n\n` +
+      `${title}\n\n` +
+      `${desc}\n\n` +
+      `This isn't a tutorial project — it's a production system handling real traffic every day.\n\n` +
+      `🛠 Built with: ${tech}\n\n` +
+      `👉 See all 90 features: ${project}\n\n` +
+      `${tags} #FullStack #OpenSource #ProductionCode #WebDev`
+  }
+  return `🚀 Ekte Produksjonsfunksjon #${featureNum}/90\n\n` +
+    `${title}\n\n` +
+    `${desc}\n\n` +
+    `Dette er ikke et tutorialprosjekt — det er et produksjonssystem som håndterer ekte trafikk hver dag.\n\n` +
+    `🛠 Bygget med: ${tech}\n\n` +
+    `👉 Se alle 90 funksjoner: ${project}\n\n` +
+    `${tags} #FullStack #OpenSource #ProductionCode #WebDev`
 }
 
 function formatFacebookPost(feature: typeof FEATURES[0], lang: 'en' | 'no'): string {
   const title = feature.t[lang]
   const desc = feature.sd[lang]
-  const tags = feature.h.slice(0, 3).join(' ')
-  return `🔧 ${title}\n\n${desc}\n\n${tags}\n\nvitalii.no`
+  const tags = feature.h.slice(0, 4).join(' ')
+  const featureNum = FEATURE_ORDER.indexOf(feature.id) + 1
+  const project = feature.pid === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
+
+  if (lang === 'en') {
+    return `🚀 Feature #${featureNum}/90 from my production portfolio\n\n` +
+      `${title}\n\n` +
+      `${desc}\n\n` +
+      `👉 ${project}\n\n` +
+      `${tags} #FullStack #WebDev`
+  }
+  return `🚀 Funksjon #${featureNum}/90 fra min produksjonsportefølje\n\n` +
+    `${title}\n\n` +
+    `${desc}\n\n` +
+    `👉 ${project}\n\n` +
+    `${tags} #FullStack #WebDev`
 }
 
 async function postToLinkedIn(text: string, supabase: ReturnType<typeof createClient>): Promise<{ id?: string; url?: string; error?: string }> {
@@ -96,8 +123,8 @@ async function postToLinkedIn(text: string, supabase: ReturnType<typeof createCl
   }
 
   const postId = res.headers.get('x-restli-id') || ''
-  const activityId = postId.replace('urn:li:share:', '')
-  return { id: postId, url: activityId ? `https://www.linkedin.com/feed/update/urn:li:activity:${activityId}` : undefined }
+  // Use share URN directly — activity URN is different and may not resolve
+  return { id: postId, url: postId ? `https://www.linkedin.com/feed/update/${postId}` : undefined }
 }
 
 async function postToFacebook(text: string, supabase: ReturnType<typeof createClient>): Promise<{ id?: string; url?: string; error?: string }> {
