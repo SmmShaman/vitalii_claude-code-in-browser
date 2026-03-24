@@ -2,38 +2,44 @@ name: Publish Feature Social
 
 on:
   schedule:
-    - cron: '0 13 * * *'  # 15:00 Oslo (winter CET=UTC+1) — 4th social slot
-    - cron: '0 14 * * *'  # 15:00 Oslo (summer CEST=UTC+2)
+    # EN post — 10:00 New York
+    - cron: '0 15 * * *'  # 10:00 EST (winter UTC-5)
+    - cron: '0 14 * * *'  # 10:00 EDT (summer UTC-4)
+    # NO post — 10:00 Oslo
+    - cron: '0 9 * * *'   # 10:00 CET (winter UTC+1)
+    - cron: '0 8 * * *'   # 10:00 CEST (summer UTC+2)
   workflow_dispatch:
+    inputs:
+      lang:
+        description: 'Language (en or no)'
+        required: false
+        default: 'en'
 
 jobs:
-  publish-feature:
+  publish-en:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Run only on NY schedule (14:00/15:00 UTC) or manual with lang=en
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 15 * * *' || github.event.schedule == '0 14 * * *'
     steps:
-      - name: Trigger publish-feature-social Edge Function
+      - name: Publish feature in EN
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          echo "📋 Calling publish-feature-social..."
+          LANG="${{ inputs.lang || 'en' }}"
+          echo "📋 Publishing feature in ${LANG}..."
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             "${SUPABASE_URL}/functions/v1/publish-feature-social" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json" \
-            -X POST -d '{}')
+            -X POST -d "{\"lang\": \"${LANG}\"}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | sed '$d')
-
           echo "Response ($HTTP_CODE): $BODY"
-
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "❌ Feature social publish failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-
-          echo "✅ Feature social published successfully"
+          [ "$HTTP_CODE" -ge 400 ] && exit 1
+          echo "✅ Done"
 
       - name: Notify Telegram on failure
         if: failure()
@@ -44,4 +50,39 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -H "Content-Type: application/json" \
-            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Feature Social publish failed!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Feature Social EN failed!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
+
+  publish-no:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Run only on Oslo schedule (08:00/09:00 UTC)
+    if: github.event.schedule == '0 9 * * *' || github.event.schedule == '0 8 * * *'
+    steps:
+      - name: Publish feature in NO
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "📋 Publishing feature in NO..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "${SUPABASE_URL}/functions/v1/publish-feature-social" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -X POST -d '{"lang": "no"}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "Response ($HTTP_CODE): $BODY"
+          [ "$HTTP_CODE" -ge 400 ] && exit 1
+          echo "✅ Done"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Feature Social NO failed!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"

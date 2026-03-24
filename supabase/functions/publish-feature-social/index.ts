@@ -168,8 +168,9 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
   try {
-    const lang = getTodayLanguage()
-    console.log(`Today's language: ${lang}`)
+    const body = await req.json().catch(() => ({}))
+    const lang: 'en' | 'no' = (body as { lang?: string }).lang === 'no' ? 'no' : (body as { lang?: string }).lang === 'en' ? 'en' : getTodayLanguage()
+    console.log(`Language: ${lang}`)
 
     // Load all published features from DB
     // Portfolio first, then JobBot (p01..p48, j01..j42)
