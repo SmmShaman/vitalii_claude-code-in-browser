@@ -36,7 +36,7 @@ export async function GET() {
       hashtags: f.hashtags || [],
       sourceCommits: f.source_commits || [],
       createdAt: f.created_at,
-      repoUrl: f.feature_projects?.repo_url || null,
+      repoUrl: (f.feature_projects as { repo_url?: string } | null)?.repo_url || null,
     }))
 
     return NextResponse.json({ features: formatted, source: 'database', total: formatted.length })

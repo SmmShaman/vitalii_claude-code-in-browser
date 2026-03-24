@@ -100,6 +100,9 @@ serve(async (req) => {
       return json({ ok: false, error: 'Missing or empty commits data' }, 400)
     }
 
+    // Extract commit hashes from the text (lines starting with hash)
+    const commitHashes = commits.match(/^[a-f0-9]{7,40}/gm) || []
+
     // Load existing feature titles for deduplication
     const { data: existing } = await supabase
       .from('features')
@@ -167,6 +170,7 @@ Identify significant new features from these commits. Remember: only genuinely n
         tech_stack: feature.tech_stack || [],
         hashtags: feature.hashtags || [],
         status: 'pending',
+        source_commits: commitHashes.slice(0, 10),
         discovered_at: new Date().toISOString(),
       })
 
