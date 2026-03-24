@@ -16,7 +16,7 @@ export async function GET() {
 
     const { data: features, error } = await supabase
       .from('features')
-      .select('*')
+      .select('*, feature_projects(repo_url)')
       .eq('status', 'published')
       .order('feature_id', { ascending: true })
 
@@ -34,6 +34,9 @@ export async function GET() {
       result: { en: f.result_en, no: f.result_no, ua: f.result_ua },
       techStack: f.tech_stack || [],
       hashtags: f.hashtags || [],
+      sourceCommits: f.source_commits || [],
+      createdAt: f.created_at,
+      repoUrl: f.feature_projects?.repo_url || null,
     }))
 
     return NextResponse.json({ features: formatted, source: 'database', total: formatted.length })

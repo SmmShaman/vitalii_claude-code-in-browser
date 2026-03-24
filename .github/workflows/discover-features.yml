@@ -7,47 +7,45 @@ on:
   workflow_dispatch:
     inputs:
       since:
-        description: 'Scan period (e.g. "7 days ago", "2 weeks ago")'
+        description: 'Scan period (e.g. "1 day ago", "7 days ago")'
         required: false
-        default: '7 days ago'
-      repo:
-        description: 'Repository to analyze (owner/repo)'
-        required: false
-        default: 'SmmShaman/vitalii_claude-code-in-browser'
-      project_id:
-        description: 'Project ID in features table'
-        required: false
-        default: 'portfolio'
+        default: '1 day ago'
 
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: SmmShaman/vitalii_claude-code-in-browser
+            project_id: portfolio
+          - repo: SmmShaman/jobbot-norway
+            project_id: jobbot
     steps:
-      - name: Checkout repository
+      - name: Checkout ${{ matrix.repo }}
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.repo || 'SmmShaman/vitalii_claude-code-in-browser' }}
+          repository: ${{ matrix.repo }}
           fetch-depth: 100
           token: ${{ secrets.GH_PAT }}
 
       - name: Collect significant commits
         id: commits
         run: |
-          SINCE="${{ inputs.since || '7 days ago' }}"
-          echo "Scanning commits since: $SINCE"
+          SINCE="${{ inputs.since || '1 day ago' }}"
+          echo "📦 Scanning ${{ matrix.repo }} since: $SINCE"
 
-          # Get feat: commits with file stats
           COMMITS=$(git log --since="$SINCE" --oneline --stat --grep="^feat" --format="%h %s" 2>/dev/null | head -3000)
 
           if [ -z "$COMMITS" ]; then
-            echo "No feat: commits found since $SINCE"
+            echo "No feat: commits found"
             echo "has_commits=false" >> $GITHUB_OUTPUT
           else
             COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo 0)
             echo "Found $COUNT feat: commits"
             echo "has_commits=true" >> $GITHUB_OUTPUT
-            # Save to file for the next step
             echo "$COMMITS" > /tmp/commits.txt
           fi
 
@@ -58,8 +56,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           COMMITS=$(cat /tmp/commits.txt)
-          PROJECT_ID="${{ inputs.project_id || 'portfolio' }}"
-          REPO="${{ inputs.repo || 'SmmShaman/vitalii_claude-code-in-browser' }}"
 
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             "${SUPABASE_URL}/functions/v1/discover-features" \
@@ -67,17 +63,16 @@ jobs:
             -H "Content-Type: application/json" \
             -X POST -d "$(jq -n \
               --arg commits "$COMMITS" \
-              --arg project_id "$PROJECT_ID" \
-              --arg repo_name "$REPO" \
+              --arg project_id "${{ matrix.project_id }}" \
+              --arg repo_name "${{ matrix.repo }}" \
               '{commits: $commits, project_id: $project_id, repo_name: $repo_name}')")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | sed '$d')
-
           echo "Response ($HTTP_CODE): $BODY"
 
           if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "❌ Feature discovery failed"
+            echo "❌ Feature discovery failed for ${{ matrix.repo }}"
             exit 1
           fi
 
@@ -90,4 +85,4 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -H "Content-Type: application/json" \
-            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Feature Discovery failed!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Feature Discovery failed for ${{ matrix.repo }}!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"

@@ -11,6 +11,35 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Brain, Video, Bot, Palette, Server, Layers,
 };
 
+// Display commit hash + date for DB-sourced features
+function FeatureMeta({ feature, projectUrl }: { feature: Feature; projectUrl?: string }) {
+  const ext = feature as Feature & { sourceCommits?: string[]; createdAt?: string; repoUrl?: string | null }
+  const commits = ext.sourceCommits || []
+  const repoUrl = ext.repoUrl || null
+  const date = ext.createdAt ? new Date(ext.createdAt).toLocaleDateString('no-NO') : null
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs text-white/30">
+      {date && <span>{date}</span>}
+      {commits.slice(0, 2).map(hash => {
+        const short = hash.slice(0, 7)
+        return repoUrl ? (
+          <a key={hash} href={`${repoUrl}/commit/${hash}`} target="_blank" rel="noopener noreferrer"
+            className="font-mono text-white/40 hover:text-white/80 underline decoration-white/20 hover:decoration-white/60 transition-colors">
+            {short}
+          </a>
+        ) : <span key={hash} className="font-mono">{short}</span>
+      })}
+      {projectUrl && (
+        <a href={projectUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-white/40 hover:text-white/70 transition-colors">
+          <ExternalLink className="w-3 h-3" /> {projectUrl}
+        </a>
+      )}
+    </div>
+  )
+}
+
 interface FeatureModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -409,18 +438,8 @@ export const FeatureModal = ({
                       </div>
                     )}
 
-                    {/* Project Link */}
-                    {project.url && (
-                      <a
-                        href={project.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        {project.url}
-                      </a>
-                    )}
+                    {/* Commit info + Project Link */}
+                    <FeatureMeta feature={selectedFeature} projectUrl={project.url} />
 
                     {/* Navigation */}
                     <div className="flex items-center justify-between mt-8 pt-4 border-t border-white/10">

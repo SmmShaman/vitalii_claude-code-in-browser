@@ -30,6 +30,7 @@ interface DbFeature {
   discovered_at: string | null
   published_at: string | null
   created_at: string
+  feature_projects?: { repo_url: string | null } | null
 }
 
 const statusColors: Record<string, string> = {
@@ -53,7 +54,7 @@ export const FeaturesManager = () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('features')
-      .select('*')
+      .select('*, feature_projects(repo_url)')
       .order('project_id', { ascending: false })
       .order('feature_id', { ascending: true })
 
@@ -199,12 +200,23 @@ export const FeaturesManager = () => {
                 </div>
                 <h4 className="text-sm font-medium text-white">{feature.title_en}</h4>
                 <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{feature.short_description_en}</p>
-                {/* Meta: date, commits, project */}
-                <div className="flex gap-3 mt-1.5 text-[10px] text-white/30">
-                  <span>{new Date(feature.created_at).toLocaleDateString()} {new Date(feature.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  {feature.discovered_at && <span>AI discovered</span>}
+                {/* Meta: date, commits with links */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[10px] text-white/30">
+                  <span>📅 {new Date(feature.created_at).toLocaleDateString('no-NO')} {new Date(feature.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {feature.discovered_at && <span className="text-white/50">🤖 AI discovered</span>}
                   {feature.source_commits?.length ? (
-                    <span>commits: {feature.source_commits.slice(0, 3).join(', ')}</span>
+                    feature.source_commits.slice(0, 3).map(hash => {
+                      const repoUrl = feature.feature_projects?.repo_url
+                      const shortHash = hash.slice(0, 7)
+                      return repoUrl ? (
+                        <a key={hash} href={`${repoUrl}/commit/${hash}`} target="_blank" rel="noopener noreferrer"
+                          className="font-mono text-white/50 hover:text-white underline decoration-white/20 hover:decoration-white/60 transition-colors"
+                          title={`Commit ${hash}`}
+                        >⌗ {shortHash}</a>
+                      ) : (
+                        <span key={hash} className="font-mono text-white/40">⌗ {shortHash}</span>
+                      )
+                    })
                   ) : null}
                 </div>
                 <div className="flex gap-1 mt-1.5 flex-wrap">
