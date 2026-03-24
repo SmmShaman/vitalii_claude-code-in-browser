@@ -42,49 +42,55 @@ function getTodayLanguage(): 'en' | 'no' {
 // deno-lint-ignore no-explicit-any
 type DbFeature = any
 
-function formatLinkedInPost(feature: DbFeature, featureNum: number, totalFeatures: number, lang: 'en' | 'no'): string {
-  const title = lang === 'en' ? feature.title_en : feature.title_no
-  const desc = lang === 'en' ? feature.short_description_en : feature.short_description_no
-  const tech = (feature.tech_stack || []).join(' · ')
-  const tags = (feature.hashtags || []).join(' ')
-  const project = feature.project_id === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
+// 5 LinkedIn templates that rotate by feature number
+const linkedInTemplates: Record<'en' | 'no', ((p: { title: string; desc: string; tech: string; tags: string; num: number; total: number; project: string }) => string)[]> = {
+  en: [
+    (p) => `🔧 I built ${p.total} production features. Here's #${p.num}:\n\n${p.title}\n\n${p.desc}\n\n🛠 ${p.tech}\n\n${p.tags}\n\n👉 ${p.project}`,
+    (p) => `What if I told you this runs in production 24/7?\n\n${p.title}\n\n${p.desc}\n\nStack: ${p.tech}\n\n${p.tags}\n\nAll ${p.total} features → ${p.project}`,
+    (p) => `Feature #${p.num} from my portfolio 👇\n\n"${p.title}"\n\n${p.desc}\n\nBuilt with ${p.tech}\n\n${p.tags}\n\n${p.project}`,
+    (p) => `Problem → Solution → Result.\n\nThat's how I document every feature I ship.\n\n#${p.num}: ${p.title}\n\n${p.desc}\n\n${p.tech}\n\n${p.tags}\n\n${p.project}`,
+    (p) => `${p.num} of ${p.total} shipped ✅\n\n${p.title}\n\n${p.desc}\n\nTech: ${p.tech}\n\n${p.tags}\n\n${p.project}`,
+  ],
+  no: [
+    (p) => `🔧 Jeg har bygget ${p.total} produksjonsfunksjoner. Her er #${p.num}:\n\n${p.title}\n\n${p.desc}\n\n🛠 ${p.tech}\n\n${p.tags}\n\n👉 ${p.project}`,
+    (p) => `Hva om jeg sa at dette kjører i produksjon 24/7?\n\n${p.title}\n\n${p.desc}\n\nStack: ${p.tech}\n\n${p.tags}\n\nAlle ${p.total} funksjoner → ${p.project}`,
+    (p) => `Funksjon #${p.num} fra porteføljen min 👇\n\n"${p.title}"\n\n${p.desc}\n\nBygget med ${p.tech}\n\n${p.tags}\n\n${p.project}`,
+    (p) => `Problem → Løsning → Resultat.\n\nSlik dokumenterer jeg hver funksjon jeg leverer.\n\n#${p.num}: ${p.title}\n\n${p.desc}\n\n${p.tech}\n\n${p.tags}\n\n${p.project}`,
+    (p) => `${p.num} av ${p.total} levert ✅\n\n${p.title}\n\n${p.desc}\n\nTech: ${p.tech}\n\n${p.tags}\n\n${p.project}`,
+  ],
+}
 
-  if (lang === 'en') {
-    return `🚀 Real Production Feature #${featureNum}/${totalFeatures}\n\n` +
-      `${title}\n\n` +
-      `${desc}\n\n` +
-      `This isn't a tutorial project — it's a production system handling real traffic every day.\n\n` +
-      `🛠 Built with: ${tech}\n\n` +
-      `👉 See all features: ${project}\n\n` +
-      `${tags} #FullStack #OpenSource #ProductionCode #WebDev`
+function formatLinkedInPost(feature: DbFeature, featureNum: number, totalFeatures: number, lang: 'en' | 'no'): string {
+  const p = {
+    title: lang === 'en' ? feature.title_en : feature.title_no,
+    desc: lang === 'en' ? feature.short_description_en : feature.short_description_no,
+    tech: (feature.tech_stack || []).join(' · '),
+    tags: (feature.hashtags || []).join(' '),
+    num: featureNum,
+    total: totalFeatures,
+    project: feature.project_id === 'portfolio' ? 'vitalii.no' : 'JobBot Norway',
   }
-  return `🚀 Ekte Produksjonsfunksjon #${featureNum}/${totalFeatures}\n\n` +
-    `${title}\n\n` +
-    `${desc}\n\n` +
-    `Dette er ikke et tutorialprosjekt — det er et produksjonssystem som håndterer ekte trafikk hver dag.\n\n` +
-    `🛠 Bygget med: ${tech}\n\n` +
-    `👉 Se alle funksjoner: ${project}\n\n` +
-    `${tags} #FullStack #OpenSource #ProductionCode #WebDev`
+  const templates = linkedInTemplates[lang]
+  return templates[featureNum % templates.length](p)
 }
 
 function formatFacebookPost(feature: DbFeature, featureNum: number, totalFeatures: number, lang: 'en' | 'no'): string {
   const title = lang === 'en' ? feature.title_en : feature.title_no
   const desc = lang === 'en' ? feature.short_description_en : feature.short_description_no
-  const tags = (feature.hashtags || []).slice(0, 4).join(' ')
+  const tags = (feature.hashtags || []).slice(0, 3).join(' ')
   const project = feature.project_id === 'portfolio' ? 'vitalii.no' : 'JobBot Norway'
 
-  if (lang === 'en') {
-    return `🚀 Feature #${featureNum}/${totalFeatures} from my production portfolio\n\n` +
-      `${title}\n\n` +
-      `${desc}\n\n` +
-      `👉 ${project}\n\n` +
-      `${tags} #FullStack #WebDev`
-  }
-  return `🚀 Funksjon #${featureNum}/${totalFeatures} fra min produksjonsportefølje\n\n` +
-    `${title}\n\n` +
-    `${desc}\n\n` +
-    `👉 ${project}\n\n` +
-    `${tags} #FullStack #WebDev`
+  // 3 Facebook templates
+  const fbTemplates = lang === 'en' ? [
+    `🔧 #${featureNum}: ${title}\n\n${desc}\n\n${tags}\n\n${project}`,
+    `Feature spotlight 👇\n\n${title}\n\n${desc}\n\n${tags}\n\n${project}`,
+    `Shipped this in production:\n\n${title}\n\n${desc}\n\n${tags}\n\n${project}`,
+  ] : [
+    `🔧 #${featureNum}: ${title}\n\n${desc}\n\n${tags}\n\n${project}`,
+    `Funksjons-spotlight 👇\n\n${title}\n\n${desc}\n\n${tags}\n\n${project}`,
+    `Levert i produksjon:\n\n${title}\n\n${desc}\n\n${tags}\n\n${project}`,
+  ]
+  return fbTemplates[featureNum % fbTemplates.length]
 }
 
 async function postToLinkedIn(text: string, supabase: ReturnType<typeof createClient>): Promise<{ id?: string; url?: string; error?: string }> {
