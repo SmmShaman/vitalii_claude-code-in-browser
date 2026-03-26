@@ -1005,41 +1005,8 @@ Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berb
 
   if (upsertError) throw new Error(`Draft upsert: ${upsertError.message}`);
 
-  // ── Telegram Message 1: Article list with site links ──
-  let msg1 = `📰 <b>Дайджест ${displayDate}</b>\n\n`;
-  msg1 += `Обрано ${validSelectedIds.length} з ${articles.length} новин:\n\n`;
-
-  for (let i = 0; i < validSelectedIds.length; i++) {
-    const a = selectedArticles[i];
-    const title = a?.title_en || a?.title_no || a?.original_title || `Article ${i + 1}`;
-    const slug = a?.slug_en || "";
-    const link = slug ? `https://vitalii.no/news/${slug}` : "";
-    msg1 += `${i + 1}. ${escapeHtml(title.substring(0, 80))}`;
-    if (link) msg1 += `\n   🔗 ${link}`;
-    msg1 += "\n\n";
-  }
-
-  if (msg1.length > 4000) {
-    msg1 = msg1.substring(0, msg1.lastIndexOf("\n\n", 3900)) + "\n\n<i>... (скорочено)</i>";
-  }
-
-  await sendMessage(TELEGRAM_CHAT_ID, msg1);
-
-  // ── Telegram Message 2: Narrator script in UKRAINIAN (for bot only) ──
-  // Note: actual TTS and video use Norwegian — Ukrainian is just for Telegram preview
-  let msg2 = `🎙️ <b>Текст диктора (UA переклад):</b>\n\n`;
-  for (let i = 0; i < plan.segmentScripts.length; i++) {
-    const translationEn = plan.segmentTranslationsEn?.[i] || plan.segmentScripts[i] || "";
-    msg2 += `<b>${i + 1}.</b> ${escapeHtml(translationEn.substring(0, 200))}${translationEn.length > 200 ? "..." : ""}\n\n`;
-  }
-
-  if (msg2.length > 4000) {
-    msg2 = msg2.substring(0, msg2.lastIndexOf("\n\n", 3900)) + "\n\n<i>... (скорочено)</i>";
-  }
-
-  await sendMessage(TELEGRAM_CHAT_ID, msg2);
-
-  console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, media preview sent`);
+  // Log digest summary (no Telegram messages — fully automatic pipeline)
+  console.log(`✅ Auto digest: selected ${validSelectedIds.length}/${articles.length} articles, auto-chaining to render`);
 
   // AUTO-ADVANCE: chain next steps via separate Edge Function calls (async, non-blocking)
   // Can't do all steps in one request — Supabase 150s timeout would hit
@@ -2310,7 +2277,7 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
   }
 
   // Always notify: render started (message 3 of 4)
-  await sendMessage(TELEGRAM_CHAT_ID, `🎬 <b>Рендер запущено!</b>\n\nВідео за ${targetDate} рендериться. Це займе 15-20 хвилин.`);
+  console.log(`🎬 Render dispatched for ${targetDate}`);
 
   console.log(`✅ Render triggered`);
   return json({ ok: true });
