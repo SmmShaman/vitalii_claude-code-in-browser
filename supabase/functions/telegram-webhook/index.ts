@@ -203,21 +203,43 @@ serve(async (req) => {
           return new Response('OK')
         }
 
-        // No text — ask for voice or text
+        // No text — set waiting state and ask for voice/text
+        const supabaseForState = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        await supabaseForState.from('api_settings').upsert({
+          key_name: `blog_waiting_${chatId}`,
+          key_value: 'true',
+          description: 'Temporary: chat waiting for voice blog input',
+          is_active: true,
+        }, { onConflict: 'key_name' })
+
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
-            text: '🎙️ <b>Створення блог-посту</b>\n\nНадішліть голосове повідомлення або текст у відповідь на це повідомлення.\n\n<code>voiceblog:waiting</code>',
+            text: '🎙️ <b>Створення блог-посту</b>\n\nНадішліть голосове повідомлення або текст.\n\n<i>Просто запишіть голосове — /blog не потрібно повторювати.</i>',
             parse_mode: 'HTML',
           }),
         })
         return new Response('OK')
       }
 
-      // ── Voice message → always process as blog (voice is intentional action) ──
+      // ── Voice message: check if /blog was issued (reply OR state in DB) ──
       if (message.voice) {
-        console.log(`🎙️ Voice blog: ${message.voice.duration}s`)
+        const isReply = message.reply_to_message?.text?.includes('voiceblog:waiting')
+        let isWaiting = false
+        if (!isReply) {
+          const supabaseCheck = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+          const { data: waitState } = await supabaseCheck.from('api_settings').select('key_value').eq('key_name', `blog_waiting_${chatId}`).maybeSingle()
+          isWaiting = waitState?.key_value === 'true'
+          if (isWaiting) {
+            // Clear waiting state
+            await supabaseCheck.from('api_settings').delete().eq('key_name', `blog_waiting_${chatId}`)
+          }
+        }
+        if (!isReply && !isWaiting) {
+          // Not a blog voice — ignore, let fallback handle
+        } else {
+        console.log(`🎙️ Voice blog via /blog: ${message.voice.duration}s (reply=${isReply}, state=${isWaiting})`)
         const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Транскрибую голосове повідомлення...</b>', parse_mode: 'HTML' }),
@@ -288,7 +310,8 @@ serve(async (req) => {
         }
 
         return new Response('OK')
-      }
+      } // end blog voice handler
+      } // end if voice message
 
       // ── Voice blog edit reply ──
       if (message.reply_to_message?.text?.includes('voiceblog:edit:') && message.text) {
