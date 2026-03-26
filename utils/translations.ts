@@ -17,7 +17,7 @@ export const translations = {
         title: "Portfolio & News Platform",
         short: "AI-powered multilingual content platform with 65 production features",
         full: "Full-stack content automation platform running at vitalii.no. Built with Next.js 15, Supabase, and 29 Deno Edge Functions. Features include AI content moderation, multilingual rewriting (EN/NO/UA), video production with Remotion, social media auto-posting to LinkedIn/Instagram/Facebook, BentoGrid UI with GSAP/Three.js animations, and a 10-tab admin dashboard. 48 real production features, 1,234 commits, 20 GitHub Actions workflows.",
-        image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=800&q=80&fm=webp"
+        image: "/images/projects/portfolio-cover.jpg"
       },
       {
         title: "JobBot Norway",
@@ -288,7 +288,7 @@ export const translations = {
         title: "Portefølje & Nyhetsplattform",
         short: "AI-drevet flerspråklig innholdsplattform med 48 produksjonsfunksjoner",
         full: "Full-stack innholdsautomatiseringsplattform som kjører på vitalii.no. Bygget med Next.js 15, Supabase og 29 Deno Edge Functions. Funksjoner inkluderer AI-innholdsmoderering, flerspråklig omskriving (EN/NO/UA), videoproduksjon med Remotion, automatisk publisering til LinkedIn/Instagram/Facebook, BentoGrid UI med GSAP/Three.js-animasjoner og et admin-dashboard med 10 faner. 48 produksjonsfunksjoner, 1234 commits, 20 GitHub Actions-arbeidsflyter.",
-        image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=800&q=80&fm=webp"
+        image: "/images/projects/portfolio-cover.jpg"
       },
       {
         title: "JobBot Norge",
@@ -559,7 +559,7 @@ export const translations = {
         title: "Портфоліо & Новинна платформа",
         short: "AI-платформа багатомовного контенту з 48 продакшн-функціями",
         full: "Full-stack платформа автоматизації контенту на vitalii.no. Побудована на Next.js 15, Supabase та 29 Deno Edge Functions. AI-модерація контенту, багатомовне переписування (EN/NO/UA), відео-продакшн з Remotion, автопублікація в LinkedIn/Instagram/Facebook, BentoGrid UI з анімаціями GSAP/Three.js, адмін-панель з 10 вкладками. 48 продакшн-функцій, 1234 комітів, 20 GitHub Actions воркфлоїв.",
-        image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=800&q=80&fm=webp"
+        image: "/images/projects/portfolio-cover.jpg"
       },
       {
         title: "JobBot Norway",
