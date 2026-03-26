@@ -133,25 +133,9 @@ serve(async (req) => {
         console.warn('⚠️ website-publish error:', e.message)
       }
 
-      // Send info message to Telegram with links
+      // Log publish without Telegram notification (was cluttering the feed)
       const linkedinScore = (analysis as any)?.linkedin_score || 0
-      const titleText = escapeHtml((news.original_title || 'Untitled').substring(0, 150))
-      const originalUrl = news.original_url || news.rss_source_url || ''
-      const titleLink = originalUrl ? `<a href="${originalUrl}">${titleText}</a>` : titleText
-      const siteLink = articleUrl ? `\n🌐 <a href="${articleUrl}">vitalii.no</a>` : ''
-      const infoText = `📰 <b>Опубліковано:</b> ${titleLink}\n📌 ${escapeHtml(streamSourceName)} · ${analysis.relevance_score}/10${linkedinScore > 0 ? ` | 🔗 LI:${linkedinScore}/10` : ''}${siteLink}`
-
-      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: TELEGRAM_CHAT_ID,
-            text: infoText,
-            parse_mode: 'HTML',
-            disable_web_page_preview: true
-          })
-        })
+      console.log(`📰 Published: ${(news.original_title || '').substring(0, 80)} | LI:${linkedinScore}/10${articleUrl ? ` → ${articleUrl}` : ''}`)
       }
 
       return new Response(
