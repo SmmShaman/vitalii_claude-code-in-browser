@@ -44,21 +44,23 @@ export const FeaturesManager = () => {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<FeatureCategory | 'all'>('all')
-  const [projectFilter, setProjectFilter] = useState<ProjectId | 'all'>('all')
+  const [projectFilter, setProjectFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [updating, setUpdating] = useState<string | null>(null)
+  const [projects, setProjects] = useState<{ id: string; name_en: string }[]>([])
 
   const supabase = useMemo(() => createClient(supabaseUrl, supabaseAnonKey), [])
 
   const loadFeatures = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('features')
-      .select('*, feature_projects(repo_url)')
-      .order('project_id', { ascending: false })
-      .order('feature_id', { ascending: true })
+    const [{ data, error }, { data: projData }] = await Promise.all([
+      supabase.from('features').select('*, feature_projects(repo_url)')
+        .order('project_id', { ascending: false }).order('feature_id', { ascending: true }),
+      supabase.from('feature_projects').select('id, name_en').eq('is_active', true).order('name_en'),
+    ])
 
     if (!error && data) setFeatures(data)
+    if (projData) setProjects(projData)
     setLoading(false)
   }, [supabase])
 
@@ -139,9 +141,11 @@ export const FeaturesManager = () => {
 
         <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value as ProjectId | 'all')}
           className="px-3 py-2 bg-black rounded-lg text-white text-sm border border-white/20">
-          <option value="all">All Projects</option>
-          <option value="portfolio">Portfolio</option>
-          <option value="jobbot">JobBot</option>
+          <option value="all">All Projects ({features.length})</option>
+          {projects.map((p) => {
+            const cnt = features.filter(f => f.project_id === p.id).length
+            return <option key={p.id} value={p.id}>{p.name_en} ({cnt})</option>
+          })}
         </select>
       </div>
 
