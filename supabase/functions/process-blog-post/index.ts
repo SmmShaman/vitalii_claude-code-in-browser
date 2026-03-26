@@ -104,6 +104,7 @@ interface BlogRewriteRequest {
   videoType?: string | null
   sourceLink?: string | null    // First external source link (backwards compatibility)
   sourceLinks?: string[]        // ALL external source links from Telegram post content
+  sourceType?: 'news' | 'voice' // voice = dictated blog post, uses voice_blog_rewrite prompt
 }
 
 /**
@@ -126,19 +127,29 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Get blog rewrite prompt from database
-    // Sort by updated_at DESC to get the most recently edited prompt
+    // Get blog rewrite prompt — voice posts use voice_blog_rewrite, news uses blog_rewrite
+    const promptType = requestData.sourceType === 'voice' ? 'voice_blog_rewrite' : 'blog_rewrite'
+    console.log(`📝 Prompt type: ${promptType}`)
+
     const { data: prompts, error: promptError } = await supabase
       .from('ai_prompts')
       .select('*')
       .eq('is_active', true)
-      .eq('prompt_type', 'blog_rewrite')
+      .eq('prompt_type', promptType)
       .order('updated_at', { ascending: false })
       .limit(1)
 
+    // Fallback to blog_rewrite if voice prompt not found
+    if ((!prompts || prompts.length === 0) && promptType === 'voice_blog_rewrite') {
+      const { data: fallback } = await supabase
+        .from('ai_prompts').select('*').eq('is_active', true)
+        .eq('prompt_type', 'blog_rewrite').order('updated_at', { ascending: false }).limit(1)
+      if (fallback?.length) prompts?.push(...fallback) || (prompts as typeof fallback)
+    }
+
     if (promptError || !prompts || prompts.length === 0) {
       console.error('No active blog rewrite prompt found')
-      throw new Error('Blog rewrite prompt not configured. Please add a prompt with type "blog_rewrite" in the admin panel.')
+      throw new Error('Blog rewrite prompt not configured.')
     }
 
     const blogPrompt = prompts[0]
@@ -303,7 +314,9 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
         video_url: requestData.videoUrl,
         video_type: requestData.videoType,
         original_url: finalSourceUrl, // AI-found source or fallback
-        source_news_id: requestData.newsId, // Reference to original news
+        source_news_id: requestData.sourceType === 'voice' ? null : requestData.newsId,
+        source_type: requestData.sourceType || 'news',
+        original_voice_text: requestData.sourceType === 'voice' ? requestData.content : null,
         reading_time: readingTime,
         is_published: true,
         published_at: new Date().toISOString(),
@@ -342,14 +355,16 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
       .update({ usage_count: blogPrompt.usage_count + 1 })
       .eq('id', blogPrompt.id)
 
-    // Optionally: Mark original news item as processed
-    await supabase
-      .from('news')
-      .update({
-        is_rewritten: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', requestData.newsId)
+    // Mark original news item as processed (skip for voice posts)
+    if (requestData.sourceType !== 'voice') {
+      await supabase
+        .from('news')
+        .update({
+          is_rewritten: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestData.newsId)
+    }
 
     return new Response(
       JSON.stringify({

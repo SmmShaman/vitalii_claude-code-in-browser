@@ -172,19 +172,33 @@ serve(async (req) => {
       if (msgText === '/blog' || msgText.startsWith('/blog ')) {
         const directText = msgText.replace('/blog', '').trim()
         if (directText) {
-          // Direct text after /blog — process immediately
+          // Direct text after /blog — process via existing blog pipeline
           const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: chatId, text: '🧠 <b>Обробляю текст...</b>', parse_mode: 'HTML' }),
+            body: JSON.stringify({ chat_id: chatId, text: '🧠 <b>Генерую блог-пост...</b>', parse_mode: 'HTML' }),
           }).then(r => r.json())
           const statusMsgId = statusMsg?.result?.message_id
 
-          // Fire-and-forget: process blog
-          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rawText: directText, chatId, messageId: statusMsgId }),
-          }).catch(e => console.error('process-voice-blog dispatch failed:', e))
+            body: JSON.stringify({ newsId: '00000000-0000-0000-0000-000000000000', title: directText.slice(0, 100), content: directText, sourceType: 'voice' }),
+          }).then(async (res) => {
+            const data = await res.json()
+            if (data.success) {
+              const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+              const { data: post } = await supabase.from('blog_posts').select('title_ua, slug_en').eq('id', data.blogPostId).single()
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `✅ <b>Опубліковано!</b>\n\n📌 ${post?.title_ua || ''}\n🔗 https://vitalii.no/blog/${post?.slug_en || ''}`, parse_mode: 'HTML' }),
+              })
+            } else {
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ ${data.error || 'unknown'}` }),
+              })
+            }
+          }).catch(e => console.error('blog dispatch failed:', e))
 
           return new Response('OK')
         }
@@ -201,7 +215,7 @@ serve(async (req) => {
         return new Response('OK')
       }
 
-      // ── Voice message: always treat as blog input if voice ──
+      // ── Voice message: transcribe → process-blog-post (voice mode) ──
       if (message.voice && !message.reply_to_message) {
         console.log(`🎙️ Direct voice message: ${message.voice.duration}s`)
         const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -225,11 +239,53 @@ serve(async (req) => {
           return new Response('OK')
         }
 
-        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+        // Update status
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: '🧠 <b>Генерую блог-пост...</b>', parse_mode: 'HTML' }),
+        })
+
+        // Send to existing process-blog-post with sourceType=voice
+        const blogRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rawText: txData.text, chatId, messageId: statusMsgId }),
-        }).catch(e => console.error('voice-blog dispatch failed:', e))
+          body: JSON.stringify({
+            newsId: '00000000-0000-0000-0000-000000000000',
+            title: txData.text.slice(0, 100),
+            content: txData.text,
+            sourceType: 'voice',
+          }),
+        })
+        const blogData = await blogRes.json()
+
+        if (blogData.success && blogData.blogPostId) {
+          const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+          const { data: post } = await supabase.from('blog_posts').select('title_ua, title_en, title_no, slug_en, tags, reading_time, image_url').eq('id', blogData.blogPostId).single()
+
+          const preview = `✅ <b>Блог-пост опубліковано!</b>\n\n` +
+            `📌 <b>${post?.title_ua || ''}</b>\n\n` +
+            `🏷 ${(post?.tags || []).join(', ')}\n` +
+            `📖 ~${post?.reading_time || 1} хв\n` +
+            `🌐 EN: ${post?.title_en || ''}\n` +
+            `🌐 NO: ${post?.title_no || ''}\n\n` +
+            `🔗 https://vitalii.no/blog/${post?.slug_en || ''}`
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId, message_id: statusMsgId, text: preview, parse_mode: 'HTML',
+              disable_web_page_preview: false,
+              reply_markup: { inline_keyboard: [
+                [{ text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${blogData.blogPostId}` }, { text: '📘 Facebook EN', callback_data: `facebook_en_${blogData.blogPostId}` }],
+              ]},
+            }),
+          })
+        } else {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ Помилка: ${blogData.error || 'unknown'}` }),
+          })
+        }
 
         return new Response('OK')
       }
