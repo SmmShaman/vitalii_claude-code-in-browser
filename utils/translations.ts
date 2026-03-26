@@ -23,25 +23,25 @@ export const translations = {
         title: "JobBot Norway",
         short: "AI job hunting automation platform with 45 engineering features",
         full: "Intelligent job search automation for the Norwegian market. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI analyzes job postings and generates cover letters in Norwegian. Skyvern browser automation fills forms on 10+ recruitment platforms (Webcruiter, Easycruit, Teamtailor, FINN). Telegram bot as primary interface with 2FA bridge. Self-learning form memory system. Dashboard with Leaflet job map and Recharts analytics. Multi-user with PostgreSQL RLS isolation.",
-        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+        image: "/images/projects/jobbot-cover.jpg"
       },
       {
         title: "Elvarika Language Learning",
         short: "AI-powered language learning platform for immigrants with 19 production features",
         full: "AI language learning platform helping immigrants in Norway learn Norwegian through personalized audio playlists. Hybrid NLP engine (Stanza + SpaCy) for 8 languages including Arabic, Somali, Tigrinya. PDF upload with visual preview, AI-powered vocabulary extraction, spaced repetition system with voice commands, and Dual SYNC TTS architecture (3s per word vs 220s). Stripe payments, HR dashboard for companies, master courses system. React 18 + TypeScript + Supabase + Python NLP microservice.",
-        image: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80&fm=webp"
+        image: "/images/projects/elvarika-cover.jpg"
       },
       {
         title: "Calendar Telegram Bot",
         short: "Smart calendar bot with Spond integration and AI scheduling",
         full: "Telegram bot for calendar management with Spond multi-account support, Google Calendar integration, and AI-powered scheduling. Features PIN-protected admin tabs with public calendar view, optional Google login, event validation, and Places Library integration. Built with TypeScript, Telegram Bot API, Supabase, and Google APIs.",
-        image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80&fm=webp"
+        image: "/images/projects/calendar-cover.jpg"
       },
       {
         title: "Ghost Interviewer AI",
         short: "AI interview preparation and coaching platform",
         full: "AI-powered interview preparation platform that simulates real job interviews. Enhanced AI translation with improved prompts and faster processing. Helps candidates practice answering questions in Norwegian and English with real-time feedback and scoring. Built with TypeScript, Azure OpenAI, and Supabase Edge Functions.",
-        image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&q=80&fm=webp"
+        image: "/images/projects/ghost-interviewer-cover.jpg"
       }
     ],
 
@@ -294,25 +294,25 @@ export const translations = {
         title: "JobBot Norge",
         short: "AI-drevet jobbsøk-automatiseringsplattform med 42 funksjoner",
         full: "Intelligent jobbsøk-automatisering for det norske markedet. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI analyserer stillingsannonser og genererer søknader på norsk. Skyvern-nettleserautomatisering fyller ut skjemaer på 10+ rekrutteringsplattformer (Webcruiter, Easycruit, Teamtailor, FINN). Telegram-bot som primærgrensesnitt med 2FA-bro. Selvlærende skjemaminnessystem. Dashboard med Leaflet jobbkart og Recharts-analyse. Flerbruker med PostgreSQL RLS-isolering.",
-        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+        image: "/images/projects/jobbot-cover.jpg"
       },
       {
         title: "Elvarika Språklæring",
         short: "AI-drevet språklæringsplattform for innvandrere med 19 funksjoner",
         full: "AI-språklæringsplattform som hjelper innvandrere i Norge med å lære norsk gjennom personaliserte lydspillelister. Hybrid NLP-motor (Stanza + SpaCy) for 8 språk inkludert arabisk, somali, tigrinja. PDF-opplasting med forhåndsvisning, AI-ordforrådsutvinning, SRS med stemmekommandoer, og Dual SYNC TTS (3s per ord). Stripe-betalinger, HR-dashboard, mesterkurs. React 18 + TypeScript + Supabase + Python NLP.",
-        image: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80&fm=webp"
+        image: "/images/projects/elvarika-cover.jpg"
       },
       {
         title: "Kalender Telegram-Bot",
         short: "Smart kalenderbot med Spond-integrasjon og AI-planlegging",
         full: "Telegram-bot for kalenderstyring med Spond flerkontosstøtte, Google Kalender-integrasjon og AI-planlegging. PIN-beskyttede admin-faner med offentlig kalendervisning, valgfri Google-innlogging, hendelsesvalidering og Places Library. TypeScript, Telegram Bot API, Supabase, Google APIs.",
-        image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80&fm=webp"
+        image: "/images/projects/calendar-cover.jpg"
       },
       {
         title: "Ghost Interviewer AI",
         short: "AI-intervjuforberedelse og coaching-plattform",
         full: "AI-drevet intervjuforberedelsesplattform som simulerer ekte jobbintervjuer. Forbedret AI-oversettelse med optimaliserte prompter. Hjelper kandidater med å øve på norsk og engelsk med tilbakemelding i sanntid. TypeScript, Azure OpenAI, Supabase Edge Functions.",
-        image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&q=80&fm=webp"
+        image: "/images/projects/ghost-interviewer-cover.jpg"
       }
     ],
 
@@ -565,25 +565,25 @@ export const translations = {
         title: "JobBot Norway",
         short: "AI-платформа автоматизації пошуку роботи з 42 функціями",
         full: "Інтелектуальна автоматизація пошуку роботи на норвезькому ринку. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI аналізує вакансії та генерує мотиваційні листи норвезькою. Skyvern-автоматизація заповнює форми на 10+ рекрутингових платформах. Telegram-бот як основний інтерфейс з 2FA-мостом. Самонавчальна система пам'яті форм. Multi-user з PostgreSQL RLS ізоляцією.",
-        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+        image: "/images/projects/jobbot-cover.jpg"
       },
       {
         title: "Elvarika Мовна Платформа",
         short: "AI-платформа вивчення мов для іммігрантів з 19 функціями",
         full: "AI-платформа вивчення мов для іммігрантів у Норвегії. Гібридний NLP-двигун (Stanza + SpaCy) для 8 мов включно з арабською, сомалі, тигринья. Завантаження PDF з превʼю, AI-витягування лексики, SRS з голосовими командами, Dual SYNC TTS (3с на слово). Stripe, HR-дашборд, майстер-курси. React 18 + TypeScript + Supabase + Python NLP.",
-        image: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80&fm=webp"
+        image: "/images/projects/elvarika-cover.jpg"
       },
       {
         title: "Календар Telegram Бот",
         short: "Розумний бот-календар з інтеграцією Spond та AI-плануванням",
         full: "Telegram бот для управління календарем з підтримкою Spond, Google Calendar та AI-плануванням. PIN-захищені вкладки адміна, публічний перегляд, валідація подій, Places Library. TypeScript, Telegram Bot API, Supabase, Google APIs.",
-        image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80&fm=webp"
+        image: "/images/projects/calendar-cover.jpg"
       },
       {
         title: "Ghost Interviewer AI",
         short: "AI-платформа підготовки до співбесід",
         full: "AI-платформа підготовки до співбесід що симулює реальні інтервʼю. Покращений AI-переклад з оптимізованими промптами. Допомагає кандидатам практикувати відповіді норвезькою та англійською з фідбеком в реальному часі. TypeScript, Azure OpenAI, Supabase.",
-        image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&q=80&fm=webp"
+        image: "/images/projects/ghost-interviewer-cover.jpg"
       }
     ],
 
