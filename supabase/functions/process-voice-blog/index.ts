@@ -83,7 +83,7 @@ serve(async (req) => {
           contents: [{
             parts: [{ text: `${systemPrompt}\n\nRAW TEXT FROM VOICE MESSAGE:\n${rawText.slice(0, 5000)}` }],
           }],
-          generationConfig: { temperature: 0.5, maxOutputTokens: 4000 },
+          generationConfig: { temperature: 0.5, maxOutputTokens: 16000 },
         }),
       },
     )
