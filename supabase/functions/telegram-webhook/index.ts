@@ -309,53 +309,6 @@ serve(async (req) => {
         }
       }
 
-      // ── Voice/text reply to voiceblog:waiting ──
-      if (message.reply_to_message?.text?.includes('voiceblog:waiting')) {
-        const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Обробляю...</b>', parse_mode: 'HTML' }),
-        }).then(r => r.json())
-        const statusMsgId = statusMsg?.result?.message_id
-
-        if (message.voice) {
-          // Voice message — transcribe first, then process
-          console.log(`🎙️ Voice blog: ${message.voice.duration}s, file_id: ${message.voice.file_id}`)
-
-          // Transcribe
-          const txRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-voice`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ voiceFileId: message.voice.file_id }),
-          })
-          const txData = await txRes.json()
-
-          if (!txData.success || !txData.text) {
-            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ Не вдалось транскрибувати: ${txData.error || 'unknown'}` }),
-            })
-            return new Response('OK')
-          }
-
-          // Process blog from transcribed text
-          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rawText: txData.text, chatId, messageId: statusMsgId }),
-          }).catch(e => console.error('process-voice-blog dispatch failed:', e))
-
-        } else if (message.text) {
-          // Direct text reply
-          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rawText: message.text, chatId, messageId: statusMsgId }),
-          }).catch(e => console.error('process-voice-blog dispatch failed:', e))
-        }
-
-        return new Response('OK')
-      }
-
       // Перевірити чи це пересланне повідомлення з каналу
       if (message.forward_from_chat && message.forward_from_chat.type === 'channel') {
         console.log('📨 Forwarded message from channel')
