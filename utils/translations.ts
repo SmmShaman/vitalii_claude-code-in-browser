@@ -15,33 +15,33 @@ export const translations = {
     projects_list: [
       {
         title: "Portfolio & News Platform",
-        short: "AI-powered multilingual content platform with 48 production features",
+        short: "AI-powered multilingual content platform with 65 production features",
         full: "Full-stack content automation platform running at vitalii.no. Built with Next.js 15, Supabase, and 29 Deno Edge Functions. Features include AI content moderation, multilingual rewriting (EN/NO/UA), video production with Remotion, social media auto-posting to LinkedIn/Instagram/Facebook, BentoGrid UI with GSAP/Three.js animations, and a 10-tab admin dashboard. 48 real production features, 1,234 commits, 20 GitHub Actions workflows.",
         image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=800&q=80&fm=webp"
       },
       {
         title: "JobBot Norway",
-        short: "AI job hunting automation platform with 42 engineering features",
+        short: "AI job hunting automation platform with 45 engineering features",
         full: "Intelligent job search automation for the Norwegian market. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI analyzes job postings and generates cover letters in Norwegian. Skyvern browser automation fills forms on 10+ recruitment platforms (Webcruiter, Easycruit, Teamtailor, FINN). Telegram bot as primary interface with 2FA bridge. Self-learning form memory system. Dashboard with Leaflet job map and Recharts analytics. Multi-user with PostgreSQL RLS isolation.",
         image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
       },
       {
-        title: "AI Content Generator",
-        short: "AI-powered content generation tool for marketers",
-        full: "An AI-powered content generation tool that helps marketers create compelling copy for various channels. The system uses advanced NLP models to generate contextually relevant content based on minimal input. Features include tone adjustment, length control, and content type templates. Built with OpenAI API, React, and Node.js backend.",
-        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+        title: "Elvarika Language Learning",
+        short: "AI-powered language learning platform for immigrants with 19 production features",
+        full: "AI language learning platform helping immigrants in Norway learn Norwegian through personalized audio playlists. Hybrid NLP engine (Stanza + SpaCy) for 8 languages including Arabic, Somali, Tigrinya. PDF upload with visual preview, AI-powered vocabulary extraction, spaced repetition system with voice commands, and Dual SYNC TTS architecture (3s per word vs 220s). Stripe payments, HR dashboard for companies, master courses system. React 18 + TypeScript + Supabase + Python NLP microservice.",
+        image: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80&fm=webp"
       },
       {
-        title: "E-Commerce Platform",
-        short: "Full-stack e-commerce with React, Node.js and MongoDB",
-        full: "A comprehensive e-commerce platform built with React, Node.js and MongoDB. Features include user authentication, product catalog, shopping cart, payment processing, and order management. The platform is fully responsive and optimized for mobile devices. Implemented ML-based recommendation engine that increased average order value by 28%.",
-        image: "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80&fm=webp"
+        title: "Calendar Telegram Bot",
+        short: "Smart calendar bot with Spond integration and AI scheduling",
+        full: "Telegram bot for calendar management with Spond multi-account support, Google Calendar integration, and AI-powered scheduling. Features PIN-protected admin tabs with public calendar view, optional Google login, event validation, and Places Library integration. Built with TypeScript, Telegram Bot API, Supabase, and Google APIs.",
+        image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80&fm=webp"
       },
       {
-        title: "Data Visualization Dashboard",
-        short: "Real-time KPIs and metrics monitoring dashboard",
-        full: "A comprehensive data visualization dashboard for businesses to monitor KPIs and metrics in real-time. Features include customizable widgets, multiple data source integration, automated reporting, and trend analysis. Built with D3.js, React, and a Python/FastAPI backend that connects to various data sources including SQL databases and APIs.",
-        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80&fm=webp"
+        title: "Ghost Interviewer AI",
+        short: "AI interview preparation and coaching platform",
+        full: "AI-powered interview preparation platform that simulates real job interviews. Enhanced AI translation with improved prompts and faster processing. Helps candidates practice answering questions in Norwegian and English with real-time feedback and scoring. Built with TypeScript, Azure OpenAI, and Supabase Edge Functions.",
+        image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&q=80&fm=webp"
       }
     ],
 
@@ -297,22 +297,22 @@ export const translations = {
         image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
       },
       {
-        title: "AI-innholdsgenerator",
-        short: "AI-drevet verktøy for innholdsgenerering for markedsførere",
-        full: "Et AI-drevet verktøy for innholdsgenerering som hjelper markedsførere med å lage overbevisende tekster for ulike kanaler. Systemet bruker avanserte NLP-modeller for å generere kontekstuelt relevant innhold basert på minimal input. Bygget med OpenAI API, React og Node.js backend.",
-        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+        title: "Elvarika Språklæring",
+        short: "AI-drevet språklæringsplattform for innvandrere med 19 funksjoner",
+        full: "AI-språklæringsplattform som hjelper innvandrere i Norge med å lære norsk gjennom personaliserte lydspillelister. Hybrid NLP-motor (Stanza + SpaCy) for 8 språk inkludert arabisk, somali, tigrinja. PDF-opplasting med forhåndsvisning, AI-ordforrådsutvinning, SRS med stemmekommandoer, og Dual SYNC TTS (3s per ord). Stripe-betalinger, HR-dashboard, mesterkurs. React 18 + TypeScript + Supabase + Python NLP.",
+        image: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80&fm=webp"
       },
       {
-        title: "E-handelsplattform",
-        short: "Full-stack e-handel med React, Node.js og MongoDB",
-        full: "En omfattende e-handelsplattform bygget med React, Node.js og MongoDB. Funksjoner inkluderer brukerautentisering, produktkatalog, handlekurv, betalingsbehandling og ordrehåndtering. Implementert ML-basert anbefalingsmotor som økte gjennomsnittlig ordreverdi med 28%.",
-        image: "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80&fm=webp"
+        title: "Kalender Telegram-Bot",
+        short: "Smart kalenderbot med Spond-integrasjon og AI-planlegging",
+        full: "Telegram-bot for kalenderstyring med Spond flerkontosstøtte, Google Kalender-integrasjon og AI-planlegging. PIN-beskyttede admin-faner med offentlig kalendervisning, valgfri Google-innlogging, hendelsesvalidering og Places Library. TypeScript, Telegram Bot API, Supabase, Google APIs.",
+        image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80&fm=webp"
       },
       {
-        title: "Datavisualiseringsdashboard",
-        short: "Sanntids KPI- og metrikkovervåkingsdashboard",
-        full: "Et omfattende datavisualiseringsdashboard for bedrifter å overvåke KPI-er og målinger i sanntid. Bygget med D3.js, React og Python/FastAPI backend som kobler til ulike datakilder inkludert SQL-databaser og API-er.",
-        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80&fm=webp"
+        title: "Ghost Interviewer AI",
+        short: "AI-intervjuforberedelse og coaching-plattform",
+        full: "AI-drevet intervjuforberedelsesplattform som simulerer ekte jobbintervjuer. Forbedret AI-oversettelse med optimaliserte prompter. Hjelper kandidater med å øve på norsk og engelsk med tilbakemelding i sanntid. TypeScript, Azure OpenAI, Supabase Edge Functions.",
+        image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&q=80&fm=webp"
       }
     ],
 
@@ -568,22 +568,22 @@ export const translations = {
         image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
       },
       {
-        title: "AI-генератор контенту",
-        short: "Інструмент генерації контенту на основі AI для маркетологів",
-        full: "AI-інструмент генерації контенту для маркетологів. Використовує NLP-моделі для контекстуально релевантного контенту. Створено з OpenAI API, React та Node.js.",
-        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&fm=webp"
+        title: "Elvarika Мовна Платформа",
+        short: "AI-платформа вивчення мов для іммігрантів з 19 функціями",
+        full: "AI-платформа вивчення мов для іммігрантів у Норвегії. Гібридний NLP-двигун (Stanza + SpaCy) для 8 мов включно з арабською, сомалі, тигринья. Завантаження PDF з превʼю, AI-витягування лексики, SRS з голосовими командами, Dual SYNC TTS (3с на слово). Stripe, HR-дашборд, майстер-курси. React 18 + TypeScript + Supabase + Python NLP.",
+        image: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80&fm=webp"
       },
       {
-        title: "E-Commerce платформа",
-        short: "Full-stack e-commerce на React, Node.js та MongoDB",
-        full: "Комплексна платформа електронної комерції. Автентифікація, каталог, кошик, платежі. ML-рекомендації збільшили середнє замовлення на 28%.",
-        image: "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&q=80&fm=webp"
+        title: "Календар Telegram Бот",
+        short: "Розумний бот-календар з інтеграцією Spond та AI-плануванням",
+        full: "Telegram бот для управління календарем з підтримкою Spond, Google Calendar та AI-плануванням. PIN-захищені вкладки адміна, публічний перегляд, валідація подій, Places Library. TypeScript, Telegram Bot API, Supabase, Google APIs.",
+        image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80&fm=webp"
       },
       {
-        title: "Панель візуалізації даних",
-        short: "Панель моніторингу KPI та метрик в реальному часі",
-        full: "Комплексна панель візуалізації даних для бізнесу. D3.js, React та Python/FastAPI backend.",
-        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80&fm=webp"
+        title: "Ghost Interviewer AI",
+        short: "AI-платформа підготовки до співбесід",
+        full: "AI-платформа підготовки до співбесід що симулює реальні інтервʼю. Покращений AI-переклад з оптимізованими промптами. Допомагає кандидатам практикувати відповіді норвезькою та англійською з фідбеком в реальному часі. TypeScript, Azure OpenAI, Supabase.",
+        image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&q=80&fm=webp"
       }
     ],
 
