@@ -201,6 +201,39 @@ serve(async (req) => {
         return new Response('OK')
       }
 
+      // ── Voice message: always treat as blog input if voice ──
+      if (message.voice && !message.reply_to_message) {
+        console.log(`🎙️ Direct voice message: ${message.voice.duration}s`)
+        const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Транскрибую голосове повідомлення...</b>', parse_mode: 'HTML' }),
+        }).then(r => r.json())
+        const statusMsgId = statusMsg?.result?.message_id
+
+        const txRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-voice`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voiceFileId: message.voice.file_id }),
+        })
+        const txData = await txRes.json()
+
+        if (!txData.success || !txData.text) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ Не вдалось транскрибувати: ${txData.error || 'unknown'}` }),
+          })
+          return new Response('OK')
+        }
+
+        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawText: txData.text, chatId, messageId: statusMsgId }),
+        }).catch(e => console.error('voice-blog dispatch failed:', e))
+
+        return new Response('OK')
+      }
+
       // ── Voice blog edit reply ──
       if (message.reply_to_message?.text?.includes('voiceblog:edit:') && message.text) {
         const editMatch = message.reply_to_message.text.match(/voiceblog:edit:([a-f0-9-]+)/)
