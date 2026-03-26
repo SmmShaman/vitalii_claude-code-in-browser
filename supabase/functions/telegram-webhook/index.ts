@@ -281,26 +281,97 @@ serve(async (req) => {
         const blogData = await blogRes.json()
 
         if (blogData.success && blogData.blogPostId) {
-          const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-          const { data: post } = await supabase.from('blog_posts').select('title_ua, title_en, title_no, slug_en, tags, reading_time, image_url').eq('id', blogData.blogPostId).single()
+          const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+          const srvKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          const baseUrl = Deno.env.get('SUPABASE_URL')!
+          const { data: post } = await supa.from('blog_posts').select('title_ua, title_en, title_no, slug_en, tags, reading_time, image_url, content_en').eq('id', blogData.blogPostId).single()
 
+          const blogUrl = `https://vitalii.no/blog/${post?.slug_en || ''}`
+          const bpId = blogData.blogPostId
+
+          // Update status: publishing + generating image
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: '✅ <b>Блог опубліковано!</b>\n\n🖼️ Генерую зображення + публікую в соцмережі...', parse_mode: 'HTML' }),
+          })
+
+          // ── PARALLEL: image generation + social posting ──
+          const imagePromise = (async () => {
+            try {
+              // Step 1: Generate image prompt via generate-image-prompt
+              const promptRes = await fetch(`${baseUrl}/functions/v1/generate-image-prompt`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newsId: bpId, title: post?.title_en || '', content: (post?.content_en || '').slice(0, 500), mode: 'full' }),
+              })
+              const promptData = await promptRes.json()
+              if (!promptData.prompt) return null
+
+              // Step 2: Generate image via process-image (Nano Banana Pro)
+              const imgRes = await fetch(`${baseUrl}/functions/v1/process-image`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newsId: bpId, imageUrl: 'generate', prompt: promptData.prompt, generateFromPrompt: true }),
+              })
+              const imgData = await imgRes.json()
+              if (imgData.success && imgData.processedImageUrl) {
+                await supa.from('blog_posts').update({ image_url: imgData.processedImageUrl }).eq('id', bpId)
+                return imgData.processedImageUrl
+              }
+              return null
+            } catch (e) { console.error('Image gen failed:', e); return null }
+          })()
+
+          const socialPromise = (async () => {
+            const results: string[] = []
+            // Post to LinkedIn EN
+            try {
+              const res = await fetch(`${baseUrl}/functions/v1/post-to-linkedin`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newsId: bpId, language: 'en', contentType: 'blog' }),
+              })
+              const d = await res.json()
+              results.push(d.success || d.postUrl ? '✅ LinkedIn' : `❌ LinkedIn: ${(d.error || '').slice(0, 50)}`)
+            } catch { results.push('❌ LinkedIn') }
+
+            // Post to Facebook EN
+            try {
+              const res = await fetch(`${baseUrl}/functions/v1/post-to-facebook`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newsId: bpId, language: 'en', contentType: 'blog' }),
+              })
+              const d = await res.json()
+              results.push(d.success || d.postUrl ? '✅ Facebook' : `❌ Facebook: ${(d.error || '').slice(0, 50)}`)
+            } catch { results.push('❌ Facebook') }
+
+            // Post to Instagram EN
+            try {
+              const res = await fetch(`${baseUrl}/functions/v1/post-to-instagram`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newsId: bpId, language: 'en', contentType: 'blog' }),
+              })
+              const d = await res.json()
+              results.push(d.success || d.postUrl ? '✅ Instagram' : `❌ Instagram: ${(d.error || '').slice(0, 50)}`)
+            } catch { results.push('❌ Instagram') }
+
+            return results
+          })()
+
+          // Wait for both
+          const [imageUrl, socialResults] = await Promise.all([imagePromise, socialPromise])
+
+          // Final Telegram message
           const preview = `✅ <b>Блог-пост опубліковано!</b>\n\n` +
             `📌 <b>${post?.title_ua || ''}</b>\n\n` +
             `🏷 ${(post?.tags || []).join(', ')}\n` +
             `📖 ~${post?.reading_time || 1} хв\n` +
+            `🖼️ ${imageUrl ? 'Зображення ✅' : 'Без зображення'}\n` +
             `🌐 EN: ${post?.title_en || ''}\n` +
             `🌐 NO: ${post?.title_no || ''}\n\n` +
-            `🔗 https://vitalii.no/blog/${post?.slug_en || ''}`
+            `📢 Соцмережі:\n${socialResults.join('\n')}\n\n` +
+            `🔗 ${blogUrl}`
 
           await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId, message_id: statusMsgId, text: preview, parse_mode: 'HTML',
-              disable_web_page_preview: false,
-              reply_markup: { inline_keyboard: [
-                [{ text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${blogData.blogPostId}` }, { text: '📘 Facebook EN', callback_data: `facebook_en_${blogData.blogPostId}` }],
-              ]},
-            }),
+            body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: preview, parse_mode: 'HTML', disable_web_page_preview: false }),
           })
         } else {
           await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
