@@ -136,7 +136,6 @@ serve(async (req) => {
       // Log publish without Telegram notification (was cluttering the feed)
       const linkedinScore = (analysis as any)?.linkedin_score || 0
       console.log(`📰 Published: ${(news.original_title || '').substring(0, 80)} | LI:${linkedinScore}/10${articleUrl ? ` → ${articleUrl}` : ''}`)
-      }
 
       return new Response(
         JSON.stringify({ success: true, newsId: news.id, stream: 'website-publish' }),
