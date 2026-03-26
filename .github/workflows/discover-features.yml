@@ -2,8 +2,7 @@ name: Discover Features
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 03:00 Oslo (winter CET=UTC+1)
-    - cron: '0 1 * * *'  # 03:00 Oslo (summer CEST=UTC+2)
+    - cron: '0 2 * * *'  # 03:00 Oslo (CET=UTC+1) / 04:00 (CEST=UTC+2)
   workflow_dispatch:
     inputs:
       since:
@@ -21,8 +20,20 @@ jobs:
         include:
           - repo: SmmShaman/vitalii_claude-code-in-browser
             project_id: portfolio
-          - repo: SmmShaman/jobbot-norway
+          - repo: SmmShaman/Jobbot-NO
             project_id: jobbot
+          - repo: SmmShaman/eyeplus-camera-cloud
+            project_id: eyeplus
+          - repo: SmmShaman/berbeha-calendar-telegram-bot
+            project_id: calendar_bot
+          - repo: SmmShaman/Lingleverika
+            project_id: lingleverika
+          - repo: SmmShaman/Ghost-Interviewer-AI
+            project_id: ghost_interviewer
+          - repo: SmmShaman/youtube-channel-manager
+            project_id: youtube_manager
+          - repo: SmmShaman/23mai
+            project_id: project_23mai
     steps:
       - name: Checkout ${{ matrix.repo }}
         uses: actions/checkout@v4
@@ -75,14 +86,3 @@ jobs:
             echo "❌ Feature discovery failed for ${{ matrix.repo }}"
             exit 1
           fi
-
-      - name: Notify Telegram on failure
-        if: failure()
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Feature Discovery failed for ${{ matrix.repo }}!</b>\n\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
