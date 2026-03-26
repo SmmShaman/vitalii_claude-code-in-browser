@@ -155,41 +155,71 @@ serve(async (req) => {
     const blogPrompt = prompts[0]
     console.log('Using blog rewrite prompt:', blogPrompt.name)
 
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      throw new Error('Azure OpenAI not configured')
+    // ── Helper: call Gemini ──
+    async function callGemini(prompt: string, maxTokens = 4000): Promise<string> {
+      const { data: gKey } = await supabase.from('api_settings').select('key_value').eq('key_name', 'GOOGLE_API_KEY').single()
+      const key = gKey?.key_value || Deno.env.get('GOOGLE_API_KEY') || ''
+      if (!key) throw new Error('Google API key not configured')
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens } }) }
+      )
+      if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`)
+      const d = await res.json()
+      return d?.candidates?.[0]?.content?.parts?.[0]?.text || ''
     }
 
-    // Build prompt with placeholders
-    // Use sourceLink (real source) instead of Telegram URL when available
+    // ══════════════════════════════════════════════════════════════
+    // VOICE: 3-stage processing via Gemini (preserves author's voice)
+    // ══════════════════════════════════════════════════════════════
+    let processedContent = requestData.content
+    let processedTitle = requestData.title
+
+    if (requestData.sourceType === 'voice') {
+      console.log('🎙️ Voice mode: 3-stage Gemini processing...')
+      const rawText = requestData.content
+
+      // Stage 1: "What did Vitalii want to say?"
+      console.log('  Stage 1: Identifying topic...')
+      const stage1 = await callGemini(
+        `Read this raw transcription from a voice message and describe in 1-2 sentences: what did the author want to say? What is the main idea?\n\nTranscription:\n${rawText}`,
+        500
+      )
+      console.log(`  Stage 1 result: ${stage1.slice(0, 150)}`)
+
+      // Stage 2: "Retell his words correctly"
+      console.log('  Stage 2: Clean retelling...')
+      const stage2 = await callGemini(
+        `Below is a raw voice transcription and a summary of what the author meant.\n\nOriginal transcription:\n${rawText}\n\nTopic identified:\n${stage1}\n\nNow retell EXACTLY what the author said, but fix grammar, remove filler words, and make sentences complete. DO NOT add your own ideas, opinions, or expand the content. Keep ONLY the author's original thoughts, just written correctly. Preserve the original language. Return only the cleaned text, nothing else.`,
+        2000
+      )
+      console.log(`  Stage 2 result: ${stage2.slice(0, 150)}`)
+
+      processedContent = stage2
+      processedTitle = stage1.slice(0, 100)
+      console.log('  ✅ 3-stage voice processing complete')
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Stage 3 (voice) / Main stage (news): Generate trilingual blog post via Gemini
+    // ══════════════════════════════════════════════════════════════
     const sourceUrl = requestData.sourceLink || requestData.url || ''
-    console.log(`📎 Source URL for AI prompt: ${sourceUrl}`)
-
     const openingStyle = getRandomOpeningStyle('blog')
-    const systemPrompt = blogPrompt.prompt_text
-      .replace('{title}', requestData.title)
-      .replace('{content}', requestData.content)
+
+    const blogPromptText = blogPrompt.prompt_text
+      .replace('{title}', processedTitle)
+      .replace('{content}', processedContent)
       .replace('{url}', sourceUrl)
-      + `\n\nOPENING STYLE DIRECTIVE (ОБОВ'ЯЗКОВО ДОТРИМУЙСЯ): ${openingStyle}`
+      + `\n\nOPENING STYLE DIRECTIVE: ${openingStyle}`
 
-    console.log('📝 Rewriting blog post with AI...')
-    console.log(`🎲 Opening style: ${openingStyle}`)
+    console.log('📝 Generating trilingual blog post via Gemini...')
 
-    // Call Azure OpenAI - ONE REQUEST for all languages
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+    const finalPrompt = `You are a professional blog writer. Write from first-person perspective, sharing personal insights authentically.
 
-    const response = await fetch(azureUrl, {
-      method: 'POST',
-      headers: {
-        'api-key': AZURE_OPENAI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: `You are a professional blog writer. Rewrite content from first-person perspective, as if you are sharing personal insights and experiences. Make it engaging and authentic.
+${requestData.sourceType === 'voice' ? 'IMPORTANT: The text below is the author\'s OWN words and thoughts (cleaned from voice dictation). Preserve his voice and ideas — do NOT replace them with generic content. Expand slightly if needed but stay true to what he said.' : 'Rewrite the article content engagingly.'}
 
-You MUST return ONLY valid JSON with this EXACT structure:
+You MUST return ONLY valid JSON (no markdown fences):
 {
   "en": { "title": "...", "content": "...", "description": "..." },
   "no": { "title": "...", "content": "...", "description": "..." },
@@ -198,33 +228,19 @@ You MUST return ONLY valid JSON with this EXACT structure:
   "category": "Tech"
 }
 
-CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each must contain "title", "content", and "description".`
-          },
-          {
-            role: 'user',
-            content: systemPrompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 8000
-      })
-    })
+CONTENT TO PROCESS:
+${blogPromptText}`
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Azure OpenAI error:', errorText)
-      throw new Error(`AI rewrite failed: ${response.status}`)
-    }
+    const aiContent = await callGemini(finalPrompt, 16000)
+    const response = { ok: true } // compatibility marker
 
-    const data = await response.json()
-    const aiContent = data.choices[0]?.message?.content?.trim()
+    console.log('Gemini response received, parsing JSON...')
 
-    console.log('AI response received, parsing JSON...')
-
-    // Parse JSON response
-    const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
+    // Parse JSON from Gemini response
+    const cleanedAi = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const jsonMatch = cleanedAi.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      console.error('Failed to parse AI response:', aiContent.substring(0, 500))
+      console.error('Failed to parse AI response:', cleanedAi.substring(0, 500))
       throw new Error('Failed to parse AI response')
     }
 
