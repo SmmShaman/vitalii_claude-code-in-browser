@@ -215,9 +215,9 @@ serve(async (req) => {
         return new Response('OK')
       }
 
-      // ── Voice message as reply to /blog prompt ──
-      if (message.voice && message.reply_to_message?.text?.includes('voiceblog:waiting')) {
-        console.log(`🎙️ Voice blog reply: ${message.voice.duration}s`)
+      // ── Voice message → always process as blog (voice is intentional action) ──
+      if (message.voice) {
+        console.log(`🎙️ Voice blog: ${message.voice.duration}s`)
         const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Транскрибую голосове повідомлення...</b>', parse_mode: 'HTML' }),
