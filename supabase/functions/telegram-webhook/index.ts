@@ -166,6 +166,106 @@ serve(async (req) => {
 
       const message = update.message
       const chatId = message.chat.id
+      const msgText = message.text || ''
+
+      // ── /blog command: voice-to-blog ──
+      if (msgText === '/blog' || msgText.startsWith('/blog ')) {
+        const directText = msgText.replace('/blog', '').trim()
+        if (directText) {
+          // Direct text after /blog — process immediately
+          const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: '🧠 <b>Обробляю текст...</b>', parse_mode: 'HTML' }),
+          }).then(r => r.json())
+          const statusMsgId = statusMsg?.result?.message_id
+
+          // Fire-and-forget: process blog
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawText: directText, chatId, messageId: statusMsgId }),
+          }).catch(e => console.error('process-voice-blog dispatch failed:', e))
+
+          return new Response('OK')
+        }
+
+        // No text — ask for voice or text
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: '🎙️ <b>Створення блог-посту</b>\n\nНадішліть голосове повідомлення або текст у відповідь на це повідомлення.\n\n<code>voiceblog:waiting</code>',
+            parse_mode: 'HTML',
+          }),
+        })
+        return new Response('OK')
+      }
+
+      // ── Voice blog edit reply ──
+      if (message.reply_to_message?.text?.includes('voiceblog:edit:') && message.text) {
+        const editMatch = message.reply_to_message.text.match(/voiceblog:edit:([a-f0-9-]+)/)
+        if (editMatch) {
+          const blogPostId = editMatch[1]
+          const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Переробляю з вашими правками...</b>', parse_mode: 'HTML' }),
+          }).then(r => r.json())
+
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawText: message.text, chatId, messageId: statusMsg?.result?.message_id, blogPostId }),
+          }).catch(e => console.error('edit dispatch failed:', e))
+          return new Response('OK')
+        }
+      }
+
+      // ── Voice/text reply to voiceblog:waiting ──
+      if (message.reply_to_message?.text?.includes('voiceblog:waiting')) {
+        const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Обробляю...</b>', parse_mode: 'HTML' }),
+        }).then(r => r.json())
+        const statusMsgId = statusMsg?.result?.message_id
+
+        if (message.voice) {
+          // Voice message — transcribe first, then process
+          console.log(`🎙️ Voice blog: ${message.voice.duration}s, file_id: ${message.voice.file_id}`)
+
+          // Transcribe
+          const txRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-voice`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ voiceFileId: message.voice.file_id }),
+          })
+          const txData = await txRes.json()
+
+          if (!txData.success || !txData.text) {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ Не вдалось транскрибувати: ${txData.error || 'unknown'}` }),
+            })
+            return new Response('OK')
+          }
+
+          // Process blog from transcribed text
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawText: txData.text, chatId, messageId: statusMsgId }),
+          }).catch(e => console.error('process-voice-blog dispatch failed:', e))
+
+        } else if (message.text) {
+          // Direct text reply
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawText: message.text, chatId, messageId: statusMsgId }),
+          }).catch(e => console.error('process-voice-blog dispatch failed:', e))
+        }
+
+        return new Response('OK')
+      }
 
       // Перевірити чи це пересланне повідомлення з каналу
       if (message.forward_from_chat && message.forward_from_chat.type === 'channel') {
@@ -845,6 +945,71 @@ serve(async (req) => {
 
       // Track language for image generation
       let imageLanguage: string | null = null
+
+      // ── Voice Blog callbacks (vb_) ──
+      if (callbackData.startsWith('vb_pub_')) {
+        const blogPostId = callbackData.replace('vb_pub_', '')
+        console.log(`✅ Voice blog publish: ${blogPostId}`)
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        await supabase.from('blog_posts').update({ is_published: true, published_at: new Date().toISOString() }).eq('id', blogPostId)
+        const { data: post } = await supabase.from('blog_posts').select('title_ua, slug_en').eq('id', blogPostId).single()
+        const url = post?.slug_en ? `https://vitalii.no/blog/${post.slug_en}` : 'vitalii.no'
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: `✅ <b>Опубліковано!</b>\n\n📌 ${post?.title_ua || ''}\n🔗 ${url}\n\nТепер можна поширити в соцмережах:`,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [
+              [{ text: '🌐 All EN', callback_data: `vb_all_en_${blogPostId}` }, { text: '🌐 All NO', callback_data: `vb_all_no_${blogPostId}` }],
+              [{ text: '🔗 LinkedIn EN', callback_data: `linkedin_en_${blogPostId}` }, { text: '📘 Facebook EN', callback_data: `facebook_en_${blogPostId}` }],
+            ]},
+          }),
+        })
+        return new Response('OK')
+      }
+
+      if (callbackData.startsWith('vb_cancel_')) {
+        const blogPostId = callbackData.replace('vb_cancel_', '')
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        await supabase.from('blog_posts').delete().eq('id', blogPostId).eq('is_published', false)
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: '❌ Чернетку скасовано.' }),
+        })
+        return new Response('OK')
+      }
+
+      if (callbackData.startsWith('vb_regen_')) {
+        const blogPostId = callbackData.replace('vb_regen_', '')
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        const { data: draft } = await supabase.from('blog_posts').select('original_voice_text').eq('id', blogPostId).single()
+        if (draft?.original_voice_text) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: '🔄 <b>Регенерую...</b>', parse_mode: 'HTML' }),
+          })
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-voice-blog`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawText: draft.original_voice_text, chatId, messageId, blogPostId }),
+          }).catch(e => console.error('regen failed:', e))
+        }
+        return new Response('OK')
+      }
+
+      if (callbackData.startsWith('vb_edit_')) {
+        const blogPostId = callbackData.replace('vb_edit_', '')
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId, message_id: messageId,
+            text: `✏️ <b>Режим редагування</b>\n\nНадішліть виправлений текст у відповідь.\n\n<code>voiceblog:edit:${blogPostId}</code>`,
+            parse_mode: 'HTML',
+          }),
+        })
+        return new Response('OK')
+      }
 
       if (callbackData.startsWith('publish_news_')) {
         action = 'publish'
