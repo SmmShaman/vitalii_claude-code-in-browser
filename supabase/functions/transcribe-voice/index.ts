@@ -39,7 +39,14 @@ serve(async (req) => {
     const downloadUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`
     const audioRes = await fetch(downloadUrl)
     const audioBuffer = await audioRes.arrayBuffer()
-    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
+    // Chunk-based base64 encoding to avoid stack overflow on large files
+    const bytes = new Uint8Array(audioBuffer)
+    let audioBase64 = ''
+    const chunkSize = 32768
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      audioBase64 += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)))
+    }
+    audioBase64 = btoa(audioBase64)
     console.log(`🎙️ Downloaded ${Math.round(audioBuffer.byteLength / 1024)}KB audio`)
 
     // Step 3: Send to Gemini for transcription
