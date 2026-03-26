@@ -237,7 +237,8 @@ serve(async (req) => {
           }
         }
         if (!isReply && !isWaiting) {
-          // Not a blog voice — ignore, let fallback handle
+          // Not a blog voice — return silently (don't trigger "send text" fallback)
+          return new Response('OK')
         } else {
         console.log(`🎙️ Voice blog via /blog: ${message.voice.duration}s (reply=${isReply}, state=${isWaiting})`)
         const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -326,7 +327,7 @@ serve(async (req) => {
             try {
               const res = await fetch(`${baseUrl}/functions/v1/post-to-linkedin`, {
                 method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newsId: bpId, language: 'en', contentType: 'blog' }),
+                body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
               })
               const d = await res.json()
               results.push(d.success || d.postUrl ? '✅ LinkedIn' : `❌ LinkedIn: ${(d.error || '').slice(0, 50)}`)
@@ -336,7 +337,7 @@ serve(async (req) => {
             try {
               const res = await fetch(`${baseUrl}/functions/v1/post-to-facebook`, {
                 method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newsId: bpId, language: 'en', contentType: 'blog' }),
+                body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
               })
               const d = await res.json()
               results.push(d.success || d.postUrl ? '✅ Facebook' : `❌ Facebook: ${(d.error || '').slice(0, 50)}`)
@@ -346,7 +347,7 @@ serve(async (req) => {
             try {
               const res = await fetch(`${baseUrl}/functions/v1/post-to-instagram`, {
                 method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newsId: bpId, language: 'en', contentType: 'blog' }),
+                body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
               })
               const d = await res.json()
               results.push(d.success || d.postUrl ? '✅ Instagram' : `❌ Instagram: ${(d.error || '').slice(0, 50)}`)
