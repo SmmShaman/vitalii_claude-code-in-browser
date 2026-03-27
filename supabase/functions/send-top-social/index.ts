@@ -12,7 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-03-26-v3-auto-publish'
+const VERSION = '2026-03-27-v4-gemini'
 const SOCIAL_SLOTS = ['09:00', '13:00', '15:00', '18:00']
 const PLATFORMS = ['linkedin', 'facebook', 'instagram'] as const
 

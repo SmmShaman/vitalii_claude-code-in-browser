@@ -11,7 +11,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-03-25-v3-gemini-social'
+const VERSION = '2026-03-27-v4-gemini-social'
 const PLATFORMS = ['linkedin', 'facebook'] as const
 
 // deno-lint-ignore no-explicit-any
