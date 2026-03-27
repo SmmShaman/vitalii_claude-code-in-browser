@@ -1,7 +1,7 @@
+import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import {
-import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
   sendToCommentsBot,
   escapeHtml
 } from '../_shared/social-media-helpers.ts'
@@ -13,7 +13,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -332,7 +331,15 @@ async function saveCommunityPost(
  * Generate an engagement suggestion using AI
  */
 async function generateEngagementSuggestion(supabase: any, post: any): Promise<void> {
-  // Azure check removed — using Gemini via callLLM())
+  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
+    // Use simple template
+    const suggestion = `Great observation! I've worked extensively in this area and would love to share some insights...`
+    await supabase
+      .from('community_posts')
+      .update({
+        suggested_comment: suggestion,
+        suggested_comment_generated_at: new Date().toISOString()
+      })
       .eq('id', post.id)
     return
   }
@@ -354,12 +361,12 @@ Guidelines:
 Comment:`
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${Deno.env.get("GOOGLE_API_KEY")}`,
+      `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-gemini-migrated': 'true' // was Azure
+          'api-key': AZURE_OPENAI_API_KEY
         },
         body: JSON.stringify({
           messages: [

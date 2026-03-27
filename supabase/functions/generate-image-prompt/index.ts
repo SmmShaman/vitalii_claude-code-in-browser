@@ -1,6 +1,7 @@
+import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient }
-import { callLLM } from '../_shared/gemini-llm.ts' from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { callLLM } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -106,12 +107,6 @@ const CATEGORY_COLORS: Record<string, { primary: string; secondary: string }> = 
  *
  * This provides variety - not all images will be infographics!
  */
-
-// Gemini wrapper for Azure-style calls
-async function callAzureCompatible(systemContent: string, userContent: string, maxTokens = 4000, temperature = 0.5): Promise<string> {
-  return await callLLM(systemContent, userContent, { temperature, maxTokens })
-}
-
 serve(async (req) => {
   console.log(`🎨 Generate Image Prompt ${VERSION} started`)
 
@@ -128,7 +123,7 @@ serve(async (req) => {
       throw new Error('Missing required fields: newsId, title, content')
     }
 
-    // Azure check removed — using Gemini
+    // Azure credential check removed — using Gemini via callLLM()
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
@@ -407,13 +402,13 @@ async function runPreAnalyzer(supabase: any, title: string, content: string, sel
     }
 
     // Call Azure OpenAI
-    // Azure migrated to Gemini
+    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-    const response = await fetch(azureUrl, {
+    const response = await azureFetch(azureUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-migrated': 'gemini' // was api-key: AZURE
+        'api-key': AZURE_OPENAI_API_KEY!
       },
       body: JSON.stringify({
         messages: [
@@ -580,7 +575,7 @@ Expand this concept into a rich, detailed prompt. Maintain the chosen image type
     }
 
     // Call Azure OpenAI
-    // Azure migrated to Gemini
+    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
     const systemContent = selectedVariant
       ? `You are an editorial art director. Expand the selected visual concept into a rich, detailed image generation prompt (150-250 words).
@@ -606,11 +601,11 @@ RULES:
 - Give CONSTRAINTS not details: limit the palette, force asymmetry, demand one focal point
 - Write in English. Be specific and visual.`
 
-    const response = await fetch(azureUrl, {
+    const response = await azureFetch(azureUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-migrated': 'gemini' // was api-key: AZURE
+        'api-key': AZURE_OPENAI_API_KEY!
       },
       body: JSON.stringify({
         messages: [
@@ -743,13 +738,13 @@ Content: ${content.substring(0, 3000)}
 
 Analyze this article and generate 4 image concept variants. Return ONLY a valid JSON array.`
 
-    // Azure migrated to Gemini
+    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-    const response = await fetch(azureUrl, {
+    const response = await azureFetch(azureUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-migrated': 'gemini' // was api-key: AZURE
+        'api-key': AZURE_OPENAI_API_KEY!
       },
       body: JSON.stringify({
         messages: [
@@ -875,13 +870,13 @@ async function runClassifier(supabase: any, title: string, content: string): Pro
     classifierPrompt = classifierPrompt.replace(/{content}/g, content.substring(0, 5000))
 
     // Call Azure OpenAI
-    // Azure migrated to Gemini
+    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-    const response = await fetch(azureUrl, {
+    const response = await azureFetch(azureUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-migrated': 'gemini' // was api-key: AZURE
+        'api-key': AZURE_OPENAI_API_KEY!
       },
       body: JSON.stringify({
         messages: [
@@ -1090,31 +1085,11 @@ ${elements.length > 0 ? elements.join('\n') : '(No elements selected - use your 
 Create a detailed image prompt combining these elements with the article's core meaning.`
 
     // Call Azure OpenAI
-    // Azure migrated to Gemini
-
-    const response = await fetch(azureUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-migrated': 'gemini' // was api-key: AZURE
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.7,
-        max_tokens: 800
-      })
-    })
-
-    if (!response.ok) {
-      console.error('❌ Creative Builder API error:', response.status)
-      return null
-    }
-
-    const data = await response.json()
-    const generatedPrompt = data.choices[0]?.message?.content?.trim()
+    const generatedPrompt = await callLLM(
+      systemPrompt,
+      userMessage,
+      { temperature: 0.7, maxTokens: 800 }
+    )
 
     if (!generatedPrompt) return null
 
@@ -1176,13 +1151,13 @@ Content: ${content.substring(0, 2000)}
 
 Extract 4-6 concrete visual objects. Return ONLY a JSON array.`
 
-    // Azure migrated to Gemini
+    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-    const response = await fetch(azureUrl, {
+    const response = await azureFetch(azureUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-migrated': 'gemini' // was api-key: AZURE
+        'api-key': AZURE_OPENAI_API_KEY!
       },
       body: JSON.stringify({
         messages: [

@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled } from '../_shared/github-actions.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
-import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
+import { callLLM } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +12,6 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY
-// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
@@ -681,10 +680,7 @@ async function aiSelectBestVariant(
   content: string,
   variants: Array<{ label: string; description: string }>
 ): Promise<number> {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    console.warn('⚠️ Azure OpenAI not configured, defaulting to variant #1')
-    return 0
-  }
+    // Azure credential check removed — using Gemini via callLLM()
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -712,22 +708,11 @@ async function aiSelectBestVariant(
       .replace('{content}', content.substring(0, 500))
       .replace('{variants}', variantsText)
 
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
     const aiContent = await callLLM(
-      You are a visual editor. Respond ONLY with valid JSON.,
-      'promptText',
+      'You are a visual editor. Respond ONLY with valid JSON.',
+      promptText,
       { temperature: 0.3, maxTokens: 150 }
     )
-
-
-    if (!response.ok) {
-      console.warn('⚠️ AI variant selection API error:', response.status)
-      return 0
-    }
-
-    const result = await response.json()
-    const aiContent = result.choices[0]?.message?.content || ''
     const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
 
     if (jsonMatch) {

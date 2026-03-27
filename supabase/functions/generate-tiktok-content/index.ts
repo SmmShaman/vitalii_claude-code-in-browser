@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import {
-import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
+import { callLLM } from '../_shared/gemini-llm.ts'
   getContent,
   buildArticleUrl,
   createSocialPost,
@@ -20,7 +20,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -196,7 +195,7 @@ async function generateTikTokCaption(
   language: Language
 ): Promise<string> {
   // If no AI configured, use simple format
-  // Azure check removed — using Gemini via callLLM()
+    // Azure credential check removed — using Gemini via callLLM()
 
   try {
     const languageNames: Record<Language, string> = {
@@ -219,31 +218,11 @@ Language: ${languageNames[language]}
 Write the caption in ${languageNames[language]}. Just the caption text, no hashtags.`
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${Deno.env.get("GOOGLE_API_KEY")}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-gemini-migrated': 'true' // was Azure
-        },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: 'You are a social media expert who writes viral TikTok captions. Be concise and engaging.' },
-            { role: 'user', content: prompt }
-          ],
-          max_tokens: 100,
-          temperature: 0.8
-        })
-      }
-    )
-
-    if (!response.ok) {
-      console.error('Azure OpenAI error:', await response.text())
-      return formatSimpleCaption(title, description, language)
-    }
-
-    const data = await response.json()
-    const caption = data.choices?.[0]?.message?.content?.trim()
+      const caption = await callLLM(
+        'You are a social media expert who writes viral TikTok captions. Be concise and engaging.',
+        prompt,
+        { temperature: 0.8, maxTokens: 100 }
+      )
 
     if (caption) {
       console.log('✅ AI generated TikTok caption')
