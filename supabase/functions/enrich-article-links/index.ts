@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')!
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')!
 
@@ -135,17 +137,8 @@ serve(async (req) => {
         `${i + 1}. "${l.title}" → ${l.route}/${l.slug}`
       ).join('\n')
 
-      const response = await fetch(azureUrl, {
-        method: 'POST',
-        headers: {
-          'api-key': AZURE_OPENAI_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: `You are a Wikipedia-style editor. Your task is to find phrases in the article text that semantically relate to the given list of existing articles, and convert those phrases into markdown hyperlinks.
+      const aiContent = await callLLM(
+        You are a Wikipedia-style editor. Your task is to find phrases in the article text that semantically relate to the given list of existing articles, and convert those phrases into markdown hyperlinks.
 
 Rules:
 - Insert 2-5 inline links maximum (don't overlink)
@@ -156,23 +149,17 @@ Rules:
 - Do NOT link phrases inside existing markdown links, headings, or bold/italic markers
 - Do NOT add any "Related articles" section at the bottom
 - Keep all existing formatting, paragraphs, and structure exactly the same
-- Return ONLY the modified article text, nothing else — no explanations, no preamble`
-            },
-            {
-              role: 'user',
-              content: `ARTICLE TEXT:
+- Return ONLY the modified article text, nothing else — no explanations, no preamble,
+        ARTICLE TEXT:
 ${content}
 
 AVAILABLE ARTICLES TO LINK TO:
 ${articlesListForAI}
 
-Return the article text with inline hyperlinks inserted where relevant phrases match the available articles.`
-            }
-          ],
-          temperature: 0.2,
-          max_tokens: 4000
-        })
-      })
+Return the article text with inline hyperlinks inserted where relevant phrases match the available articles.,
+        { temperature: 0.2, maxTokens: 4000 }
+      )
+
 
       if (!response.ok) {
         console.error(`AI error for ${key}:`, await response.text())

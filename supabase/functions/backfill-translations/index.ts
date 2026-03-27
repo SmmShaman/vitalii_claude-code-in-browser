@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -333,27 +335,12 @@ async function callTranslationAI(
 
   const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-  const response = await fetch(azureUrl, {
-    method: 'POST',
-    headers: {
-      'api-key': AZURE_OPENAI_API_KEY,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a professional translator. Return ONLY valid JSON with "no" and "ua" keys. Each must contain "title", "content", and "description".'
-        },
-        {
-          role: 'user',
-          content: systemPrompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 8000
-    })
-  })
+  const aiContent = await callLLM(
+    You are a professional translator. Return ONLY valid JSON with ,
+    'systemPrompt',
+    { temperature: 0.3, maxTokens: 8000 }
+  )
+
 
   if (!response.ok) {
     const errorText = await response.text()

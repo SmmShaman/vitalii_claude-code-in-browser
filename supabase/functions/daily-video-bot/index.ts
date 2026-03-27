@@ -39,7 +39,7 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
 const SERPER_API_KEY = Deno.env.get("SERPER_API_KEY") || "";
 
 // LLM provider override (set via query param or api_settings)
-let LLM_PROVIDER = "azure"; // default
+let LLM_PROVIDER = "gemini"; // default (migrated from azure)
 
 // ── Telegram Helpers ──
 

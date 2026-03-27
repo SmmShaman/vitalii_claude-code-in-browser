@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
 import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -91,9 +93,7 @@ serve(async (req) => {
     const prompt = prompts[0]
     const openingStyle = getRandomOpeningStyle('news')
 
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      throw new Error('Azure OpenAI not configured')
-    }
+    // Azure check removed — using Gemini via callLLM()
 
     // Build single-language prompt
     const langName = targetLang === 'no' ? 'Norwegian (Bokmål)' : 'English'
@@ -107,19 +107,11 @@ serve(async (req) => {
 
     console.log('📝 Rewriting with AI (single language)...')
 
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+    // Azure migrated to Gemini via callLLM()
+    const azureUrl = '' // unused
 
-    const response = await fetch(azureUrl, {
-      method: 'POST',
-      headers: {
-        'api-key': AZURE_OPENAI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: `You are a professional content writer. Rewrite the article in ${langName} ONLY. Return ONLY valid JSON:
+    const aiContent = await callLLM(
+      You are a professional content writer. Rewrite the article in ${langName} ONLY. Return ONLY valid JSON:
 {
   "title": "...",
   "content": "...",
@@ -127,14 +119,11 @@ serve(async (req) => {
   "tags": ["tag1", "tag2", "tag3"]
 }
 
-Write a concise, informative summary. The "description" should be 1-2 sentences for SEO meta description.`
-          },
-          { role: 'user', content: systemPrompt }
-        ],
-        temperature: 0.5,
-        max_tokens: 3000
-      })
-    })
+Write a concise, informative summary. The "description" should be 1-2 sentences for SEO meta description.,
+      'systemPrompt',
+      { temperature: 0.5, maxTokens: 3000 }
+    )
+
 
     if (!response.ok) {
       const errorText = await response.text()

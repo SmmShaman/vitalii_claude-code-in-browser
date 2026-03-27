@@ -9,6 +9,7 @@ import {
 } from '../_shared/duplicate-helpers.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
 import { getShortSummary, formatCompactVariants, CATEGORY_SHORT, buildPresetKeyboard } from '../_shared/telegram-format-helpers.ts'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,6 +18,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
@@ -425,27 +427,12 @@ serve(async (req) => {
     console.log('🤖 Calling Azure OpenAI for analysis...')
     const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
 
-    const aiResponse = await fetch(azureUrl, {
-      method: 'POST',
-      headers: {
-        'api-key': AZURE_OPENAI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a news analyst. Analyze articles and respond ONLY with valid JSON.'
-          },
-          {
-            role: 'user',
-            content: systemPrompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 1000
-      })
-    })
+    const aiContent = await callLLM(
+      You are a news analyst. Analyze articles and respond ONLY with valid JSON.,
+      'systemPrompt',
+      { temperature: 0.3, maxTokens: 1000 }
+    )
+
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text()

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -60,9 +62,7 @@ serve(async (req) => {
     console.log(`🚀 Generating ${platform} teaser (${language}) for ${contentType} ID:`, recordId)
     console.log(`📰 Title: ${title.substring(0, 50)}...`)
 
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      throw new Error('Azure OpenAI not configured')
-    }
+    // Azure check removed — using Gemini via callLLM()
 
     if (!platform || !language) {
       throw new Error('Platform and language are required')
@@ -206,19 +206,11 @@ async function generateTeaser(
 
   console.log(`🎲 Opening style for ${platform}: ${openingStyle}`)
 
-  const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+  // Azure migrated to Gemini via callLLM()
+    const azureUrl = '' // unused
 
-  const response = await fetch(azureUrl, {
-    method: 'POST',
-    headers: {
-      'api-key': AZURE_OPENAI_API_KEY!,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'system',
-          content: `You are a social media copywriter specializing in ${platform}.
+  const aiContent = await callLLM(
+    You are a social media copywriter specializing in ${platform}.
 Write engaging, platform-appropriate teasers that make people want to click and read more.
 
 CRITICAL RULES:
@@ -226,17 +218,11 @@ CRITICAL RULES:
 2. MINIMUM 2 paragraphs - this is mandatory!
 3. Include emojis as specified in the prompt.
 4. Output language: ${LANGUAGE_NAMES[language]}
-5. Do NOT copy the article text - create intrigue!`
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7, // More creative for social media
-      max_tokens: 500   // Teasers should be short
-    })
-  })
+5. Do NOT copy the article text - create intrigue!,
+    'prompt',
+    { temperature: 0.7, maxTokens: 500 }
+  )
+
 
   if (!response.ok) {
     const errorText = await response.text()

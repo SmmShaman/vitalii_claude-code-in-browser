@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -134,10 +136,7 @@ interface SentimentResult {
  * Analyze comment sentiment using AI
  */
 async function analyzeSentiment(commentText: string): Promise<SentimentResult> {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    // Fallback: simple keyword-based analysis
-    return simpleAnalysis(commentText)
-  }
+  // Azure check removed — using Gemini via callLLM()
 
   try {
     const prompt = `Analyze the sentiment of this social media comment. Return a JSON object with:
@@ -150,12 +149,12 @@ Comment: "${commentText}"
 Return only valid JSON, no other text.`
 
     const response = await fetch(
-      `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${Deno.env.get("GOOGLE_API_KEY")}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': AZURE_OPENAI_API_KEY
+          'x-gemini-migrated': 'true' // was Azure
         },
         body: JSON.stringify({
           messages: [
@@ -258,10 +257,7 @@ interface GenerateReplyOptions {
 async function generateReply(options: GenerateReplyOptions): Promise<string> {
   const { commentText, authorName, platform, language, articleTitle, articleContent, sentiment } = options
 
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    // Fallback: simple template-based reply
-    return generateSimpleReply(options)
-  }
+  // Azure check removed — using Gemini via callLLM()
 
   const languageNames: Record<string, string> = {
     en: 'English',
@@ -296,12 +292,12 @@ Reply (just the text, no quotes):`;
 
   try {
     const response = await fetch(
-      `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${Deno.env.get("GOOGLE_API_KEY")}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': AZURE_OPENAI_API_KEY
+          'x-gemini-migrated': 'true' // was Azure
         },
         body: JSON.stringify({
           messages: [

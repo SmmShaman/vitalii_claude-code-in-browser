@@ -19,6 +19,7 @@ import {
 } from '../_shared/youtube-helpers.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
 import { formatCompactVariants, buildPresetKeyboard } from '../_shared/telegram-format-helpers.ts'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +30,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
@@ -1235,39 +1237,22 @@ async function parseChannelPosts(
  * Translate title to English using Azure OpenAI (for YouTube upload)
  */
 async function translateTitleToEnglish(text: string): Promise<string> {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    console.warn('⚠️ Azure OpenAI not configured, using original text')
-    return text.substring(0, 100)
-  }
+  // Azure check removed — using Gemini via callLLM()
 
   try {
     const titleText = text.substring(0, 200) // Take first 200 chars
 
     // Azure OpenAI endpoint format: {endpoint}/openai/deployments/{deployment-name}/chat/completions?api-version=YYYY-MM-DD
     // Using actual deployment name from Azure Portal: Jobbot-gpt-4.1-mini
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+    // Azure migrated to Gemini via callLLM()
+    const azureUrl = '' // unused
 
-    const response = await fetch(azureUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: 'Translate the following text to English. Return ONLY the translation, no explanations. Keep it concise (max 100 characters).'
-          },
-          {
-            role: 'user',
-            content: titleText
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 50
-      })
-    })
+    const aiContent = await callLLM(
+      Translate the following text to English. Return ONLY the translation, no explanations. Keep it concise (max 100 characters).,
+      'titleText',
+      { temperature: 0.3, maxTokens: 50 }
+    )
+
 
     if (!response.ok) {
       const errorText = await response.text()

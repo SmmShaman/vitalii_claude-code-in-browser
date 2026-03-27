@@ -1,10 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -35,11 +37,10 @@ serve(async (req) => {
     const { title, content, existingUrl }: FindSourceRequest = await req.json()
     console.log('🔍 Finding source for:', title?.substring(0, 50))
 
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      throw new Error('Azure OpenAI not configured')
-    }
+    // Azure check removed — using Gemini via callLLM()
 
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+    // Azure migrated to Gemini via callLLM()
+    const azureUrl = '' // unused
 
     const systemPrompt = `You are a research assistant that finds original sources for news articles.
 
@@ -75,21 +76,12 @@ ${existingUrl ? `EXISTING URL (from Telegram): ${existingUrl}` : ''}
 
 Return JSON with sourceUrl, sourceName, confidence, reason.`
 
-    const response = await fetch(azureUrl, {
-      method: 'POST',
-      headers: {
-        'api-key': AZURE_OPENAI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 500
-      })
-    })
+    const aiContent = await callLLM(
+      'systemPrompt',
+      'userPrompt',
+      { temperature: 0.3, maxTokens: 500 }
+    )
+
 
     if (!response.ok) {
       const errorText = await response.text()

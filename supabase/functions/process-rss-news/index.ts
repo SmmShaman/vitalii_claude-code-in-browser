@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
 import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -118,9 +120,7 @@ async function processWithPrompt(
   images: string[],
   imagesWithMeta: ImageWithMeta[]
 ) {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    throw new Error('Azure OpenAI not configured')
-  }
+  // Azure check removed — using Gemini via callLLM()
 
   // Build prompt with placeholders
   const openingStyle = getRandomOpeningStyle('news')
@@ -134,19 +134,11 @@ async function processWithPrompt(
   console.log(`🎲 Opening style: ${openingStyle}`)
 
   // Call Azure OpenAI
-  const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
+  // Azure migrated to Gemini via callLLM()
+    const azureUrl = '' // unused
 
-  const response = await fetch(azureUrl, {
-    method: 'POST',
-    headers: {
-      'api-key': AZURE_OPENAI_API_KEY,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'system',
-          content: `You are a professional content writer and translator. You MUST return ONLY valid JSON with this EXACT structure:
+  const aiContent = await callLLM(
+    You are a professional content writer and translator. You MUST return ONLY valid JSON with this EXACT structure:
 {
   "en": { "title": "...", "content": "...", "description": "..." },
   "no": { "title": "...", "content": "...", "description": "..." },
@@ -154,17 +146,11 @@ async function processWithPrompt(
   "tags": ["tag1", "tag2", "tag3"]
 }
 
-CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each must contain "title", "content", and "description".`
-        },
-        {
-          role: 'user',
-          content: systemPrompt
-        }
-      ],
-      temperature: 0.5,
-      max_tokens: 6000
-    })
-  })
+CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each must contain "title", "content", and "description".,
+    'systemPrompt',
+    { temperature: 0.5, maxTokens: 6000 }
+  )
+
 
   if (!response.ok) {
     const errorText = await response.text()

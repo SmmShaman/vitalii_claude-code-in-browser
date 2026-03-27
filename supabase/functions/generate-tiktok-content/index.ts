@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import {
+import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
   getContent,
   buildArticleUrl,
   createSocialPost,
@@ -19,6 +20,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Migrated to Gemini — Azure vars kept for reference
 const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
 const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
@@ -194,10 +196,7 @@ async function generateTikTokCaption(
   language: Language
 ): Promise<string> {
   // If no AI configured, use simple format
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    console.log('⚠️ Azure OpenAI not configured, using simple caption')
-    return formatSimpleCaption(title, description, language)
-  }
+  // Azure check removed — using Gemini via callLLM()
 
   try {
     const languageNames: Record<Language, string> = {
@@ -220,12 +219,12 @@ Language: ${languageNames[language]}
 Write the caption in ${languageNames[language]}. Just the caption text, no hashtags.`
 
     const response = await fetch(
-      `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${Deno.env.get("GOOGLE_API_KEY")}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': AZURE_OPENAI_API_KEY
+          'x-gemini-migrated': 'true' // was Azure
         },
         body: JSON.stringify({
           messages: [
