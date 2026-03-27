@@ -329,7 +329,7 @@ serve(async (req) => {
                   const { error: upErr } = await supa.storage.from('news-images').upload(path, arr, { contentType: 'image/png', upsert: true })
                   if (!upErr) {
                     const url = `${baseUrl}/storage/v1/object/public/news-images/${path}`
-                    await supa.from('blog_posts').update({ image_url: url }).eq('id', bpId)
+                    await supa.from('blog_posts').update({ image_url: url, processed_image_url: url }).eq('id', bpId)
                     console.log('🖼️ Image saved:', url)
                     return url
                   } else { console.error('Upload err:', upErr) }
@@ -360,7 +360,13 @@ serve(async (req) => {
                     visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
                   }),
                 })
-                results.push(liRes.ok ? '✅ LinkedIn' : `❌ LinkedIn: ${liRes.status}`)
+                if (liRes.ok) {
+                  const shareUrn = liRes.headers.get('x-restli-id') || ''
+                  const liUrl = shareUrn ? `https://www.linkedin.com/feed/update/${shareUrn}` : ''
+                  results.push(`✅ <a href="${liUrl}">LinkedIn</a>`)
+                } else {
+                  results.push(`❌ LinkedIn: ${liRes.status}`)
+                }
               } else { results.push('⏭️ LinkedIn: no credentials') }
             } catch (e: unknown) { results.push(`❌ LinkedIn: ${e instanceof Error ? e.message.slice(0, 40) : 'error'}`) }
 
@@ -373,7 +379,13 @@ serve(async (req) => {
                   method: 'POST', headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ message: `${blogTitle}\n\n${blogUrl}`, access_token: fbToken }),
                 })
-                results.push(fbRes.ok ? '✅ Facebook' : `❌ Facebook: ${fbRes.status}`)
+                if (fbRes.ok) {
+                  const fbData = await fbRes.json()
+                  const fbPostUrl = fbData.id ? `https://facebook.com/${fbData.id}` : ''
+                  results.push(`✅ <a href="${fbPostUrl}">Facebook</a>`)
+                } else {
+                  results.push(`❌ Facebook: ${fbRes.status}`)
+                }
               } else { results.push('⏭️ Facebook: no credentials') }
             } catch (e: unknown) { results.push(`❌ Facebook: ${e instanceof Error ? e.message.slice(0, 40) : 'error'}`) }
 
