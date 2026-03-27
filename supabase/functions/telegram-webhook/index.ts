@@ -342,54 +342,87 @@ serve(async (req) => {
           const socialPromise = (async () => {
             const results: string[] = []
             const blogTitle = post?.title_en || ''
-            const blogUrl = `https://vitalii.no/blog/${post?.slug_en || ''}`
-            const tags = (post?.tags || []).map((t: string) => `#${t.replace(/\s/g, '')}`).join(' ')
+            const blogUrlSocial = `https://vitalii.no/blog/${post?.slug_en || ''}`
+            const postContent = (post?.content_en || '').slice(0, 500)
 
-            // LinkedIn — direct API
+            // Generate AI social posts via Gemini
+            let liText = blogTitle + '\n\n' + (post?.tags || []).map((t: string) => '#' + t.replace(/\s/g, '')).join(' ')
+            let fbText = blogTitle
+            try {
+              const gk = await getKey('GOOGLE_API_KEY')
+              if (gk) {
+                const sp = 'Generate social media posts for this blog. Author is a full-stack developer.\n' +
+                  'TITLE: ' + blogTitle + '\nCONTENT: ' + postContent + '\nURL: ' + blogUrlSocial + '\n' +
+                  'TAGS: ' + (post?.tags || []).join(', ') + '\n\n' +
+                  'LINKEDIN (1200-1800 chars): Hook under 210 chars, storytelling, NO links in body, 3-5 hashtags, CTA question.\n' +
+                  'FACEBOOK (under 280 chars): Short hook, 1-2 hashtags, conversational.\n\n' +
+                  'Return ONLY JSON: {"linkedin_post":"...","facebook_post":"..."}'
+                const gr = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + gk, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ contents: [{ parts: [{ text: sp }] }], generationConfig: { temperature: 0.6, maxOutputTokens: 4000 } }),
+                })
+                if (gr.ok) {
+                  const gt = ((await gr.json())?.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+                  try { const p = JSON.parse(gt); if (p.linkedin_post) liText = p.linkedin_post; if (p.facebook_post) fbText = p.facebook_post } catch { /* keep defaults */ }
+                }
+              }
+            } catch { /* keep defaults */ }
+
+            // LinkedIn — with image if available
             try {
               const liToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || await getKey('LINKEDIN_ACCESS_TOKEN')
               const liUrn = Deno.env.get('LINKEDIN_PERSON_URN') || await getKey('LINKEDIN_PERSON_URN')
               if (liToken && liUrn) {
-                const liText = `${blogTitle}\n\n${tags}\n\n${blogUrl}`
+                // deno-lint-ignore no-explicit-any
+                let shareContent: any = { shareCommentary: { text: liText }, shareMediaCategory: 'NONE' }
+                // Try to upload image to LinkedIn
+                const imgWait = await imagePromise
+                if (imgWait) {
+                  try {
+                    const regRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+                      method: 'POST', headers: { 'Authorization': 'Bearer ' + liToken, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ registerUploadRequest: { recipes: ['urn:li:digitalmediaRecipe:feedshare-image'], owner: liUrn, serviceRelationships: [{ relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }] } }),
+                    })
+                    if (regRes.ok) {
+                      const rd = await regRes.json()
+                      const upUrl = rd.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl
+                      const asset = rd.value?.asset
+                      if (upUrl && asset) {
+                        const ib = await fetch(imgWait).then(r => r.arrayBuffer())
+                        await fetch(upUrl, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + liToken }, body: ib })
+                        shareContent = { shareCommentary: { text: liText }, shareMediaCategory: 'IMAGE', media: [{ status: 'READY', media: asset }] }
+                      }
+                    }
+                  } catch (ie) { console.error('LI img:', ie) }
+                }
                 const liRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
                   method: 'POST',
-                  headers: { 'Authorization': `Bearer ${liToken}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
-                  body: JSON.stringify({
-                    author: liUrn, lifecycleState: 'PUBLISHED',
-                    specificContent: { 'com.linkedin.ugc.ShareContent': { shareCommentary: { text: liText }, shareMediaCategory: 'NONE' } },
-                    visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
-                  }),
+                  headers: { 'Authorization': 'Bearer ' + liToken, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+                  body: JSON.stringify({ author: liUrn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': shareContent }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }),
                 })
                 if (liRes.ok) {
-                  const shareUrn = liRes.headers.get('x-restli-id') || ''
-                  const liUrl = shareUrn ? `https://www.linkedin.com/feed/update/${shareUrn}` : ''
-                  results.push(`✅ <a href="${liUrl}">LinkedIn</a>`)
-                } else {
-                  results.push(`❌ LinkedIn: ${liRes.status}`)
-                }
+                  const su = liRes.headers.get('x-restli-id') || ''
+                  results.push('✅ <a href="https://www.linkedin.com/feed/update/' + su + '">LinkedIn</a>')
+                } else { results.push('❌ LinkedIn: ' + liRes.status) }
               } else { results.push('⏭️ LinkedIn: no credentials') }
-            } catch (e: unknown) { results.push(`❌ LinkedIn: ${e instanceof Error ? e.message.slice(0, 40) : 'error'}`) }
+            } catch (e: unknown) { results.push('❌ LinkedIn: ' + (e instanceof Error ? e.message.slice(0, 40) : 'error')) }
 
-            // Facebook — direct API
+            // Facebook
             try {
               const fbToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') || await getKey('FACEBOOK_PAGE_ACCESS_TOKEN')
               const fbPage = Deno.env.get('FACEBOOK_PAGE_ID') || await getKey('FACEBOOK_PAGE_ID')
               if (fbToken && fbPage) {
-                const fbRes = await fetch(`https://graph.facebook.com/v18.0/${fbPage}/feed`, {
+                const fbRes = await fetch('https://graph.facebook.com/v18.0/' + fbPage + '/feed', {
                   method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ message: `${blogTitle}\n\n${blogUrl}`, access_token: fbToken }),
+                  body: JSON.stringify({ message: fbText, link: blogUrlSocial, access_token: fbToken }),
                 })
                 if (fbRes.ok) {
-                  const fbData = await fbRes.json()
-                  const fbPostUrl = fbData.id ? `https://facebook.com/${fbData.id}` : ''
-                  results.push(`✅ <a href="${fbPostUrl}">Facebook</a>`)
-                } else {
-                  results.push(`❌ Facebook: ${fbRes.status}`)
-                }
+                  const fd = await fbRes.json()
+                  results.push('✅ <a href="https://facebook.com/' + fd.id + '">Facebook</a>')
+                } else { results.push('❌ Facebook: ' + fbRes.status) }
               } else { results.push('⏭️ Facebook: no credentials') }
-            } catch (e: unknown) { results.push(`❌ Facebook: ${e instanceof Error ? e.message.slice(0, 40) : 'error'}`) }
+            } catch (e: unknown) { results.push('❌ Facebook: ' + (e instanceof Error ? e.message.slice(0, 40) : 'error')) }
 
-            results.push('⏭️ Instagram: після зображення')
             return results
           })()
 
