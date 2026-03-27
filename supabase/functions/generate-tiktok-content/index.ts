@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
-import {
 import { callLLM } from '../_shared/gemini-llm.ts'
+import {
   getContent,
   buildArticleUrl,
   createSocialPost,
@@ -217,7 +217,6 @@ Language: ${languageNames[language]}
 
 Write the caption in ${languageNames[language]}. Just the caption text, no hashtags.`
 
-    const response = await fetch(
       const caption = await callLLM(
         'You are a social media expert who writes viral TikTok captions. Be concise and engaging.',
         prompt,
