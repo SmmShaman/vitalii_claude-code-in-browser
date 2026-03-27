@@ -323,35 +323,29 @@ serve(async (req) => {
 
           const socialPromise = (async () => {
             const results: string[] = []
-            // Post to LinkedIn EN
-            try {
-              const res = await fetch(`${baseUrl}/functions/v1/post-to-linkedin`, {
-                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
-              })
-              const d = await res.json()
-              results.push(d.success || d.postUrl ? '✅ LinkedIn' : `❌ LinkedIn: ${(d.error || '').slice(0, 50)}`)
-            } catch { results.push('❌ LinkedIn') }
-
-            // Post to Facebook EN
-            try {
-              const res = await fetch(`${baseUrl}/functions/v1/post-to-facebook`, {
-                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
-              })
-              const d = await res.json()
-              results.push(d.success || d.postUrl ? '✅ Facebook' : `❌ Facebook: ${(d.error || '').slice(0, 50)}`)
-            } catch { results.push('❌ Facebook') }
-
-            // Post to Instagram EN
-            try {
-              const res = await fetch(`${baseUrl}/functions/v1/post-to-instagram`, {
-                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
-              })
-              const d = await res.json()
-              results.push(d.success || d.postUrl ? '✅ Instagram' : `❌ Instagram: ${(d.error || '').slice(0, 50)}`)
-            } catch { results.push('❌ Instagram') }
+            for (const platform of ['post-to-linkedin', 'post-to-facebook', 'post-to-instagram']) {
+              const pName = platform.replace('post-to-', '')
+              try {
+                console.log(`📢 Calling ${platform} for blog ${bpId}...`)
+                const res = await fetch(`${baseUrl}/functions/v1/${platform}`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
+                })
+                const rawText = await res.text()
+                console.log(`📢 ${pName} response (${res.status}): ${rawText.slice(0, 200)}`)
+                try {
+                  const d = JSON.parse(rawText)
+                  results.push(d.success || d.postUrl ? `✅ ${pName}` : `❌ ${pName}: ${(d.error || d.message || rawText).slice(0, 60)}`)
+                } catch {
+                  results.push(`❌ ${pName}: HTTP ${res.status}`)
+                }
+              } catch (e: unknown) {
+                const errMsg = e instanceof Error ? e.message : String(e)
+                console.error(`❌ ${pName} call failed:`, errMsg)
+                results.push(`❌ ${pName}: ${errMsg.slice(0, 60)}`)
+              }
+            }
 
             return results
           })()
