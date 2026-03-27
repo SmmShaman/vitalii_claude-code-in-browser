@@ -296,57 +296,88 @@ serve(async (req) => {
             body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: '✅ <b>Блог опубліковано!</b>\n\n🖼️ Генерую зображення + публікую в соцмережі...', parse_mode: 'HTML' }),
           })
 
-          // ── PARALLEL: image generation + social posting ──
+          // ── PARALLEL: image (Gemini direct) + social (direct API) ──
+          const getKey = async (name: string) => {
+            const { data: r } = await supa.from('api_settings').select('key_value').eq('key_name', name).single()
+            return r?.key_value || Deno.env.get(name) || ''
+          }
+
           const imagePromise = (async () => {
             try {
-              // Step 1: Generate image prompt via generate-image-prompt
-              const promptRes = await fetch(`${baseUrl}/functions/v1/generate-image-prompt`, {
-                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newsId: bpId, title: post?.title_en || '', content: (post?.content_en || '').slice(0, 500), mode: 'full' }),
-              })
-              const promptData = await promptRes.json()
-              if (!promptData.prompt) return null
-
-              // Step 2: Generate image via process-image (Nano Banana Pro)
-              const imgRes = await fetch(`${baseUrl}/functions/v1/process-image`, {
-                method: 'POST', headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newsId: bpId, imageUrl: 'generate', prompt: promptData.prompt, generateFromPrompt: true }),
-              })
+              const gKey = await getKey('GOOGLE_API_KEY')
+              if (!gKey) return null
+              console.log('🖼️ Generating blog cover via Gemini...')
+              const imgRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${gKey}`,
+                { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: `Professional blog cover image. Topic: ${post?.title_en || ''}. ${(post?.content_en || '').slice(0, 200)}. Dark background, modern tech aesthetic, no text, no logos. 16:9 landscape.` }] }],
+                    generationConfig: { responseModalities: ['image', 'text'] },
+                  }),
+                },
+              )
+              if (!imgRes.ok) { console.error('Gemini image:', imgRes.status); return null }
               const imgData = await imgRes.json()
-              if (imgData.success && imgData.processedImageUrl) {
-                await supa.from('blog_posts').update({ image_url: imgData.processedImageUrl }).eq('id', bpId)
-                return imgData.processedImageUrl
+              for (const part of imgData?.candidates?.[0]?.content?.parts || []) {
+                if (part.inlineData) {
+                  // Chunk base64 decode to avoid stack overflow
+                  const b64 = part.inlineData.data as string
+                  const raw = atob(b64)
+                  const arr = new Uint8Array(raw.length)
+                  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
+                  const path = `blog-covers/voice-${Date.now()}.png`
+                  const { error: upErr } = await supa.storage.from('news-images').upload(path, arr, { contentType: 'image/png', upsert: true })
+                  if (!upErr) {
+                    const url = `${baseUrl}/storage/v1/object/public/news-images/${path}`
+                    await supa.from('blog_posts').update({ image_url: url }).eq('id', bpId)
+                    console.log('🖼️ Image saved:', url)
+                    return url
+                  } else { console.error('Upload err:', upErr) }
+                }
               }
               return null
-            } catch (e) { console.error('Image gen failed:', e); return null }
+            } catch (e) { console.error('Image failed:', e); return null }
           })()
 
           const socialPromise = (async () => {
             const results: string[] = []
-            for (const platform of ['post-to-linkedin', 'post-to-facebook', 'post-to-instagram']) {
-              const pName = platform.replace('post-to-', '')
-              try {
-                console.log(`📢 Calling ${platform} for blog ${bpId}...`)
-                const res = await fetch(`${baseUrl}/functions/v1/${platform}`, {
-                  method: 'POST',
-                  headers: { 'Authorization': `Bearer ${srvKey}`, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ blogPostId: bpId, language: 'en', contentType: 'blog' }),
-                })
-                const rawText = await res.text()
-                console.log(`📢 ${pName} response (${res.status}): ${rawText.slice(0, 200)}`)
-                try {
-                  const d = JSON.parse(rawText)
-                  results.push(d.success || d.postUrl ? `✅ ${pName}` : `❌ ${pName}: ${(d.error || d.message || rawText).slice(0, 60)}`)
-                } catch {
-                  results.push(`❌ ${pName}: HTTP ${res.status}`)
-                }
-              } catch (e: unknown) {
-                const errMsg = e instanceof Error ? e.message : String(e)
-                console.error(`❌ ${pName} call failed:`, errMsg)
-                results.push(`❌ ${pName}: ${errMsg.slice(0, 60)}`)
-              }
-            }
+            const blogTitle = post?.title_en || ''
+            const blogUrl = `https://vitalii.no/blog/${post?.slug_en || ''}`
+            const tags = (post?.tags || []).map((t: string) => `#${t.replace(/\s/g, '')}`).join(' ')
 
+            // LinkedIn — direct API
+            try {
+              const liToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || await getKey('LINKEDIN_ACCESS_TOKEN')
+              const liUrn = Deno.env.get('LINKEDIN_PERSON_URN') || await getKey('LINKEDIN_PERSON_URN')
+              if (liToken && liUrn) {
+                const liText = `${blogTitle}\n\n${tags}\n\n${blogUrl}`
+                const liRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${liToken}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+                  body: JSON.stringify({
+                    author: liUrn, lifecycleState: 'PUBLISHED',
+                    specificContent: { 'com.linkedin.ugc.ShareContent': { shareCommentary: { text: liText }, shareMediaCategory: 'NONE' } },
+                    visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+                  }),
+                })
+                results.push(liRes.ok ? '✅ LinkedIn' : `❌ LinkedIn: ${liRes.status}`)
+              } else { results.push('⏭️ LinkedIn: no credentials') }
+            } catch (e: unknown) { results.push(`❌ LinkedIn: ${e instanceof Error ? e.message.slice(0, 40) : 'error'}`) }
+
+            // Facebook — direct API
+            try {
+              const fbToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') || await getKey('FACEBOOK_PAGE_ACCESS_TOKEN')
+              const fbPage = Deno.env.get('FACEBOOK_PAGE_ID') || await getKey('FACEBOOK_PAGE_ID')
+              if (fbToken && fbPage) {
+                const fbRes = await fetch(`https://graph.facebook.com/v18.0/${fbPage}/feed`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ message: `${blogTitle}\n\n${blogUrl}`, access_token: fbToken }),
+                })
+                results.push(fbRes.ok ? '✅ Facebook' : `❌ Facebook: ${fbRes.status}`)
+              } else { results.push('⏭️ Facebook: no credentials') }
+            } catch (e: unknown) { results.push(`❌ Facebook: ${e instanceof Error ? e.message.slice(0, 40) : 'error'}`) }
+
+            results.push('⏭️ Instagram: після зображення')
             return results
           })()
 
