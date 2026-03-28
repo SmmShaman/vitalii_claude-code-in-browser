@@ -552,7 +552,7 @@ const NewsSectionComponent = ({
                     <div className="flex-1 flex flex-col justify-between min-w-0">
                       {/* Title */}
                       <div>
-                        <h4 className="font-bold text-sm mb-1.5 line-clamp-2 group-hover:text-[#88B04B] transition-colors leading-tight">
+                        <h4 className="font-bold text-sm mb-1.5 line-clamp-2 group-hover:text-[#EF4444] transition-colors leading-tight">
                           {content.title}
                         </h4>
 
