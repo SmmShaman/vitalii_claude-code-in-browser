@@ -1,0 +1,9 @@
+-- Add missing projects to feature_projects for discover-features workflow
+INSERT INTO feature_projects (id, name_en, name_no, name_ua, description_en, description_no, description_ua, repo_url) VALUES
+('calendar_bot', 'Calendar Telegram Bot', 'Kalender Telegram-Bot', 'Календар Telegram Бот', 'Smart calendar bot with Spond integration and AI scheduling', 'Smart kalenderbot med Spond-integrasjon og AI-planlegging', 'Розумний бот-календар з інтеграцією Spond та AI-плануванням', 'https://github.com/SmmShaman/berbeha-calendar-telegram-bot'),
+('eyeplus', 'Eye+ Camera Cloud', 'Eye+ Kamerasky', 'Eye+ Camera Cloud', 'Cloud-based camera monitoring and management platform', 'Skybasert kameraovervåking og administrasjonsplattform', 'Хмарна платформа моніторингу та управління камерами', 'https://github.com/SmmShaman/eyeplus-camera-cloud'),
+('lingleverika', 'Lingleverika', 'Lingleverika', 'Lingleverika', 'AI language learning platform for immigrants in Norway', 'AI-språklæringsplattform for innvandrere i Norge', 'AI-платформа вивчення мов для іммігрантів у Норвегії', 'https://github.com/SmmShaman/Lingleverika'),
+('ghost_interviewer', 'Ghost Interviewer AI', 'Ghost Interviewer AI', 'Ghost Interviewer AI', 'AI interview preparation and coaching platform', 'AI-intervjuforberedelse og coaching-plattform', 'AI-платформа підготовки до співбесід', 'https://github.com/SmmShaman/Ghost-Interviewer-AI'),
+('youtube_manager', 'YouTube Channel Manager', 'YouTube Kanalbehandler', 'YouTube Channel Manager', 'Automated YouTube channel management and content publishing', 'Automatisert YouTube-kanaladministrasjon og innholdspublisering', 'Автоматизоване управління YouTube-каналом та публікація контенту', 'https://github.com/SmmShaman/youtube-channel-manager'),
+('project_23mai', '23mai', '23mai', '23mai', 'Community event platform', 'Plattform for fellesskapsarrangementer', 'Платформа громадських подій', 'https://github.com/SmmShaman/23mai')
+ON CONFLICT (id) DO NOTHING;
