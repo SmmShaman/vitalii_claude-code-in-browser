@@ -12,6 +12,7 @@ import { FeaturesPreview } from '@/components/ui/FeaturesPreview';
 import { FeatureModal } from '@/components/ui/FeatureModal';
 import type { FeatureCategory } from '@/data/features';
 import { useFeatures } from '@/hooks/useFeatures';
+import { useProjects } from '@/hooks/useProjects';
 import { AboutAnimation } from '@/components/ui/AboutAnimation';
 import { ServicesDetail } from '@/components/ui/ServicesDetail';
 import { NewsSection } from '@/components/sections/NewsSection';
@@ -111,6 +112,7 @@ export const oppositeSections: { [key: string]: string } = {
 export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoGridProps = {}) => {
   const { t, currentLanguage } = useTranslations();
   const allFeatures = useFeatures();
+  const allProjects = useProjects();
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
@@ -1039,6 +1041,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                             <div className="w-full h-full overflow-hidden">
                               <FeaturesPreview
                                 features={allFeatures}
+                                projects={allProjects}
                                 backgroundText={t('features_title') as string}
                                 currentLanguage={currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'}
                                 onCategoryClick={handleFeatureCategoryClick}
@@ -1110,6 +1113,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
         open={isFeaturesModalOpen}
         onOpenChange={setIsFeaturesModalOpen}
         features={allFeatures}
+        projects={allProjects}
         initialCategory={selectedFeatureCategory}
         initialFeatureId={selectedFeatureId}
         currentLanguage={currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'}

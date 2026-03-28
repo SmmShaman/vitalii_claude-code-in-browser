@@ -5,6 +5,21 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./contexts/**/*.{js,ts,jsx,tsx,mdx}",
+    "./data/**/*.{js,ts}",
+  ],
+  safelist: [
+    // Dynamic project badge colors (stored in DB, must survive purge)
+    'bg-emerald-500/20', 'text-emerald-400',
+    'bg-amber-500/20', 'text-amber-400',
+    'bg-blue-500/20', 'text-blue-400',
+    'bg-cyan-500/20', 'text-cyan-400',
+    'bg-purple-500/20', 'text-purple-400',
+    'bg-rose-500/20', 'text-rose-400',
+    'bg-red-500/20', 'text-red-400',
+    'bg-yellow-500/20', 'text-yellow-400',
+    'bg-indigo-500/20', 'text-indigo-400',
+    'bg-teal-500/20', 'text-teal-400',
+    'bg-gray-500/20', 'text-gray-400',
   ],
   theme: {
     extend: {

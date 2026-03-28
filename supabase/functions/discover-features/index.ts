@@ -15,9 +15,23 @@ const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-03-23-v1-discover-features'
+const VERSION = '2026-03-28-v2-auto-register'
 const DEPLOYMENT = 'Jobbot-gpt-4.1-mini'
 const API_VERSION = '2024-02-15-preview'
+
+// Color pool for auto-registered projects (cycle through these)
+const COLOR_POOL = [
+  { bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
+  { bg: 'bg-amber-500/20', text: 'text-amber-400' },
+  { bg: 'bg-blue-500/20', text: 'text-blue-400' },
+  { bg: 'bg-cyan-500/20', text: 'text-cyan-400' },
+  { bg: 'bg-purple-500/20', text: 'text-purple-400' },
+  { bg: 'bg-rose-500/20', text: 'text-rose-400' },
+  { bg: 'bg-red-500/20', text: 'text-red-400' },
+  { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
+  { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
+  { bg: 'bg-teal-500/20', text: 'text-teal-400' },
+]
 
 function json(data: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -85,6 +99,50 @@ serve(async (req) => {
 
     if (!commits || commits.trim().length < 10) {
       return json({ ok: false, error: 'Missing or empty commits data' }, 400)
+    }
+
+    // Auto-register project if it doesn't exist in feature_projects
+    const { data: existingProject } = await supabase
+      .from('feature_projects')
+      .select('id')
+      .eq('id', project_id)
+      .single()
+
+    if (!existingProject) {
+      // Derive display name from repo name: "my-cool-repo" → "My Cool Repo"
+      const shortName = repo_name.split('/').pop() || project_id
+      const displayName = shortName
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (c: string) => c.toUpperCase())
+
+      // Pick color from pool based on existing project count
+      const { count: projectCount } = await supabase
+        .from('feature_projects')
+        .select('id', { count: 'exact', head: true })
+      const colorIdx = (projectCount || 0) % COLOR_POOL.length
+      const color = COLOR_POOL[colorIdx]
+
+      const { error: regErr } = await supabase.from('feature_projects').insert({
+        id: project_id,
+        name_en: displayName,
+        name_no: displayName,
+        name_ua: displayName,
+        description_en: `Auto-discovered from ${repo_name}`,
+        description_no: `Auto-oppdaget fra ${repo_name}`,
+        description_ua: `Автовиявлено з ${repo_name}`,
+        repo_url: `https://github.com/${repo_name}`,
+        badge: displayName.charAt(0).toUpperCase(),
+        color_bg: color.bg,
+        color_text: color.text,
+        is_active: true,
+      })
+
+      if (regErr) {
+        console.error(`Auto-register project failed:`, regErr)
+      } else {
+        console.log(`Auto-registered new project: ${project_id} (${displayName})`)
+        await sendTelegram(`🆕 <b>New Project Registered</b>\n\n📦 ${displayName}\n🔗 ${repo_name}\n🏷 project_id: ${project_id}`)
+      }
     }
 
     // Extract commit hashes from the text (lines starting with hash)

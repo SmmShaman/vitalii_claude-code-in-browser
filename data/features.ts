@@ -8,7 +8,7 @@ export type FeatureCategory =
   | 'devops_infra'
   | 'other';
 
-export type ProjectId = 'portfolio' | 'jobbot' | 'eyeplus' | 'calendar_bot' | 'lingleverika' | 'ghost_interviewer' | 'youtube_manager' | 'elvarika';
+export type ProjectId = string;
 
 export interface Feature {
   id: string;
@@ -206,8 +206,9 @@ export function getCategoryInfo(id: FeatureCategory): CategoryInfo {
   return categories.find((c) => c.id === id) || categories[categories.length - 1];
 }
 
-export function getProjectInfo(id: ProjectId): ProjectInfo {
-  return projects.find((p) => p.id === id) || projects[0];
+export function getProjectInfo(id: ProjectId, dynamicProjects?: ProjectInfo[]): ProjectInfo {
+  const list = dynamicProjects || projects;
+  return list.find((p) => p.id === id) || list[0];
 }
 
 export function getFeaturesByCategory(features: Feature[], category: FeatureCategory): Feature[] {

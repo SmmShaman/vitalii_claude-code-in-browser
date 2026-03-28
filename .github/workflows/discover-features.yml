@@ -11,29 +11,72 @@ on:
         default: '1 day ago'
 
 jobs:
+  # Job 1: Discover all non-archived, non-fork repos dynamically
+  discover-repos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      repos: ${{ steps.list.outputs.repos }}
+    steps:
+      - name: List all repos and build matrix
+        id: list
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # Legacy mapping: repo name → project_id (preserve existing IDs)
+          declare -A LEGACY_MAP=(
+            ["vitalii_claude-code-in-browser"]="portfolio"
+            ["jobbot-norway"]="jobbot"
+            ["eyeplus-camera-cloud"]="eyeplus"
+            ["calendar-bot"]="calendar_bot"
+            ["lingva-ai"]="lingleverika"
+            ["Ghost-Interviewer-AI"]="ghost_interviewer"
+            ["youtube-channel-manager"]="youtube_manager"
+            ["elvarika"]="elvarika"
+          )
+
+          # Fetch all repos, filter archived and forks
+          REPOS_JSON=$(gh repo list SmmShaman --json name,isArchived,isFork --limit 100 2>/dev/null || echo "[]")
+
+          MATRIX="["
+          FIRST=true
+          while IFS= read -r REPO_NAME; do
+            [ -z "$REPO_NAME" ] && continue
+
+            # Derive project_id: use legacy map or auto-derive
+            if [ -n "${LEGACY_MAP[$REPO_NAME]}" ]; then
+              PROJECT_ID="${LEGACY_MAP[$REPO_NAME]}"
+            else
+              # Auto-derive: lowercase, replace hyphens with underscores
+              PROJECT_ID=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr '-' '_')
+            fi
+
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              MATRIX+=","
+            fi
+            MATRIX+="{\"repo\":\"SmmShaman/$REPO_NAME\",\"project_id\":\"$PROJECT_ID\"}"
+
+          done < <(echo "$REPOS_JSON" | jq -r '.[] | select(.isArchived == false and .isFork == false) | .name')
+
+          MATRIX+="]"
+          echo "repos=$MATRIX" >> $GITHUB_OUTPUT
+
+          COUNT=$(echo "$MATRIX" | jq length)
+          echo "Found $COUNT active repos"
+
+  # Job 2: Analyze commits for each discovered repo
   discover:
+    needs: discover-repos
+    if: needs.discover-repos.outputs.repos != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
-        include:
-          - repo: SmmShaman/vitalii_claude-code-in-browser
-            project_id: portfolio
-          - repo: SmmShaman/jobbot-norway
-            project_id: jobbot
-          - repo: SmmShaman/eyeplus-camera-cloud
-            project_id: eyeplus
-          - repo: SmmShaman/calendar-bot
-            project_id: calendar_bot
-          - repo: SmmShaman/lingva-ai
-            project_id: lingleverika
-          - repo: SmmShaman/Ghost-Interviewer-AI
-            project_id: ghost_interviewer
-          - repo: SmmShaman/youtube-channel-manager
-            project_id: youtube_manager
-          - repo: SmmShaman/elvarika
-            project_id: elvarika
+        include: ${{ fromJSON(needs.discover-repos.outputs.repos) }}
     steps:
       - name: Checkout ${{ matrix.repo }}
         uses: actions/checkout@v4

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Brain, Video, Bot, Palette, Server, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
-import type { Feature, FeatureCategory } from '@/data/features';
+import type { Feature, FeatureCategory, ProjectInfo } from '@/data/features';
 import { categories, getCategoryInfo, getProjectInfo } from '@/data/features';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -12,6 +12,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 interface FeaturesPreviewProps {
   features: Feature[];
+  projects?: ProjectInfo[];
   backgroundText: string;
   currentLanguage: 'en' | 'no' | 'ua';
   onCategoryClick: (category: FeatureCategory) => void;
@@ -29,6 +30,7 @@ const shortLabels: Record<FeatureCategory, { en: string; no: string; ua: string 
 
 export const FeaturesPreview = ({
   features,
+  projects: dynamicProjects,
   currentLanguage,
   onCategoryClick,
   onFeatureClick,
@@ -65,7 +67,7 @@ export const FeaturesPreview = ({
                 {/* Row 1: badge + title */}
                 <div className="flex items-center gap-1.5">
                   {(() => {
-                    const proj = getProjectInfo(feature.projectId);
+                    const proj = getProjectInfo(feature.projectId, dynamicProjects);
                     return (
                       <span className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${proj.color.bg} ${proj.color.text}`}>
                         {proj.badge}

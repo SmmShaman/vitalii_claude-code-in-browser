@@ -4,8 +4,8 @@ import React, { useState, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, ChevronLeft, ChevronRight, Brain, Video, Bot, Palette, Server, Layers, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Feature, FeatureCategory, ProjectId } from '@/data/features';
-import { categories, getCategoryInfo, getProjectInfo, projects } from '@/data/features';
+import type { Feature, FeatureCategory, ProjectId, ProjectInfo } from '@/data/features';
+import { categories, getCategoryInfo, getProjectInfo, projects as staticProjects } from '@/data/features';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Brain, Video, Bot, Palette, Server, Layers,
@@ -44,6 +44,7 @@ interface FeatureModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   features: Feature[];
+  projects?: ProjectInfo[];
   initialCategory?: FeatureCategory;
   initialFeatureId?: string;
   currentLanguage: 'en' | 'no' | 'ua';
@@ -53,10 +54,12 @@ export const FeatureModal = ({
   open,
   onOpenChange,
   features,
+  projects: dynamicProjects,
   initialCategory,
   initialFeatureId,
   currentLanguage,
 }: FeatureModalProps) => {
+  const projectList = dynamicProjects || staticProjects;
   const lang = currentLanguage;
   const [activeCategory, setActiveCategory] = useState<FeatureCategory>(initialCategory || 'ai_automation');
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
@@ -234,7 +237,7 @@ export const FeatureModal = ({
 
             {/* Project Filter */}
             <div className="px-4 sm:px-6 pt-3 flex flex-wrap gap-2">
-              {(['all' as const, ...projects.filter(p => features.some(f => f.projectId === p.id)).map(p => p.id)]).map((filter) => (
+              {(['all' as const, ...projectList.filter(p => features.some(f => f.projectId === p.id)).map(p => p.id)]).map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setProjectFilter(filter)}
@@ -244,7 +247,7 @@ export const FeatureModal = ({
                       : 'bg-white/5 text-white/50 hover:bg-white/10'
                   }`}
                 >
-                  {filter === 'all' ? t.allProjects : getProjectInfo(filter).name[lang]}
+                  {filter === 'all' ? t.allProjects : getProjectInfo(filter, projectList).name[lang]}
                 </button>
               ))}
             </div>
@@ -255,7 +258,7 @@ export const FeatureModal = ({
                 <AnimatePresence mode="popLayout">
                   {filteredFeatures.map((feature, index) => {
                     const catInfo = getCategoryInfo(feature.category);
-                    const project = getProjectInfo(feature.projectId);
+                    const project = getProjectInfo(feature.projectId, projectList);
                     return (
                       <motion.div
                         key={feature.id}
@@ -329,7 +332,7 @@ export const FeatureModal = ({
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-gradient-to-br from-[#1A1730] to-[#2A2545] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-[60] overflow-hidden">
             {selectedFeature && (() => {
               const catInfo = getCategoryInfo(selectedFeature.category);
-              const project = getProjectInfo(selectedFeature.projectId);
+              const project = getProjectInfo(selectedFeature.projectId, projectList);
               const Icon = iconMap[catInfo.icon];
               const currentIdx = categoryFeatures.findIndex((f) => f.id === selectedFeature.id);
 
