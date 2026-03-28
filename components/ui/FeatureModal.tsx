@@ -5,7 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X, ChevronLeft, ChevronRight, Brain, Video, Bot, Palette, Server, Layers, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Feature, FeatureCategory, ProjectId } from '@/data/features';
-import { categories, getCategoryInfo, getProjectInfo } from '@/data/features';
+import { categories, getCategoryInfo, getProjectInfo, projects } from '@/data/features';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Brain, Video, Bot, Palette, Server, Layers,
@@ -233,8 +233,8 @@ export const FeatureModal = ({
             </div>
 
             {/* Project Filter */}
-            <div className="px-4 sm:px-6 pt-3 flex gap-2">
-              {(['all', 'portfolio', 'jobbot'] as const).map((filter) => (
+            <div className="px-4 sm:px-6 pt-3 flex flex-wrap gap-2">
+              {(['all' as const, ...projects.filter(p => features.some(f => f.projectId === p.id)).map(p => p.id)]).map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setProjectFilter(filter)}
@@ -269,11 +269,7 @@ export const FeatureModal = ({
                       >
                         {/* Project badge */}
                         <div className="flex items-center justify-between mb-2">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                            feature.projectId === 'portfolio'
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-amber-500/20 text-amber-400'
-                          }`}>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${project.color.bg} ${project.color.text}`}>
                             {project.name[lang]}
                           </span>
                           <span className="text-[10px] text-white/30">{feature.id.toUpperCase()}</span>
@@ -350,11 +346,7 @@ export const FeatureModal = ({
                           {selectedFeature.title[lang]}
                         </Dialog.Title>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            selectedFeature.projectId === 'portfolio'
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-amber-500/20 text-amber-400'
-                          }`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${project.color.bg} ${project.color.text}`}>
                             {project.name[lang]}
                           </span>
                           <span className="text-xs text-white/30">

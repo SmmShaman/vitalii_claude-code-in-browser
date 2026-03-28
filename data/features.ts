@@ -35,6 +35,8 @@ export interface ProjectInfo {
   name: { en: string; no: string; ua: string };
   description: { en: string; no: string; ua: string };
   url?: string;
+  badge: string;
+  color: { bg: string; text: string };
 }
 
 export const categories: CategoryInfo[] = [
@@ -90,6 +92,8 @@ export const projects: ProjectInfo[] = [
       ua: 'AI-платформа багатомовного контенту з 48 продакшн-функціями',
     },
     url: 'https://vitalii.no',
+    badge: 'P',
+    color: { bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
   },
   {
     id: 'jobbot',
@@ -103,6 +107,8 @@ export const projects: ProjectInfo[] = [
       no: 'Intelligent automatiseringsplattform for jobbsøk med 42 funksjoner',
       ua: 'AI-платформа автоматизації пошуку роботи з 42 функціями',
     },
+    badge: 'J',
+    color: { bg: 'bg-amber-500/20', text: 'text-amber-400' },
   },
   {
     id: 'calendar_bot',
@@ -116,6 +122,8 @@ export const projects: ProjectInfo[] = [
       no: 'Smart kalenderbot med Spond-integrasjon og AI-planlegging',
       ua: 'Розумний бот-календар з інтеграцією Spond та AI-плануванням',
     },
+    badge: 'C',
+    color: { bg: 'bg-blue-500/20', text: 'text-blue-400' },
   },
   {
     id: 'eyeplus',
@@ -129,6 +137,8 @@ export const projects: ProjectInfo[] = [
       no: 'Skybasert kameraovervåking og administrasjonsplattform',
       ua: 'Хмарна платформа моніторингу та управління камерами',
     },
+    badge: 'E',
+    color: { bg: 'bg-cyan-500/20', text: 'text-cyan-400' },
   },
   {
     id: 'lingleverika',
@@ -142,6 +152,8 @@ export const projects: ProjectInfo[] = [
       no: 'AI-språklæringsplattform for innvandrere i Norge',
       ua: 'AI-платформа вивчення мов для іммігрантів у Норвегії',
     },
+    badge: 'L',
+    color: { bg: 'bg-purple-500/20', text: 'text-purple-400' },
   },
   {
     id: 'ghost_interviewer',
@@ -155,6 +167,8 @@ export const projects: ProjectInfo[] = [
       no: 'AI-intervjuforberedelse og coaching-plattform',
       ua: 'AI-платформа підготовки до співбесід',
     },
+    badge: 'G',
+    color: { bg: 'bg-rose-500/20', text: 'text-rose-400' },
   },
   {
     id: 'youtube_manager',
@@ -168,6 +182,8 @@ export const projects: ProjectInfo[] = [
       no: 'Automatisert YouTube-kanaladministrasjon og innholdspublisering',
       ua: 'Автоматизоване управління YouTube-каналом та публікація контенту',
     },
+    badge: 'Y',
+    color: { bg: 'bg-red-500/20', text: 'text-red-400' },
   },
   {
     id: 'project_23mai',
@@ -181,6 +197,8 @@ export const projects: ProjectInfo[] = [
       no: 'Plattform for fellesskapsarrangementer',
       ua: 'Платформа громадських подій',
     },
+    badge: '23',
+    color: { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
   },
 ];
 

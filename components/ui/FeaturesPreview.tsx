@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Brain, Video, Bot, Palette, Server, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Feature, FeatureCategory } from '@/data/features';
-import { categories, getCategoryInfo } from '@/data/features';
+import { categories, getCategoryInfo, getProjectInfo } from '@/data/features';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Brain, Video, Bot, Palette, Server, Layers,
@@ -64,13 +64,14 @@ export const FeaturesPreview = ({
               >
                 {/* Row 1: badge + title */}
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${
-                    feature.projectId === 'portfolio'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-amber-500/20 text-amber-400'
-                  }`}>
-                    {feature.projectId === 'portfolio' ? 'P' : 'J'}
-                  </span>
+                  {(() => {
+                    const proj = getProjectInfo(feature.projectId);
+                    return (
+                      <span className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${proj.color.bg} ${proj.color.text}`}>
+                        {proj.badge}
+                      </span>
+                    );
+                  })()}
                   <p className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate group-hover:text-white">
                     {feature.title[lang]}
                   </p>
