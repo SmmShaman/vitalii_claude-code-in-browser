@@ -8,7 +8,7 @@ export type FeatureCategory =
   | 'devops_infra'
   | 'other';
 
-export type ProjectId = 'portfolio' | 'jobbot' | 'eyeplus' | 'calendar_bot' | 'lingleverika' | 'ghost_interviewer' | 'youtube_manager' | 'project_23mai';
+export type ProjectId = 'portfolio' | 'jobbot' | 'eyeplus' | 'calendar_bot' | 'lingleverika' | 'ghost_interviewer' | 'youtube_manager' | 'elvarika';
 
 export interface Feature {
   id: string;
@@ -143,14 +143,14 @@ export const projects: ProjectInfo[] = [
   {
     id: 'lingleverika',
     name: {
-      en: 'Lingleverika',
-      no: 'Lingleverika',
-      ua: 'Lingleverika',
+      en: 'Lingva AI',
+      no: 'Lingva AI',
+      ua: 'Lingva AI',
     },
     description: {
-      en: 'AI language learning platform for immigrants in Norway',
-      no: 'AI-språklæringsplattform for innvandrere i Norge',
-      ua: 'AI-платформа вивчення мов для іммігрантів у Норвегії',
+      en: 'AI-powered video translation and understanding platform',
+      no: 'AI-drevet videooversettelse og forståelsesplattform',
+      ua: 'AI-платформа перекладу та розуміння відео',
     },
     badge: 'L',
     color: { bg: 'bg-purple-500/20', text: 'text-purple-400' },
@@ -186,18 +186,18 @@ export const projects: ProjectInfo[] = [
     color: { bg: 'bg-red-500/20', text: 'text-red-400' },
   },
   {
-    id: 'project_23mai',
+    id: 'elvarika',
     name: {
-      en: '23mai',
-      no: '23mai',
-      ua: '23mai',
+      en: 'Elvarika',
+      no: 'Elvarika',
+      ua: 'Elvarika',
     },
     description: {
-      en: 'Community event platform',
-      no: 'Plattform for fellesskapsarrangementer',
-      ua: 'Платформа громадських подій',
+      en: 'AI language learning platform for immigrants in Norway',
+      no: 'AI-språklæringsplattform for innvandrere i Norge',
+      ua: 'AI-платформа вивчення мов для іммігрантів у Норвегії',
     },
-    badge: '23',
+    badge: 'E',
     color: { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
   },
 ];

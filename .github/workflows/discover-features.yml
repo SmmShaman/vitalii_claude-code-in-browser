@@ -20,20 +20,20 @@ jobs:
         include:
           - repo: SmmShaman/vitalii_claude-code-in-browser
             project_id: portfolio
-          - repo: SmmShaman/Jobbot-NO
+          - repo: SmmShaman/jobbot-norway
             project_id: jobbot
           - repo: SmmShaman/eyeplus-camera-cloud
             project_id: eyeplus
-          - repo: SmmShaman/berbeha-calendar-telegram-bot
+          - repo: SmmShaman/calendar-bot
             project_id: calendar_bot
-          - repo: SmmShaman/Lingleverika
+          - repo: SmmShaman/lingva-ai
             project_id: lingleverika
           - repo: SmmShaman/Ghost-Interviewer-AI
             project_id: ghost_interviewer
           - repo: SmmShaman/youtube-channel-manager
             project_id: youtube_manager
-          - repo: SmmShaman/23mai
-            project_id: project_23mai
+          - repo: SmmShaman/elvarika
+            project_id: elvarika
     steps:
       - name: Checkout ${{ matrix.repo }}
         uses: actions/checkout@v4
