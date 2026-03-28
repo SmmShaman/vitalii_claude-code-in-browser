@@ -8,7 +8,7 @@ export type FeatureCategory =
   | 'devops_infra'
   | 'other';
 
-export type ProjectId = 'portfolio' | 'jobbot';
+export type ProjectId = 'portfolio' | 'jobbot' | 'eyeplus' | 'calendar_bot' | 'lingleverika' | 'ghost_interviewer' | 'youtube_manager' | 'project_23mai';
 
 export interface Feature {
   id: string;
@@ -102,6 +102,84 @@ export const projects: ProjectInfo[] = [
       en: 'Intelligent job hunting automation platform with 42 features',
       no: 'Intelligent automatiseringsplattform for jobbsøk med 42 funksjoner',
       ua: 'AI-платформа автоматизації пошуку роботи з 42 функціями',
+    },
+  },
+  {
+    id: 'calendar_bot',
+    name: {
+      en: 'Calendar Telegram Bot',
+      no: 'Kalender Telegram-Bot',
+      ua: 'Календар Telegram Бот',
+    },
+    description: {
+      en: 'Smart calendar bot with Spond integration and AI scheduling',
+      no: 'Smart kalenderbot med Spond-integrasjon og AI-planlegging',
+      ua: 'Розумний бот-календар з інтеграцією Spond та AI-плануванням',
+    },
+  },
+  {
+    id: 'eyeplus',
+    name: {
+      en: 'Eye+ Camera Cloud',
+      no: 'Eye+ Kamerasky',
+      ua: 'Eye+ Camera Cloud',
+    },
+    description: {
+      en: 'Cloud-based camera monitoring and management platform',
+      no: 'Skybasert kameraovervåking og administrasjonsplattform',
+      ua: 'Хмарна платформа моніторингу та управління камерами',
+    },
+  },
+  {
+    id: 'lingleverika',
+    name: {
+      en: 'Lingleverika',
+      no: 'Lingleverika',
+      ua: 'Lingleverika',
+    },
+    description: {
+      en: 'AI language learning platform for immigrants in Norway',
+      no: 'AI-språklæringsplattform for innvandrere i Norge',
+      ua: 'AI-платформа вивчення мов для іммігрантів у Норвегії',
+    },
+  },
+  {
+    id: 'ghost_interviewer',
+    name: {
+      en: 'Ghost Interviewer AI',
+      no: 'Ghost Interviewer AI',
+      ua: 'Ghost Interviewer AI',
+    },
+    description: {
+      en: 'AI interview preparation and coaching platform',
+      no: 'AI-intervjuforberedelse og coaching-plattform',
+      ua: 'AI-платформа підготовки до співбесід',
+    },
+  },
+  {
+    id: 'youtube_manager',
+    name: {
+      en: 'YouTube Channel Manager',
+      no: 'YouTube Kanalbehandler',
+      ua: 'YouTube Channel Manager',
+    },
+    description: {
+      en: 'Automated YouTube channel management and content publishing',
+      no: 'Automatisert YouTube-kanaladministrasjon og innholdspublisering',
+      ua: 'Автоматизоване управління YouTube-каналом та публікація контенту',
+    },
+  },
+  {
+    id: 'project_23mai',
+    name: {
+      en: '23mai',
+      no: '23mai',
+      ua: '23mai',
+    },
+    description: {
+      en: 'Community event platform',
+      no: 'Plattform for fellesskapsarrangementer',
+      ua: 'Платформа громадських подій',
     },
   },
 ];
