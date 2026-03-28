@@ -91,7 +91,7 @@ serve(async (req) => {
     // Fetch articles
     const { data: articles, error: fetchError } = await supabase
       .from('news')
-      .select('id, original_title, title_en, rss_analysis, image_url, processed_image_url, source_id, original_url, rss_source_url')
+      .select('id, original_title, title_en, slug_en, rss_analysis, image_url, processed_image_url, source_id, original_url, rss_source_url')
       .eq('is_published', true)
       .gte('published_at', dayStart)
       .lte('published_at', dayEnd)
@@ -129,28 +129,62 @@ serve(async (req) => {
       console.log(`\n📰 ${i + 1}/${sorted.length}: ${title} (LI:${article.linkedinScore})`)
 
       const platformResults: string[] = []
+      const articleTitle = article.title_en || article.original_title || 'Untitled'
+      const articleSlug = (article as Record<string, unknown>).slug_en || ''
+      const articleUrl = articleSlug ? `https://vitalii.no/news/${articleSlug}` : ''
+      const imgUrl = article.processed_image_url || article.image_url || ''
 
-      for (const platform of PLATFORMS) {
-        // First ensure article is rewritten in the target language
-        if (platform === 'linkedin') {
-          // Process/rewrite if needed (telegram-webhook does this on-demand, we call process-news)
-          console.log(`  Publishing to ${platform} ${lang}...`)
-        }
+      // LinkedIn — direct API
+      try {
+        const liToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || ''
+        const liUrn = Deno.env.get('LINKEDIN_PERSON_URN') || ''
+        if (liToken && liUrn) {
+          const liText = `${articleTitle}\n\n${articleUrl}`
+          // deno-lint-ignore no-explicit-any
+          let shareContent: any = { shareCommentary: { text: liText }, shareMediaCategory: 'NONE' }
+          // Upload image if available
+          if (imgUrl) {
+            try {
+              const regRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+                method: 'POST', headers: { 'Authorization': `Bearer ${liToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ registerUploadRequest: { recipes: ['urn:li:digitalmediaRecipe:feedshare-image'], owner: liUrn, serviceRelationships: [{ relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }] } }),
+              })
+              if (regRes.ok) {
+                const rd = await regRes.json()
+                const upUrl = rd.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl
+                const asset = rd.value?.asset
+                if (upUrl && asset) {
+                  const ib = await fetch(imgUrl).then(r => r.arrayBuffer())
+                  await fetch(upUrl, { method: 'PUT', headers: { 'Authorization': `Bearer ${liToken}` }, body: ib })
+                  shareContent = { shareCommentary: { text: liText }, shareMediaCategory: 'IMAGE', media: [{ status: 'READY', media: asset }] }
+                }
+              }
+            } catch { /* image upload failed, post without */ }
+          }
+          const liRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${liToken}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+            body: JSON.stringify({ author: liUrn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': shareContent }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }),
+          })
+          platformResults.push(liRes.ok ? '✅ linkedin' : `❌ linkedin: ${liRes.status}`)
+        } else { platformResults.push('⏭️ linkedin') }
+      } catch (e: unknown) { platformResults.push(`❌ linkedin: ${e instanceof Error ? e.message.slice(0, 30) : 'err'}`) }
 
-        const result = await callEdgeFunction(`post-to-${platform}`, {
-          newsId,
-          language: lang,
-        })
+      // Facebook — direct API
+      try {
+        const fbToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') || ''
+        const fbPage = Deno.env.get('FACEBOOK_PAGE_ID') || ''
+        if (fbToken && fbPage) {
+          const fbRes = await fetch(`https://graph.facebook.com/v18.0/${fbPage}/feed`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: articleTitle, link: articleUrl || undefined, access_token: fbToken }),
+          })
+          platformResults.push(fbRes.ok ? '✅ facebook' : `❌ facebook: ${fbRes.status}`)
+        } else { platformResults.push('⏭️ facebook') }
+      } catch (e: unknown) { platformResults.push(`❌ facebook: ${e instanceof Error ? e.message.slice(0, 30) : 'err'}`) }
 
-        if (result.ok) {
-          const url = (result.data as Record<string, unknown>)?.postUrl || (result.data as Record<string, unknown>)?.url || ''
-          platformResults.push(`✅ ${platform}`)
-          console.log(`  ✅ ${platform}: ${url}`)
-        } else {
-          platformResults.push(`❌ ${platform}: ${(result.error || '').slice(0, 50)}`)
-          console.log(`  ❌ ${platform}: ${result.error}`)
-        }
-      }
+      // Instagram — skip (needs image + specific format)
+      platformResults.push('⏭️ instagram')
 
       allResults.push(`<b>${i + 1}. ${escapeHtml(title)}</b>\n⏰ ${slot} | LI:${article.linkedinScore}/10\n${platformResults.join(' | ')}`)
     }

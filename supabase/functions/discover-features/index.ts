@@ -37,22 +37,7 @@ async function sendTelegram(text: string) {
 }
 
 async function callAzureOpenAI(systemPrompt: string, userPrompt: string): Promise<string> {
-  const url = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${DEPLOYMENT}/chat/completions?api-version=${API_VERSION}`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-gemini-migrated': 'true' },
-    body: JSON.stringify({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.4,
-      max_tokens: 4000,
-    }),
-  })
-  if (!res.ok) throw new Error(`Azure OpenAI ${res.status}: ${await res.text()}`)
-  const data = await res.json()
-  return data.choices?.[0]?.message?.content || ''
+  return await callLLM(systemPrompt, userPrompt, { temperature: 0.4, maxTokens: 4000 })
 }
 
 const SYSTEM_PROMPT = `You are a product analyst. Your job is to identify significant NEW features from git commit data and generate mini-case studies in JSON format.
