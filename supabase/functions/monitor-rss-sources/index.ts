@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+const VERSION = '2026-03-29-v1-redeploy'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
