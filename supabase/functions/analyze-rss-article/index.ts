@@ -1,5 +1,5 @@
 import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
-const VERSION_STAMP = '2026-03-29-force-redeploy'
+const VERSION_STAMP = '2026-03-29-fix-gemini-migration'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import {
@@ -19,8 +19,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
@@ -326,13 +324,11 @@ serve(async (req) => {
       }
 
       // If no trigram match, try AI-based cross-language check
-      if (duplicateResults.length === 0 && AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY) {
+      if (duplicateResults.length === 0) {
         console.log('🤖 No trigram match, checking via AI...')
         const recentTitles = await fetchRecentTitles(supabase)
         if (recentTitles.length > 0) {
           const aiResult = await checkDuplicateByAI(
-            AZURE_OPENAI_ENDPOINT,
-            AZURE_OPENAI_API_KEY,
             articleTitle,
             requestData.description || '',
             recentTitles
@@ -419,20 +415,12 @@ serve(async (req) => {
       .replace('{content}', articleContent.text.substring(0, 4000)) // Limit content
       .replace('{url}', requestData.url)
 
-    // Call Azure OpenAI for analysis
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      throw new Error('Azure OpenAI not configured')
-    }
+    // Call Gemini via Azure-compatible shim
+    console.log('🤖 Calling Gemini for analysis...')
 
-    console.log('🤖 Calling Azure OpenAI for analysis...')
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    const aiResponse = await azureFetch(azureUrl, {
+    const aiResponse = await azureFetch('gemini', {
       method: 'POST',
-      headers: {
-        'api-key': AZURE_OPENAI_API_KEY,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [
           {

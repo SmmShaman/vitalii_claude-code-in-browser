@@ -6,6 +6,7 @@
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { escapeHtml } from './social-media-helpers.ts';
+import { azureFetch } from './azure-to-gemini-shim.ts';
 
 export const DUPLICATE_HELPERS_VERSION = "2026-02-15-v1";
 
@@ -99,18 +100,11 @@ export async function checkDuplicateByTitle(
 // ============================================================
 
 export async function checkDuplicateByAI(
-  azureEndpoint: string,
-  azureKey: string,
   newTitle: string,
   newSummary: string,
   recentArticles: { id: string; title: string }[],
   promptText?: string
 ): Promise<DuplicateResult | null> {
-  if (!azureEndpoint || !azureKey) {
-    console.warn('⚠️ Azure OpenAI not configured for AI dedup');
-    return null;
-  }
-
   if (recentArticles.length === 0) {
     return null;
   }
@@ -146,14 +140,9 @@ Rules:
     : defaultPrompt;
 
   try {
-    const azureUrl = `${azureEndpoint}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`;
-
-    const response = await fetch(azureUrl, {
+    const response = await azureFetch('gemini', {
       method: 'POST',
-      headers: {
-        'api-key': azureKey,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [
           { role: 'system', content: 'You are a news duplicate detector. Respond ONLY with valid JSON.' },
