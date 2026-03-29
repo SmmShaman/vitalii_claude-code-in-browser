@@ -1,5 +1,5 @@
 import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
-const VERSION_STAMP = '2026-03-29-fix-gemini-v2'
+const VERSION_STAMP = '2026-03-29-fix-gemini-v3-json-mode'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import {
