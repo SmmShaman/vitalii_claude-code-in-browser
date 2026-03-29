@@ -52,6 +52,10 @@ export async function azureFetch(
   const geminiData = await geminiRes.json()
   const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
+  if (!text) {
+    console.error('⚠️ Gemini returned empty text. Full response:', JSON.stringify(geminiData).substring(0, 500))
+  }
+
   // Return Azure-compatible response format
   const azureResponse = {
     choices: [{

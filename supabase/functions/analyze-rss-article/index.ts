@@ -1,5 +1,5 @@
 import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
-const VERSION_STAMP = '2026-03-29-fix-gemini-migration'
+const VERSION_STAMP = '2026-03-29-fix-gemini-v2'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import {
@@ -446,7 +446,7 @@ serve(async (req) => {
     const aiResult = await aiResponse.json()
     const aiContent = aiResult.choices[0]?.message?.content?.trim()
 
-    console.log('AI response received, parsing JSON...')
+    console.log('AI response received, content length:', aiContent?.length || 0, 'first 300 chars:', aiContent?.substring(0, 300))
 
     // Parse AI response
     let analysis: AIAnalysisResult
