@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+const VERSION_STAMP = '2026-03-29-force-redeploy'
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')!
 const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY') || ''

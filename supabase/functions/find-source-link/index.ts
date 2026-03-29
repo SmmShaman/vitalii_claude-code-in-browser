@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+const VERSION_STAMP = '2026-03-29-force-redeploy'
 import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {

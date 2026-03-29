@@ -1,4 +1,5 @@
 /**
+const VERSION_STAMP = '2026-03-29-force-redeploy'
  * Reprocess Videos Edge Function
  * Version: 2025-01-01-v9-mtcute
  *

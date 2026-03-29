@@ -1,4 +1,5 @@
 // Regenerate translations using alternative LLM providers (Gemini, Claude, etc.)
+const VERSION_STAMP = '2026-03-29-force-redeploy'
 // Experiment: compare quality vs Azure OpenAI
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
