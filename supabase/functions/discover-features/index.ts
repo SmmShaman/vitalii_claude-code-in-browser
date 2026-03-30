@@ -9,15 +9,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-// Migrated to Gemini — Azure vars kept for reference
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')!
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
 const VERSION = '2026-03-28-v2-auto-register'
-const DEPLOYMENT = 'Jobbot-gpt-4.1-mini'
-const API_VERSION = '2024-02-15-preview'
 
 // Color pool for auto-registered projects (cycle through these)
 const COLOR_POOL = [

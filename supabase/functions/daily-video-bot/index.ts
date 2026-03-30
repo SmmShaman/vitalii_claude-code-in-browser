@@ -31,9 +31,6 @@ const supabase = createClient(
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")!;
 
-const AZURE_ENDPOINT = Deno.env.get("AZURE_OPENAI_ENDPOINT") || "";
-const AZURE_KEY = Deno.env.get("AZURE_OPENAI_API_KEY") || "";
-const AZURE_DEPLOYMENT = Deno.env.get("AZURE_OPENAI_DEPLOYMENT") || "Jobbot-gpt-4.1-mini";
 const GEMINI_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
 const SERPER_API_KEY = Deno.env.get("SERPER_API_KEY") || "";
@@ -176,25 +173,8 @@ async function callAI(systemPrompt: string, userPrompt: string, maxTokens = 4000
     return data.choices?.[0]?.message?.content?.trim() || "";
   }
 
-  // Default: Azure OpenAI
-  console.log("🤖 Using Azure OpenAI");
-  const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "api-key": AZURE_KEY },
-    body: JSON.stringify({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: maxTokens,
-      response_format: { type: "json_object" },
-    }),
-  });
-  if (!resp.ok) throw new Error(`Azure OpenAI: ${resp.status} ${await resp.text()}`);
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content?.trim() || "";
+  // No other provider available
+  throw new Error(`LLM provider "${LLM_PROVIDER}" not configured or API key missing`);
 }
 
 // ── Digest Helpers ──

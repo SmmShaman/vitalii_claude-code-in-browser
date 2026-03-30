@@ -11,8 +11,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 interface BackfillRequest {
   table?: 'news' | 'blog' | 'all'
@@ -322,23 +320,16 @@ async function callTranslationAI(
   content: string,
   description: string
 ): Promise<{ no?: { title: string; content: string; description: string }; ua?: { title: string; content: string; description: string } } | null> {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    throw new Error('Azure OpenAI not configured')
-  }
-
   const systemPrompt = promptText
     .replace('{title}', title)
     .replace('{content}', content)
     .replace('{description}', description)
 
-  console.log('  📝 Calling Azure OpenAI for translation...')
+  console.log('  📝 Calling AI for translation...')
 
-  const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-  const response = await azureFetch(azureUrl, {
+  const response = await azureFetch('gemini', {
     method: 'POST',
     headers: {
-      'api-key': AZURE_OPENAI_API_KEY,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -359,7 +350,7 @@ async function callTranslationAI(
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error('  Azure OpenAI error:', errorText)
+    console.error('  AI translation error:', errorText)
     throw new Error(`AI translation failed: ${response.status}`)
   }
 

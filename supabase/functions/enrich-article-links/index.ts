@@ -10,8 +10,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')!
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')!
 
 interface EnrichRequest {
   articleId: string
@@ -116,7 +114,6 @@ serve(async (req) => {
     console.log(`📎 Related candidates: EN=${relatedByLang.en.length}, NO=${relatedByLang.no.length}, UA=${relatedByLang.ua.length}`)
 
     // 3. Use AI to insert inline links for each language
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
     const updateData: Record<string, string> = {}
     let totalLinksInserted = 0
 
@@ -137,10 +134,9 @@ serve(async (req) => {
         `${i + 1}. "${l.title}" → ${l.route}/${l.slug}`
       ).join('\n')
 
-      const response = await azureFetch(azureUrl, {
+      const response = await azureFetch('gemini', {
         method: 'POST',
         headers: {
-          'api-key': AZURE_OPENAI_API_KEY,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

@@ -7,9 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Migrated to Gemini — Azure vars kept for reference
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 interface FindSourceRequest {
   title: string
@@ -37,11 +34,6 @@ serve(async (req) => {
   try {
     const { title, content, existingUrl }: FindSourceRequest = await req.json()
     console.log('🔍 Finding source for:', title?.substring(0, 50))
-
-    // Azure check removed — using Gemini via callLLM()
-
-    // Azure migrated to Gemini via callLLM()
-    const azureUrl = '' // unused
 
     const systemPrompt = `You are a research assistant that finds original sources for news articles.
 
@@ -78,20 +70,10 @@ ${existingUrl ? `EXISTING URL (from Telegram): ${existingUrl}` : ''}
 Return JSON with sourceUrl, sourceName, confidence, reason.`
 
     const aiContent = await callLLM(
-      'systemPrompt',
-      'userPrompt',
+      systemPrompt,
+      userPrompt,
       { temperature: 0.3, maxTokens: 500 }
     )
-
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Azure OpenAI error:', errorText)
-      throw new Error(`AI request failed: ${response.status}`)
-    }
-
-    const data = await response.json()
-    const aiContent = data.choices[0]?.message?.content?.trim()
 
     console.log('AI response:', aiContent)
 

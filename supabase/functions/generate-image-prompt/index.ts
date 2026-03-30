@@ -10,8 +10,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 // Version for deployment verification
 const VERSION = '2026-02-13-v13-editorial-variants'
@@ -401,14 +399,11 @@ async function runPreAnalyzer(supabase: any, title: string, content: string, sel
 Базуй свій аналіз на цьому візуальному напрямку. visual_metaphor та core_idea мають відповідати обраній концепції.`
     }
 
-    // Call Azure OpenAI
-    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    const response = await azureFetch(azureUrl, {
+    // Call AI
+    const response = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY!
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         messages: [
@@ -574,9 +569,6 @@ Description: ${selectedVariant.description}
 Expand this concept into a rich, detailed prompt. Maintain the chosen image type direction. Enrich with specific details, lighting, textures, and composition.`
     }
 
-    // Call Azure OpenAI
-    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
     const systemContent = selectedVariant
       ? `You are an editorial art director. Expand the selected visual concept into a rich, detailed image generation prompt (150-250 words).
 
@@ -601,11 +593,10 @@ RULES:
 - Give CONSTRAINTS not details: limit the palette, force asymmetry, demand one focal point
 - Write in English. Be specific and visual.`
 
-    const response = await azureFetch(azureUrl, {
+    const response = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY!
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         messages: [
@@ -738,13 +729,10 @@ Content: ${content.substring(0, 3000)}
 
 Analyze this article and generate 4 image concept variants. Return ONLY a valid JSON array.`
 
-    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    const response = await azureFetch(azureUrl, {
+    const response = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY!
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         messages: [
@@ -869,14 +857,11 @@ async function runClassifier(supabase: any, title: string, content: string): Pro
     classifierPrompt = classifierPrompt.replace(/{title}/g, title)
     classifierPrompt = classifierPrompt.replace(/{content}/g, content.substring(0, 5000))
 
-    // Call Azure OpenAI
-    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    const response = await azureFetch(azureUrl, {
+    // Call AI
+    const response = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY!
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         messages: [
@@ -893,7 +878,7 @@ async function runClassifier(supabase: any, title: string, content: string): Pro
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Azure OpenAI API error:', response.status, errorText)
+      console.error('❌ AI API error:', response.status, errorText)
       return null
     }
 
@@ -1084,7 +1069,7 @@ ${elements.length > 0 ? elements.join('\n') : '(No elements selected - use your 
 
 Create a detailed image prompt combining these elements with the article's core meaning.`
 
-    // Call Azure OpenAI
+    // Call AI
     const generatedPrompt = await callLLM(
       systemPrompt,
       userMessage,
@@ -1151,13 +1136,10 @@ Content: ${content.substring(0, 2000)}
 
 Extract 4-6 concrete visual objects. Return ONLY a JSON array.`
 
-    // TODO: migrate to callLLM — const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    const response = await azureFetch(azureUrl, {
+    const response = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY!
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         messages: [

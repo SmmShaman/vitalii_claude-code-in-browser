@@ -129,9 +129,12 @@ serve(async (req) => {
           if (published?.slug_en) {
             articleUrl = `https://vitalii.no/news/${published.slug_en}`
           }
+        } else {
+          const errBody = await wpResponse.text().catch(() => 'no body')
+          console.error(`❌ website-publish failed (${wpResponse.status}): ${errBody.substring(0, 300)}`)
         }
       } catch (e: any) {
-        console.warn('⚠️ website-publish error:', e.message)
+        console.error('❌ website-publish network error:', e.message)
       }
 
       // Log publish without Telegram notification (was cluttering the feed)

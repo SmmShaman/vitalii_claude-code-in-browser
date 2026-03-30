@@ -11,8 +11,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 interface PreModerationResult {
   approved: boolean
@@ -81,29 +79,11 @@ serve(async (req) => {
 
     console.log('Using pre-moderation prompt:', prompts[0].name, `(+${recentTitles.length} recent titles for dedup)`)
 
-    // Call Azure OpenAI
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      console.warn('⚠️ Azure OpenAI not configured. Approving by default.')
-      return new Response(
-        JSON.stringify({
-          approved: true,
-          reason: 'AI not configured',
-          is_advertisement: false,
-          is_duplicate: false,
-          quality_score: 5
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    console.log('🤖 Calling AI for pre-moderation...')
 
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    console.log('🤖 Calling Azure OpenAI for pre-moderation...')
-
-    const openaiResponse = await azureFetch(azureUrl, {
+    const openaiResponse = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'api-key': AZURE_OPENAI_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -124,7 +104,7 @@ serve(async (req) => {
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text()
-      console.error('Azure OpenAI error:', errorText)
+      console.error('AI error:', errorText)
       // If AI fails, approve by default (fail-open strategy)
       return new Response(
         JSON.stringify({

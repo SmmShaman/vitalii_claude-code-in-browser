@@ -14,8 +14,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 interface MonitorResult {
   subscriptionId: string
@@ -332,19 +330,6 @@ async function saveCommunityPost(
  * Generate an engagement suggestion using AI
  */
 async function generateEngagementSuggestion(supabase: any, post: any): Promise<void> {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    // Use simple template
-    const suggestion = `Great observation! I've worked extensively in this area and would love to share some insights...`
-    await supabase
-      .from('community_posts')
-      .update({
-        suggested_comment: suggestion,
-        suggested_comment_generated_at: new Date().toISOString()
-      })
-      .eq('id', post.id)
-    return
-  }
-
   try {
     const prompt = `Generate a professional, insightful comment for this LinkedIn/Facebook group post.
 
@@ -361,27 +346,23 @@ Guidelines:
 
 Comment:`
 
-    const response = await fetch(
-      `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': AZURE_OPENAI_API_KEY
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a social media engagement expert for a marketing and e-commerce professional. Generate helpful, insightful comments that add value to discussions.'
-            },
-            { role: 'user', content: prompt }
-          ],
-          max_tokens: 150,
-          temperature: 0.7
-        })
-      }
-    )
+    const response = await azureFetch('gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a social media engagement expert for a marketing and e-commerce professional. Generate helpful, insightful comments that add value to discussions.'
+          },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 150,
+        temperature: 0.7
+      })
+    })
 
     if (!response.ok) {
       console.warn('Failed to generate engagement suggestion')

@@ -11,10 +11,8 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
-const VERSION = '2026-03-14-v2-stream1'
+const VERSION = '2026-03-30-fix-azure-check'
 
 interface WebsitePublishRequest {
   newsId: string
@@ -92,10 +90,6 @@ serve(async (req) => {
     const prompt = prompts[0]
     const openingStyle = getRandomOpeningStyle('news')
 
-    if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-      throw new Error('Azure OpenAI not configured')
-    }
-
     // Build single-language prompt
     const langName = targetLang === 'no' ? 'Norwegian (Bokmål)' : 'English'
     const readMoreText = targetLang === 'no' ? 'Les mer' : 'Read more'
@@ -108,12 +102,9 @@ serve(async (req) => {
 
     console.log('📝 Rewriting with AI (single language)...')
 
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    const response = await azureFetch(azureUrl, {
+    const response = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'api-key': AZURE_OPENAI_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

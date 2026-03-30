@@ -39,34 +39,6 @@ const PROVIDERS: Record<string, { call: (system: string, user: string) => Promis
       return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     },
   },
-  azure: {
-    call: async (system: string, user: string) => {
-      const endpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-      const apiKey = Deno.env.get('AZURE_OPENAI_API_KEY')
-      if (!endpoint || !apiKey) throw new Error('Azure OpenAI not configured')
-      const resp = await fetch(
-        `${endpoint}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`,
-        {
-          method: 'POST',
-          headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              { role: 'system', content: system },
-              { role: 'user', content: user },
-            ],
-            temperature: 0.5,
-            max_tokens: 4000,
-          }),
-        }
-      )
-      if (!resp.ok) {
-        const err = await resp.text()
-        throw new Error(`Azure error ${resp.status}: ${err.substring(0, 300)}`)
-      }
-      const data = await resp.json()
-      return data.choices?.[0]?.message?.content?.trim() || ''
-    },
-  },
 }
 
 serve(async (req) => {

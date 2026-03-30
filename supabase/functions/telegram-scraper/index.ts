@@ -31,8 +31,6 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
 
 // YouTube API credentials
@@ -1234,26 +1232,16 @@ async function parseChannelPosts(
 }
 
 /**
- * Translate title to English using Azure OpenAI (for YouTube upload)
+ * Translate title to English using AI (for YouTube upload)
  */
 async function translateTitleToEnglish(text: string): Promise<string> {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    console.warn('⚠️ Azure OpenAI not configured, using original text')
-    return text.substring(0, 100)
-  }
-
   try {
     const titleText = text.substring(0, 200) // Take first 200 chars
 
-    // Azure OpenAI endpoint format: {endpoint}/openai/deployments/{deployment-name}/chat/completions?api-version=YYYY-MM-DD
-    // Using actual deployment name from Azure Portal: Jobbot-gpt-4.1-mini
-    const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-    const response = await azureFetch(azureUrl, {
+    const response = await azureFetch('gemini', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         messages: [
@@ -1273,7 +1261,7 @@ async function translateTitleToEnglish(text: string): Promise<string> {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Azure OpenAI API error:', response.status, errorText)
+      console.error('❌ AI API error:', response.status, errorText)
       return text.substring(0, 100)
     }
 

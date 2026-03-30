@@ -12,8 +12,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const AZURE_OPENAI_ENDPOINT = Deno.env.get('AZURE_OPENAI_ENDPOINT')
-const AZURE_OPENAI_API_KEY = Deno.env.get('AZURE_OPENAI_API_KEY')
 
 interface ImageWithMeta {
   url: string
@@ -120,10 +118,6 @@ async function processWithPrompt(
   images: string[],
   imagesWithMeta: ImageWithMeta[]
 ) {
-  if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
-    throw new Error('Azure OpenAI not configured')
-  }
-
   // Build prompt with placeholders
   const openingStyle = getRandomOpeningStyle('news')
   const systemPrompt = prompt.prompt_text
@@ -136,12 +130,9 @@ async function processWithPrompt(
   console.log(`🎲 Opening style: ${openingStyle}`)
 
   // Call Azure OpenAI
-  const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/Jobbot-gpt-4.1-mini/chat/completions?api-version=2024-02-15-preview`
-
-  const response = await azureFetch(azureUrl, {
+  const response = await azureFetch('gemini', {
     method: 'POST',
     headers: {
-      'api-key': AZURE_OPENAI_API_KEY,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
