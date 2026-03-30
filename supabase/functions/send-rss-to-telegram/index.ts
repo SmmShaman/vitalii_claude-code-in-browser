@@ -137,9 +137,36 @@ serve(async (req) => {
         console.error('❌ website-publish network error:', e.message)
       }
 
-      // Log publish without Telegram notification (was cluttering the feed)
+      // Send compact Telegram notification (no moderation buttons)
       const linkedinScore = (analysis as any)?.linkedin_score || 0
       console.log(`📰 Published: ${(news.original_title || '').substring(0, 80)} | LI:${linkedinScore}/10${articleUrl ? ` → ${articleUrl}` : ''}`)
+
+      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+        try {
+          const origUrl = news.original_url || news.rss_source_url || ''
+          let origDomain = 'RSS'
+          try { origDomain = new URL(origUrl).hostname.replace('www.', '') } catch {}
+
+          const tgText = `📰 Опубліковано: <a href="${origUrl}">${escapeHtml((news.original_title || 'Untitled').substring(0, 150))}</a>\n📌 ${escapeHtml(origDomain)} · ${analysis.relevance_score}/10 | 🔗 LI:${linkedinScore}/10${articleUrl ? `\n🌐 <a href="${articleUrl}">vitalii.no</a>` : ''}`
+
+          const tgResp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: TELEGRAM_CHAT_ID,
+              text: tgText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            })
+          })
+          const tgData = await tgResp.json()
+          if (tgData.ok && tgData.result?.message_id) {
+            await supabase.from('news').update({ telegram_message_id: tgData.result.message_id }).eq('id', news.id)
+          }
+        } catch (tgErr: any) {
+          console.warn('⚠️ Telegram notification failed:', tgErr.message)
+        }
+      }
 
       return new Response(
         JSON.stringify({ success: true, newsId: news.id, stream: 'website-publish' }),
