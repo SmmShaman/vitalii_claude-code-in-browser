@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 
-const VERSION = "2026-03-17-v32-group-same-company-articles";
+const VERSION = "2026-03-30-v33-azure-removed";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -36,7 +36,7 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
 const SERPER_API_KEY = Deno.env.get("SERPER_API_KEY") || "";
 
 // LLM provider override (set via query param or api_settings)
-let LLM_PROVIDER = "gemini"; // default (migrated from azure)
+let LLM_PROVIDER = "gemini"; // default
 
 // ── Telegram Helpers ──
 
@@ -112,7 +112,7 @@ function formatDateNorwegian(dateStr: string): string {
   return `${d.getUTCDate()}. ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-// ── Azure OpenAI Helper ──
+// ── LLM Helper ──
 
 async function callAI(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
   if (LLM_PROVIDER === "gemini" && GEMINI_API_KEY) {
@@ -2509,9 +2509,9 @@ async function callGeminiImage(prompt: string, inputImageBase64?: string): Promi
   return null;
 }
 
-// Generate a punchy 2-4 word headline for thumbnail overlay via Azure OpenAI
+// Generate a punchy 2-4 word headline for thumbnail overlay via AI
 async function generateThumbnailHeadline(articles: any[]): Promise<string> {
-  if (!AZURE_ENDPOINT || !AZURE_KEY) return "";
+  if (!GEMINI_API_KEY) return "";
 
   const headlines = articles
     .slice(0, 6)
@@ -2519,17 +2519,14 @@ async function generateThumbnailHeadline(articles: any[]): Promise<string> {
     .filter(Boolean)
     .join("\n- ");
 
-  const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
-
   try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "api-key": AZURE_KEY },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content: `Du er en YouTube-thumbnail-tekstforfatter for en norsk tech-nyhetskanal.
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: `Du er en YouTube-thumbnail-tekstforfatter for en norsk tech-nyhetskanal.
 
 OPPGAVE: Lag EN kort, slagkraftig overskrift for thumbnail (2-4 ord).
 
@@ -2557,18 +2554,13 @@ DARLIGE EKSEMPLER (IKKE bruk):
 - DAGLIG OPPDATERING (generisk)
 - SE DETTE (vagt)
 
-Svar med KUN overskriften, ingenting annet.`,
-          },
-          {
-            role: "user",
-            content: `Dagens nyheter:\n- ${headlines}\n\nLag thumbnail-overskrift:`,
-          },
-        ],
-        temperature: 0.9,
-        max_tokens: 30,
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
+Svar med KUN overskriften, ingenting annet.` }] },
+          contents: [{ role: "user", parts: [{ text: `Dagens nyheter:\n- ${headlines}\n\nLag thumbnail-overskrift:` }] }],
+          generationConfig: { temperature: 0.9, maxOutputTokens: 30 },
+        }),
+        signal: AbortSignal.timeout(15_000),
+      }
+    );
 
     if (!resp.ok) {
       console.warn(`⚠️ Headline generation failed: ${resp.status}`);
@@ -2576,7 +2568,8 @@ Svar med KUN overskriften, ingenting annet.`,
     }
 
     const data = await resp.json();
-    let headline = (data.choices?.[0]?.message?.content || "").trim();
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    let headline = (parts[parts.length - 1]?.text || "").trim();
     // Clean: remove quotes, emojis, ensure uppercase
     headline = headline.replace(/["""'']/g, "").replace(/[\u{1F000}-\u{1FFFF}]/gu, "").trim().toUpperCase();
     console.log(`📝 Thumbnail headline: "${headline}"`);
@@ -2668,7 +2661,7 @@ async function generateThumbnails(targetDate: string, chatId?: number): Promise<
 
   const displayDate = formatDateNorwegian(targetDate);
 
-  // Generate punchy thumbnail headline via Azure OpenAI
+  // Generate punchy thumbnail headline via AI
   let thumbnailHeadline = await generateThumbnailHeadline(ordered);
   if (!thumbnailHeadline) {
     // Fallback: use first article's title, uppercase, no emojis
@@ -3034,7 +3027,7 @@ Deno.serve(async (req) => {
     const messageId = body.message_id ? Number(body.message_id) : undefined;
     const youtubePrivacy = body.youtube_privacy || url.searchParams.get("youtube_privacy") || "public";
 
-    // LLM provider override: gemini, groq, or azure (default)
+    // LLM provider override: gemini (default) or groq
     const llmParam = body.llm_provider || url.searchParams.get("llm_provider") || "";
     if (llmParam === "gemini" || llmParam === "groq") LLM_PROVIDER = llmParam;
     console.log(`🤖 LLM Provider: ${LLM_PROVIDER}, YouTube: ${youtubePrivacy}`);
