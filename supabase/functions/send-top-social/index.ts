@@ -75,16 +75,24 @@ serve(async (req) => {
       .from('api_settings').select('key_value').eq('key_name', 'STREAM3_TOP_N').maybeSingle()
     const topN = parseInt(topNSetting?.key_value || '3', 10)
 
-    // Language for today
-    const lang = getTodayLanguage()
+    // Accept optional targetDate and language from request body
+    const body = await req.json().catch(() => ({}))
+
+    // Language: from request or auto
+    const lang = body.language || getTodayLanguage()
     console.log(`🌐 Auto-publish language: ${lang}`)
 
-    // Yesterday's date range
-    const now = new Date()
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const dayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()).toISOString()
-    const dayEnd = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999).toISOString()
+    // Target date: from request or yesterday
+    let targetDay: Date
+    if (body.targetDate) {
+      targetDay = new Date(body.targetDate + 'T00:00:00Z')
+      console.log(`📅 Manual target date: ${body.targetDate}`)
+    } else {
+      targetDay = new Date()
+      targetDay.setDate(targetDay.getDate() - 1)
+    }
+    const dayStart = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate()).toISOString()
+    const dayEnd = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate(), 23, 59, 59, 999).toISOString()
 
     console.log(`📅 Articles from ${dayStart.slice(0, 10)}`)
 
@@ -190,7 +198,7 @@ serve(async (req) => {
     }
 
     // Telegram summary
-    const dateStr = yesterday.toLocaleDateString('uk-UA')
+    const dateStr = targetDay.toLocaleDateString('uk-UA')
     await sendTelegram(
       `📊 <b>Auto Social [${dateStr}]</b>\n🌐 ${lang.toUpperCase()} | ${sorted.length} статей\n\n` +
       allResults.join('\n\n')
