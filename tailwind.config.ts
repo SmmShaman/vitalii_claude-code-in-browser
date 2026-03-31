@@ -40,21 +40,21 @@ const config: Config = {
         },
         // Design token colors — surfaces
         surface: {
-          DEFAULT: '#182022',
-          darker: '#0E1415',
-          deep: '#131919',
-          elevated: '#20292B',
+          DEFAULT: '#1A1730',
+          darker: '#0F0D1A',
+          deep: '#141225',
+          elevated: '#221F3A',
         },
         'surface-border': {
-          DEFAULT: '#2B3537',
-          hover: '#3E4F52',
+          DEFAULT: '#2D2A40',
+          hover: '#4B4768',
         },
         // Design token colors — text
         content: {
-          DEFAULT: '#EDEFEF',
-          secondary: '#C5C8CE',
-          muted: '#969AA8',
-          faint: '#686D7A',
+          DEFAULT: '#EEEDF5',
+          secondary: '#C8C5D6',
+          muted: '#9B97B0',
+          faint: '#6B6680',
         },
         // Design token colors — brand accent
         brand: {

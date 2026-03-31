@@ -12,16 +12,16 @@
   --radius: 0.75rem;
 
   /* Design tokens — surfaces */
-  --surface-dark: #182022;
-  --surface-darker: #0E1415;
-  --surface-elevated: #20292B;
-  --surface-border: #2B3537;
+  --surface-dark: #1A1730;
+  --surface-darker: #0F0D1A;
+  --surface-elevated: #221F3A;
+  --surface-border: #2D2A40;
 
   /* Design tokens — text */
-  --text-primary: #EDEFEF;
-  --text-secondary: #C5C8CE;
-  --text-muted: #969AA8;
-  --text-faint: #686D7A;
+  --text-primary: #EEEDF5;
+  --text-secondary: #C8C5D6;
+  --text-muted: #9B97B0;
+  --text-faint: #6B6680;
 
   /* Design tokens — accent */
   --accent-brand: #0D9488;
@@ -36,8 +36,8 @@
   --accent-news-dark: #6d8c3c;
 
   /* Design tokens — surface extras */
-  --surface-deep: #131919;
-  --surface-border-hover: #3E4F52;
+  --surface-deep: #141225;
+  --surface-border-hover: #4B4768;
 
   /* Design tokens — focus (WCAG 3:1 minimum for UI) */
   --focus-ring: #2DD4BF;
@@ -71,7 +71,7 @@
   }
 
   body {
-    @apply bg-[#0E1415] text-foreground;
+    @apply bg-white text-foreground;
     margin: 0;
     padding: 0;
     /* Allow body to grow with content - min-height instead of fixed height */
