@@ -63,7 +63,11 @@ TRILINGUAL:
 - Ukrainian: conversational dev tone, tech terms stay English (API, Edge Function, deploy)
 - All three EQUAL depth — ua/no are NOT shorter summaries of en
 
-IMPORTANT: Preserve any real technical details, function names, numbers from the original. Only ADD detail, don't remove existing specifics. If the original is already good (problem >120, solution >200, result >120 chars), keep it mostly unchanged — just polish.
+IMPORTANT:
+- Preserve any real technical details, function names, numbers from the original. Only ADD detail, don't remove existing specifics.
+- If the original is already good (problem >120, solution >200, result >120 chars), keep the same length — just polish the style, don't expand.
+- TARGET LENGTHS: problem 150-350 chars, solution 250-500 chars, result 150-350 chars. Do NOT exceed these.
+- Be concise. Every sentence must add value. No filler phrases like "soul-crushing", "immediate and profound".
 
 Return ONLY valid JSON (no markdown fences):
 {
@@ -171,15 +175,31 @@ TARGETS: problem≥120, solution≥200, result≥120
 Rewrite to meet targets. Be specific, add technical details, real numbers, function names where possible.`
 
       try {
-        const response = await callLLM(REWRITE_PROMPT, userPrompt, { temperature: 0.4, maxTokens: 8000 })
-        // Parse JSON — try direct parse first, then extractJSON fallback
+        const response = await callLLM(REWRITE_PROMPT, userPrompt, { temperature: 0.4, maxTokens: 12000 })
+        // Parse JSON — try direct parse first, repair truncated JSON as fallback
         let rewritten: Record<string, string>
-        const trimmed = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        let trimmed = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         try {
           rewritten = JSON.parse(trimmed)
         } catch {
-          const cleaned = extractJSON(response)
-          rewritten = JSON.parse(cleaned)
+          // Try to repair truncated JSON (LLM hit token limit)
+          // Find last complete key-value pair and close the object
+          const lastQuote = trimmed.lastIndexOf('"')
+          if (lastQuote > 0) {
+            // Find the last complete "key": "value" pattern
+            const lastCompleteComma = trimmed.lastIndexOf('",')
+            if (lastCompleteComma > 0) {
+              trimmed = trimmed.slice(0, lastCompleteComma + 1) + '}'
+            } else {
+              trimmed = trimmed.slice(0, lastQuote + 1) + '}'
+            }
+          }
+          try {
+            rewritten = JSON.parse(trimmed)
+          } catch {
+            const cleaned = extractJSON(response)
+            rewritten = JSON.parse(cleaned)
+          }
         }
 
         const oldLengths = {
