@@ -171,9 +171,16 @@ TARGETS: problem≥120, solution≥200, result≥120
 Rewrite to meet targets. Be specific, add technical details, real numbers, function names where possible.`
 
       try {
-        const response = await callLLM(REWRITE_PROMPT, userPrompt, { temperature: 0.4, maxTokens: 4000 })
-        const cleaned = extractJSON(response)
-        const rewritten = JSON.parse(cleaned)
+        const response = await callLLM(REWRITE_PROMPT, userPrompt, { temperature: 0.4, maxTokens: 8000 })
+        // Parse JSON — try direct parse first, then extractJSON fallback
+        let rewritten: Record<string, string>
+        const trimmed = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        try {
+          rewritten = JSON.parse(trimmed)
+        } catch {
+          const cleaned = extractJSON(response)
+          rewritten = JSON.parse(cleaned)
+        }
 
         const oldLengths = {
           problem_en: (feature.problem_en || '').length,
@@ -223,8 +230,18 @@ Rewrite to meet targets. Be specific, add technical details, real numbers, funct
         results.push({ id: feature.feature_id, status: 'rewritten', old_lengths: oldLengths, new_lengths: newLengths })
         console.log(`Rewritten ${feature.feature_id}: problem ${oldLengths.problem_en}→${newLengths.problem_en}, solution ${oldLengths.solution_en}→${newLengths.solution_en}, result ${oldLengths.result_en}→${newLengths.result_en}`)
       } catch (e) {
-        console.error(`LLM failed for ${feature.feature_id}:`, e)
-        results.push({ id: feature.feature_id, status: 'llm_error', old_lengths: { problem_en: 0, solution_en: 0, result_en: 0 } })
+        const errMsg = String(e).slice(0, 200)
+        console.error(`LLM failed for ${feature.feature_id}: ${errMsg}`)
+        results.push({
+          id: feature.feature_id,
+          status: 'llm_error',
+          error: errMsg,
+          old_lengths: {
+            problem_en: (feature.problem_en || '').length,
+            solution_en: (feature.solution_en || '').length,
+            result_en: (feature.result_en || '').length,
+          },
+        })
       }
     }
 
