@@ -85,23 +85,55 @@ jobs:
           fetch-depth: 100
           token: ${{ secrets.GH_PAT }}
 
-      - name: Collect significant commits
+      - name: Collect commits with full context
         id: commits
         run: |
           SINCE="${{ inputs.since || '1 day ago' }}"
           echo "📦 Scanning ${{ matrix.repo }} since: $SINCE"
 
-          COMMITS=$(git log --since="$SINCE" --oneline --stat --grep="^feat" --format="%h %s" 2>/dev/null | head -3000)
+          # Step 1: Find feat: commits
+          FEAT_HASHES=$(git log --since="$SINCE" --grep="^feat" --format="%h" 2>/dev/null)
 
-          if [ -z "$COMMITS" ]; then
+          if [ -z "$FEAT_HASHES" ]; then
             echo "No feat: commits found"
             echo "has_commits=false" >> $GITHUB_OUTPUT
-          else
-            COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo 0)
-            echo "Found $COUNT feat: commits"
-            echo "has_commits=true" >> $GITHUB_OUTPUT
-            echo "$COMMITS" > /tmp/commits.txt
+            exit 0
           fi
+
+          COUNT=$(echo "$FEAT_HASHES" | wc -l)
+          echo "Found $COUNT feat: commits"
+          echo "has_commits=true" >> $GITHUB_OUTPUT
+
+          # Step 2: Collect full commit messages + diffs (truncated per commit)
+          COMMITS=""
+          while IFS= read -r HASH; do
+            [ -z "$HASH" ] && continue
+            # Full commit message
+            MSG=$(git log -1 --format="%h %s%n%n%b" "$HASH" 2>/dev/null)
+            # Actual code diff (limit to 1500 chars per commit to fit context)
+            DIFF=$(git diff "${HASH}^..${HASH}" --stat --unified=3 2>/dev/null | head -80)
+            COMMITS+="--- COMMIT ${HASH} ---
+${MSG}
+
+DIFF:
+${DIFF}
+
+"
+          done <<< "$FEAT_HASHES"
+
+          # Step 3: Read project context (CLAUDE.md, README)
+          PROJECT_CONTEXT=""
+          if [ -f "CLAUDE.md" ]; then
+            # Take first 2000 chars of CLAUDE.md for project context
+            PROJECT_CONTEXT=$(head -c 2000 CLAUDE.md)
+            echo "Found CLAUDE.md ($(wc -c < CLAUDE.md) bytes)"
+          elif [ -f "README.md" ]; then
+            PROJECT_CONTEXT=$(head -c 2000 README.md)
+            echo "Found README.md ($(wc -c < README.md) bytes)"
+          fi
+
+          echo "$COMMITS" > /tmp/commits.txt
+          echo "$PROJECT_CONTEXT" > /tmp/project_context.txt
 
       - name: Call discover-features Edge Function
         if: steps.commits.outputs.has_commits == 'true'
@@ -110,6 +142,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           COMMITS=$(cat /tmp/commits.txt)
+          PROJECT_CONTEXT=$(cat /tmp/project_context.txt)
 
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             "${SUPABASE_URL}/functions/v1/discover-features" \
@@ -119,7 +152,8 @@ jobs:
               --arg commits "$COMMITS" \
               --arg project_id "${{ matrix.project_id }}" \
               --arg repo_name "${{ matrix.repo }}" \
-              '{commits: $commits, project_id: $project_id, repo_name: $repo_name}')")
+              --arg project_context "$PROJECT_CONTEXT" \
+              '{commits: $commits, project_id: $project_id, repo_name: $repo_name, project_context: $project_context}')")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | sed '$d')
