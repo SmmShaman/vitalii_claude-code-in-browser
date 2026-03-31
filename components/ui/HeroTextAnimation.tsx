@@ -116,7 +116,7 @@ export const HeroTextAnimation = ({
           fontSize,
           fontWeight,
           color: fillColor || 'transparent',
-          WebkitTextStroke: fillColor ? '0.5px rgba(79, 70, 229, 0.15)' : 'none',
+          WebkitTextStroke: fillColor ? '0.5px rgba(13, 148, 136, 0.15)' : 'none',
           clipPath,
           textShadow: fillColor ? `0 0 10px ${fillColor}50` : 'none',
           transition: 'color 300ms ease-out',

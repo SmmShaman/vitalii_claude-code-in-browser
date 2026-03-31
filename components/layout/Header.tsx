@@ -195,7 +195,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={() => setCurrentLanguage(lang)}
                 className={`min-w-[36px] min-h-[36px] flex items-center justify-center rounded text-xs font-semibold transition-all ${
                   currentLanguage === lang
-                    ? 'bg-brand text-white shadow-[0_0_8px_rgba(99,102,241,0.4)]'
+                    ? 'bg-brand text-white shadow-[0_0_8px_rgba(13,148,136,0.4)]'
                     : 'bg-surface/70 text-content-faint'
                 }`}
               >
@@ -247,7 +247,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   className="font-bold text-red-500 font-comfortaa"
                   style={{
                     fontSize: 'var(--text-display)',
-                    textShadow: '1px 1px 3px rgba(79, 70, 229, 0.3)',
+                    textShadow: '1px 1px 3px rgba(13, 148, 136, 0.3)',
                     lineHeight: '1.2'
                   }}
                 >
@@ -343,7 +343,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={() => setCurrentLanguage(lang)}
               className={`px-2 py-1 rounded-md transition-all duration-300 font-semibold text-xs ${
                 currentLanguage === lang
-                  ? 'bg-brand text-white border border-brand-light shadow-[0_0_8px_rgba(99,102,241,0.35)]'
+                  ? 'bg-brand text-white border border-brand-light shadow-[0_0_8px_rgba(13,148,136,0.35)]'
                   : 'bg-surface/70 text-content-faint hover:bg-surface/90 hover:text-content border border-transparent'
               }`}
               aria-label={`Switch to ${lang}`}

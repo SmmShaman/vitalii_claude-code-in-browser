@@ -1525,7 +1525,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 <p className="text-sm leading-relaxed text-content-secondary whitespace-pre-line">
                   {typedText}
                   {isTyping && (
-                    <span className="inline-block w-0.5 h-4 bg-brand-light ml-0.5 animate-pulse" />
+                    <span className="inline-block w-0.5 h-4 bg-brand-light ml-0.5 animate-[cursor-blink_1s_steps(2)_infinite]" />
                   )}
                 </p>
               </div>

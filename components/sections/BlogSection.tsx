@@ -2,7 +2,7 @@
 
 import { useState, useEffect, memo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Tag, ExternalLink, Clock, ChevronLeft, Loader2 } from 'lucide-react';
+import { Calendar, Tag, ExternalLink, Clock, ChevronLeft, Loader2, BookOpen } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { getLatestBlogPosts, getBlogPostById, getAllBlogPosts } from '@/integrations/supabase/client';
@@ -218,6 +218,7 @@ const BlogSectionComponent = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
+          <BookOpen className="h-16 w-16 text-content-muted mx-auto mb-4" />
           <p className="text-content-muted">{t('blog_no_posts')}</p>
         </div>
       </div>

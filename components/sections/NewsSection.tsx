@@ -242,7 +242,7 @@ const NewsSectionComponent = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#88B04B]"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-news"></div>
           <p className="text-sm text-content-muted">{t('news_loading')}</p>
         </div>
       </div>
@@ -287,7 +287,7 @@ const NewsSectionComponent = ({
 
         {loadingDetail ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#88B04B]"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-news"></div>
           </div>
         ) : (
           <motion.div
@@ -494,7 +494,7 @@ const NewsSectionComponent = ({
                           e.preventDefault();
                           window.location.href = `/search?tag=${encodeURIComponent(tag.toLowerCase())}`;
                         }}
-                        className="px-2 py-1 bg-[#88B04B]/10 text-[#88B04B] rounded-full text-xs hover:bg-[#88B04B]/25 transition-colors cursor-pointer"
+                        className="px-2 py-1 bg-news/10 text-news rounded-full text-xs hover:bg-news/25 transition-colors cursor-pointer"
                       >
                         #{tag}
                       </a>
@@ -515,7 +515,7 @@ const NewsSectionComponent = ({
                     href={(selectedNews as any).source_link || selectedNews.original_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-[#88B04B] hover:underline"
+                    className="inline-flex items-center gap-2 text-news hover:underline"
                   >
                     {t('news_read_more')}
                     <ExternalLink className="h-4 w-4" />
@@ -546,13 +546,13 @@ const NewsSectionComponent = ({
                 onClick={(e) => handleNewsClick(newsItem, e)}
                 className="group cursor-pointer"
               >
-                <div className="bg-surface/50 backdrop-blur-sm rounded-lg p-3 border border-surface-border/50 hover:border-[#88B04B]/50 transition-all duration-300 hover:shadow-lg">
+                <div className="bg-surface/50 backdrop-blur-sm rounded-lg p-3 border border-surface-border/50 hover:border-news/50 transition-all duration-300 hover:shadow-lg">
                   <div className="flex gap-3">
                     {/* Content - Left Side */}
                     <div className="flex-1 flex flex-col justify-between min-w-0">
                       {/* Title */}
                       <div>
-                        <h4 className="font-bold text-sm mb-1.5 line-clamp-2 text-[#EF4444] group-hover:text-[#88B04B] transition-colors leading-tight">
+                        <h4 className="font-bold text-sm mb-1.5 line-clamp-2 text-[#EF4444] group-hover:text-news transition-colors leading-tight">
                           {content.title}
                         </h4>
 
@@ -573,7 +573,7 @@ const NewsSectionComponent = ({
                           </div>
                           {/* Video or Image icon indicator */}
                           {newsItem.video_url && (
-                            <div className="flex items-center gap-1 text-[#88B04B]">
+                            <div className="flex items-center gap-1 text-news">
                               <Video className="h-3 w-3 flex-shrink-0" />
                               <span className="text-xs">Video</span>
                             </div>
@@ -590,7 +590,7 @@ const NewsSectionComponent = ({
                             {newsItem.tags.slice(0, 3).map((tag, i) => (
                               <span
                                 key={i}
-                                className="px-1.5 py-0.5 bg-[#88B04B]/10 text-[#88B04B] text-xs rounded-full"
+                                className="px-1.5 py-0.5 bg-news/10 text-news text-xs rounded-full"
                               >
                                 {tag}
                               </span>
@@ -683,7 +683,7 @@ const NewsSectionComponent = ({
         {/* Loading indicator for infinite scroll */}
         {isExpanded && loadingMore && (
           <div className="flex justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-[#88B04B]" />
+            <Loader2 className="h-6 w-6 animate-spin text-news" />
           </div>
         )}
 

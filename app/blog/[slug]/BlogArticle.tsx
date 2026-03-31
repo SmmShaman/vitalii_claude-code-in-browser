@@ -329,13 +329,13 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               )}
               {post.published_at && (
                 <time dateTime={post.published_at} className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4" />
+                  <Calendar className="w-4 h-4 text-brand-light/60" />
                   {formatDate(post.published_at)}
                 </time>
               )}
               {readingTime > 0 && (
                 <span className="flex items-center gap-1.5">
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-4 h-4 text-brand-light/60" />
                   {readingTime} min read
                 </span>
               )}
@@ -429,6 +429,25 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                     ),
                     h3: ({ children }) => (
                       <h3 className="text-lg font-semibold text-content mt-4 mb-2">{children}</h3>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-4 border-brand-light/60 pl-4 my-4 text-content-muted italic bg-brand/5 py-3 pr-3 rounded-r-lg">
+                        {children}
+                      </blockquote>
+                    ),
+                    code: ({ children, className }) => {
+                      const isBlock = className?.includes('language-')
+                      if (isBlock) {
+                        return <code className={className}>{children}</code>
+                      }
+                      return (
+                        <code className="px-1.5 py-0.5 bg-brand/10 text-brand-lighter rounded text-[0.9em] font-mono">
+                          {children}
+                        </code>
+                      )
+                    },
+                    hr: () => (
+                      <hr className="my-8 border-none h-px bg-gradient-to-r from-transparent via-brand-light/30 to-transparent" />
                     ),
                     img: ({ src, alt }) => {
                       const imgSrc = typeof src === 'string' ? src : ''
@@ -564,7 +583,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                     <Link
                       key={relatedPost.id}
                       href={`/blog/${relatedSlug}`}
-                      className="group bg-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                      className="group bg-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:shadow-brand/10 transition-all duration-300 border border-transparent hover:border-brand/20"
                     >
                       {relatedImage && (
                         <div className="relative w-full aspect-video overflow-hidden">
@@ -624,8 +643,8 @@ function TelegramVideoPlaceholder({ url }: { url: string }) {
   return (
     <div className="w-full h-full bg-gradient-to-br from-[#2AABEE] to-[#229ED9] flex flex-col items-center justify-center relative overflow-hidden">
       <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-[#1A1730]/20" />
-        <div className="absolute bottom-8 right-8 w-32 h-32 rounded-full bg-[#1A1730]/10" />
+        <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-surface/20" />
+        <div className="absolute bottom-8 right-8 w-32 h-32 rounded-full bg-surface/10" />
       </div>
       <div className="relative z-10 mb-4">
         <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">

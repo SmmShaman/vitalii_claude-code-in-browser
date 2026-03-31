@@ -190,9 +190,9 @@ export const Footer = () => {
   const textAccent = isMobile ? 'text-content' : ''
   const hoverBg = isMobile ? 'hover:bg-surface-elevated active:bg-surface-border' : 'hover:bg-white/10 active:bg-white/20'
 
-  // Desktop refined colors (Obsidian Prism)
-  const dPrimary = 'rgba(245, 243, 255, 0.95)'
-  const dSecondary = 'rgba(167, 160, 195, 0.8)'
+  // Desktop refined colors
+  const dPrimary = 'rgba(238, 237, 245, 0.95)'
+  const dSecondary = 'rgba(170, 175, 185, 0.8)'
   const dAccent = '#fbbf24'
 
   return (
@@ -204,11 +204,11 @@ export const Footer = () => {
         style={isMobile ? {
           background: 'transparent',
         } : {
-          background: 'linear-gradient(160deg, rgba(15, 15, 25, 0.88) 0%, rgba(25, 20, 45, 0.92) 50%, rgba(18, 12, 35, 0.9) 100%)',
+          background: 'linear-gradient(160deg, rgba(14, 20, 21, 0.88) 0%, rgba(20, 28, 30, 0.92) 50%, rgba(16, 22, 23, 0.9) 100%)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(167, 139, 250, 0.1)',
-          boxShadow: '0 -1px 0 rgba(167, 139, 250, 0.08), 0 12px 40px rgba(0, 0, 0, 0.4)',
+          border: '1px solid rgba(13, 148, 136, 0.15)',
+          boxShadow: '0 -1px 0 rgba(13, 148, 136, 0.1), 0 12px 40px rgba(0, 0, 0, 0.4)',
         }}
       >
         <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
@@ -289,7 +289,7 @@ export const Footer = () => {
               <div
                 className="w-px h-5 mx-1.5"
                 style={!isMobile ? {
-                  background: 'linear-gradient(180deg, transparent 0%, rgba(167, 139, 250, 0.4) 50%, transparent 100%)',
+                  background: 'linear-gradient(180deg, transparent 0%, rgba(13, 148, 136, 0.4) 50%, transparent 100%)',
                 } : {
                   background: '#d1d5db',
                 }}
@@ -465,7 +465,7 @@ export const Footer = () => {
                   href={modalSocial.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-brand to-violet-600 text-white hover:from-brand-dark hover:to-violet-700 transition-all duration-200 shadow-lg shadow-brand/20"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-brand to-teal-600 text-white hover:from-brand-dark hover:to-teal-700 transition-all duration-200 shadow-lg shadow-brand/20"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, startTransition } from 'react'
+import { useState, useCallback, startTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { sectionNeonColors } from '@/components/sections/BentoGrid'
 import { sectionColors } from '@/components/sections/BentoGridMobile'
@@ -23,10 +23,6 @@ const BentoGridMobile = dynamic(
   () => import('@/components/sections/BentoGridMobile').then(mod => mod.BentoGridMobile)
 )
 
-const ParticlesBackground = dynamic(
-  () => import('@/components/background/ParticlesBackground').then(mod => mod.ParticlesBackground),
-  { ssr: false }
-)
 
 const SkillsMarquee = dynamic(
   () => import('@/components/ui/SkillsMarquee').then(mod => mod.SkillsMarquee),
@@ -35,18 +31,7 @@ const SkillsMarquee = dynamic(
 
 export default function HomePage() {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null)
-  const [showParticles, setShowParticles] = useState(false)
   const isMobile = useIsMobile()
-
-  // Defer Three.js loading until after LCP
-  useEffect(() => {
-    if (isMobile) return
-    const id = requestIdleCallback?.(() => setShowParticles(true)) ??
-      setTimeout(() => setShowParticles(true), 2000) as unknown as number
-    return () => {
-      cancelIdleCallback?.(id) ?? clearTimeout(id)
-    }
-  }, [isMobile])
 
   // Update hovered section — low priority, не блокує анімації
   const handleSectionChange = useCallback((sectionId: string | null) => {
@@ -86,9 +71,6 @@ export default function HomePage() {
           opacity: currentNeonColor ? 0.2 : 0,
         }}
       />
-
-      {/* Animated Background - Deferred load, hidden on mobile */}
-      {showParticles && <ParticlesBackground />}
 
       {/* Header - Smaller on mobile */}
       <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'p-3 pb-2' : 'mb-3 sm:mb-5'}`}>

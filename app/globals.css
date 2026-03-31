@@ -12,23 +12,23 @@
   --radius: 0.75rem;
 
   /* Design tokens — surfaces */
-  --surface-dark: #1A1730;
-  --surface-darker: #0F0D1A;
-  --surface-elevated: #221F3A;
-  --surface-border: #2D2A40;
+  --surface-dark: #182022;
+  --surface-darker: #0E1415;
+  --surface-elevated: #20292B;
+  --surface-border: #2B3537;
 
   /* Design tokens — text */
-  --text-primary: #EEEDF5;
-  --text-secondary: #C8C5D6;
-  --text-muted: #9B97B0;
-  --text-faint: #6B6680;
+  --text-primary: #EDEFEF;
+  --text-secondary: #C5C8CE;
+  --text-muted: #969AA8;
+  --text-faint: #686D7A;
 
   /* Design tokens — accent */
-  --accent-indigo: #6366F1;
-  --accent-indigo-light: #818CF8;
-  --accent-indigo-lighter: #A5B4FC;
-  --accent-indigo-dark: #5558E6;
-  --accent-indigo-darker: #4F46E5;
+  --accent-brand: #0D9488;
+  --accent-brand-light: #2DD4BF;
+  --accent-brand-lighter: #5EEAD4;
+  --accent-brand-dark: #0F766E;
+  --accent-brand-darker: #115E59;
   --accent-amber: #fbbf24;
   --accent-red: #ef4444;
   --accent-news: #88B04B;
@@ -36,12 +36,12 @@
   --accent-news-dark: #6d8c3c;
 
   /* Design tokens — surface extras */
-  --surface-deep: #141225;
-  --surface-border-hover: #4B4768;
+  --surface-deep: #131919;
+  --surface-border-hover: #3E4F52;
 
   /* Design tokens — focus (WCAG 3:1 minimum for UI) */
-  --focus-ring: #818CF8;
-  --focus-ring-dark: #a5b4fc;
+  --focus-ring: #2DD4BF;
+  --focus-ring-dark: #5EEAD4;
 
   /* Design tokens — typography scale */
   --text-display: clamp(1.5rem, 3vw, 2.5rem);
@@ -55,7 +55,7 @@
 @layer base {
   /* Focus Visible Styles - WCAG 2.4.7 */
   :focus-visible {
-    outline: 3px solid #818CF8;
+    outline: 3px solid #2DD4BF;
     outline-offset: 2px;
   }
 
@@ -71,7 +71,7 @@
   }
 
   body {
-    @apply bg-white text-foreground;
+    @apply bg-[#0E1415] text-foreground;
     margin: 0;
     padding: 0;
     /* Allow body to grow with content - min-height instead of fixed height */
@@ -173,10 +173,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(13, 148, 136, 0.4);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6);
+  background: rgba(13, 148, 136, 0.6);
 }

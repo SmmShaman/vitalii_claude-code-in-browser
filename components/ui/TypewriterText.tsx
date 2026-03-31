@@ -139,7 +139,7 @@ export const TypewriterText = ({
         {formatText(displayedText)}
         {showCursor && (
           <span
-            className="inline-block bg-brand-light ml-0.5 sm:ml-1 animate-pulse"
+            className="inline-block bg-brand-light ml-0.5 sm:ml-1 animate-[cursor-blink_1s_steps(2)_infinite]"
             style={{
               width: 'clamp(4px, 0.5vw, 8px)',
               height: 'clamp(10px, 1.5vw, 16px)'
