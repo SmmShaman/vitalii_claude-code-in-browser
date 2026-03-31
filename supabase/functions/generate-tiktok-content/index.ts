@@ -194,7 +194,6 @@ async function generateTikTokCaption(
   language: Language
 ): Promise<string> {
   // If no AI configured, use simple format
-    // Azure credential check removed — using Gemini via callLLM()
 
   try {
     const languageNames: Record<Language, string> = {

@@ -45,7 +45,7 @@ async function sendTelegram(text: string) {
   } catch (e) { console.error('Telegram failed:', e) }
 }
 
-async function callAzureOpenAI(systemPrompt: string, userPrompt: string): Promise<string> {
+async function callAI(systemPrompt: string, userPrompt: string): Promise<string> {
   return await callLLM(systemPrompt, userPrompt, { temperature: 0.4, maxTokens: 4000 })
 }
 
@@ -164,7 +164,7 @@ Identify significant new features from these commits. Remember: only genuinely n
 
     console.log(`Analyzing commits for ${project_id}, ${(existing || []).length} existing features`)
 
-    const aiResponse = await callAzureOpenAI(SYSTEM_PROMPT, userPrompt)
+    const aiResponse = await callAI(SYSTEM_PROMPT, userPrompt)
     console.log('AI response length:', aiResponse.length)
 
     // Parse JSON from response

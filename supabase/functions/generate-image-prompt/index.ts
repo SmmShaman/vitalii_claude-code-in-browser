@@ -121,7 +121,6 @@ serve(async (req) => {
       throw new Error('Missing required fields: newsId, title, content')
     }
 
-    // Azure credential check removed — using Gemini via callLLM()
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 

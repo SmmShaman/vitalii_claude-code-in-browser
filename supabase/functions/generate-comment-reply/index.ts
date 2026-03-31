@@ -18,7 +18,7 @@ interface GenerateReplyRequest {
 /**
  * Generate AI Reply Suggestion for Social Media Comment
  *
- * Uses Azure OpenAI to generate a professional, friendly reply
+ * Uses AI to generate a professional, friendly reply
  * based on the comment content and article context.
  *
  * Version: 2025-01-17-v1
@@ -166,7 +166,7 @@ Return only valid JSON, no other text.`
     )
 
     if (!response.ok) {
-      console.error('Azure OpenAI error:', await response.text())
+      console.error('AI error:', await response.text())
       return simpleAnalysis(commentText)
     }
 
@@ -314,7 +314,7 @@ Match the tone and formality level of the platform (${platform}).`
     )
 
     if (!response.ok) {
-      console.error('Azure OpenAI error:', await response.text())
+      console.error('AI error:', await response.text())
       return generateSimpleReply(options)
     }
 
