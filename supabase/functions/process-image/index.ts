@@ -8,12 +8,11 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const VERSION = '2026-03-11-v12-grok-primary'
+const VERSION = '2026-03-31-v13-pro-primary'
 
 // Image generation models in priority order (all use generateContent API)
 const IMAGE_GENERATION_MODELS = [
   'gemini-3-pro-image-preview',
-  'gemini-2.5-flash-image',
 ]
 
 // Max time to wait for a single model API call (40 seconds)
@@ -34,8 +33,7 @@ interface CascadingProvider {
 }
 
 const CASCADING_PROVIDERS: CascadingProvider[] = [
-  { name: 'Grok', type: 'grok', model: 'grok-imagine-image', apiKeyEnv: 'XAI_API_KEY', priority: 1 },
-  { name: 'Nano Banana', type: 'gemini', model: 'gemini-3-pro-image-preview', apiKeyEnv: 'GOOGLE_API_KEY', priority: 2 },
+  { name: 'Nano Banana Pro', type: 'gemini', model: 'gemini-3-pro-image-preview', apiKeyEnv: 'GOOGLE_API_KEY', priority: 1 },
 ]
 
 /**
