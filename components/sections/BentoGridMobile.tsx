@@ -173,7 +173,7 @@ const ServicesExplosionOverlay = ({
 
       {/* Scrollable content */}
       <div className="h-full overflow-y-auto pt-16 pb-8 px-4">
-        <div className="space-y-6">
+        <div className="space-y-8">
           {categories.map((cat, catIdx) => (
             <div key={catIdx}>
               {/* Category header */}
@@ -181,13 +181,13 @@ const ServicesExplosionOverlay = ({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: catIdx * 0.1 }}
-                className="font-bold uppercase mb-3 px-1"
-                style={{ color, fontSize: 'clamp(0.8rem, 3.5vw, 1rem)', letterSpacing: '0.1em' }}
+                className="font-bold uppercase mb-4 px-1"
+                style={{ color, fontSize: 'clamp(0.75rem, 3vw, 0.875rem)', letterSpacing: '0.15em' }}
               >
                 {cat.category}
               </motion.h2>
 
-              <div className="space-y-3">
+              <div className="space-y-5">
                 {cat.services.map((service, sIndex) => {
                   const delay = itemIndex * 0.06
                   itemIndex++
@@ -201,11 +201,12 @@ const ServicesExplosionOverlay = ({
                         delay,
                         ease: [0.25, 0.46, 0.45, 0.94],
                       }}
-                      className="bg-gradient-to-br from-[#141225] to-[#0F0D1A] rounded-2xl p-4 shadow-sm border border-[#2D2A40] ml-2"
+                      className="pl-4 ml-2 relative"
+                      style={{ borderLeft: `2px solid ${color}40` }}
                     >
                       {/* Service title */}
                       <h3
-                        className="font-bold uppercase mb-2"
+                        className="font-bold uppercase mb-1"
                         style={{ color, fontSize: 'clamp(0.9rem, 4vw, 1.1rem)' }}
                       >
                         {service.title}
@@ -213,25 +214,23 @@ const ServicesExplosionOverlay = ({
 
                       {/* Short description */}
                       {service.description && (
-                        <p className="text-[#C8C5D6] text-xs mb-3 italic">
+                        <p className="text-[#C8C5D6] text-xs mb-2 italic">
                           {service.description}
                         </p>
                       )}
 
                       {/* Detailed description */}
                       {service.detailedDescription && (
-                        <p className="text-[#C8C5D6] text-sm leading-relaxed mb-2">
+                        <p className="text-[#C8C5D6] text-sm leading-relaxed">
                           {service.detailedDescription}
                         </p>
                       )}
 
                       {/* Simple explanation */}
                       {service.simpleExplanation && (
-                        <div className="mt-3 pt-3 border-t border-[#2D2A40]">
-                          <p className="text-[#C8C5D6] text-xs leading-relaxed">
-                            {service.simpleExplanation}
-                          </p>
-                        </div>
+                        <p className="text-[#C8C5D6] text-xs leading-relaxed mt-2">
+                          {service.simpleExplanation}
+                        </p>
                       )}
                     </motion.div>
                   )
@@ -569,18 +568,18 @@ const NewsListOverlay = ({
       </button>
 
       {/* Title */}
-      <div className="pt-4 px-4 pb-2">
-        <h2 className="font-bold text-xl" style={{ color }}>{t('news_title')}</h2>
+      <div className="pt-5 px-5 pb-3">
+        <h2 className="font-bold text-lg tracking-wide" style={{ color }}>{t('news_title')}</h2>
       </div>
 
       {/* Scrollable content */}
-      <div ref={scrollRef} className="h-[calc(100%-4rem)] overflow-y-auto px-4 pb-8">
+      <div ref={scrollRef} className="h-[calc(100%-4.5rem)] overflow-y-auto px-4 pb-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" style={{ color }} />
           </div>
         ) : allNews.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-1">
             {allNews.map((item, idx) => {
               const slug = item[`slug_${currentLanguage.toLowerCase()}`] || item.slug_en
               return (
@@ -590,10 +589,10 @@ const NewsListOverlay = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.05, 0.5) }}
-                  className="flex gap-3 bg-gradient-to-r from-[#141225] to-[#0F0D1A] rounded-xl p-3 shadow-sm border border-[#2D2A40] active:scale-[0.98] transition-transform"
+                  className="flex gap-3 rounded-xl p-3 pb-4 border-b border-[#2D2A40]/50 active:bg-white/5 transition-colors"
                 >
                   {(item.processed_image_url || item.image_url) && (
-                    <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                       <img
                         src={item.processed_image_url || item.image_url}
                         alt={getLocalizedField(item, 'title')}
@@ -605,10 +604,10 @@ const NewsListOverlay = ({
                     <h4 className="font-semibold text-[#EEEDF5] text-sm line-clamp-2 mb-1">
                       {getLocalizedField(item, 'title')}
                     </h4>
-                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-2">
+                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-1.5">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-[#9B97B0]">
+                    <div className="flex items-center gap-3 text-[11px] text-[#6B6680]">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -796,14 +795,14 @@ const ContactsOverlay = ({
       </button>
 
       {/* Title */}
-      <div className="pt-4 px-4 pb-2">
-        <h2 className="font-bold text-xl" style={{ color }}>{t('contact_title' as any) || 'Contact'}</h2>
+      <div className="pt-5 px-5 pb-4">
+        <h2 className="font-bold text-lg tracking-wide" style={{ color }}>{t('contact_title' as any) || 'Contact'}</h2>
         <p className="text-[#9B97B0] text-sm mt-1">{t('contact_subtitle' as any) || 'Get in touch'}</p>
       </div>
 
       {/* Scrollable content - List of contacts */}
-      <div className="h-[calc(100%-5rem)] overflow-y-auto px-4 pb-8">
-        <div className="space-y-3 pt-2">
+      <div className="h-[calc(100%-5.5rem)] overflow-y-auto px-4 pb-8">
+        <div className="space-y-1">
           {socialLinks.map((social, idx) => {
             const Icon = social.icon
             return (
@@ -813,7 +812,7 @@ const ContactsOverlay = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => handleContactClick(social)}
-                className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-[#141225] to-[#0F0D1A] rounded-2xl shadow-sm border border-[#2D2A40] active:scale-[0.98] transition-transform"
+                className="w-full flex items-center gap-4 p-4 rounded-2xl active:bg-white/5 transition-colors"
               >
                 {/* Icon */}
                 <div
@@ -1208,18 +1207,18 @@ const BlogListOverlay = ({
       </button>
 
       {/* Title */}
-      <div className="pt-4 px-4 pb-2">
-        <h2 className="font-bold text-xl" style={{ color }}>{t('blog_title')}</h2>
+      <div className="pt-5 px-5 pb-3">
+        <h2 className="font-bold text-lg tracking-wide" style={{ color }}>{t('blog_title')}</h2>
       </div>
 
       {/* Scrollable content */}
-      <div ref={scrollRef} className="h-[calc(100%-4rem)] overflow-y-auto px-4 pb-8">
+      <div ref={scrollRef} className="h-[calc(100%-4.5rem)] overflow-y-auto px-4 pb-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" style={{ color }} />
           </div>
         ) : allBlogs.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-1">
             {allBlogs.map((item, idx) => {
               const slug = item[`slug_${currentLanguage.toLowerCase()}`] || item.slug_en
               return (
@@ -1229,10 +1228,10 @@ const BlogListOverlay = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.05, 0.5) }}
-                  className="flex gap-3 bg-gradient-to-r from-[#141225] to-[#0F0D1A] rounded-xl p-3 shadow-sm border border-[#2D2A40] active:scale-[0.98] transition-transform"
+                  className="flex gap-3 rounded-xl p-3 pb-4 border-b border-[#2D2A40]/50 active:bg-white/5 transition-colors"
                 >
                   {(item.processed_image_url || item.image_url || item.cover_image_url) && (
-                    <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                       <img
                         src={item.processed_image_url || item.image_url || item.cover_image_url}
                         alt={getLocalizedField(item, 'title')}
@@ -1244,10 +1243,10 @@ const BlogListOverlay = ({
                     <h4 className="font-semibold text-[#EEEDF5] text-sm line-clamp-2 mb-1">
                       {getLocalizedField(item, 'title')}
                     </h4>
-                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-2">
+                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-1.5">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-[#9B97B0]">
+                    <div className="flex items-center gap-3 text-[11px] text-[#6B6680]">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -1500,21 +1499,21 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto pb-24 scroll-smooth"
       >
-        <div className="space-y-4 px-4">
+        <div className="px-4">
 
           {/* HOME / ABOUT Section */}
-          <section ref={el => { sectionRefs.current['home'] = el }} className="pt-2">
+          <section ref={el => { sectionRefs.current['home'] = el }} className="pt-2 mb-3">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => setIsAboutExpanded(true)}
-              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.home.gradient} shadow-sm relative h-44 cursor-pointer active:scale-[0.98] transition-transform`}
+              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.home.gradient} shadow-sm relative h-48 cursor-pointer active:scale-[0.98] transition-transform`}
             >
               {/* Vertical Label */}
               <VerticalLabel text={t('about_title') as string} color={sectionColors.home.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-xs text-amber-700 font-medium">
+              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.home.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1534,19 +1533,19 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
           </section>
 
           {/* SERVICES Section */}
-          <section ref={el => { sectionRefs.current['services'] = el }}>
+          <section ref={el => { sectionRefs.current['services'] = el }} className="mb-3">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               onClick={() => setIsServicesExpanded(true)}
-              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.services.gradient} shadow-sm relative h-44 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform`}
+              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.services.gradient} shadow-sm relative h-40 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform`}
             >
               {/* Vertical Label */}
               <VerticalLabel text={t('services_title') as string} color={sectionColors.services.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-xs text-pink-700 font-medium">
+              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.services.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1587,7 +1586,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
           </section>
 
           {/* PROJECTS Section */}
-          <section ref={el => { sectionRefs.current['projects'] = el }}>
+          <section ref={el => { sectionRefs.current['projects'] = el }} className="mb-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1599,7 +1598,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('projects_title') as string} color={sectionColors.projects.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-xs text-emerald-700 font-medium">
+              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.projects.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1650,7 +1649,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
           </section>
 
           {/* FEATURES Section */}
-          <section ref={el => { sectionRefs.current['features'] = el }}>
+          <section ref={el => { sectionRefs.current['features'] = el }} className="mb-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1722,12 +1721,12 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
           />
 
           {/* NEWS Section */}
-          <section ref={el => { sectionRefs.current['news'] = el }}>
+          <section ref={el => { sectionRefs.current['news'] = el }} className="mb-3">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.news.gradient} shadow-sm relative h-44 overflow-hidden`}
+              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.news.gradient} shadow-sm relative h-48 overflow-hidden`}
             >
               {/* Vertical Label */}
               <VerticalLabel text={t('news_title') as string} color={sectionColors.news.icon} />
@@ -1801,12 +1800,12 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
           </section>
 
           {/* BLOG Section */}
-          <section ref={el => { sectionRefs.current['blog'] = el }}>
+          <section ref={el => { sectionRefs.current['blog'] = el }} className="mb-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.blog.gradient} shadow-sm relative h-44 overflow-hidden`}
+              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.blog.gradient} shadow-sm relative h-48 overflow-hidden`}
             >
               {/* Vertical Label */}
               <VerticalLabel text={t('blog_title') as string} color={sectionColors.blog.icon} />
@@ -1875,19 +1874,19 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
           </section>
 
           {/* CONTACT Section */}
-          <section ref={el => { sectionRefs.current['contact'] = el }}>
+          <section ref={el => { sectionRefs.current['contact'] = el }} className="mb-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35 }}
               onClick={() => setIsContactsOpen(true)}
-              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.contact.gradient} shadow-sm relative h-44 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform`}
+              className={`rounded-2xl p-4 pl-8 bg-gradient-to-br ${sectionColors.contact.gradient} shadow-sm relative h-40 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform`}
             >
               {/* Vertical Label */}
               <VerticalLabel text={t('contact_title' as any) || 'Contact'} color={sectionColors.contact.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-xs text-purple-700 font-medium">
+              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.contact.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 

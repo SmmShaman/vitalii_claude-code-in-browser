@@ -152,7 +152,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={handleSearchToggle}
                 className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                   searchQuery.trim()
-                    ? 'bg-[#6366F1] text-white animate-pulse'
+                    ? 'bg-[#6366F1] text-white'
                     : searchOpen
                       ? 'bg-[#1A1730]/80 text-[#C8C5D6]'
                       : 'bg-[#1A1730]/70 text-[#9B97B0]'
@@ -160,6 +160,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 aria-label="Search"
               >
                 <Search className="w-3.5 h-3.5" />
+                {/* Static dot indicator when search has a query */}
+                {searchQuery.trim() && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#fbbf24] border border-[#1A1730]" />
+                )}
               </button>
               <AnimatePresence>
                 {searchOpen && (
@@ -191,8 +195,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={() => setCurrentLanguage(lang)}
                 className={`min-w-[36px] min-h-[36px] flex items-center justify-center rounded text-xs font-semibold transition-all ${
                   currentLanguage === lang
-                    ? 'bg-[#6366F1]/80 text-white'
-                    : 'bg-[#1A1730]/70 text-[#C8C5D6]'
+                    ? 'bg-[#6366F1] text-white shadow-[0_0_8px_rgba(99,102,241,0.4)]'
+                    : 'bg-[#1A1730]/70 text-[#6B6680]'
                 }`}
               >
                 {lang}
@@ -280,7 +284,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={handleSearchToggle}
               className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
-                  ? 'bg-[#6366F1] text-white animate-pulse'
+                  ? 'bg-[#6366F1] text-white'
                   : searchOpen
                     ? 'bg-[#1A1730]/80 text-[#C8C5D6]'
                     : 'bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90'
@@ -288,6 +292,10 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               aria-label="Search"
             >
               <Search className="w-4 h-4" />
+              {/* Static dot indicator when search has a query */}
+              {searchQuery.trim() && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#fbbf24] border border-[#1A1730]" />
+              )}
             </button>
             <AnimatePresence>
               {searchOpen && (
@@ -335,8 +343,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={() => setCurrentLanguage(lang)}
               className={`px-2 py-1 rounded-md transition-all duration-300 font-semibold text-xs ${
                 currentLanguage === lang
-                  ? 'bg-[#221F3A]/80 text-[#fbbf24] border border-[#2D2A40]'
-                  : 'bg-[#1A1730]/70 text-[#C8C5D6] hover:bg-[#1A1730]/90 hover:text-[#EEEDF5] border border-[#2D2A40]'
+                  ? 'bg-[#6366F1] text-white border border-[#818CF8] shadow-[0_0_8px_rgba(99,102,241,0.35)]'
+                  : 'bg-[#1A1730]/70 text-[#6B6680] hover:bg-[#1A1730]/90 hover:text-[#EEEDF5] border border-transparent'
               }`}
               aria-label={`Switch to ${lang}`}
             >

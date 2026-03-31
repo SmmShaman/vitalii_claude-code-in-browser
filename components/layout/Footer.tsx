@@ -414,9 +414,9 @@ export const Footer = () => {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-[#6B6680] hover:text-[#EEEDF5] hover:bg-[#2D2A40] transition-all duration-200"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
@@ -434,8 +434,8 @@ export const Footer = () => {
               </div>
 
               {/* URL Display */}
-              <div className="bg-[#221F3A] rounded-lg p-3 mb-4">
-                <p className="text-xs text-[#9B97B0] mb-1">URL</p>
+              <div className="border-l-2 pl-3 py-2 mb-4" style={{ borderColor: modalSocial.color + '60' }}>
+                <p className="text-xs text-[#9B97B0] mb-0.5">URL</p>
                 <p className="text-sm text-[#EEEDF5] font-mono break-all">{modalSocial.href}</p>
               </div>
 
@@ -443,10 +443,10 @@ export const Footer = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleCopyLink(modalSocial.href)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 ${
                     copied
-                      ? 'bg-green-500 text-white'
-                      : 'bg-[#221F3A] text-[#C8C5D6] hover:bg-[#2D2A40]'
+                      ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+                      : 'text-[#C8C5D6] border border-[#2D2A40] hover:border-[#4B4768] hover:bg-[#221F3A]/50'
                   }`}
                 >
                   {copied ? (
@@ -465,7 +465,7 @@ export const Footer = () => {
                   href={modalSocial.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-[#6366F1] to-[#7C3AED] text-white hover:from-[#4F46E5] hover:to-[#6D28D9] transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-gradient-to-r from-[#6366F1] to-[#7C3AED] text-white hover:from-[#5558E6] hover:to-[#7030D4] transition-all duration-200 shadow-lg shadow-[#6366F1]/20"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open
@@ -497,8 +497,8 @@ export const Footer = () => {
               {emailSent ? (
                 // Success state
                 <div className="text-center py-4">
-                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-8 h-8 text-green-500" />
+                  <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-4">
+                    <Check className="w-8 h-8 text-green-400" />
                   </div>
                   <h3 className="font-bold text-[#EEEDF5] text-lg mb-2">Message Sent!</h3>
                   <p className="text-[#9B97B0] text-sm mb-4">
@@ -506,7 +506,7 @@ export const Footer = () => {
                   </p>
                   <button
                     onClick={closeEmailModal}
-                    className="px-6 py-2.5 rounded-lg font-medium bg-gradient-to-r from-[#6366F1] to-[#7C3AED] text-white hover:from-[#4F46E5] hover:to-[#6D28D9] transition-all"
+                    className="px-6 py-2.5 rounded-lg font-medium text-[#C8C5D6] border border-[#2D2A40] hover:border-[#4B4768] hover:bg-[#221F3A]/50 transition-all duration-200"
                   >
                     Close
                   </button>
@@ -527,24 +527,24 @@ export const Footer = () => {
                     </div>
                     <button
                       onClick={closeEmailModal}
-                      className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-[#6B6680] hover:text-[#EEEDF5] hover:bg-[#2D2A40] transition-all duration-200"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
 
                   {/* Email Address Display */}
-                  <div className="bg-[#221F3A] rounded-lg p-3 mb-4 flex items-center justify-between">
+                  <div className="border-l-2 border-[#3B82F6]/40 pl-3 py-2 mb-4 flex items-center justify-between">
                     <div>
                       <p className="text-xs text-[#9B97B0] mb-0.5">To:</p>
                       <p className="text-sm text-[#EEEDF5] font-mono">{CONTACT_EMAIL}</p>
                     </div>
                     <button
                       onClick={handleCopyEmail}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                         emailCopied
-                          ? 'bg-green-500 text-white'
-                          : 'bg-[#1A1730] text-[#9B97B0] hover:bg-[#221F3A] border border-[#2D2A40]'
+                          ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+                          : 'text-[#9B97B0] border border-[#2D2A40] hover:border-[#4B4768] hover:bg-[#221F3A]/50'
                       }`}
                     >
                       {emailCopied ? (
@@ -612,7 +612,7 @@ export const Footer = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={closeEmailModal}
-                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-[#221F3A] text-[#C8C5D6] hover:bg-[#2D2A40] transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[#C8C5D6] border border-[#2D2A40] hover:border-[#4B4768] hover:bg-[#221F3A]/50 transition-all duration-200"
                     >
                       Cancel
                     </button>
