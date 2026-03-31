@@ -10,6 +10,35 @@
   --primary: 221.2 83.2% 53.3%;
   --primary-foreground: 210 40% 98%;
   --radius: 0.75rem;
+
+  /* Design tokens — surfaces */
+  --surface-dark: #1A1730;
+  --surface-darker: #0F0D1A;
+  --surface-elevated: #221F3A;
+  --surface-border: #2D2A40;
+
+  /* Design tokens — text */
+  --text-primary: #EEEDF5;
+  --text-secondary: #C8C5D6;
+  --text-muted: #9B97B0;
+  --text-faint: #6B6680;
+
+  /* Design tokens — accent */
+  --accent-indigo: #6366F1;
+  --accent-amber: #fbbf24;
+  --accent-red: #ef4444;
+
+  /* Design tokens — focus (WCAG 3:1 minimum for UI) */
+  --focus-ring: #818CF8;
+  --focus-ring-dark: #a5b4fc;
+
+  /* Design tokens — typography scale */
+  --text-display: clamp(1.5rem, 3vw, 2.5rem);
+  --text-heading: clamp(1rem, 1.7vw, 1.5rem);
+  --text-subheading: clamp(0.95rem, 1.4vw, 1.35rem);
+  --text-body: clamp(0.875rem, 1.2vw, 1rem);
+  --text-small: clamp(0.75rem, 1vw, 0.875rem);
+  --text-caption: 0.75rem;
 }
 
 @layer base {

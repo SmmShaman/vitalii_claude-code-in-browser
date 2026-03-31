@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface HeroTextAnimationProps {
   text: string;
@@ -21,13 +21,13 @@ export const HeroTextAnimation = ({
   className = '',
   fontWeight = '700',
 }: HeroTextAnimationProps) => {
-  const [fillPercent, setFillPercent] = useState(0);
-  const [waveOffset, setWaveOffset] = useState(0);
+  const [clipPath, setClipPath] = useState('inset(0 100% 0 0)');
   const animationRef = useRef<number | null>(null);
   const targetRef = useRef(0);
   const currentRef = useRef(0);
+  const waveOffsetRef = useRef(0);
 
-  // Animate fill percentage with wave effect
+  // Animate fill percentage with wave effect — uses refs to avoid 60fps setState
   useEffect(() => {
     targetRef.current = isActive ? 100 : 0;
 
@@ -35,15 +35,49 @@ export const HeroTextAnimation = ({
       const diff = targetRef.current - currentRef.current;
       currentRef.current += diff * 0.08;
 
-      // Prevent tiny fluctuations
       if (Math.abs(diff) < 0.5) {
         currentRef.current = targetRef.current;
       }
 
-      setFillPercent(currentRef.current);
+      waveOffsetRef.current = (waveOffsetRef.current + 2) % 360;
 
-      // Animate wave
-      setWaveOffset((prev) => (prev + 2) % 360);
+      // Only update state when clip path actually changes visually
+      const fillPercent = currentRef.current;
+      const waveOffset = waveOffsetRef.current;
+
+      let newClipPath: string;
+      if (fillPercent <= 0) {
+        newClipPath = direction === 'ltr' ? 'inset(0 100% 0 0)' : 'inset(0 0 0 100%)';
+      } else if (fillPercent >= 100) {
+        newClipPath = 'inset(0 0 0 0)';
+      } else {
+        const points: string[] = [];
+        const waveAmplitude = 3;
+        const waveFrequency = 4;
+
+        if (direction === 'ltr') {
+          points.push('0% 0%');
+          for (let i = 0; i <= 20; i++) {
+            const y = (i / 20) * 100;
+            const wave = Math.sin((y / 100) * waveFrequency * Math.PI * 2 + (waveOffset * Math.PI) / 180) * waveAmplitude;
+            const x = Math.min(100, Math.max(0, fillPercent + wave));
+            points.push(`${x}% ${y}%`);
+          }
+          points.push('0% 100%');
+        } else {
+          points.push('100% 0%');
+          for (let i = 0; i <= 20; i++) {
+            const y = (i / 20) * 100;
+            const wave = Math.sin((y / 100) * waveFrequency * Math.PI * 2 + (waveOffset * Math.PI) / 180) * waveAmplitude;
+            const x = Math.max(0, Math.min(100, 100 - fillPercent - wave));
+            points.push(`${x}% ${y}%`);
+          }
+          points.push('100% 100%');
+        }
+        newClipPath = `polygon(${points.join(', ')})`;
+      }
+
+      setClipPath(newClipPath);
 
       if (Math.abs(diff) > 0.1 || isActive) {
         animationRef.current = requestAnimationFrame(animate);
@@ -57,55 +91,7 @@ export const HeroTextAnimation = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive]);
-
-  // Generate wave polygon for clip-path
-  const getWaveClipPath = useCallback(() => {
-    if (fillPercent <= 0) {
-      return direction === 'ltr' ? 'inset(0 100% 0 0)' : 'inset(0 0 0 100%)';
-    }
-    if (fillPercent >= 100) {
-      return 'inset(0 0 0 0)';
-    }
-
-    // Create wave effect using polygon
-    const points: string[] = [];
-    const waveAmplitude = 3; // Wave height in percentage
-    const waveFrequency = 4; // Number of waves
-    const basePercent = fillPercent;
-
-    if (direction === 'ltr') {
-      // Start from top-left
-      points.push('0% 0%');
-
-      // Wave edge (vertical, moving right)
-      for (let i = 0; i <= 20; i++) {
-        const y = (i / 20) * 100;
-        const wave = Math.sin((y / 100) * waveFrequency * Math.PI * 2 + (waveOffset * Math.PI) / 180) * waveAmplitude;
-        const x = Math.min(100, Math.max(0, basePercent + wave));
-        points.push(`${x}% ${y}%`);
-      }
-
-      // Bottom-left corner
-      points.push('0% 100%');
-    } else {
-      // RTL: Start from top-right
-      points.push('100% 0%');
-
-      // Wave edge (vertical, moving left)
-      for (let i = 0; i <= 20; i++) {
-        const y = (i / 20) * 100;
-        const wave = Math.sin((y / 100) * waveFrequency * Math.PI * 2 + (waveOffset * Math.PI) / 180) * waveAmplitude;
-        const x = Math.max(0, Math.min(100, 100 - basePercent - wave));
-        points.push(`${x}% ${y}%`);
-      }
-
-      // Bottom-right corner
-      points.push('100% 100%');
-    }
-
-    return `polygon(${points.join(', ')})`;
-  }, [fillPercent, waveOffset, direction]);
+  }, [isActive, direction]);
 
   return (
     <span className={`relative inline-block ${className}`}>
@@ -131,7 +117,7 @@ export const HeroTextAnimation = ({
           fontWeight,
           color: fillColor || 'transparent',
           WebkitTextStroke: fillColor ? '0.5px rgba(79, 70, 229, 0.15)' : 'none',
-          clipPath: getWaveClipPath(),
+          clipPath,
           textShadow: fillColor ? `0 0 10px ${fillColor}50` : 'none',
           transition: 'color 300ms ease-out',
         }}

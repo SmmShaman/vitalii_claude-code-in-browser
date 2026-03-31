@@ -205,8 +205,8 @@ export const Footer = () => {
           background: 'transparent',
         } : {
           background: 'linear-gradient(160deg, rgba(15, 15, 25, 0.88) 0%, rgba(25, 20, 45, 0.92) 50%, rgba(18, 12, 35, 0.9) 100%)',
-          backdropFilter: 'blur(20px) saturate(1.2)',
-          WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           border: '1px solid rgba(167, 139, 250, 0.1)',
           boxShadow: '0 -1px 0 rgba(167, 139, 250, 0.08), 0 12px 40px rgba(0, 0, 0, 0.4)',
         }}
@@ -263,13 +263,13 @@ export const Footer = () => {
             {/* Right: Contact label + Email + Social Icons */}
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {/* Contact label */}
-              <span className={`${textSecondary} text-[9px] sm:text-[10px] mr-1 hidden md:inline`} style={!isMobile ? { color: dSecondary } : undefined}>
+              <span className={`${textSecondary} text-[11px] mr-1 hidden md:inline`} style={!isMobile ? { color: dSecondary } : undefined}>
                 {t('footer_contact_me')}
               </span>
               {/* Email Button */}
               <button
                 onClick={openEmailModal}
-                className={`${hoverBg} transition-all duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:scale-110`}
+                className={`${hoverBg} transition-all duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-lg hover:scale-110`}
                 style={!isMobile && selectedSocial === 'Email' ? {
                   backgroundColor: 'rgba(234, 67, 53, 0.08)',
                   boxShadow: '0 0 12px rgba(234, 67, 53, 0.12)',
@@ -302,7 +302,7 @@ export const Footer = () => {
                   <button
                     key={social.label}
                     onClick={() => handleSocialClick(social)}
-                    className={`${hoverBg} transition-all duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px] flex items-center justify-center rounded-lg hover:scale-110`}
+                    className={`${hoverBg} transition-all duration-300 cursor-pointer p-2 sm:p-1.5 min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center rounded-lg hover:scale-110`}
                     style={!isMobile && selectedSocial === social.label ? {
                       backgroundColor: `${social.color}15`,
                       boxShadow: `0 0 12px ${social.color}20`,
@@ -349,7 +349,7 @@ export const Footer = () => {
           {/* Business info & cookie links */}
           <div className="flex items-center justify-center mt-1">
             <div
-              className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9px]"
+              className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px]"
               style={{
                 background: 'rgba(255, 255, 255, 0.9)',
                 color: 'rgba(30, 25, 50, 0.7)',
@@ -361,7 +361,7 @@ export const Footer = () => {
               <span style={{ color: 'rgba(30, 25, 50, 0.25)' }}>|</span>
               <button
                 onClick={handleOpenCookieSettings}
-                className="hover:underline transition-colors cursor-pointer bg-transparent border-none text-[9px]"
+                className="hover:underline transition-colors cursor-pointer bg-transparent border-none text-[11px] focus:outline-none focus:ring-1 focus:ring-[#818CF8] rounded"
                 style={{ color: 'rgba(30, 25, 50, 0.55)' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.9)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.55)'}
@@ -371,7 +371,7 @@ export const Footer = () => {
               <span style={{ color: 'rgba(30, 25, 50, 0.25)' }}>|</span>
               <a
                 href="/informasjonskapsler"
-                className="hover:underline transition-colors text-[9px]"
+                className="hover:underline transition-colors text-[11px] focus:outline-none focus:ring-1 focus:ring-[#818CF8] rounded"
                 style={{ color: 'rgba(30, 25, 50, 0.55)' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.9)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.55)'}
@@ -564,43 +564,46 @@ export const Footer = () => {
                   {/* Form */}
                   <div className="space-y-3 mb-4">
                     <div>
-                      <label className="block text-xs text-[#9B97B0] mb-1">Your Email</label>
+                      <label htmlFor="contact-email" className="block text-xs text-[#9B97B0] mb-1">Your Email</label>
                       <input
+                        id="contact-email"
                         type="email"
                         name="senderEmail"
                         value={emailForm.senderEmail}
                         onChange={handleEmailFormChange}
                         placeholder="your@email.com"
-                        className="w-full px-3 py-2 rounded-lg border border-[#2D2A40] focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] outline-none transition-all text-sm"
+                        className="w-full px-3 py-2 rounded-lg bg-[#1A1730] text-[#EEEDF5] border border-[#2D2A40] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8] outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-[#9B97B0] mb-1">Subject</label>
+                      <label htmlFor="contact-subject" className="block text-xs text-[#9B97B0] mb-1">Subject</label>
                       <input
+                        id="contact-subject"
                         type="text"
                         name="subject"
                         value={emailForm.subject}
                         onChange={handleEmailFormChange}
                         placeholder="What's this about?"
-                        className="w-full px-3 py-2 rounded-lg border border-[#2D2A40] focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] outline-none transition-all text-sm"
+                        className="w-full px-3 py-2 rounded-lg bg-[#1A1730] text-[#EEEDF5] border border-[#2D2A40] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8] outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-[#9B97B0] mb-1">Message</label>
+                      <label htmlFor="contact-message" className="block text-xs text-[#9B97B0] mb-1">Message</label>
                       <textarea
+                        id="contact-message"
                         name="message"
                         value={emailForm.message}
                         onChange={handleEmailFormChange}
                         placeholder="Write your message here..."
                         rows={4}
-                        className="w-full px-3 py-2 rounded-lg border border-[#2D2A40] focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] outline-none transition-all text-sm resize-none"
+                        className="w-full px-3 py-2 rounded-lg bg-[#1A1730] text-[#EEEDF5] border border-[#2D2A40] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8] outline-none transition-all text-sm resize-none"
                       />
                     </div>
                   </div>
 
                   {/* Error Message */}
                   {emailError && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    <div className="mb-4 p-3 bg-red-950/50 border border-red-500/30 rounded-lg text-sm text-red-300">
                       {emailError}
                     </div>
                   )}

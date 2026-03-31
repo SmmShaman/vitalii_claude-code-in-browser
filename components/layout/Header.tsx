@@ -164,11 +164,11 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               <AnimatePresence>
                 {searchOpen && (
                   <motion.div
-                    initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 160, opacity: 1 }}
-                    exit={{ width: 0, opacity: 0 }}
+                    initial={{ scaleX: 0, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 1 }}
+                    exit={{ scaleX: 0, opacity: 0 }}
                     transition={{ duration: 0.25, ease: 'easeOut' }}
-                    className="absolute left-8 top-1/2 -translate-y-1/2 overflow-hidden"
+                    className="absolute left-8 top-1/2 -translate-y-1/2 w-40 origin-left"
                   >
                     <input
                       ref={searchInputRef}
@@ -178,7 +178,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                       onBlur={handleSearchBlur}
                       onKeyDown={handleSearchKeyDown}
                       placeholder={t('search_placeholder_short') as string}
-                      className="w-full px-2 py-1 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-xs placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]/40"
+                      className="w-full px-2 py-1 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-xs placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#818CF8]"
                     />
                   </motion.div>
                 )}
@@ -189,7 +189,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               <button
                 key={lang}
                 onClick={() => setCurrentLanguage(lang)}
-                className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
+                className={`min-w-[36px] min-h-[36px] flex items-center justify-center rounded text-xs font-semibold transition-all ${
                   currentLanguage === lang
                     ? 'bg-[#6366F1]/80 text-white'
                     : 'bg-[#1A1730]/70 text-[#C8C5D6]'
@@ -242,7 +242,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 <h1
                   className="font-bold text-red-500 font-comfortaa"
                   style={{
-                    fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
+                    fontSize: 'var(--text-display)',
                     textShadow: '1px 1px 3px rgba(79, 70, 229, 0.3)',
                     lineHeight: '1.2'
                   }}
@@ -255,7 +255,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                   fillColor={fillColor}
                   isActive={isActive}
                   direction="rtl"
-                  fontSize="clamp(1rem, 1.7vw, 1.5rem)"
+                  fontSize="var(--text-heading)"
                   fontWeight="600"
                 />
               </div>
@@ -265,7 +265,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 fillColor={fillColor}
                 isActive={isActive}
                 direction="ltr"
-                fontSize="clamp(0.95rem, 1.4vw, 1.35rem)"
+                fontSize="var(--text-subheading)"
                 fontWeight="400"
               />
             </div>
@@ -292,11 +292,11 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
             <AnimatePresence>
               {searchOpen && (
                 <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 250, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
+                  initial={{ scaleX: 0, opacity: 0 }}
+                  animate={{ scaleX: 1, opacity: 1 }}
+                  exit={{ scaleX: 0, opacity: 0 }}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className="absolute left-10 top-1/2 -translate-y-1/2 overflow-hidden"
+                  className="absolute left-10 top-1/2 -translate-y-1/2 w-[250px] origin-left"
                 >
                   <input
                     ref={searchInputRef}
@@ -306,7 +306,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                     onBlur={handleSearchBlur}
                     onKeyDown={handleSearchKeyDown}
                     placeholder={t('search_placeholder_short') as string}
-                    className="w-full px-3 py-1.5 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-sm placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]/40 focus:border-[#6366F1]"
+                    className="w-full px-3 py-1.5 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-sm placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#818CF8] focus:border-[#818CF8]"
                   />
                 </motion.div>
               )}

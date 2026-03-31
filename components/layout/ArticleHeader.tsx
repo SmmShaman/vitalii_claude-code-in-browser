@@ -103,7 +103,7 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
                 onBlur={handleSearchBlur}
                 onKeyDown={handleSearchKeyDown}
                 placeholder={t('search_placeholder_short') as string}
-                className="w-full px-3 py-1.5 rounded-lg text-sm text-[#EEEDF5] placeholder-[#6B6680] border border-[#2D2A40] shadow-lg bg-[#1A1730] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30 focus:border-[#6366F1]"
+                className="w-full px-3 py-1.5 rounded-lg text-sm text-[#EEEDF5] placeholder-[#6B6680] border border-[#2D2A40] shadow-lg bg-[#1A1730] focus:outline-none focus:ring-2 focus:ring-[#818CF8] focus:border-[#818CF8]"
               />
             </div>
           </div>

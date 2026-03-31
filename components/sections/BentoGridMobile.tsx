@@ -213,7 +213,7 @@ const ServicesExplosionOverlay = ({
 
                       {/* Short description */}
                       {service.description && (
-                        <p className="text-[#9B97B0] text-xs mb-3 italic">
+                        <p className="text-[#C8C5D6] text-xs mb-3 italic">
                           {service.description}
                         </p>
                       )}
@@ -228,7 +228,7 @@ const ServicesExplosionOverlay = ({
                       {/* Simple explanation */}
                       {service.simpleExplanation && (
                         <div className="mt-3 pt-3 border-t border-[#2D2A40]">
-                          <p className="text-[#9B97B0] text-xs leading-relaxed">
+                          <p className="text-[#C8C5D6] text-xs leading-relaxed">
                             {service.simpleExplanation}
                           </p>
                         </div>

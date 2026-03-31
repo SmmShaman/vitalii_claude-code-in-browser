@@ -63,7 +63,7 @@ export function ShareButtons({ url, title, description }: ShareButtonsProps) {
 
       <button
         onClick={shareOnTwitter}
-        className="p-2.5 rounded-lg bg-black text-white hover:bg-gray-800 transition-colors focus:ring-2 focus:ring-black focus:ring-offset-2"
+        className="p-2.5 rounded-lg bg-black text-white hover:bg-gray-800 transition-colors focus:ring-2 focus:ring-[#818CF8] focus:ring-offset-2"
         aria-label="Share on X (Twitter)"
         title="Share on X"
       >

@@ -112,9 +112,9 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         y: 0,
         rotation: 0,
         scale: 1,
-        ease: 'elastic.out(1, 0.5)',
+        ease: 'power3.out',
         stagger: {
-          amount: 0.4,
+          amount: 0.3,
           from: 'random',
         },
       });
@@ -266,9 +266,9 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
         y: 0,
         rotation: 0,
         scale: 1,
-        ease: 'elastic.out(1, 0.5)',
+        ease: 'power3.out',
         stagger: {
-          amount: 0.4,
+          amount: 0.3,
           from: 'random',
         },
       });
