@@ -14,24 +14,24 @@ import type { FeatureCategory } from '@/data/features'
 
 // Section colors (same as desktop)
 export const sectionColors: { [key: string]: { bg: string; text: string; icon: string; gradient: string } } = {
-  home: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#AF601A', gradient: 'from-[#1A1730] to-[#0F0D1A]' },
-  about: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#AF601A', gradient: 'from-[#1A1730] to-[#141225]' },
-  services: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#EC008C', gradient: 'from-[#1A1730] to-[#141225]' },
-  projects: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#009B77', gradient: 'from-[#141225] to-[#0F0D1A]' },
-  features: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#F5A0C0', gradient: 'from-[#1A1730] to-[#141225]' },
-  news: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#88B04B', gradient: 'from-[#141225] to-[#0F0D1A]' },
-  blog: { bg: 'bg-[#141225]', text: 'text-[#EEEDF5]', icon: '#0F4C81', gradient: 'from-[#1A1730] to-[#141225]' },
-  contact: { bg: 'bg-[#0F0D1A]', text: 'text-[#EEEDF5]', icon: '#764BB0', gradient: 'from-[#141225] to-[#0F0D1A]' },
+  home: { bg: 'bg-surface-darker', text: 'text-content', icon: '#AF601A', gradient: 'from-surface to-surface-darker' },
+  about: { bg: 'bg-surface-deep', text: 'text-content', icon: '#AF601A', gradient: 'from-surface to-surface-deep' },
+  services: { bg: 'bg-surface-deep', text: 'text-content', icon: '#EC008C', gradient: 'from-surface to-surface-deep' },
+  projects: { bg: 'bg-surface-darker', text: 'text-content', icon: '#009B77', gradient: 'from-surface-deep to-surface-darker' },
+  features: { bg: 'bg-surface-deep', text: 'text-content', icon: '#F5A0C0', gradient: 'from-surface to-surface-deep' },
+  news: { bg: 'bg-surface-darker', text: 'text-content', icon: '#88B04B', gradient: 'from-surface-deep to-surface-darker' },
+  blog: { bg: 'bg-surface-deep', text: 'text-content', icon: '#0F4C81', gradient: 'from-surface to-surface-deep' },
+  contact: { bg: 'bg-surface-darker', text: 'text-content', icon: '#764BB0', gradient: 'from-surface-deep to-surface-darker' },
 }
 
 // Skill category colors
 const categoryColors: { [key: string]: { bg: string; text: string } } = {
-  development: { bg: 'bg-[#1A1730]', text: 'text-green-400' },
-  ui: { bg: 'bg-[#1A1730]', text: 'text-purple-400' },
-  automation: { bg: 'bg-[#1A1730]', text: 'text-blue-400' },
-  ai: { bg: 'bg-[#1A1730]', text: 'text-orange-400' },
-  marketing: { bg: 'bg-[#1A1730]', text: 'text-pink-400' },
-  integration: { bg: 'bg-[#1A1730]', text: 'text-cyan-400' },
+  development: { bg: 'bg-surface', text: 'text-green-400' },
+  ui: { bg: 'bg-surface', text: 'text-purple-400' },
+  automation: { bg: 'bg-surface', text: 'text-blue-400' },
+  ai: { bg: 'bg-surface', text: 'text-orange-400' },
+  marketing: { bg: 'bg-surface', text: 'text-pink-400' },
+  integration: { bg: 'bg-surface', text: 'text-cyan-400' },
 }
 
 // Vertical Label Component (like desktop NeonVerticalLabel but simpler for mobile)
@@ -76,7 +76,7 @@ const AboutExplosionOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-[#1A1730]"
+      className="fixed inset-0 z-50 bg-surface"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -96,7 +96,7 @@ const AboutExplosionOverlay = ({
 
       {/* Scrollable content */}
       <div className="h-full overflow-y-auto pt-16 pb-8 px-6">
-        <div className="text-[#C8C5D6]" style={{ fontSize: '1rem', lineHeight: 1.8 }}>
+        <div className="text-content-secondary" style={{ fontSize: '1rem', lineHeight: 1.8 }}>
           {paragraphs.map((paragraph, pIndex) => {
             const words = paragraph.trim().split(' ')
             const boldCount = Math.min(3, words.length)
@@ -153,7 +153,7 @@ const ServicesExplosionOverlay = ({
   let itemIndex = 0
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-[#1A1730]"
+      className="fixed inset-0 z-50 bg-surface"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -214,21 +214,21 @@ const ServicesExplosionOverlay = ({
 
                       {/* Short description */}
                       {service.description && (
-                        <p className="text-[#C8C5D6] text-xs mb-2 italic">
+                        <p className="text-content-secondary text-xs mb-2 italic">
                           {service.description}
                         </p>
                       )}
 
                       {/* Detailed description */}
                       {service.detailedDescription && (
-                        <p className="text-[#C8C5D6] text-sm leading-relaxed">
+                        <p className="text-content-secondary text-sm leading-relaxed">
                           {service.detailedDescription}
                         </p>
                       )}
 
                       {/* Simple explanation */}
                       {service.simpleExplanation && (
-                        <p className="text-[#C8C5D6] text-xs leading-relaxed mt-2">
+                        <p className="text-content-secondary text-xs leading-relaxed mt-2">
                           {service.simpleExplanation}
                         </p>
                       )}
@@ -280,7 +280,7 @@ const ProjectsExplosionOverlay = ({
 
     return (
       <motion.div
-        className="fixed inset-0 z-50 bg-[#1A1730]"
+        className="fixed inset-0 z-50 bg-surface"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -345,7 +345,7 @@ const ProjectsExplosionOverlay = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="text-[#9B97B0] text-base mb-6 italic"
+                className="text-content-muted text-base mb-6 italic"
               >
                 {project.short}
               </motion.p>
@@ -357,7 +357,7 @@ const ProjectsExplosionOverlay = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-[#C8C5D6] text-base leading-relaxed mb-6"
+                className="text-content-secondary text-base leading-relaxed mb-6"
               >
                 {project.description}
               </motion.p>
@@ -390,7 +390,7 @@ const ProjectsExplosionOverlay = ({
   // Grid view of all projects
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-[#1A1730]"
+      className="fixed inset-0 z-50 bg-surface"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -549,7 +549,7 @@ const NewsListOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-[#1A1730]"
+      className="fixed inset-0 z-50 bg-surface"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -589,7 +589,7 @@ const NewsListOverlay = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.05, 0.5) }}
-                  className="flex gap-3 rounded-xl p-3 pb-4 border-b border-[#2D2A40]/50 active:bg-white/5 transition-colors"
+                  className="flex gap-3 rounded-xl p-3 pb-4 border-b border-surface-border/50 active:bg-white/5 transition-colors"
                 >
                   {(item.processed_image_url || item.image_url) && (
                     <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
@@ -601,13 +601,13 @@ const NewsListOverlay = ({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-[#EEEDF5] text-sm line-clamp-2 mb-1">
+                    <h4 className="font-semibold text-content text-sm line-clamp-2 mb-1">
                       {getLocalizedField(item, 'title')}
                     </h4>
-                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-1.5">
+                    <p className="text-content-muted text-xs line-clamp-2 mb-1.5">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-[11px] text-[#6B6680]">
+                    <div className="flex items-center gap-3 text-[11px] text-content-faint">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -629,13 +629,13 @@ const NewsListOverlay = ({
               </div>
             )}
             {!hasMore && allNews.length > 0 && (
-              <p className="text-center text-[#6B6680] text-sm py-4">
+              <p className="text-center text-content-faint text-sm py-4">
                 {t('no_more_news' as any) || 'No more news'}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-[#9B97B0] text-sm text-center py-12">
+          <p className="text-content-muted text-sm text-center py-12">
             {t('no_news' as any) || 'No news available'}
           </p>
         )}
@@ -776,7 +776,7 @@ const ContactsOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-[#1A1730]"
+      className="fixed inset-0 z-50 bg-surface"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -797,7 +797,7 @@ const ContactsOverlay = ({
       {/* Title */}
       <div className="pt-5 px-5 pb-4">
         <h2 className="font-bold text-lg tracking-wide" style={{ color }}>{t('contact_title' as any) || 'Contact'}</h2>
-        <p className="text-[#9B97B0] text-sm mt-1">{t('contact_subtitle' as any) || 'Get in touch'}</p>
+        <p className="text-content-muted text-sm mt-1">{t('contact_subtitle' as any) || 'Get in touch'}</p>
       </div>
 
       {/* Scrollable content - List of contacts */}
@@ -824,12 +824,12 @@ const ContactsOverlay = ({
 
                 {/* Info */}
                 <div className="flex-1 text-left">
-                  <h3 className="font-semibold text-[#EEEDF5]">{social.label}</h3>
-                  <p className="text-sm text-[#9B97B0]">{social.username}</p>
+                  <h3 className="font-semibold text-content">{social.label}</h3>
+                  <p className="text-sm text-content-muted">{social.username}</p>
                 </div>
 
                 {/* Arrow */}
-                <ChevronRight className="w-5 h-5 text-[#6B6680]" />
+                <ChevronRight className="w-5 h-5 text-content-faint" />
               </motion.button>
             )
           })}
@@ -851,7 +851,7 @@ const ContactsOverlay = ({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-[#1A1730] rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+              className="bg-surface rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -864,13 +864,13 @@ const ContactsOverlay = ({
                     <selectedSocial.icon className="w-5 h-5" style={{ color: selectedSocial.color }} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#EEEDF5]">{selectedSocial.label}</h3>
-                    <p className="text-sm text-[#9B97B0]">{selectedSocial.username}</p>
+                    <h3 className="font-bold text-content">{selectedSocial.label}</h3>
+                    <p className="text-sm text-content-muted">{selectedSocial.username}</p>
                   </div>
                 </div>
                 <button
                   onClick={closeQRModal}
-                  className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
+                  className="text-content-faint hover:text-content-muted transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -878,7 +878,7 @@ const ContactsOverlay = ({
 
               {/* QR Code */}
               <div className="flex justify-center mb-4">
-                <div className="bg-[#1A1730] p-3 rounded-xl shadow-inner border border-[#2D2A40]">
+                <div className="bg-surface p-3 rounded-xl shadow-inner border border-surface-border">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(selectedSocial.href)}&format=svg`}
                     alt={`QR Code for ${selectedSocial.label}`}
@@ -890,9 +890,9 @@ const ContactsOverlay = ({
               </div>
 
               {/* URL Display */}
-              <div className="bg-[#221F3A] rounded-lg p-3 mb-4">
-                <p className="text-xs text-[#9B97B0] mb-1">URL</p>
-                <p className="text-sm text-[#C8C5D6] font-mono break-all">{selectedSocial.href}</p>
+              <div className="bg-surface-elevated rounded-lg p-3 mb-4">
+                <p className="text-xs text-content-muted mb-1">URL</p>
+                <p className="text-sm text-content-secondary font-mono break-all">{selectedSocial.href}</p>
               </div>
 
               {/* Action Buttons */}
@@ -902,7 +902,7 @@ const ContactsOverlay = ({
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
                     copied
                       ? 'bg-green-500 text-white'
-                      : 'bg-[#221F3A] text-[#C8C5D6] hover:bg-[#2D2A40] active:bg-[#2D2A40]'
+                      : 'bg-surface-elevated text-content-secondary hover:bg-surface-border active:bg-surface-border'
                   }`}
                 >
                   {copied ? (
@@ -948,7 +948,7 @@ const ContactsOverlay = ({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-[#1A1730] rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
+              className="bg-surface rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {emailSent ? (
@@ -957,8 +957,8 @@ const ContactsOverlay = ({
                   <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                     <Check className="w-8 h-8 text-green-500" />
                   </div>
-                  <h3 className="font-bold text-[#EEEDF5] text-lg mb-2">Message Sent!</h3>
-                  <p className="text-[#9B97B0] text-sm mb-4">
+                  <h3 className="font-bold text-content text-lg mb-2">Message Sent!</h3>
+                  <p className="text-content-muted text-sm mb-4">
                     Thank you for your message. We will get back to you soon.
                   </p>
                   <button
@@ -978,30 +978,30 @@ const ContactsOverlay = ({
                         <Mail className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-[#EEEDF5]">Send Email</h3>
-                        <p className="text-sm text-[#9B97B0]">Contact Vitalii</p>
+                        <h3 className="font-bold text-content">Send Email</h3>
+                        <p className="text-sm text-content-muted">Contact Vitalii</p>
                       </div>
                     </div>
                     <button
                       onClick={closeEmailModal}
-                      className="text-[#6B6680] hover:text-[#9B97B0] transition-colors"
+                      className="text-content-faint hover:text-content-muted transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
                   </div>
 
                   {/* Email Address Display */}
-                  <div className="bg-[#221F3A] rounded-lg p-3 mb-4 flex items-center justify-between">
+                  <div className="bg-surface-elevated rounded-lg p-3 mb-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-[#9B97B0] mb-0.5">To:</p>
-                      <p className="text-sm text-[#C8C5D6] font-mono">{CONTACT_EMAIL}</p>
+                      <p className="text-xs text-content-muted mb-0.5">To:</p>
+                      <p className="text-sm text-content-secondary font-mono">{CONTACT_EMAIL}</p>
                     </div>
                     <button
                       onClick={handleCopyEmail}
                       className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         emailCopied
                           ? 'bg-green-500 text-white'
-                          : 'bg-[#1A1730] text-[#9B97B0] active:bg-[#141225] border border-[#2D2A40]'
+                          : 'bg-surface text-content-muted active:bg-surface-deep border border-surface-border'
                       }`}
                     >
                       {emailCopied ? (
@@ -1021,36 +1021,36 @@ const ContactsOverlay = ({
                   {/* Form */}
                   <div className="space-y-3 mb-4">
                     <div>
-                      <label className="block text-xs text-[#9B97B0] mb-1">Your Email</label>
+                      <label className="block text-xs text-content-muted mb-1">Your Email</label>
                       <input
                         type="email"
                         name="senderEmail"
                         value={emailForm.senderEmail}
                         onChange={handleEmailFormChange}
                         placeholder="your@email.com"
-                        className="w-full px-3 py-2.5 rounded-lg border border-[#2D2A40] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
+                        className="w-full px-3 py-2.5 rounded-lg border border-surface-border focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-[#9B97B0] mb-1">Subject</label>
+                      <label className="block text-xs text-content-muted mb-1">Subject</label>
                       <input
                         type="text"
                         name="subject"
                         value={emailForm.subject}
                         onChange={handleEmailFormChange}
                         placeholder="What's this about?"
-                        className="w-full px-3 py-2.5 rounded-lg border border-[#2D2A40] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
+                        className="w-full px-3 py-2.5 rounded-lg border border-surface-border focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-[#9B97B0] mb-1">Message</label>
+                      <label className="block text-xs text-content-muted mb-1">Message</label>
                       <textarea
                         name="message"
                         value={emailForm.message}
                         onChange={handleEmailFormChange}
                         placeholder="Write your message here..."
                         rows={4}
-                        className="w-full px-3 py-2.5 rounded-lg border border-[#2D2A40] focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm resize-none"
+                        className="w-full px-3 py-2.5 rounded-lg border border-surface-border focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm resize-none"
                       />
                     </div>
                   </div>
@@ -1066,7 +1066,7 @@ const ContactsOverlay = ({
                   <div className="flex gap-2">
                     <button
                       onClick={closeEmailModal}
-                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-[#221F3A] text-[#C8C5D6] active:bg-[#2D2A40] transition-all"
+                      className="flex-1 px-4 py-2.5 rounded-lg font-medium bg-surface-elevated text-content-secondary active:bg-surface-border transition-all"
                     >
                       Cancel
                     </button>
@@ -1188,7 +1188,7 @@ const BlogListOverlay = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-[#1A1730]"
+      className="fixed inset-0 z-50 bg-surface"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -1228,7 +1228,7 @@ const BlogListOverlay = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.05, 0.5) }}
-                  className="flex gap-3 rounded-xl p-3 pb-4 border-b border-[#2D2A40]/50 active:bg-white/5 transition-colors"
+                  className="flex gap-3 rounded-xl p-3 pb-4 border-b border-surface-border/50 active:bg-white/5 transition-colors"
                 >
                   {(item.processed_image_url || item.image_url || item.cover_image_url) && (
                     <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
@@ -1240,13 +1240,13 @@ const BlogListOverlay = ({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-[#EEEDF5] text-sm line-clamp-2 mb-1">
+                    <h4 className="font-semibold text-content text-sm line-clamp-2 mb-1">
                       {getLocalizedField(item, 'title')}
                     </h4>
-                    <p className="text-[#9B97B0] text-xs line-clamp-2 mb-1.5">
+                    <p className="text-content-muted text-xs line-clamp-2 mb-1.5">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-[11px] text-[#6B6680]">
+                    <div className="flex items-center gap-3 text-[11px] text-content-faint">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -1271,13 +1271,13 @@ const BlogListOverlay = ({
               </div>
             )}
             {!hasMore && allBlogs.length > 0 && (
-              <p className="text-center text-[#6B6680] text-sm py-4">
+              <p className="text-center text-content-faint text-sm py-4">
                 {t('no_more_blogs' as any) || 'No more blog posts'}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-[#9B97B0] text-sm text-center py-12">
+          <p className="text-content-muted text-sm text-center py-12">
             {t('no_blog_posts' as any) || 'No blog posts available'}
           </p>
         )}
@@ -1522,10 +1522,10 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 ref={aboutTextRef}
                 className="h-full overflow-y-auto pr-2 scrollbar-thin scroll-smooth"
               >
-                <p className="text-sm leading-relaxed text-[#C8C5D6] whitespace-pre-line">
+                <p className="text-sm leading-relaxed text-content-secondary whitespace-pre-line">
                   {typedText}
                   {isTyping && (
-                    <span className="inline-block w-0.5 h-4 bg-[#818CF8] ml-0.5 animate-pulse" />
+                    <span className="inline-block w-0.5 h-4 bg-brand-light ml-0.5 animate-pulse" />
                   )}
                 </p>
               </div>
@@ -1561,12 +1561,12 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                     className="text-center px-4"
                   >
                     <h3
-                      className="font-bold text-[#EEEDF5] uppercase"
+                      className="font-bold text-content uppercase"
                       style={{ fontSize: 'clamp(1rem, 5vw, 1.5rem)', lineHeight: 1.2 }}
                     >
                       {flatServicesList[currentServiceIndex]?.title}
                     </h3>
-                    <p className="text-[#9B97B0] text-xs mt-2 italic">
+                    <p className="text-content-muted text-xs mt-2 italic">
                       {flatServicesList[currentServiceIndex]?.description}
                     </p>
                   </motion.div>
@@ -1609,7 +1609,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 onTouchEnd={handleProjectTouchEnd}
               >
                 {/* Progress bar */}
-                <div className="h-1 bg-[#2D2A40] rounded-full mb-3 overflow-hidden">
+                <div className="h-1 bg-surface-border rounded-full mb-3 overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
                     style={{ background: `linear-gradient(to right, ${currentColor.from}, ${currentColor.to})` }}
@@ -1639,8 +1639,8 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-[#EEEDF5] text-sm mb-1 line-clamp-1">{currentProject?.title}</h4>
-                      <p className="text-[#9B97B0] text-xs line-clamp-2">{currentProject?.short}</p>
+                      <h4 className="font-bold text-content text-sm mb-1 line-clamp-1">{currentProject?.title}</h4>
+                      <p className="text-content-muted text-xs line-clamp-2">{currentProject?.short}</p>
                     </div>
                   </motion.div>
                 </AnimatePresence>
@@ -1745,7 +1745,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
               {isLoadingNews ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#88B04B] border-t-transparent" />
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-news border-t-transparent" />
                 </div>
               ) : newsData.length > 0 ? (
                 <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
@@ -1760,7 +1760,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
                           whileTap={{ scale: 0.98 }}
-                          className="w-44 flex-shrink-0 bg-[#1A1730]/80 rounded-xl overflow-hidden shadow-sm"
+                          className="w-44 flex-shrink-0 bg-surface/80 rounded-xl overflow-hidden shadow-sm"
                         >
                           {(item.processed_image_url || item.image_url) && (
                             <div className="h-24 overflow-hidden">
@@ -1772,10 +1772,10 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                             </div>
                           )}
                           <div className="p-2.5">
-                            <h4 className="font-semibold text-[#EEEDF5] text-xs line-clamp-2">
+                            <h4 className="font-semibold text-content text-xs line-clamp-2">
                               {getLocalizedField(item, 'title')}
                             </h4>
-                            <div className="flex items-center gap-2 mt-1.5 text-xs text-[#9B97B0]">
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-content-muted">
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(item.published_at)}</span>
                               {item.views_count > 0 && (
@@ -1792,7 +1792,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                   </div>
                 </div>
               ) : (
-                <p className="text-[#9B97B0] text-sm text-center py-4">
+                <p className="text-content-muted text-sm text-center py-4">
                   {t('no_news' as any) || 'No news available'}
                 </p>
               )}
@@ -1824,7 +1824,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
 
               {isLoadingBlog ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#0F4C81] border-t-transparent" />
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-900 border-t-transparent" />
                 </div>
               ) : blogData.length > 0 ? (
                 <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
@@ -1839,7 +1839,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
                           whileTap={{ scale: 0.98 }}
-                          className="w-44 flex-shrink-0 bg-[#1A1730]/80 rounded-xl overflow-hidden shadow-sm"
+                          className="w-44 flex-shrink-0 bg-surface/80 rounded-xl overflow-hidden shadow-sm"
                         >
                           {(item.processed_image_url || item.image_url || item.cover_image_url) && (
                             <div className="h-24 overflow-hidden">
@@ -1851,10 +1851,10 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                             </div>
                           )}
                           <div className="p-2.5">
-                            <h4 className="font-semibold text-[#EEEDF5] text-xs line-clamp-2">
+                            <h4 className="font-semibold text-content text-xs line-clamp-2">
                               {getLocalizedField(item, 'title')}
                             </h4>
-                            <div className="flex items-center gap-2 mt-1.5 text-xs text-[#9B97B0]">
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-content-muted">
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(item.published_at)}</span>
                               {item.reading_time && <span>• {item.reading_time} min</span>}
@@ -1866,7 +1866,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                   </div>
                 </div>
               ) : (
-                <p className="text-[#9B97B0] text-sm text-center py-4">
+                <p className="text-content-muted text-sm text-center py-4">
                   {t('no_blog_posts' as any) || 'No blog posts available'}
                 </p>
               )}

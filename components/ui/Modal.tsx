@@ -111,7 +111,7 @@ export function Modal({ children, title = 'Article' }: ModalProps) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed inset-0 z-50 bg-[#0F0D1A] overflow-hidden shadow-2xl focus:outline-none"
+        className="fixed inset-0 z-50 bg-surface-darker overflow-hidden shadow-2xl focus:outline-none"
         style={{
           paddingTop: 'env(safe-area-inset-top)',
           paddingRight: 'env(safe-area-inset-right)',
@@ -126,7 +126,7 @@ export function Modal({ children, title = 'Article' }: ModalProps) {
         <button
           onClick={onDismiss}
           aria-label="Close modal"
-          className="absolute top-4 right-4 z-20 p-2 min-w-[44px] min-h-[44px] rounded-full bg-[#221F3A] hover:bg-[#2D2A40] transition-colors text-[#C8C5D6] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:ring-offset-2 shadow-md"
+          className="absolute top-4 right-4 z-20 p-2 min-w-[44px] min-h-[44px] rounded-full bg-surface-elevated hover:bg-surface-border transition-colors text-content-secondary flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 shadow-md"
         >
           <X className="w-5 h-5" />
         </button>

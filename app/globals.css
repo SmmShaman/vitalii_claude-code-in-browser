@@ -25,8 +25,19 @@
 
   /* Design tokens — accent */
   --accent-indigo: #6366F1;
+  --accent-indigo-light: #818CF8;
+  --accent-indigo-lighter: #A5B4FC;
+  --accent-indigo-dark: #5558E6;
+  --accent-indigo-darker: #4F46E5;
   --accent-amber: #fbbf24;
   --accent-red: #ef4444;
+  --accent-news: #88B04B;
+  --accent-news-light: #A5C85A;
+  --accent-news-dark: #6d8c3c;
+
+  /* Design tokens — surface extras */
+  --surface-deep: #141225;
+  --surface-border-hover: #4B4768;
 
   /* Design tokens — focus (WCAG 3:1 minimum for UI) */
   --focus-ring: #818CF8;

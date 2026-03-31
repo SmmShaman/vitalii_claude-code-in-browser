@@ -38,6 +38,38 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
+        // Design token colors — surfaces
+        surface: {
+          DEFAULT: '#1A1730',
+          darker: '#0F0D1A',
+          deep: '#141225',
+          elevated: '#221F3A',
+        },
+        'surface-border': {
+          DEFAULT: '#2D2A40',
+          hover: '#4B4768',
+        },
+        // Design token colors — text
+        content: {
+          DEFAULT: '#EEEDF5',
+          secondary: '#C8C5D6',
+          muted: '#9B97B0',
+          faint: '#6B6680',
+        },
+        // Design token colors — brand accent
+        brand: {
+          DEFAULT: '#6366F1',
+          light: '#818CF8',
+          lighter: '#A5B4FC',
+          dark: '#5558E6',
+          darker: '#4F46E5',
+        },
+        // Section accent — news
+        news: {
+          DEFAULT: '#88B04B',
+          light: '#A5C85A',
+          dark: '#6d8c3c',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -134,7 +134,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               {t('title')}
             </h1>
             <p
-              className="text-[#C8C5D6] font-comfortaa mt-0.5"
+              className="text-content-secondary font-comfortaa mt-0.5"
               style={{
                 fontSize: '0.75rem',
                 fontWeight: '600',
@@ -152,17 +152,17 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={handleSearchToggle}
                 className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                   searchQuery.trim()
-                    ? 'bg-[#6366F1] text-white'
+                    ? 'bg-brand text-white'
                     : searchOpen
-                      ? 'bg-[#1A1730]/80 text-[#C8C5D6]'
-                      : 'bg-[#1A1730]/70 text-[#9B97B0]'
+                      ? 'bg-surface/80 text-content-secondary'
+                      : 'bg-surface/70 text-content-muted'
                 }`}
                 aria-label="Search"
               >
                 <Search className="w-3.5 h-3.5" />
                 {/* Static dot indicator when search has a query */}
                 {searchQuery.trim() && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#fbbf24] border border-[#1A1730]" />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-surface" />
                 )}
               </button>
               <AnimatePresence>
@@ -182,7 +182,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                       onBlur={handleSearchBlur}
                       onKeyDown={handleSearchKeyDown}
                       placeholder={t('search_placeholder_short') as string}
-                      className="w-full px-2 py-1 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-xs placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#818CF8]"
+                      className="w-full px-2 py-1 rounded-lg bg-surface text-content text-xs placeholder-content-faint border border-surface-border shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-brand-light"
                     />
                   </motion.div>
                 )}
@@ -195,8 +195,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 onClick={() => setCurrentLanguage(lang)}
                 className={`min-w-[36px] min-h-[36px] flex items-center justify-center rounded text-xs font-semibold transition-all ${
                   currentLanguage === lang
-                    ? 'bg-[#6366F1] text-white shadow-[0_0_8px_rgba(99,102,241,0.4)]'
-                    : 'bg-[#1A1730]/70 text-[#6B6680]'
+                    ? 'bg-brand text-white shadow-[0_0_8px_rgba(99,102,241,0.4)]'
+                    : 'bg-surface/70 text-content-faint'
                 }`}
               >
                 {lang}
@@ -284,17 +284,17 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={handleSearchToggle}
               className={`relative z-10 p-1.5 rounded-lg transition-all duration-300 ${
                 searchQuery.trim()
-                  ? 'bg-[#6366F1] text-white'
+                  ? 'bg-brand text-white'
                   : searchOpen
-                    ? 'bg-[#1A1730]/80 text-[#C8C5D6]'
-                    : 'bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90'
+                    ? 'bg-surface/80 text-content-secondary'
+                    : 'bg-surface/70 text-content-muted hover:bg-surface/90'
               }`}
               aria-label="Search"
             >
               <Search className="w-4 h-4" />
               {/* Static dot indicator when search has a query */}
               {searchQuery.trim() && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#fbbf24] border border-[#1A1730]" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-surface" />
               )}
             </button>
             <AnimatePresence>
@@ -314,7 +314,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                     onBlur={handleSearchBlur}
                     onKeyDown={handleSearchKeyDown}
                     placeholder={t('search_placeholder_short') as string}
-                    className="w-full px-3 py-1.5 rounded-lg bg-[#1A1730] text-[#EEEDF5] text-sm placeholder-[#6B6680] border border-[#2D2A40] shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#818CF8] focus:border-[#818CF8]"
+                    className="w-full px-3 py-1.5 rounded-lg bg-surface text-content text-sm placeholder-content-faint border border-surface-border shadow-lg backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-brand-light focus:border-brand-light"
                   />
                 </motion.div>
               )}
@@ -327,7 +327,7 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
                 window.dispatchEvent(new CustomEvent('marquee-toggle'));
                 setMarqueePaused(p => !p);
               }}
-              className="p-1.5 rounded-lg transition-all duration-300 bg-[#1A1730]/70 text-[#9B97B0] hover:bg-[#1A1730]/90 hover:text-[#C8C5D6]"
+              className="p-1.5 rounded-lg transition-all duration-300 bg-surface/70 text-content-muted hover:bg-surface/90 hover:text-content-secondary"
               aria-label={marqueePaused ? 'Play features marquee' : 'Pause features marquee'}
             >
               {marqueePaused
@@ -343,8 +343,8 @@ export const Header = ({ isCompact = false, hoveredSection = null }: HeaderProps
               onClick={() => setCurrentLanguage(lang)}
               className={`px-2 py-1 rounded-md transition-all duration-300 font-semibold text-xs ${
                 currentLanguage === lang
-                  ? 'bg-[#6366F1] text-white border border-[#818CF8] shadow-[0_0_8px_rgba(99,102,241,0.35)]'
-                  : 'bg-[#1A1730]/70 text-[#6B6680] hover:bg-[#1A1730]/90 hover:text-[#EEEDF5] border border-transparent'
+                  ? 'bg-brand text-white border border-brand-light shadow-[0_0_8px_rgba(99,102,241,0.35)]'
+                  : 'bg-surface/70 text-content-faint hover:bg-surface/90 hover:text-content border border-transparent'
               }`}
               aria-label={`Switch to ${lang}`}
             >

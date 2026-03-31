@@ -114,7 +114,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
               {/* Type badge */}
               <div
                 className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                  isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
+                  isNews ? 'bg-brand/90' : 'bg-blue-600/90'
                 }`}
               >
                 {isNews ? 'News' : 'Blog'}
@@ -146,7 +146,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
               )}
               <div
                 className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
-                  isNews ? 'bg-[#6366F1]/90' : 'bg-blue-600/90'
+                  isNews ? 'bg-brand/90' : 'bg-blue-600/90'
                 }`}
               >
                 {isNews ? 'News' : 'Blog'}
@@ -156,7 +156,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
 
           {/* Title + description — inside Link for article navigation */}
           <div className="px-3 pt-3">
-            <h3 className="text-sm font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors line-clamp-2">
+            <h3 className="text-sm font-semibold text-content group-hover:text-brand-light transition-colors line-clamp-2">
               {result.title}
             </h3>
 
@@ -176,7 +176,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
                   onClick={() => {
                     router.push(`/${result.type === 'news' ? 'news' : 'blog'}?tag=${encodeURIComponent(tag.toLowerCase())}`)
                   }}
-                  className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580] hover:text-[#818CF8] transition-colors cursor-pointer"
+                  className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580] hover:text-brand-light transition-colors cursor-pointer"
                 >
                   #{tag}
                 </button>

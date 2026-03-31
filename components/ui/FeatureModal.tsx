@@ -186,7 +186,7 @@ export const FeatureModal = ({
       <Dialog.Root open={open && !isDetailOpen} onOpenChange={handleOpenChange}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 animate-in fade-in" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-6xl max-h-[90vh] bg-gradient-to-br from-[#1A1730] to-[#221F3A] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-50 overflow-hidden">
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-6xl max-h-[90vh] bg-gradient-to-br from-surface to-surface-elevated backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-50 overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
               <Dialog.Title className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
@@ -329,7 +329,7 @@ export const FeatureModal = ({
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] animate-in fade-in" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-gradient-to-br from-[#1A1730] to-[#2A2545] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-[60] overflow-hidden">
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-gradient-to-br from-surface to-[#2A2545] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-[60] overflow-hidden">
             {selectedFeature && (() => {
               const catInfo = getCategoryInfo(selectedFeature.category);
               const project = getProjectInfo(selectedFeature.projectId, projectList);

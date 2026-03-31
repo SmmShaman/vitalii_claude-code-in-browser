@@ -966,14 +966,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                       >
                         {/* Background - conditional based on section */}
                         {section.id === 'about' || section.id === 'services' || section.id === 'features' ? (
-                          <div className="absolute inset-0 bg-[#1A1730]" />
+                          <div className="absolute inset-0 bg-surface" />
                         ) : section.id === 'news' || section.id === 'blog' ? (
-                          <div className="absolute inset-0 bg-gradient-to-br from-[#1A1730] via-[#1A1730] to-[#221F3A]" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-surface via-surface to-surface-elevated" />
                         ) : section.id === 'projects' ? (
                           <>
                             {/* White background layer - bottom - fades out when exploding */}
                             <div
-                              className="absolute inset-0 bg-[#1A1730]/85 z-0 transition-opacity duration-500"
+                              className="absolute inset-0 bg-surface/85 z-0 transition-opacity duration-500"
                               style={{ opacity: isProjectsExploding ? 0 : 1 }}
                             />
                             {/* Project image layer - middle - fades out when exploding */}

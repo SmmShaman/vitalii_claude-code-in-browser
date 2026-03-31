@@ -170,7 +170,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
 
     return (
       <p key={index} className="mb-6 first:mt-0">
-        <span className="font-bold text-[#EEEDF5]" style={{ fontWeight: 700 }}>
+        <span className="font-bold text-content" style={{ fontWeight: 700 }}>
           {boldPart}
         </span>
         {restPart && ' ' + restPart}
@@ -183,7 +183,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
       {isExploding && (
         <motion.div
           key={`about-explosion-${currentText.substring(0, 50)}`}
-          className="fixed bg-[#0F0D1A]"
+          className="fixed bg-surface-darker"
           style={{
             left: gridBounds.left,
             top: gridBounds.top,
@@ -202,7 +202,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
               debugLog('❌ AboutAnimation: Close button CLICKED');
               onClose();
             }}
-            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-[#221F3A] hover:bg-[#2D2A40] rounded-full transition-colors z-10"
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-surface-elevated hover:bg-surface-border rounded-full transition-colors z-10"
             aria-label="Close"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,7 +213,7 @@ export const AboutAnimation = ({ text, isExploding, gridContainerRef, onClose }:
           <div className="w-full h-full overflow-auto pt-16 pb-8 px-12">
             <div
               ref={textRef}
-              className="text-[#EEEDF5] w-full"
+              className="text-content w-full"
               style={{
                 fontSize: 'clamp(0.9rem, 2vw, 1.2rem)',
                 lineHeight: 1.8,

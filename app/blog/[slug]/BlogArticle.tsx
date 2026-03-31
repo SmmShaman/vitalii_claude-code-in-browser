@@ -128,9 +128,9 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
 
   if (!post) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-[#EEEDF5]">
+      <div className="flex flex-col items-center justify-center py-20 text-content">
         <h1 className="text-2xl font-bold mb-4">Blog Post Not Found</h1>
-        <Link href="/" className="text-[#818CF8] hover:text-[#818CF8]">
+        <Link href="/" className="text-brand-light hover:text-brand-light">
           Back to Home
         </Link>
       </div>
@@ -153,7 +153,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           itemScope
           itemType="https://schema.org/BreadcrumbList"
         >
-          <ol className="flex items-center gap-2 text-sm text-[#9B97B0]">
+          <ol className="flex items-center gap-2 text-sm text-content-muted">
             <li
               itemProp="itemListElement"
               itemScope
@@ -163,14 +163,14 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               <a
                 href="/"
                 itemProp="item"
-                className="flex items-center gap-1.5 hover:text-[#818CF8] transition-colors"
+                className="flex items-center gap-1.5 hover:text-brand-light transition-colors"
               >
                 <Home className="w-4 h-4" />
                 <span itemProp="name">Home</span>
               </a>
               <meta itemProp="position" content="1" />
             </li>
-            <ChevronRight className="w-4 h-4 text-[#6B6680]" />
+            <ChevronRight className="w-4 h-4 text-content-faint" />
             <li
               itemProp="itemListElement"
               itemScope
@@ -180,7 +180,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
               <a
                 href="/blog"
                 itemProp="item"
-                className="hover:text-[#818CF8] transition-colors"
+                className="hover:text-brand-light transition-colors"
               >
                 <span itemProp="name">Blog</span>
               </a>
@@ -188,7 +188,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
             </li>
             {post.category && (
               <>
-                <ChevronRight className="w-4 h-4 text-[#6B6680]" />
+                <ChevronRight className="w-4 h-4 text-content-faint" />
                 <li
                   itemProp="itemListElement"
                   itemScope
@@ -198,7 +198,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   <a
                     href={`/blog?tag=${encodeURIComponent(post.category)}`}
                     itemProp="item"
-                    className="text-[#818CF8] hover:text-[#A5B4FC] transition-colors"
+                    className="text-brand-light hover:text-brand-lighter transition-colors"
                   >
                     <span itemProp="name">{post.category}</span>
                   </a>
@@ -206,7 +206,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                 </li>
               </>
             )}
-            <ChevronRight className="w-4 h-4 text-[#6B6680]" />
+            <ChevronRight className="w-4 h-4 text-content-faint" />
             <li
               itemProp="itemListElement"
               itemScope
@@ -215,7 +215,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
             >
               <span
                 itemProp="name"
-                className="text-[#EEEDF5] font-medium truncate max-w-[200px] sm:max-w-[300px]"
+                className="text-content font-medium truncate max-w-[200px] sm:max-w-[300px]"
                 title={title}
               >
                 {title}
@@ -230,7 +230,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           <button
             type="button"
             onClick={() => handleImageClick(heroImage)}
-            className="relative w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-[#221F3A] cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:ring-offset-2"
+            className="relative w-full aspect-[16/9] max-h-[300px] md:max-h-[400px] lg:max-h-[500px] bg-surface-elevated cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
             aria-label={`View ${title} image in fullscreen`}
           >
             <Image
@@ -249,7 +249,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
             {/* Category badge on hero */}
             {post.category && (
               <div className="absolute top-4 left-4 md:top-6 md:left-6 pointer-events-none">
-                <span className="px-3 py-1.5 bg-[#6366F1] text-white rounded-full text-sm font-medium shadow-lg">
+                <span className="px-3 py-1.5 bg-brand text-white rounded-full text-sm font-medium shadow-lg">
                   {post.category}
                 </span>
               </div>
@@ -295,7 +295,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   key={index}
                   type="button"
                   onClick={() => handleImageClick(img.src!)}
-                  className="relative aspect-[4/3] bg-[#221F3A] rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+                  className="relative aspect-[4/3] bg-surface-elevated rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-brand"
                 >
                   <Image
                     src={img.src!}
@@ -314,16 +314,16 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
         <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
           {/* Title FIRST (editorial standard) */}
           <ScrollReveal delay={0.1}>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#EEEDF5] mb-4 leading-tight">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-content mb-4 leading-tight">
               {title}
             </h1>
           </ScrollReveal>
 
           {/* Meta info AFTER title */}
           <ScrollReveal delay={0.15}>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-[#9B97B0] mb-6">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-content-muted mb-6">
               {post.category && !heroImage && (
-                <span className="px-3 py-1 bg-[#221F3A] text-[#818CF8] rounded-full font-medium">
+                <span className="px-3 py-1 bg-surface-elevated text-brand-light rounded-full font-medium">
                   {post.category}
                 </span>
               )}
@@ -356,7 +356,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                   <button
                     key={tag}
                     onClick={() => window.location.href = `/blog?tag=${encodeURIComponent(tag.toLowerCase())}`}
-                    className="px-3 py-1 bg-[#221F3A] text-[#9B97B0] rounded-full text-sm hover:bg-[#221F3A] hover:text-[#818CF8] transition-colors cursor-pointer"
+                    className="px-3 py-1 bg-surface-elevated text-content-muted rounded-full text-sm hover:bg-brand/15 hover:text-brand-light transition-colors cursor-pointer"
                   >
                     #{tag}
                   </button>
@@ -372,8 +372,8 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                 <button
                   type="button"
                   onClick={() => handleImageClick(originalImage)}
-                  className="relative w-full overflow-hidden rounded-xl bg-[#221F3A] cursor-zoom-in
-                             hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+                  className="relative w-full overflow-hidden rounded-xl bg-surface-elevated cursor-zoom-in
+                             hover:opacity-95 transition-opacity focus:outline-none focus:ring-2 focus:ring-brand"
                 >
                   <Image
                     src={originalImage}
@@ -398,37 +398,37 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                     a: ({ href, children }) => {
                       const isInternal = href?.startsWith('/news/') || href?.startsWith('/blog/')
                       if (isInternal && href) {
-                        return <Link href={href} className="text-[#818CF8] hover:text-[#A5B4FC] underline">{children}</Link>
+                        return <Link href={href} className="text-brand-light hover:text-brand-lighter underline">{children}</Link>
                       }
                       return (
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#818CF8] hover:text-[#A5B4FC] underline">
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-brand-light hover:text-brand-lighter underline">
                           {children}
                         </a>
                       )
                     },
                     p: ({ children }) => (
-                      <p className="text-[#C8C5D6] leading-relaxed text-lg mb-4">{children}</p>
+                      <p className="text-content-secondary leading-relaxed text-lg mb-4">{children}</p>
                     ),
                     strong: ({ children }) => (
                       <strong className="font-semibold">{children}</strong>
                     ),
                     ul: ({ children }) => (
-                      <ul className="list-disc list-inside mb-4 space-y-1 text-[#C8C5D6]">{children}</ul>
+                      <ul className="list-disc list-inside mb-4 space-y-1 text-content-secondary">{children}</ul>
                     ),
                     ol: ({ children }) => (
-                      <ol className="list-decimal list-inside mb-4 space-y-1 text-[#C8C5D6]">{children}</ol>
+                      <ol className="list-decimal list-inside mb-4 space-y-1 text-content-secondary">{children}</ol>
                     ),
                     li: ({ children }) => (
-                      <li className="text-[#C8C5D6]">{children}</li>
+                      <li className="text-content-secondary">{children}</li>
                     ),
                     h1: ({ children }) => (
-                      <h1 className="text-2xl font-bold text-[#EEEDF5] mt-6 mb-4">{children}</h1>
+                      <h1 className="text-2xl font-bold text-content mt-6 mb-4">{children}</h1>
                     ),
                     h2: ({ children }) => (
-                      <h2 className="text-xl font-bold text-[#EEEDF5] mt-5 mb-3">{children}</h2>
+                      <h2 className="text-xl font-bold text-content mt-5 mb-3">{children}</h2>
                     ),
                     h3: ({ children }) => (
-                      <h3 className="text-lg font-semibold text-[#EEEDF5] mt-4 mb-2">{children}</h3>
+                      <h3 className="text-lg font-semibold text-content mt-4 mb-2">{children}</h3>
                     ),
                     img: ({ src, alt }) => {
                       const imgSrc = typeof src === 'string' ? src : ''
@@ -436,7 +436,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                         <button
                           type="button"
                           onClick={() => imgSrc && handleImageClick(imgSrc)}
-                          className="block w-full my-4 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:ring-offset-2 rounded-lg overflow-hidden"
+                          className="block w-full my-4 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 rounded-lg overflow-hidden"
                           aria-label={`View ${alt || 'image'} in fullscreen`}
                         >
                           <Image
@@ -471,7 +471,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                         key={index}
                         type="button"
                         onClick={() => handleImageClick(img.src!)}
-                        className="relative aspect-[4/3] bg-[#221F3A] rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+                        className="relative aspect-[4/3] bg-surface-elevated rounded-lg overflow-hidden cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-brand"
                       >
                         <Image
                           src={img.src!}
@@ -492,8 +492,8 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           {(post.source_links?.length > 0 || post.original_url) && (
             <ScrollReveal delay={0.5}>
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-[#EEEDF5] mb-3 flex items-center gap-2">
-                  <ExternalLink className="w-5 h-5 text-[#818CF8]" />
+                <h2 className="text-lg font-semibold text-content mb-3 flex items-center gap-2">
+                  <ExternalLink className="w-5 h-5 text-brand-light" />
                   Resources
                 </h2>
                 <div className="flex flex-wrap gap-3">
@@ -510,7 +510,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                           href={link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#221F3A] hover:bg-[#221F3A] text-[#C8C5D6] hover:text-[#818CF8] rounded-lg transition-colors text-sm font-medium"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-surface-elevated hover:bg-brand/15 text-content-secondary hover:text-brand-light rounded-lg transition-colors text-sm font-medium"
                         >
                           <ExternalLink className="w-4 h-4" />
                           {hostname}
@@ -523,7 +523,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                       href={post.original_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-lg transition-colors font-medium"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-brand-darker text-white rounded-lg transition-colors font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
                       Read Original Article
@@ -538,7 +538,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
           <ScrollReveal delay={0.6}>
             <section aria-labelledby="share-section">
               <h2 id="share-section" className="sr-only">Share this article</h2>
-              <div className="py-6 border-t border-[#2D2A40]">
+              <div className="py-6 border-t border-surface-border">
                 <ShareButtons
                   url={`/blog/${currentSlug}`}
                   title={title}
@@ -551,9 +551,9 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
 
         {/* Related Posts - Full width background */}
         {relatedPosts.length > 0 && (
-          <div className="bg-[#141225] py-12">
+          <div className="bg-surface-deep py-12">
             <div className="max-w-5xl mx-auto px-4">
-              <h2 className="text-2xl font-bold text-[#EEEDF5] mb-6">Related Articles</h2>
+              <h2 className="text-2xl font-bold text-content mb-6">Related Articles</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {relatedPosts.map((relatedPost) => {
                   const relatedTitle = relatedPost[`title_${lang}`] || relatedPost.title_en
@@ -564,7 +564,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                     <Link
                       key={relatedPost.id}
                       href={`/blog/${relatedSlug}`}
-                      className="group bg-[#1A1730] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                      className="group bg-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                     >
                       {relatedImage && (
                         <div className="relative w-full aspect-video overflow-hidden">
@@ -578,7 +578,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                         </div>
                       )}
                       <div className="p-4">
-                        <h3 className="font-semibold text-[#EEEDF5] group-hover:text-[#818CF8] transition-colors line-clamp-2">
+                        <h3 className="font-semibold text-content group-hover:text-brand-light transition-colors line-clamp-2">
                           {relatedTitle}
                         </h3>
                         {relatedPost.tags && relatedPost.tags.length > 0 && (
@@ -586,7 +586,7 @@ export function BlogArticle({ slug, initialLanguage, initialData }: BlogArticleP
                             {relatedPost.tags.slice(0, 2).map((tag: string) => (
                               <span
                                 key={tag}
-                                className="text-xs px-2 py-0.5 bg-[#221F3A] text-[#9B97B0] rounded-full"
+                                className="text-xs px-2 py-0.5 bg-surface-elevated text-content-muted rounded-full"
                               >
                                 #{tag}
                               </span>

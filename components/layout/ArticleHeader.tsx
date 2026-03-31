@@ -60,17 +60,17 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0F0D1A]/95 backdrop-blur-sm border-b border-[#2D2A40]">
+    <header className="sticky top-0 z-50 bg-surface-darker/95 backdrop-blur-sm border-b border-surface-border">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Back button + Brand */}
         <Link
           href={backHref}
-          className="flex items-center gap-3 text-[#9B97B0] hover:text-[#EEEDF5] transition-colors group"
+          className="flex items-center gap-3 text-content-muted hover:text-content transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="font-bold text-amber-500 text-lg">Vitalii Berbeha</span>
-          <span className="hidden sm:inline text-[#6B6680]">|</span>
-          <span className="hidden sm:inline text-sm text-[#9B97B0]">{getBackLabel()}</span>
+          <span className="hidden sm:inline text-content-faint">|</span>
+          <span className="hidden sm:inline text-sm text-content-muted">{getBackLabel()}</span>
         </Link>
 
         {/* Search + language switcher */}
@@ -83,8 +83,8 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
                 searchQuery.trim()
                   ? 'bg-purple-600 text-white animate-pulse'
                   : searchOpen
-                    ? 'bg-[#221F3A] text-[#C8C5D6]'
-                    : 'bg-[#1A1730] text-[#9B97B0] hover:bg-[#221F3A]'
+                    ? 'bg-surface-elevated text-content-secondary'
+                    : 'bg-surface text-content-muted hover:bg-surface-elevated'
               }`}
               aria-label="Search"
             >
@@ -103,7 +103,7 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
                 onBlur={handleSearchBlur}
                 onKeyDown={handleSearchKeyDown}
                 placeholder={t('search_placeholder_short') as string}
-                className="w-full px-3 py-1.5 rounded-lg text-sm text-[#EEEDF5] placeholder-[#6B6680] border border-[#2D2A40] shadow-lg bg-[#1A1730] focus:outline-none focus:ring-2 focus:ring-[#818CF8] focus:border-[#818CF8]"
+                className="w-full px-3 py-1.5 rounded-lg text-sm text-content placeholder-content-faint border border-surface-border shadow-lg bg-surface focus:outline-none focus:ring-2 focus:ring-brand-light focus:border-brand-light"
               />
             </div>
           </div>
@@ -114,8 +114,8 @@ export function ArticleHeader({ backHref = '/', backLabel }: ArticleHeaderProps)
               onClick={() => setCurrentLanguage(lang)}
               className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 currentLanguage === lang
-                  ? 'bg-[#6366F1] text-white'
-                  : 'bg-[#1A1730] text-[#9B97B0] hover:bg-[#221F3A]'
+                  ? 'bg-brand text-white'
+                  : 'bg-surface text-content-muted hover:bg-surface-elevated'
               }`}
               aria-label={`Switch to ${lang}`}
             >

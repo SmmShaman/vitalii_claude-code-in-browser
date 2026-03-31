@@ -202,7 +202,7 @@ function SearchPageInner() {
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-2 text-[#B0ABCA] hover:text-[#EEEDF5] transition-colors group flex-shrink-0"
+            className="flex items-center gap-2 text-[#B0ABCA] hover:text-content transition-colors group flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span className="font-bold text-amber-500 text-lg hidden sm:inline">Vitalii Berbeha</span>
@@ -216,7 +216,7 @@ function SearchPageInner() {
               value={localQuery}
               onChange={(e) => handleQueryChange(e.target.value)}
               placeholder={t('search_articles_placeholder')}
-              className="w-full pl-9 pr-9 py-2 rounded-lg border border-[#443D6E] bg-[#352F5A] text-sm text-[#EEEDF5] placeholder-[#8A84A8] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/30 focus:border-[#6366F1] transition-all"
+              className="w-full pl-9 pr-9 py-2 rounded-lg border border-[#443D6E] bg-[#352F5A] text-sm text-content placeholder-[#8A84A8] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-[#6366F1] transition-all"
             />
             {localQuery && (
               <button
@@ -236,7 +236,7 @@ function SearchPageInner() {
                 onClick={() => updateFilters({ type: tab.key, tag: '' })}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   typeParam === tab.key
-                    ? 'bg-[#6366F1] text-white shadow-sm'
+                    ? 'bg-brand text-white shadow-sm'
                     : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
                 }`}
               >
@@ -253,7 +253,7 @@ function SearchPageInner() {
                 onClick={() => setCurrentLanguage(lang)}
                 className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   currentLanguage === lang
-                    ? 'bg-[#6366F1] text-white'
+                    ? 'bg-brand text-white'
                     : 'bg-[#352F5A] text-[#B0ABCA] hover:bg-[#3D3768]'
                 }`}
                 aria-label={`Switch to ${lang}`}
@@ -279,7 +279,7 @@ function SearchPageInner() {
             onClick={() => setShowDateFilters(!showDateFilters)}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs transition-all flex-shrink-0 ${
               showDateFilters || dateFromParam || dateToParam
-                ? 'bg-[#3D3768] text-[#818CF8]'
+                ? 'bg-[#3D3768] text-brand-light'
                 : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#443D6E]'
             }`}
           >
@@ -304,7 +304,7 @@ function SearchPageInner() {
                 type="date"
                 value={dateFromParam}
                 onChange={(e) => updateFilters({ dateFrom: e.target.value })}
-                className="px-2.5 py-1 rounded-lg border border-[#443D6E] bg-[#352F5A] text-xs text-[#C8C5D6] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/20 focus:border-[#6366F1]"
+                className="px-2.5 py-1 rounded-lg border border-[#443D6E] bg-[#352F5A] text-xs text-content-secondary focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-[#6366F1]"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -313,13 +313,13 @@ function SearchPageInner() {
                 type="date"
                 value={dateToParam}
                 onChange={(e) => updateFilters({ dateTo: e.target.value })}
-                className="px-2.5 py-1 rounded-lg border border-[#443D6E] bg-[#352F5A] text-xs text-[#C8C5D6] focus:outline-none focus:ring-2 focus:ring-[#6366F1]/20 focus:border-[#6366F1]"
+                className="px-2.5 py-1 rounded-lg border border-[#443D6E] bg-[#352F5A] text-xs text-content-secondary focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-[#6366F1]"
               />
             </div>
             {(dateFromParam || dateToParam) && (
               <button
                 onClick={() => updateFilters({ dateFrom: '', dateTo: '' })}
-                className="text-xs text-[#818CF8] hover:text-[#A5B4FC] underline"
+                className="text-xs text-brand-light hover:text-[#A5B4FC] underline"
               >
                 {t('search_clear_filters')}
               </button>
@@ -333,7 +333,7 @@ function SearchPageInner() {
         {/* Results */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#818CF8] animate-spin" />
+            <Loader2 className="w-8 h-8 text-brand-light animate-spin" />
           </div>
         ) : results.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -343,7 +343,7 @@ function SearchPageInner() {
             {(tagParam || queryParam || dateFromParam || dateToParam) && (
               <button
                 onClick={() => router.replace('/search')}
-                className="mt-4 px-4 py-2 rounded-full text-sm font-medium bg-[#6366F1] text-white hover:bg-[#4F46E5] transition-colors"
+                className="mt-4 px-4 py-2 rounded-full text-sm font-medium bg-brand text-white hover:bg-brand-darker transition-colors"
               >
                 {t('search_clear_filters')}
               </button>
@@ -370,7 +370,7 @@ function SearchPageInner() {
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
-                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#352F5A] text-[#C8C5D6] hover:bg-[#3D3768] disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#352F5A] text-content-secondary hover:bg-[#3D3768] disabled:opacity-50 transition-all flex items-center gap-2"
                 >
                   {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
                   {t('search_load_more')}

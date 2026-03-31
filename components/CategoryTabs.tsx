@@ -110,7 +110,7 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
               hiddenTags.some(t => t.tag_name === activeTag)
-                ? 'bg-[#6366F1] text-white'
+                ? 'bg-brand text-white'
                 : 'bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580]'
             }`}
           >
@@ -128,7 +128,7 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
                   }}
                   className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                     activeTag === tag.tag_name
-                      ? 'bg-[#6366F1]/20 text-[#818CF8]'
+                      ? 'bg-brand/20 text-brand-light'
                       : 'text-[#B0ABCA] hover:bg-[#3D3768]'
                   }`}
                 >

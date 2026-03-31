@@ -95,7 +95,7 @@ export function SectionedScrollProgress({ sections, activeSection }: SectionedPr
   const segmentWidth = 100 / sections.length
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-[#221F3A]/30 flex">
+    <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-surface-elevated/30 flex">
       {sections.map((section, index) => (
         <div
           key={section.id}

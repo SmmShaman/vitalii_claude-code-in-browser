@@ -64,7 +64,7 @@ export function ClickableImage({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:ring-offset-2 rounded-lg overflow-hidden ${className}`}
+      className={`cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 rounded-lg overflow-hidden ${className}`}
       aria-label={`View ${alt || 'image'} in fullscreen`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}

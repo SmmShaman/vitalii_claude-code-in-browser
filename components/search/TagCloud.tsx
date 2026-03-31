@@ -34,12 +34,12 @@ export function TagCloud({ tags, activeTag }: TagCloudProps) {
               href={isActive ? '/search' : `/search?tag=${encodeURIComponent(tag.name)}`}
               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-[#6366F1] text-white shadow-sm'
-                  : 'bg-[#352F5A] text-[#B0ABCA] hover:bg-[#3D3768] hover:text-[#818CF8]'
+                  ? 'bg-brand text-white shadow-sm'
+                  : 'bg-[#352F5A] text-[#B0ABCA] hover:bg-[#3D3768] hover:text-brand-light'
               }`}
             >
               #{tag.name}
-              <span className={`text-[10px] ${isActive ? 'text-[#A5B4FC]' : 'text-[#8A84A8]'}`}>
+              <span className={`text-[10px] ${isActive ? 'text-brand-lighter' : 'text-[#8A84A8]'}`}>
                 {tag.usage_count}
               </span>
             </Link>

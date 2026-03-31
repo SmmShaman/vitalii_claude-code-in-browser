@@ -243,7 +243,7 @@ const NewsSectionComponent = ({
       <div className="h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#88B04B]"></div>
-          <p className="text-sm text-[#9B97B0]">{t('news_loading')}</p>
+          <p className="text-sm text-content-muted">{t('news_loading')}</p>
         </div>
       </div>
     );
@@ -253,8 +253,8 @@ const NewsSectionComponent = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <Newspaper className="h-16 w-16 text-[#9B97B0] mx-auto mb-4" />
-          <p className="text-[#9B97B0]">{t('news_no_items')}</p>
+          <Newspaper className="h-16 w-16 text-content-muted mx-auto mb-4" />
+          <p className="text-content-muted">{t('news_no_items')}</p>
         </div>
       </div>
     );
@@ -276,7 +276,7 @@ const NewsSectionComponent = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={onBack}
-              className="m-2 sm:m-4 w-11 h-11 sm:w-12 sm:h-12 min-w-[44px] min-h-[44px] rounded-full bg-[#1A1730]/95 backdrop-blur-sm shadow-lg flex items-center justify-center text-[#C8C5D6] hover:bg-[#221F3A] transition-all duration-300 border border-[#2D2A40] active:scale-95"
+              className="m-2 sm:m-4 w-11 h-11 sm:w-12 sm:h-12 min-w-[44px] min-h-[44px] rounded-full bg-surface/95 backdrop-blur-sm shadow-lg flex items-center justify-center text-content-secondary hover:bg-surface-elevated transition-all duration-300 border border-surface-border active:scale-95"
               title="Back to news"
               aria-label="Back to news list"
             >
@@ -472,12 +472,12 @@ const NewsSectionComponent = ({
               )}
 
               {/* Title */}
-              <h1 className="news-section-title text-3xl font-bold mb-4 text-[#EEEDF5]">
+              <h1 className="news-section-title text-3xl font-bold mb-4 text-content">
                 {content.title}
               </h1>
 
               {/* Meta */}
-              <div className="news-section-meta flex flex-wrap items-center gap-4 text-sm text-[#9B97B0] mb-6">
+              <div className="news-section-meta flex flex-wrap items-center gap-4 text-sm text-content-muted mb-6">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   <span>{selectedNews.published_at ? formatDate(selectedNews.published_at) : ''}</span>
@@ -504,7 +504,7 @@ const NewsSectionComponent = ({
               </div>
 
               {/* Content */}
-              <div className="news-section-content prose prose-lg prose-invert max-w-none mb-6 text-[#EEEDF5]">
+              <div className="news-section-content prose prose-lg prose-invert max-w-none mb-6 text-content">
                 <p className="whitespace-pre-wrap">{content.content}</p>
               </div>
 
@@ -546,7 +546,7 @@ const NewsSectionComponent = ({
                 onClick={(e) => handleNewsClick(newsItem, e)}
                 className="group cursor-pointer"
               >
-                <div className="bg-[#1A1730]/50 backdrop-blur-sm rounded-lg p-3 border border-[#2D2A40]/50 hover:border-[#88B04B]/50 transition-all duration-300 hover:shadow-lg">
+                <div className="bg-surface/50 backdrop-blur-sm rounded-lg p-3 border border-surface-border/50 hover:border-[#88B04B]/50 transition-all duration-300 hover:shadow-lg">
                   <div className="flex gap-3">
                     {/* Content - Left Side */}
                     <div className="flex-1 flex flex-col justify-between min-w-0">
@@ -558,7 +558,7 @@ const NewsSectionComponent = ({
 
                         {/* Summary */}
                         {content.summary && (
-                          <p className="text-xs text-[#9B97B0] mb-2 line-clamp-2 leading-snug">
+                          <p className="text-xs text-content-muted mb-2 line-clamp-2 leading-snug">
                             {content.summary}
                           </p>
                         )}
@@ -566,7 +566,7 @@ const NewsSectionComponent = ({
 
                       {/* Meta Information - Bottom */}
                       <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-xs text-[#9B97B0]">
+                        <div className="flex items-center gap-2 text-xs text-content-muted">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 flex-shrink-0" />
                             <span>{newsItem.published_at ? formatDate(newsItem.published_at) : ''}</span>
@@ -602,7 +602,7 @@ const NewsSectionComponent = ({
 
                     {/* Square Image/Video Thumbnail - Right Side */}
                     {((newsItem as any).processed_image_url || newsItem.image_url || newsItem.video_url) && (
-                      <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-[#0F0D1A]">
+                      <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-surface-darker">
                         {(() => {
                           // Priority 1: Use custom uploaded image if available
                           const imageUrl = (newsItem as any).processed_image_url || newsItem.image_url;
@@ -652,7 +652,7 @@ const NewsSectionComponent = ({
 
                           // Fallback: gradient placeholder
                           return (
-                            <div className="w-full h-full bg-gradient-to-br from-[#1A1730] via-[#221F3A] to-[#1A1730] flex items-center justify-center">
+                            <div className="w-full h-full bg-gradient-to-br from-surface via-surface-elevated to-surface flex items-center justify-center">
                               <Video className="w-8 h-8 text-white/30" />
                             </div>
                           );
@@ -689,7 +689,7 @@ const NewsSectionComponent = ({
 
         {/* End of list indicator */}
         {isExpanded && !hasMoreNews && news.length > 8 && (
-          <div className="text-center py-4 text-sm text-[#9B97B0]">
+          <div className="text-center py-4 text-sm text-content-muted">
             {t('news_scroll_for_more')}
           </div>
         )}

@@ -132,13 +132,13 @@ function BlogListingInner() {
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-2 text-[#B0ABCA] hover:text-[#EEEDF5] transition-colors group flex-shrink-0"
+            className="flex items-center gap-2 text-[#B0ABCA] hover:text-content transition-colors group flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span className="font-bold text-amber-500 text-lg hidden sm:inline">Vitalii Berbeha</span>
           </Link>
 
-          <h1 className="text-lg font-semibold text-[#EEEDF5] flex-1">
+          <h1 className="text-lg font-semibold text-content flex-1">
             {t('blog_listing_title')}
           </h1>
 
@@ -150,7 +150,7 @@ function BlogListingInner() {
                 onClick={() => setCurrentLanguage(lang)}
                 className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   currentLanguage === lang
-                    ? 'bg-[#6366F1] text-white'
+                    ? 'bg-brand text-white'
                     : 'bg-[#352F5A] text-[#B0ABCA] hover:bg-[#3D3768]'
                 }`}
               >
@@ -176,7 +176,7 @@ function BlogListingInner() {
       <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#818CF8] animate-spin" />
+            <Loader2 className="w-8 h-8 text-brand-light animate-spin" />
           </div>
         ) : results.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -206,7 +206,7 @@ function BlogListingInner() {
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
-                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#352F5A] text-[#C8C5D6] hover:bg-[#3D3768] disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#352F5A] text-content-secondary hover:bg-[#3D3768] disabled:opacity-50 transition-all flex items-center gap-2"
                 >
                   {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
                   {t('listing_load_more')}
@@ -225,7 +225,7 @@ function BlogListingInner() {
 function ListingSkeleton() {
   return (
     <div className="min-h-screen bg-[#2D2850] flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-[#818CF8] animate-spin" />
+      <Loader2 className="w-8 h-8 text-brand-light animate-spin" />
     </div>
   )
 }
