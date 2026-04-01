@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-const VERSION_STAMP = '2026-03-29-force-redeploy'
+const VERSION_STAMP = '2026-04-01-voice-any-strict-prompts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
@@ -179,6 +179,7 @@ serve(async (req) => {
             body: JSON.stringify({ chat_id: chatId, text: '🧠 <b>Генерую блог-пост...</b>', parse_mode: 'HTML' }),
           }).then(r => r.json())
           const statusMsgId = statusMsg?.result?.message_id
+          if (!statusMsgId) console.warn('⚠️ Failed to get status message ID from Telegram')
 
           fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
             method: 'POST',
@@ -204,12 +205,12 @@ serve(async (req) => {
           return new Response('OK')
         }
 
-        // No text — set waiting state and ask for voice/text
+        // No text — set waiting state with TTL timestamp and ask for voice/text
         const supabaseForState = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
         await supabaseForState.from('api_settings').upsert({
           key_name: `blog_waiting_${chatId}`,
-          key_value: 'true',
-          description: 'Temporary: chat waiting for voice blog input',
+          key_value: new Date().toISOString(),
+          description: 'Temporary: chat waiting for voice blog input (expires 30min)',
           is_active: true,
         }, { onConflict: 'key_name' })
 
@@ -224,29 +225,20 @@ serve(async (req) => {
         return new Response('OK')
       }
 
-      // ── Voice message: check if /blog was issued (reply OR state in DB) ──
+      // ── Voice message: ANY voice message triggers blog pipeline ──
       if (message.voice) {
-        const isReply = message.reply_to_message?.text?.includes('voiceblog:waiting')
-        let isWaiting = false
-        if (!isReply) {
-          const supabaseCheck = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-          const { data: waitState } = await supabaseCheck.from('api_settings').select('key_value').eq('key_name', `blog_waiting_${chatId}`).maybeSingle()
-          isWaiting = waitState?.key_value === 'true'
-          if (isWaiting) {
-            // Clear waiting state
-            await supabaseCheck.from('api_settings').delete().eq('key_name', `blog_waiting_${chatId}`)
-          }
-        }
-        if (!isReply && !isWaiting) {
-          // Not a blog voice — return silently (don't trigger "send text" fallback)
-          return new Response('OK')
-        } else {
-        console.log(`🎙️ Voice blog via /blog: ${message.voice.duration}s (reply=${isReply}, state=${isWaiting})`)
+        // Clear waiting state if exists
+        const supabaseCheck = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        await supabaseCheck.from('api_settings').delete().eq('key_name', `blog_waiting_${chatId}`)
+
+        console.log(`🎙️ Voice blog: ${message.voice.duration}s`)
+        {
         const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Транскрибую голосове повідомлення...</b>', parse_mode: 'HTML' }),
         }).then(r => r.json())
         const statusMsgId = statusMsg?.result?.message_id
+        if (!statusMsgId) console.warn('⚠️ Failed to get status message ID from Telegram')
 
         const txRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-voice`, {
           method: 'POST',
@@ -455,6 +447,51 @@ serve(async (req) => {
         return new Response('OK')
       } // end blog voice handler
       } // end if voice message
+
+      // ── Text message after /blog (waiting state) ──
+      if (msgText && !msgText.startsWith('/') && !message.forward_from_chat) {
+        const supabaseCheck = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        const { data: waitState } = await supabaseCheck.from('api_settings').select('key_value').eq('key_name', `blog_waiting_${chatId}`).maybeSingle()
+        const waitingIsValid = waitState?.key_value && (() => {
+          // TTL check: waiting state expires after 30 minutes
+          const createdAt = new Date(waitState.key_value).getTime()
+          return !isNaN(createdAt) && (Date.now() - createdAt) < 30 * 60 * 1000
+        })()
+        if (waitingIsValid) {
+          // Clear waiting state
+          await supabaseCheck.from('api_settings').delete().eq('key_name', `blog_waiting_${chatId}`)
+          console.log(`📝 Text blog via /blog waiting state: ${msgText.length} chars`)
+
+          const statusMsg = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: '🧠 <b>Генерую блог-пост з тексту...</b>', parse_mode: 'HTML' }),
+          }).then(r => r.json())
+          const statusMsgId = statusMsg?.result?.message_id
+          if (!statusMsgId) console.warn('⚠️ Failed to get status message ID from Telegram')
+
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newsId: '00000000-0000-0000-0000-000000000000', title: msgText.slice(0, 100), content: msgText, sourceType: 'voice' }),
+          }).then(async (res) => {
+            const data = await res.json()
+            if (data.success) {
+              const { data: post } = await supabaseCheck.from('blog_posts').select('title_ua, slug_en').eq('id', data.blogPostId).single()
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `✅ <b>Опубліковано!</b>\n\n📌 ${post?.title_ua || ''}\n🔗 https://vitalii.no/blog/${post?.slug_en || ''}`, parse_mode: 'HTML' }),
+              })
+            } else {
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ ${data.error || 'unknown'}` }),
+              })
+            }
+          }).catch(e => console.error('text blog dispatch failed:', e))
+
+          return new Response('OK')
+        }
+      }
 
       // ── Voice blog edit reply ──
       if (message.reply_to_message?.text?.includes('voiceblog:edit:') && message.text) {

@@ -30,6 +30,7 @@ import { generateAllAvatarClips } from './generate-avatar.js';
 import { downloadPexelsMedia } from './pexels-media.js';
 import { scrapeAllArticleImages } from './scrape-article-images.js';
 import { directVisuals } from './visual-director.js';
+import { callLLMJson } from './llm-helper.js';
 
 // ── Config ──
 
@@ -110,20 +111,11 @@ async function fetchYesterdayNews() {
 
 /**
  * AI directs the daily show — writes a full Norwegian script
- * and plans the visual structure using Azure OpenAI.
+ * and plans the visual structure using LLM (NVIDIA NIM / Gemini).
  */
 const MAX_DETAILED = 10;
 
 async function directDailyShow(articles, dateStr) {
-  const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-  const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
-  const AZURE_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'Jobbot-gpt-4.1-mini';
-
-  if (!AZURE_ENDPOINT || !AZURE_KEY) {
-    console.log('⚠️ No Azure OpenAI credentials, using template show script');
-    return templateShowScript(articles, dateStr);
-  }
-
   console.log('🎬 AI Director: planning daily show...');
 
   const hasOverflow = articles.length > MAX_DETAILED;
@@ -212,35 +204,11 @@ Return valid JSON:
 }`;
 
   try {
-    const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_KEY,
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Write the daily news show script for ${dateStr}:\n\n${articleSummaries}` },
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Azure OpenAI error: ${response.status} ${err}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content?.trim();
-    if (!content) throw new Error('Empty AI response');
-
-    const plan = JSON.parse(content);
+    const plan = await callLLMJson(
+      systemPrompt,
+      `Write the daily news show script for ${dateStr}:\n\n${articleSummaries}`,
+      { maxTokens: 4000, temperature: 0.7 },
+    );
 
     if (!plan.segmentScripts || !plan.segments || plan.segments.length === 0) {
       throw new Error('Invalid show plan structure');
@@ -250,11 +218,6 @@ Return valid JSON:
     plan.showScript = [plan.introScript, plan.roundupScript, ...plan.segmentScripts, plan.overflowScript, plan.outroScript].filter(Boolean).join(' ');
     plan.hasOverflow = hasOverflow;
     plan.overflowCount = overflowCount;
-
-    const usage = data.usage;
-    if (usage) {
-      console.log(`💰 Tokens: ${usage.prompt_tokens} in + ${usage.completion_tokens} out`);
-    }
 
     const totalWords = plan.showScript.split(/\s+/).length;
     console.log(`📝 Script: ${totalWords} words (${plan.segmentScripts.length} segments)`);

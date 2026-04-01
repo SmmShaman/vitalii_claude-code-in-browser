@@ -346,19 +346,17 @@ function dataPointToOverlay(dp, showAt, hideAt, position) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  AI Visual Director (Azure OpenAI)
+//  AI Visual Director (NVIDIA NIM / Gemini)
 // ═══════════════════════════════════════════════════════════════════
+
+import { callLLMJson } from './llm-helper.js';
 
 /**
  * Per-segment AI Visual Director call.
  * Each segment gets its own prompt with FULL article context + creative hints.
  */
 async function aiDirectSingleSegment(script, article, segmentMeta, segIndex, totalSegs) {
-  const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-  const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
-  const DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'Jobbot-gpt-4.1-mini';
-
-  if (!AZURE_ENDPOINT || !AZURE_KEY) return null;
+  if (!process.env.NVIDIA_API_KEY && !process.env.GOOGLE_API_KEY) return null;
 
   const title = article?.title_en || article?.title_no || segmentMeta?.headline || '';
   const content = (article?.content_en || article?.content_no || article?.original_content || '').substring(0, 1500);
@@ -467,35 +465,12 @@ Return JSON:
 }`;
 
   try {
-    const url = `${AZURE_ENDPOINT}/openai/deployments/${DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'api-key': AZURE_KEY },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Generate the frame-by-frame visual breakdown for this segment.' },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!res.ok) throw new Error(`Azure ${res.status}`);
-
-    const json = await res.json();
-    const raw = json.choices?.[0]?.message?.content?.trim();
-    if (!raw) throw new Error('Empty response');
-
-    const parsed = JSON.parse(raw);
-    const usage = json.usage;
-    if (usage) {
-      console.log(`    💰 Seg ${segIndex + 1} tokens: ${usage.prompt_tokens}+${usage.completion_tokens}`);
-    }
+    const parsed = await callLLMJson(
+      systemPrompt,
+      'Generate the frame-by-frame visual breakdown for this segment.',
+      { maxTokens: 2000, temperature: 0.7 },
+    );
     return parsed;
-
   } catch (err) {
     console.error(`    ⚠️ AI Seg ${segIndex + 1} failed: ${err.message}`);
     return null;
@@ -507,9 +482,7 @@ Return JSON:
  * Each segment gets its own AI call for detailed cinematic scenes.
  */
 async function aiDirectVisuals(segmentScripts, segments, articles) {
-  const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-  const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
-  if (!AZURE_ENDPOINT || !AZURE_KEY) return null;
+  if (!process.env.NVIDIA_API_KEY && !process.env.GOOGLE_API_KEY) return null;
 
   const totalSegs = segmentScripts.length;
   const results = [];
@@ -523,9 +496,13 @@ async function aiDirectVisuals(segmentScripts, segments, articles) {
     results.push(result);
   }
 
-  // Check if we got enough valid results
+  // Check if we got enough valid results (need at least 50%)
   const validCount = results.filter(Boolean).length;
   if (validCount === 0) return null;
+  if (validCount < Math.ceil(totalSegs * 0.5)) {
+    console.warn(`  ⚠️ Only ${validCount}/${totalSegs} segments got AI direction — falling back`);
+    return null;
+  }
 
   console.log(`  ✅ AI visual directives: ${validCount}/${totalSegs} segments`);
   return results;

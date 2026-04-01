@@ -161,12 +161,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
-          # Azure OpenAI (video director + script generation)
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          # LLM (NVIDIA NIM primary, Gemini fallback)
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
-          # Google AI (Gemini thumbnail)
+          # Google AI (Gemini — LLM fallback + thumbnail)
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
           # TTS (Zvukogram)

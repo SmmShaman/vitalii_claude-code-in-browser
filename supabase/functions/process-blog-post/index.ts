@@ -111,9 +111,9 @@ interface BlogRewriteRequest {
  * Rewrites content from author's first-person perspective
  */
 serve(async (req) => {
-  // Version: 2025-01-02-01 - Fix AI response format with explicit structure
-  console.log('🚀 Process Blog Post v2025-01-02-01 started')
-  console.log('📦 Features: Fixed system prompt with explicit JSON structure, max_tokens 8000')
+  // Version: 2026-04-01 - Strict voice prompts (no LLM invention)
+  console.log('🚀 Process Blog Post v2026-04-01 started')
+  console.log('📦 Features: Strict voice prompts — Stage 2 word-count guard, Stage 3 no-expand directive')
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -181,19 +181,46 @@ serve(async (req) => {
 
       // Stage 1: "What did Vitalii want to say?"
       console.log('  Stage 1: Identifying topic...')
+      const wordCount = rawText.split(/\s+/).length
       const stage1 = await callGemini(
         `Read this raw transcription from a voice message and describe in 1-2 sentences: what did the author want to say? What is the main idea?\n\nTranscription:\n${rawText}`,
         500
       )
       console.log(`  Stage 1 result: ${stage1.slice(0, 150)}`)
 
-      // Stage 2: "Retell his words correctly"
+      // Stage 2: "Retell his words correctly — STRICT, no invention"
       console.log('  Stage 2: Clean retelling...')
       const stage2 = await callGemini(
-        `Below is a raw voice transcription and a summary of what the author meant.\n\nOriginal transcription:\n${rawText}\n\nTopic identified:\n${stage1}\n\nNow retell EXACTLY what the author said, but fix grammar, remove filler words, and make sentences complete. DO NOT add your own ideas, opinions, or expand the content. Keep ONLY the author's original thoughts, just written correctly. Preserve the original language. Return only the cleaned text, nothing else.`,
+        `Below is a raw voice transcription (${wordCount} words) and a summary of what the author meant.
+
+Original transcription:
+${rawText}
+
+Topic identified:
+${stage1}
+
+YOUR TASK: Clean up the transcription — fix grammar, remove filler words ("тобто", "ну", "як-не-як"), make sentences complete.
+
+STRICT RULES:
+- The result MUST contain ONLY ideas present in the original transcription
+- Do NOT add examples, analogies, context, or details the author did not say
+- Do NOT expand on ideas — if the author said one sentence about something, keep it as one sentence
+- The result should be roughly the SAME length as the original (${wordCount} words ±20%)
+- Preserve the original language
+- Return ONLY the cleaned text, nothing else`,
         2000
       )
-      console.log(`  Stage 2 result: ${stage2.slice(0, 150)}`)
+      console.log(`  Stage 2 result (${stage2.split(/\s+/).length} words from ${wordCount}): ${stage2.slice(0, 150)}`)
+
+      // Validate stages returned non-empty results
+      if (!stage1?.trim()) {
+        console.error('Stage 1 returned empty result')
+        throw new Error('Voice processing failed — Stage 1 (topic) returned empty')
+      }
+      if (!stage2?.trim()) {
+        console.error('Stage 2 returned empty result')
+        throw new Error('Voice processing failed — Stage 2 (retelling) returned empty')
+      }
 
       processedContent = stage2
       processedTitle = stage1.slice(0, 100)
@@ -216,7 +243,15 @@ serve(async (req) => {
 
     const finalPrompt = `You are a professional blog writer. Write from first-person perspective, sharing personal insights authentically.
 
-${requestData.sourceType === 'voice' ? 'IMPORTANT: The text below is the author\'s OWN words and thoughts (cleaned from voice dictation). Preserve his voice and ideas — do NOT replace them with generic content. Expand slightly if needed but stay true to what he said.' : 'Rewrite the article content engagingly.'}
+${requestData.sourceType === 'voice' ? `IMPORTANT — VOICE DICTATION MODE:
+The text below is the author's OWN words (cleaned from voice dictation).
+STRICT RULES:
+- Write ONLY about topics and ideas the author actually mentioned
+- Do NOT invent details, examples, backstory, or emotional context he didn't say
+- Do NOT add "I remember when...", "Back in those days..." or nostalgic filler
+- If the author's text is ~${processedContent.split(/\\s+/).length} words, the blog post should be 150-300 words per language — NOT 500+
+- Keep the author's specific details (years, names, prices, platforms he mentioned)
+- If unsure whether something was said — leave it out` : 'Rewrite the article content engagingly.'}
 
 You MUST return ONLY valid JSON (no markdown fences):
 {
@@ -235,15 +270,21 @@ ${blogPromptText}`
 
     console.log('Gemini response received, parsing JSON...')
 
-    // Parse JSON from Gemini response
+    // Parse JSON from Gemini response (safe extraction)
     const cleanedAi = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const jsonMatch = cleanedAi.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      console.error('Failed to parse AI response:', cleanedAi.substring(0, 500))
-      throw new Error('Failed to parse AI response')
+      console.error('Failed to extract JSON from AI response:', cleanedAi.substring(0, 500))
+      throw new Error('Failed to parse AI response — no JSON object found')
     }
 
-    const rewrittenContent = JSON.parse(jsonMatch[0])
+    let rewrittenContent: Record<string, any>
+    try {
+      rewrittenContent = JSON.parse(jsonMatch[0])
+    } catch (parseErr: any) {
+      console.error('JSON.parse failed:', parseErr.message, 'Raw:', jsonMatch[0].substring(0, 300))
+      throw new Error(`AI response JSON parse failed: ${parseErr.message}`)
+    }
 
     // Validate structure
     if (!rewrittenContent.en || !rewrittenContent.no || !rewrittenContent.ua) {
@@ -284,11 +325,15 @@ ${blogPromptText}`
     }
 
     // 🔍 Find original source URL (parallel with image generation)
-    // 🖼️ Generate new image with AI
-    const [foundSourceUrl, generatedImageUrl] = await Promise.all([
+    // 🖼️ Generate new image with AI — use allSettled so one failure doesn't block the other
+    const [sourceResult, imageResult] = await Promise.allSettled([
       findSourceLink(requestData.title, requestData.content, requestData.sourceLink || requestData.url),
       generateImage(requestData.imageUrl, rewrittenContent.en.title, rewrittenContent.en.description)
     ])
+    const foundSourceUrl = sourceResult.status === 'fulfilled' ? sourceResult.value : null
+    const generatedImageUrl = imageResult.status === 'fulfilled' ? imageResult.value : null
+    if (sourceResult.status === 'rejected') console.warn('⚠️ Source link search failed:', sourceResult.reason)
+    if (imageResult.status === 'rejected') console.warn('⚠️ Image generation failed:', imageResult.reason)
 
     // Use AI-found source or fallback to existing
     const finalSourceUrl = foundSourceUrl || requestData.sourceLink || requestData.url

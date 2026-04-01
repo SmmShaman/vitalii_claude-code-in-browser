@@ -16,8 +16,8 @@ export function useFeatures(): Feature[] {
           setFeatures(data.features)
         }
       })
-      .catch(() => {
-        // Keep static fallback on error
+      .catch((err) => {
+        console.warn('⚠️ useFeatures: API fetch failed, using static fallback:', err.message || err)
       })
     return () => { cancelled = true }
   }, [])

@@ -1,12 +1,14 @@
 /**
  * AI Script Generator
  *
- * Uses Azure OpenAI to generate a short, punchy voiceover script
+ * Uses LLM (NVIDIA NIM / Gemini) to generate a short, punchy voiceover script
  * from the original news article text.
  *
  * This runs inside the GitHub Actions video-processor pipeline
  * BEFORE the Remotion render step.
  */
+
+import { callLLM } from './llm-helper.js';
 
 /**
  * Generate a voiceover script from news article text.
@@ -17,18 +19,9 @@
  * @returns {Promise<string>} The generated script text
  */
 export async function generateScript(articleText, language = 'en', maxDurationSeconds = 45) {
-  const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-  const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
-  const AZURE_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
-
-  if (!AZURE_ENDPOINT || !AZURE_KEY) {
-    throw new Error('Missing Azure OpenAI credentials (AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY)');
-  }
-
   const languageNames = { en: 'English', no: 'Norwegian', ua: 'Ukrainian' };
   const langName = languageNames[language] || 'English';
 
-  // ~2 words/sec for TTS. Reserve 3s for intro hook + 3s for outro
   const targetWordCount = Math.round(maxDurationSeconds * 2);
   const hookSeconds = Math.min(3, Math.round(maxDurationSeconds * 0.15));
   const outroSeconds = Math.min(3, Math.round(maxDurationSeconds * 0.15));
@@ -53,35 +46,7 @@ RULES:
 
   const userPrompt = `Write a ${Math.round(maxDurationSeconds)}-second voiceover script (max ${targetWordCount} words) for this news:\n\n${articleText.substring(0, 3000)}`;
 
-  const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': AZURE_KEY,
-    },
-    body: JSON.stringify({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Azure OpenAI error: ${response.status} ${err}`);
-  }
-
-  const data = await response.json();
-  const script = data.choices?.[0]?.message?.content?.trim();
-
-  if (!script) {
-    throw new Error('Azure OpenAI returned empty script');
-  }
+  const script = await callLLM(systemPrompt, userPrompt, { maxTokens: 500, temperature: 0.7 });
 
   console.log(`📝 Generated script (${script.split(/\s+/).length} words, ~${Math.round(script.split(/\s+/).length / 2)}s for ${Math.round(maxDurationSeconds)}s video):`);
   console.log(`   "${script.substring(0, 100)}..."`);

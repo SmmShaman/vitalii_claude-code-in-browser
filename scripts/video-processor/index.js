@@ -9,7 +9,7 @@
  * - TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN
  * - YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
  * - SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * - AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY (for script generation)
+ * - NVIDIA_API_KEY or GOOGLE_API_KEY (for LLM script generation)
  * - OPENAI_API_KEY (for TTS voiceover)
  * - NEWS_ID (optional), MODE (single/batch/text_news), BATCH_LIMIT
  * - SKIP_REMOTION (optional) - set to 'true' to skip Remotion rendering
@@ -252,12 +252,12 @@ async function enhanceWithRemotion(inputVideoPath, news, videoMeta = {}) {
   }
 
   // Check if AI credentials are available
-  const hasAI = process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY;
+  const hasAI = process.env.NVIDIA_API_KEY || process.env.GOOGLE_API_KEY;
   const hasTTS = process.env.ZVUKOGRAM_TOKEN && process.env.ZVUKOGRAM_EMAIL;
 
   if (!hasAI || !hasTTS) {
     console.log('⚠️ Missing AI/TTS credentials, skipping Remotion enhancement');
-    console.log(`   AI (Azure): ${hasAI ? '✅' : '❌'}, TTS (Zvukogram): ${hasTTS ? '✅' : '❌'}`);
+    console.log(`   AI (NVIDIA/Gemini): ${hasAI ? '✅' : '❌'}, TTS (Zvukogram): ${hasTTS ? '✅' : '❌'}`);
     return null;
   }
 
@@ -355,9 +355,10 @@ async function enhanceWithRemotion(inputVideoPath, news, videoMeta = {}) {
   } catch (error) {
     console.error(`⚠️ Remotion enhancement failed: ${error.message}`);
     console.log('↩️ Falling back to raw video upload');
-    // Cleanup voiceover on failure
-    if (voiceoverPath) await fs.unlink(voiceoverPath).catch(() => {});
     return null;
+  } finally {
+    // Cleanup voiceover temp file regardless of success/failure
+    if (voiceoverPath) await fs.unlink(voiceoverPath).catch(() => {});
   }
 }
 

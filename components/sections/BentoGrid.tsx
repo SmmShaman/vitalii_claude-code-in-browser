@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, startTransition } from 'react';
+import { useState, useRef, useEffect, useMemo, startTransition } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useTranslations } from '@/contexts/TranslationContext';
 import { SectionDialog } from '@/components/sections/SectionDialog';
@@ -577,12 +577,20 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
 
   // Get current project image — merge DB data (featureCount) with translations (highlights)
   const translationProjects = translations[lang].projects_list;
-  const effectiveProjects = carouselProjects.length > 0
-    ? carouselProjects.map(cp => {
-        const tp = translationProjects.find((t: Record<string, unknown>) => t.title === cp.title);
-        return { ...cp, intro: (tp as Record<string, unknown>)?.intro as string, highlights: (tp as Record<string, unknown>)?.highlights as Array<{emoji: string; title: string; desc: string}> };
-      })
-    : translationProjects;
+  const effectiveProjects = useMemo(() => {
+    if (carouselProjects.length === 0) return translationProjects;
+    return carouselProjects.map(cp => {
+      // Match by projectId for language-independent matching (not by title)
+      const tp = translationProjects.find((t: Record<string, unknown>) =>
+        (t as Record<string, unknown>).projectId === cp.projectId || (t as Record<string, unknown>).title === cp.title
+      );
+      return {
+        ...cp,
+        intro: ((tp as Record<string, unknown>)?.intro as string) || '',
+        highlights: ((tp as Record<string, unknown>)?.highlights as Array<{emoji: string; title: string; desc: string}>) || [],
+      };
+    });
+  }, [carouselProjects, translationProjects, lang]);
   const currentProjectImage = effectiveProjects[currentProjectIndex]?.image || sections.find(s => s.id === 'projects')?.image;
 
   return (

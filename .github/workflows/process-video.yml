@@ -84,10 +84,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
-          # AI credentials (for Remotion enhancement)
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          # LLM credentials (NVIDIA NIM primary, Gemini fallback)
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
           # TTS credentials (Zvukogram neural TTS)
           ZVUKOGRAM_TOKEN: ${{ secrets.ZVUKOGRAM_TOKEN }}

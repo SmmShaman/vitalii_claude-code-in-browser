@@ -1,7 +1,7 @@
 /**
  * AI Video Director
  *
- * Uses Azure OpenAI (GPT-4.1-mini) to analyze a news article and generate
+ * Uses LLM (NVIDIA NIM / Gemini) to analyze a news article and generate
  * a structured scene plan for Remotion multi-scene video composition.
  *
  * The AI acts as a "video director" — analyzing the article content,
@@ -10,6 +10,8 @@
  *
  * Runs inside GitHub Actions — no always-on PC needed.
  */
+
+import { callLLMJson } from './llm-helper.js';
 
 const SCENE_TYPES_DESCRIPTION = `
 Available scene types and their properties:
@@ -39,58 +41,14 @@ Available scene types and their properties:
 `;
 
 /**
- * Call Azure OpenAI chat completion.
+ * Call LLM (NVIDIA NIM / Gemini) with JSON response.
  */
-async function callAzureOpenAI(systemPrompt, userPrompt, maxTokens = 1500) {
-  const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-  const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY;
-  const AZURE_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'Jobbot-gpt-4.1-mini';
-
-  if (!AZURE_ENDPOINT || !AZURE_KEY) {
-    throw new Error('Missing Azure OpenAI credentials');
-  }
-
-  const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': AZURE_KEY,
-    },
-    body: JSON.stringify({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: maxTokens,
-      response_format: { type: 'json_object' },
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Azure OpenAI error: ${response.status} ${err}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content?.trim();
-
-  if (!content) {
-    throw new Error('Azure OpenAI returned empty response');
-  }
-
-  const usage = data.usage;
-  if (usage) {
-    console.log(`💰 Tokens: ${usage.prompt_tokens} in + ${usage.completion_tokens} out`);
-  }
-
-  return content;
+async function callAI(systemPrompt, userPrompt, maxTokens = 1500) {
+  return await callLLMJson(systemPrompt, userPrompt, { maxTokens, temperature: 0.7 });
 }
 
 /**
- * Generate a video direction plan using Azure OpenAI.
+ * Generate a video direction plan using NVIDIA NIM / Gemini.
  *
  * @param {string} articleText - The news article text
  * @param {string} headline - The article headline
@@ -98,10 +56,10 @@ async function callAzureOpenAI(systemPrompt, userPrompt, maxTokens = 1500) {
  * @returns {Promise<Object>} Director plan with scenes and voiceover script
  */
 export async function directVideo(articleText, headline, targetDuration = 25) {
-  const hasAI = process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY;
+  const hasAI = process.env.NVIDIA_API_KEY || process.env.GOOGLE_API_KEY;
 
   if (!hasAI) {
-    console.log('⚠️ No Azure OpenAI credentials, falling back to template director');
+    console.log('⚠️ No LLM credentials, falling back to template director');
     return templateDirector(articleText, headline, targetDuration);
   }
 
@@ -145,16 +103,7 @@ ARTICLE:
 ${articleText.substring(0, 4000)}`;
 
   try {
-    const content = await callAzureOpenAI(systemPrompt, userPrompt);
-
-    let plan;
-    try {
-      const jsonStr = content.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '');
-      plan = JSON.parse(jsonStr);
-    } catch (e) {
-      console.error('Failed to parse AI response:', content.substring(0, 200));
-      throw new Error(`Invalid JSON from AI: ${e.message}`);
-    }
+    const plan = await callAI(systemPrompt, userPrompt);
 
     // Validate plan
     if (!plan.scenes || !Array.isArray(plan.scenes) || plan.scenes.length < 3) {

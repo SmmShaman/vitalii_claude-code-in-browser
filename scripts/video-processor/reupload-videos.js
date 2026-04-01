@@ -2,7 +2,7 @@
  * reupload-videos.js
  *
  * Re-uploads daily news videos to a new YouTube channel with:
- * - AI-generated clickbait titles & descriptions (Azure OpenAI)
+ * - AI-generated clickbait titles & descriptions (NVIDIA NIM / Gemini)
  * - AI-generated thumbnails (Gemini)
  *
  * Usage:
@@ -11,7 +11,7 @@
  * Required env vars:
  *   YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY
+ *   NVIDIA_API_KEY or GOOGLE_API_KEY (LLM)
  *   GOOGLE_API_KEY
  */
 

@@ -29,8 +29,8 @@ export function useProjects(): ProjectInfo[] {
           setProjects(data.projects)
         }
       })
-      .catch(() => {
-        // Keep static fallback on error
+      .catch((err) => {
+        console.warn('⚠️ useProjects: API fetch failed, using static fallback:', err.message || err)
       })
     return () => { cancelled = true }
   }, [])
@@ -50,7 +50,9 @@ export function useProjectsCarousel(lang: 'en' | 'no' | 'ua'): { carousel: Carou
           setProjects(data.projects)
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('⚠️ useProjectsCarousel: API fetch failed, using static fallback:', err.message || err)
+      })
     return () => { cancelled = true }
   }, [])
 

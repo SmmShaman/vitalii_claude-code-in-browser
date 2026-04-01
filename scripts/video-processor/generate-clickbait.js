@@ -2,12 +2,10 @@
  * generate-clickbait.js
  *
  * AI-powered clickbait title + description generator for YouTube daily news videos.
- * Uses Azure OpenAI (GPT-4.1-mini) to create engaging Norwegian titles and descriptions.
+ * Uses LLM (NVIDIA NIM / Gemini) to create engaging Norwegian titles and descriptions.
  */
 
-const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT || '';
-const AZURE_KEY = process.env.AZURE_OPENAI_API_KEY || '';
-const AZURE_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'Jobbot-gpt-4.1-mini';
+import { callLLMJson } from './llm-helper.js';
 
 function formatDateNorwegian(dateStr) {
   const months = [
@@ -82,27 +80,7 @@ ${timecodesStr}
 
 Generate clickbait title + description.`;
 
-  const url = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'api-key': AZURE_KEY },
-    body: JSON.stringify({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.8,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
-    }),
-  });
-
-  if (!resp.ok) throw new Error(`Azure OpenAI: ${resp.status} ${await resp.text()}`);
-  const data = await resp.json();
-  const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error('Empty AI response');
-
-  const result = JSON.parse(content);
+  const result = await callLLMJson(systemPrompt, userPrompt, { maxTokens: 2000, temperature: 0.8 });
 
   // Safety: truncate title to YouTube limit
   result.title = (result.title || '').substring(0, 100);
