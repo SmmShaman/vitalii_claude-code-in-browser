@@ -12,7 +12,7 @@ import { FeaturesPreview } from '@/components/ui/FeaturesPreview';
 import { FeatureModal } from '@/components/ui/FeatureModal';
 import type { FeatureCategory } from '@/data/features';
 import { useFeatures } from '@/hooks/useFeatures';
-import { useProjects } from '@/hooks/useProjects';
+import { useProjects, useProjectsCarousel } from '@/hooks/useProjects';
 import { AboutAnimation } from '@/components/ui/AboutAnimation';
 import { ServicesDetail } from '@/components/ui/ServicesDetail';
 import { NewsSection } from '@/components/sections/NewsSection';
@@ -113,6 +113,8 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
   const { t, currentLanguage } = useTranslations();
   const allFeatures = useFeatures();
   const allProjects = useProjects();
+  const lang = currentLanguage.toLowerCase() as 'en' | 'no' | 'ua';
+  const { carousel: carouselProjects } = useProjectsCarousel(lang);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
@@ -573,9 +575,9 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     }
   };
 
-  // Get current project image
-  const currentProjects = translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list;
-  const currentProjectImage = currentProjects[currentProjectIndex]?.image || sections.find(s => s.id === 'projects')?.image;
+  // Get current project image — prefer DB carousel, fallback to translations
+  const effectiveProjects = carouselProjects.length > 0 ? carouselProjects : translations[lang].projects_list;
+  const currentProjectImage = effectiveProjects[currentProjectIndex]?.image || sections.find(s => s.id === 'projects')?.image;
 
   return (
     <>
@@ -1021,7 +1023,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
                           ) : section.id === 'projects' ? (
                             <div className="w-full h-full overflow-hidden">
                               <ProjectsCarousel
-                                projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
+                                projects={effectiveProjects}
                                 onCardClick={handleProjectsCardClick}
                                 backgroundText={t('projects_title') as string}
                                 onIndexChange={handleProjectIndexChange}
@@ -1104,7 +1106,7 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
       <ProjectsModal
         open={isProjectsModalOpen}
         onOpenChange={setIsProjectsModalOpen}
-        projects={translations[currentLanguage.toLowerCase() as 'en' | 'no' | 'ua'].projects_list}
+        projects={effectiveProjects}
         activeProjectIndex={activeProjectIndex}
       />
 
