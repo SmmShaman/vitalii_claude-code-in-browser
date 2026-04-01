@@ -1,240 +1,135 @@
 import fs from 'fs';
 
-const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
-const SYSTEM_PROMPT = `You are a creative copywriter for a tech portfolio. Write project descriptions in a LITERARY, ARTISTIC style that tells a story about what the project does for people.
+const SYSTEM_PROMPT = `You are a creative copywriter for a tech portfolio website. Write project descriptions in a LITERARY, ARTISTIC style that tells a compelling story about what the project does for people.
 
-RULES:
+STRICT RULES:
+- "short": punchy memorable tagline, 60-90 characters
+- "full": MINIMUM 1000 characters, MAXIMUM 1500 characters. This is CRITICAL — count carefully!
 - Write as if telling a story to an intelligent non-technical person
-- Focus on WHAT the project does, WHY it matters, WHO benefits
-- Use vivid metaphors and engaging language
-- DO NOT use framework names (no "React", "TypeScript", "Supabase", "Next.js", "PostgreSQL", "Deno", "Edge Functions" etc.)
-- Instead of "AI-powered", describe what the AI actually DOES
-- Keep "short" under 100 characters — punchy, memorable tagline
-- Keep "full" at 200-400 characters — compelling narrative paragraph
-- Norwegian text should be in Bokmål
-- Ukrainian text should be natural, modern Ukrainian
-- Output ONLY valid JSON, no markdown, no code fences, no explanation
+- Focus on WHAT the project does, WHY it matters, WHO benefits, HOW it changes their life
+- Use vivid metaphors, sensory language, and engaging narrative
+- DO NOT use framework names (no "React", "TypeScript", "Supabase", "Node.js", "PostgreSQL" etc.)
+- Instead of "AI-powered", describe what the intelligence actually DOES in human terms
+- Include specific details about functionality but expressed through metaphors and storytelling
+- Each description should feel like the opening paragraph of a novel about that product
+- Norwegian translations should feel native, not translated — use idiomatic Norwegian (Bokmål)
+- Ukrainian translations should feel native — use natural Ukrainian literary language
+- Output ONLY valid JSON, no markdown, no explanation, no code blocks
 
-OUTPUT FORMAT:
+OUTPUT FORMAT (strict JSON):
 {
   "short_en": "...",
   "short_no": "...",
   "short_ua": "...",
-  "full_en": "...",
-  "full_no": "...",
-  "full_ua": "..."
+  "full_en": "... (1000-1500 chars) ...",
+  "full_no": "... (1000-1500 chars) ...",
+  "full_ua": "... (1000-1500 chars) ..."
 }`;
 
 const projects = [
   {
     id: 'portfolio',
-    context: 'Professional portfolio and automated news platform at vitalii.no. Automatically collects tech news from RSS/Telegram, AI rewrites in 3 languages (English, Norwegian, Ukrainian), auto-posts to LinkedIn/Instagram/Facebook. Has video production pipeline that creates news videos with AI voiceover. Admin dashboard with 10 tabs. 65 published engineering features, 20 automated workflows running 24/7.'
+    context: 'Professional portfolio and automated news platform at vitalii.no. Automatically collects tech news from 20+ RSS feeds and Telegram channels every 10 minutes. AI pre-moderates content (filters spam/ads), then rewrites articles in 3 languages (English, Norwegian, Ukrainian). Auto-posts to LinkedIn, Instagram, Facebook with platform-specific AI-generated teasers. Video production pipeline: collects news → AI writes script → generates voiceover → renders video with animated subtitles → uploads to YouTube. Admin dashboard with 10 tabs for managing everything. BentoGrid UI with GSAP/Three.js particle animations. 65 published engineering features. 20 automated GitHub Actions workflows running 24/7. Contact form with 3-tier spam protection. Multilingual SEO with JSON-LD schemas.'
   },
   {
     id: 'jobbot',
-    context: 'Job hunting automation for Norway. AI reads job postings and writes perfect cover letters in Norwegian. Browser robot fills application forms on 10+ Norwegian recruitment websites automatically. Telegram bot as interface — user gets job notifications and approves applications. Self-learning system that remembers form fields. Map showing all applied jobs. 45 published features. Multi-user system with isolated data per user.'
+    context: 'Job hunting automation for the Norwegian market. AI reads job postings from FINN.no, NAV, LinkedIn and writes perfect cover letters in Norwegian tailored to each position. Browser robot (Skyvern) automatically fills application forms on 10+ Norwegian recruitment platforms (Webcruiter, Easycruit, Teamtailor, Workday). Telegram bot as main interface — user gets notifications about matching jobs, previews AI-written letters, approves with one tap. Self-learning form memory system — remembers which fields go where on each platform. Interactive map showing all applied jobs with status colors. Analytics dashboard with charts (applications per week, response rates). Multi-user system with completely isolated data per user. 45 published features.'
   },
   {
     id: 'project_23mai',
-    context: 'Language learning platform for immigrants in Norway called Elvarika. Helps people from 8 countries (Arabic, Somali, Tigrinya speakers etc.) learn Norwegian through personalized audio playlists. Upload any PDF textbook — AI extracts vocabulary. Spaced repetition with voice commands. Text-to-speech that pronounces each word clearly (3 seconds per word). Stripe payments, HR dashboard for companies to track employee progress. 19 published features.'
+    context: 'Language learning platform called Elvarika, designed specifically for immigrants in Norway. Helps people from 8 countries (Arabic, Somali, Tigrinya, Dari, Pashto speakers etc.) learn Norwegian through personalized audio playlists. Upload any PDF textbook — AI extracts vocabulary and creates study cards. Spaced repetition system with voice commands — say the word and it checks pronunciation. Revolutionary Dual SYNC TTS that pronounces each word clearly in 3 seconds (vs 220 seconds with standard TTS). Stripe payments for individual learners. HR dashboard for Norwegian companies to track employee language progress. Master courses system with structured learning paths. 19 published features.'
   },
   {
     id: 'calendar_bot',
-    context: 'Telegram bot for managing kids sports schedules. Connects to Spond (popular Norwegian sports app) with multiple accounts, syncs with Google Calendar. AI suggests optimal schedules. PIN-protected admin settings, public calendar view anyone can see. Validates events, finds venues via Google Places. 3 published features.'
+    context: 'Telegram bot for managing children sports schedules in Norway. Connects to Spond (the most popular Norwegian sports app) with support for multiple accounts (multiple children in different teams). Syncs everything with Google Calendar automatically. AI analyzes schedule conflicts and suggests optimal arrangements. PIN-protected admin settings that only parents can access, while a public calendar view is available for grandparents, coaches etc. Event validation ensures no double-bookings. Google Places integration finds venues and shows directions. 3 published features.'
   },
   {
     id: 'ghost_interviewer',
-    context: 'AI interview preparation platform. Simulates real job interviews — asks questions, listens to answers, gives real-time feedback and scores. Practices in both Norwegian and English. Improved AI translation for more natural conversation flow. Helps immigrants prepare for Norwegian job market. 1 published feature.'
+    context: 'AI interview preparation platform specifically for the Norwegian job market. Simulates real job interviews — asks industry-specific questions, listens to spoken answers via microphone, provides real-time scoring and detailed feedback. Practices in both Norwegian and English — critical for immigrants who need to interview in Norwegian. AI translation engine ensures natural conversational flow in both languages. Tracks progress across multiple practice sessions. Specifically designed to help immigrants overcome the cultural and language barriers of Norwegian workplace interviews. 1 published feature.'
   },
   {
     id: 'eyeplus',
-    context: 'Cloud platform for Eye+ security cameras. Real-time video from multiple cameras on one dashboard. Motion detection alerts, timeline playback to review events. Role-based access — different permissions for owners, guards, viewers. WebRTC for live streams, cloud storage for recordings.'
+    context: 'Cloud platform for Eye+ security cameras. Real-time video streaming from multiple cameras displayed on a single dashboard. Intelligent motion detection with instant push alerts — knows the difference between a person and a cat. Timeline playback to review past events with fast-forward and frame-by-frame. Role-based access control — building owners see everything, security guards see their zones, tenants see only their entrance. WebRTC technology for zero-latency live streams. Cloud storage for weeks of recordings with smart compression.'
   },
   {
     id: 'lingleverika',
-    context: 'AI platform that translates and understands video content. Automatic speech recognition transcribes audio, then translates to multiple languages with context awareness. Summarizes long videos, extracts key moments, creates searchable transcripts. Works with Norwegian, English, Arabic, Somali and more.'
+    context: 'AI platform called Lingva AI that translates and deeply understands video content. Automatic speech recognition transcribes audio in real-time. Context-aware translation — understands idioms, cultural references, technical terms. Supports Norwegian, English, Arabic, Somali and more. Summarizes 2-hour videos into 5-minute highlights. Extracts key moments with timestamps — jump directly to important parts. Creates fully searchable transcripts — find any word spoken in any video. Designed for multicultural environments where people speak different languages.'
   },
   {
     id: 'youtube_manager',
-    context: 'Automated YouTube channel management system. Scheduled video uploads, metadata optimization for search. Integrates with video rendering engine (Remotion) to automatically create news videos from articles. Generates thumbnails, manages playlists, triggers cross-platform publishing to other social media.'
+    context: 'Automated YouTube channel management system. Full OAuth 2.0 authentication with token refresh. Scheduled video uploads — set time and forget. Metadata optimization for YouTube search (titles, descriptions, tags). Integrates with Remotion video rendering engine — automatically transforms news articles into polished videos with AI voiceover and animated subtitles. Automatic thumbnail generation from video frames. Playlist management — auto-categorize videos. Cross-platform publishing triggers — when a YouTube video is published, automatically create posts on LinkedIn, Instagram, Facebook. Analytics dashboard tracking views, subscribers, engagement.'
   },
   {
     id: 'boytasks',
-    context: 'Parental educational control system for 3 boys (grades 3-7). Children complete daily tasks in 4 subjects: math, Norwegian reading, English reading, grammar. Each completed task reveals part of a numeric code. YouTube access unlocks ONLY when ALL children complete ALL tasks. Daily tasks emailed at 8 AM. Hosted at kids.vitalii.no. Fun gamification with rewards.'
+    context: 'Parental educational control system designed for a family with 3 boys (grades 3-7). Every morning at 8 AM, each child receives an email with daily tasks in 4 subjects: math problems, Norwegian reading comprehension, English reading, and grammar exercises. When a child completes a task group, they receive a 4-digit code fragment. The genius twist: YouTube access is locked behind a master code that requires ALL children to complete ALL their tasks. The code changes daily. Children must collaborate — if one brother skips his math, nobody watches YouTube. Hosted at kids.vitalii.no with Google OAuth for parent access. Fun gamification with streaks, badges, and daily challenges.'
   }
 ];
-
-async function generateWithNvidia(project, userPrompt) {
-  if (!NVIDIA_API_KEY) return null;
-
-  // Try multiple model names
-  const models = [
-    'mistralai/mistral-small-24b-instruct-2501',
-    'mistralai/mistral-small-4-119b-2603',
-    'mistralai/mistral-small-latest'
-  ];
-
-  for (const model of models) {
-    try {
-      const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${NVIDIA_API_KEY}` },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt }
-          ],
-          max_tokens: 2000,
-          temperature: 0.7
-        })
-      });
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          console.log(`  [${project.id}] NVIDIA (${model}) OK`);
-          return JSON.parse(jsonMatch[0]);
-        }
-      }
-      if (data.error) {
-        console.error(`  [${project.id}] NVIDIA ${model} error:`, data.error.message?.substring(0, 100));
-        continue;
-      }
-    } catch (e) {
-      console.error(`  [${project.id}] NVIDIA ${model} failed:`, e.message);
-      continue;
-    }
-  }
-  return null;
-}
-
-async function generateWithGemini(project, userPrompt) {
-  if (!GOOGLE_API_KEY) return null;
-
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: SYSTEM_PROMPT + '\n\n' + userPrompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4000, responseMimeType: 'application/json' }
-      })
-    });
-    const data = await res.json();
-
-    // Collect text from all parts
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    let fullText = parts.map(p => p.text || '').join('');
-
-    if (fullText) {
-      // Try direct parse first
-      try {
-        const parsed = JSON.parse(fullText);
-        console.log(`  [${project.id}] Gemini OK`);
-        return parsed;
-      } catch {
-        // Try extracting JSON object
-        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            console.log(`  [${project.id}] Gemini OK (extracted)`);
-            return parsed;
-          } catch (e2) {
-            // Try fixing truncated JSON by closing it
-            let fixed = jsonMatch[0];
-            // Count open/close braces
-            const openBraces = (fixed.match(/\{/g) || []).length;
-            const closeBraces = (fixed.match(/\}/g) || []).length;
-            if (openBraces > closeBraces) {
-              // Find last complete value
-              const lastQuote = fixed.lastIndexOf('"');
-              if (lastQuote > 0) {
-                fixed = fixed.substring(0, lastQuote + 1) + '}';
-                try {
-                  const parsed = JSON.parse(fixed);
-                  console.log(`  [${project.id}] Gemini OK (repaired)`);
-                  return parsed;
-                } catch { /* fall through */ }
-              }
-            }
-            console.error(`  [${project.id}] Gemini JSON parse failed:`, e2.message);
-            console.error(`  [${project.id}] Raw text (last 200):`, fullText.substring(fullText.length - 200));
-          }
-        }
-      }
-    }
-
-    // Check for safety/block reasons
-    const finishReason = data.candidates?.[0]?.finishReason;
-    if (finishReason && finishReason !== 'STOP') {
-      console.error(`  [${project.id}] Gemini finishReason: ${finishReason}`);
-    }
-
-    if (!fullText) {
-      console.error(`  [${project.id}] Gemini no content:`, JSON.stringify(data).substring(0, 300));
-    }
-  } catch (e) {
-    console.error(`  [${project.id}] Gemini failed:`, e.message);
-  }
-  return null;
-}
 
 async function generateForProject(project) {
   const userPrompt = `Write descriptions for project "${project.id}".
 Context: ${project.context}
 
-Return ONLY JSON with short_en, short_no, short_ua, full_en, full_no, full_ua.`;
+CRITICAL: The "full" description MUST be between 1000 and 1500 characters. Count carefully. This is a hard requirement.
+Return ONLY valid JSON with short_en, short_no, short_ua, full_en, full_no, full_ua.`;
 
-  // Try NVIDIA first, fallback to Gemini
-  let result = await generateWithNvidia(project, userPrompt);
-  if (!result) {
-    result = await generateWithGemini(project, userPrompt);
-  }
-
-  if (result) {
-    return { id: project.id, ...result };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ parts: [{ text: userPrompt }] }],
+          generationConfig: { temperature: 0.8, maxOutputTokens: 8000, thinkingConfig: { thinkingBudget: 0 } }
+        })
+      });
+      const data = await res.json();
+      const content = data.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;
+      if (content) {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const enLen = parsed.full_en?.length || 0;
+          console.log(`[${project.id}] full_en: ${enLen} chars ${enLen >= 900 ? '✓' : '✗ TOO SHORT'}`);
+          if (enLen >= 900) return { id: project.id, ...parsed };
+          console.log(`[${project.id}] Retrying (attempt ${attempt + 2})...`);
+          continue;
+        }
+      }
+      console.error(`[${project.id}] No valid JSON in response (attempt ${attempt + 1})`);
+    } catch (e) {
+      console.error(`[${project.id}] Error:`, e.message);
+    }
   }
   return null;
 }
 
 async function main() {
-  console.log('Generating descriptions for', projects.length, 'projects...');
-  console.log('NVIDIA:', NVIDIA_API_KEY ? 'available' : 'missing');
-  console.log('Gemini:', GOOGLE_API_KEY ? 'available' : 'missing');
-  console.log('');
+  console.log('Generating 1000+ char descriptions for', projects.length, 'projects...\n');
 
-  // Process in batches of 3 to avoid rate limits
+  // Run 3 at a time to avoid rate limits
   const results = [];
   for (let i = 0; i < projects.length; i += 3) {
     const batch = projects.slice(i, i + 3);
     const batchResults = await Promise.all(batch.map(p => generateForProject(p)));
     results.push(...batchResults);
-
-    if (i + 3 < projects.length) {
-      // Small delay between batches to avoid rate limits
-      await new Promise(r => setTimeout(r, 1000));
-    }
+    if (i + 3 < projects.length) await new Promise(r => setTimeout(r, 2000));
   }
 
   const output = results.filter(Boolean);
   console.log(`\nGenerated ${output.length}/${projects.length} descriptions\n`);
 
-  // Write results to JSON file
-  const outputPath = '/mnt/c/Users/stuar/Projects/vitalii_claude-code-in-browser/scripts/project-descriptions.json';
-  fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
+  fs.writeFileSync(
+    '/mnt/c/Users/stuar/Projects/vitalii_claude-code-in-browser/scripts/project-descriptions.json',
+    JSON.stringify(output, null, 2)
+  );
   console.log('Saved to scripts/project-descriptions.json');
 
-  // Print each result summary
   for (const r of output) {
-    console.log(`\n=== ${r.id} ===`);
+    console.log(`\n=== ${r.id} === (en:${r.full_en?.length} no:${r.full_no?.length} ua:${r.full_ua?.length})`);
     console.log('short_en:', r.short_en);
-    console.log('short_ua:', r.short_ua);
-    console.log('full_en:', r.full_en?.substring(0, 150) + '...');
   }
 }
 
