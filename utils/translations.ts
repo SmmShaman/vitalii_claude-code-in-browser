@@ -15,33 +15,57 @@ export const translations = {
     projects_list: [
       {
         title: "Portfolio & News Platform",
-        short: "AI-powered multilingual content platform with 65 production features",
-        full: "Full-stack content automation platform running at vitalii.no. Built with Next.js 15, Supabase, and 29 Deno Edge Functions. Features include AI content moderation, multilingual rewriting (EN/NO/UA), video production with Remotion, social media auto-posting to LinkedIn/Instagram/Facebook, BentoGrid UI with GSAP/Three.js animations, and a 10-tab admin dashboard. 48 real production features, 1,234 commits, 20 GitHub Actions workflows.",
+        short: "A tireless digital bard, transforming the world's tech whispers into multi-lingual narratives, broadcast far and wide.",
+        full: "Imagine a vigilant scout, scanning the digital horizon for the newest innovations, then a skilled artisan, reshaping those discoveries into compelling stories across three languages. This platform is that very artisan, a tireless weaver of tales that not only populate my personal showcase but also illuminate the broader tech landscape. It's a living, breathing chronicle, ensuring vital insights reach diverse audiences through social channels and even captivating video narratives, all orchestrated with an elegant, invisible hand. It's a testament to how meticulous craftsmanship can bring clarity and connection to a fast-moving world.",
         image: "/images/projects/portfolio-cover.jpg"
       },
       {
         title: "JobBot Norway",
-        short: "AI job hunting automation platform with 45 engineering features",
-        full: "Intelligent job search automation for the Norwegian market. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI analyzes job postings and generates cover letters in Norwegian. Skyvern browser automation fills forms on 10+ recruitment platforms (Webcruiter, Easycruit, Teamtailor, FINN). Telegram bot as primary interface with 2FA bridge. Self-learning form memory system. Dashboard with Leaflet job map and Recharts analytics. Multi-user with PostgreSQL RLS isolation.",
+        short: "Your tireless digital scribe, transforming the Norwegian job hunt into effortless discovery.",
+        full: "Imagine a world where the relentless quest for a new role transforms into a serene journey. This digital companion acts as your personal scout, tirelessly sifting through the vast Norwegian job landscape. It understands the nuances of each opportunity, then, with the finesse of a seasoned storyteller, crafts bespoke cover letters tailored to resonate. A diligent digital hand then navigates complex application forms across countless sites, remembering your details like an old friend. You receive whispered notifications of new prospects and a strategic map of your journey, freeing you to focus on your aspirations, not the paperwork.",
         image: "/images/projects/jobbot-cover.jpg"
       },
       {
         title: "Elvarika Language Learning",
-        short: "AI-powered language learning platform for immigrants with 19 production features",
-        full: "AI language learning platform helping immigrants in Norway learn Norwegian through personalized audio playlists. Hybrid NLP engine (Stanza + SpaCy) for 8 languages including Arabic, Somali, Tigrinya. PDF upload with visual preview, AI-powered vocabulary extraction, spaced repetition system with voice commands, and Dual SYNC TTS architecture (3s per word vs 220s). Stripe payments, HR dashboard for companies, master courses system. React 18 + TypeScript + Supabase + Python NLP microservice.",
+        short: "Elvarika: Your voice in Norway, your story in Norwegian.",
+        full: "Elvarika is a beacon for those embarking on a new chapter in Norway, a melodic bridge built for the heart's journey into a new tongue. It whispers the secrets of Norwegian into your ear, transforming the daunting pages of textbooks into a personalized symphony of learning. Through the magic of spoken word and intelligent recall, Elvarika ensures that every new phrase not only finds its way to your memory but also dances gracefully off your tongue, empowering you to weave your unique narrative into the vibrant tapestry of Norwegian life.",
         image: "/images/projects/elvarika-cover.jpg"
       },
       {
         title: "Calendar Telegram Bot",
-        short: "Smart calendar bot with Spond integration and AI scheduling",
-        full: "Telegram bot for calendar management with Spond multi-account support, Google Calendar integration, and AI-powered scheduling. Features PIN-protected admin tabs with public calendar view, optional Google login, event validation, and Places Library integration. Built with TypeScript, Telegram Bot API, Supabase, and Google APIs.",
+        short: "A digital maestro orchestrating family sports, bringing peace to chaotic schedules.",
+        full: "Imagine a calm harbor amidst a sea of conflicting appointments – this bot is that beacon. It seamlessly gathers all your children's sports commitments from multiple sources, weaving them into a single, clear Google Calendar tapestry. A clever digital assistant then steps in, not just listing events, but thoughtfully suggesting the best times, like a wise mentor guiding your family's flow. Parents gain a secure control panel, while everyone else enjoys a transparent window into the week's adventures, ensuring no sprint or practice is ever missed. It's the quiet architect of family harmony, ensuring every child finds their field of play, stress-free.",
         image: "/images/projects/calendar-cover.jpg"
       },
       {
         title: "Ghost Interviewer AI",
-        short: "AI interview preparation and coaching platform",
-        full: "AI-powered interview preparation platform that simulates real job interviews. Enhanced AI translation with improved prompts and faster processing. Helps candidates practice answering questions in Norwegian and English with real-time feedback and scoring. Built with TypeScript, Azure OpenAI, and Supabase Edge Functions.",
+        short: "Your secret stage for interview mastery, a silent mentor refining your voice.",
+        full: "Imagine a quiet, patient guide who sits with you, asking the tough questions, listening intently to every word. This project crafts that very space – a private rehearsal room where your aspirations meet practical refinement. It gently probes, then illuminates your strengths and areas for growth, offering immediate, insightful feedback on your answers. For those navigating new shores, particularly the vibrant Norwegian landscape, it's a bridge of confidence, ensuring your true potential shines through in any language.",
         image: "/images/projects/ghost-interviewer-cover.jpg"
+      },
+      {
+        title: "Eye+ Camera Cloud",
+        short: "Your world, watched over. A vigilant eye, always present, always knowing.",
+        full: "Imagine a quiet guardian, its gaze sweeping across every corner of your cherished spaces. This platform weaves together the watchful eyes of many cameras into a single, seamless tapestry, delivering live moments directly to you. Should a shadow stir where it shouldn't, an immediate whisper reaches your ear. And for those moments you need to revisit, it acts as a meticulous memory keeper, allowing you to unfurl the past and understand every unfolding event with clarity. It's a peace of mind, tailored with precision, ensuring only the right eyes see what they need to see.",
+        image: "/images/projects/eyeplus-cover.jpg"
+      },
+      {
+        title: "Lingva AI",
+        short: "Unlocking global conversations and insights from every video's heart.",
+        full: "Imagine a world where the whispers of one culture echo clearly in the ears of another. This platform is a bridge of understanding, built from the very fabric of spoken words. It listens to the soul of video content, transcending the babel of tongues to reveal its core message. Whether it's the rich tapestry of Norwegian, the universal hum of English, the ancient cadence of Arabic, or the vibrant rhythm of Somali, it captures every nuance. Beyond mere translation, it distills lengthy narratives into luminous summaries, plucking out the golden threads of key moments and weaving them into a searchable chronicle.",
+        image: "/images/projects/lingleverika-cover.jpg"
+      },
+      {
+        title: "YouTube Channel Manager",
+        short: "A digital maestro, orchestrating your stories from text to global screens.",
+        full: "This tireless digital artisan acts as your channel's invisible architect, transforming raw ideas and articles into captivating visual stories. It's a meticulous curator, crafting irresistible thumbnails, optimizing every word for discovery, and ensuring each video finds its perfect moment to shine. From the quiet birth of an idea to its grand premiere across countless screens, this system orchestrates every detail, freeing creators to focus on their vision while their narratives effortlessly reach a global audience.",
+        image: "/images/projects/youtube-manager-cover.jpg"
+      },
+      {
+        title: "Boytasks",
+        short: "A daily quest system transforming screen time into a collaborative journey of learning and discovery for young minds.",
+        full: "Imagine a digital guardian, a wise old storyteller, that weaves daily lessons into an exciting adventure. For three young scholars, this system transforms the allure of screens into a thrilling quest. Each morning, a scroll arrives bearing challenges in numbers, words, and grammar. As they conquer each task, a piece of a hidden cipher is revealed. Only when all brothers unite their efforts, piecing together the complete code, does the digital gate to their favorite videos swing open, rewarding their shared diligence and sparking a love for collaborative learning. It's a gentle nudge towards knowledge, disguised as a daily game.",
+        image: "/images/projects/boytasks-cover.jpg"
       }
     ],
 
@@ -286,33 +310,57 @@ export const translations = {
     projects_list: [
       {
         title: "Portefølje & Nyhetsplattform",
-        short: "AI-drevet flerspråklig innholdsplattform med 48 produksjonsfunksjoner",
-        full: "Full-stack innholdsautomatiseringsplattform som kjører på vitalii.no. Bygget med Next.js 15, Supabase og 29 Deno Edge Functions. Funksjoner inkluderer AI-innholdsmoderering, flerspråklig omskriving (EN/NO/UA), videoproduksjon med Remotion, automatisk publisering til LinkedIn/Instagram/Facebook, BentoGrid UI med GSAP/Three.js-animasjoner og et admin-dashboard med 10 faner. 48 produksjonsfunksjoner, 1234 commits, 20 GitHub Actions-arbeidsflyter.",
+        short: "En utrettelig digital forteller, som vever teknologiens puls til flerspråklige historier, delt vidt og bredt.",
+        full: "Se for deg en våken speider som skanner den digitale horisonten for de nyeste innovasjonene, deretter en dyktig håndverker som omformer disse funnene til fengslende historier på tre språk. Denne plattformen er nettopp denne håndverkeren, en utrettelig vever av fortellinger som ikke bare fyller mitt personlige utstillingsvindu, men også lyser opp det bredere teknologilandskapet. Det er en levende, pustende krønike som sikrer at viktig innsikt når ulike publikum gjennom sosiale kanaler og til og med fengslende videofortellinger, alt orkestrert med en elegant, usynlig hånd. Et bevis på hvordan grundig håndverk kan bringe klarhet og forbindelse til en verden i stadig bevegelse.",
         image: "/images/projects/portfolio-cover.jpg"
       },
       {
         title: "JobBot Norge",
-        short: "AI-drevet jobbsøk-automatiseringsplattform med 42 funksjoner",
-        full: "Intelligent jobbsøk-automatisering for det norske markedet. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI analyserer stillingsannonser og genererer søknader på norsk. Skyvern-nettleserautomatisering fyller ut skjemaer på 10+ rekrutteringsplattformer (Webcruiter, Easycruit, Teamtailor, FINN). Telegram-bot som primærgrensesnitt med 2FA-bro. Selvlærende skjemaminnessystem. Dashboard med Leaflet jobbkart og Recharts-analyse. Flerbruker med PostgreSQL RLS-isolering.",
+        short: "Din utrettelige digitale skriver, som gjør norsk jobbjakt til uanstrengt oppdagelse.",
+        full: "Forestille deg en verden hvor den nådeløse jakten på en ny rolle forvandles til en rolig reise. Denne digitale følgesvennen fungerer som din personlige speider, som utrettelig saumfarer det store norske jobblandskapet. Den forstår nyansene i hver mulighet, og med en erfaren fortellers finesse, skaper den skreddersydde søknadsbrev som treffer. En flittig digital hånd navigerer så komplekse søknadsskjemaer på utallige nettsteder, og husker dine detaljer som en gammel venn. Du mottar hviskende varsler om nye prospekter og et strategisk kart over reisen din, noe som frigjør deg til å fokusere på dine ambisjoner, ikke papirarbeidet.",
         image: "/images/projects/jobbot-cover.jpg"
       },
       {
         title: "Elvarika Språklæring",
-        short: "AI-drevet språklæringsplattform for innvandrere med 19 funksjoner",
-        full: "AI-språklæringsplattform som hjelper innvandrere i Norge med å lære norsk gjennom personaliserte lydspillelister. Hybrid NLP-motor (Stanza + SpaCy) for 8 språk inkludert arabisk, somali, tigrinja. PDF-opplasting med forhåndsvisning, AI-ordforrådsutvinning, SRS med stemmekommandoer, og Dual SYNC TTS (3s per ord). Stripe-betalinger, HR-dashboard, mesterkurs. React 18 + TypeScript + Supabase + Python NLP.",
+        short: "Elvarika: Din stemme i Norge, din historie på norsk.",
+        full: "Elvarika er et fyrtårn for de som legger ut på et nytt kapittel i Norge, en melodisk bro bygget for hjertets reise inn i et nytt språk. Den hvisker hemmelighetene til norsk i øret ditt, og forvandler de skremmende sidene i lærebøker til en personlig symfoni av læring. Gjennom magien av det talte ord og intelligent gjenkalling, sikrer Elvarika at hver ny frase ikke bare finner veien til minnet ditt, men også danser grasiøst fra tungen din, og gir deg muligheten til å veve din unike fortelling inn i det levende teppet av norsk liv.",
         image: "/images/projects/elvarika-cover.jpg"
       },
       {
         title: "Kalender Telegram-Bot",
-        short: "Smart kalenderbot med Spond-integrasjon og AI-planlegging",
-        full: "Telegram-bot for kalenderstyring med Spond flerkontosstøtte, Google Kalender-integrasjon og AI-planlegging. PIN-beskyttede admin-faner med offentlig kalendervisning, valgfri Google-innlogging, hendelsesvalidering og Places Library. TypeScript, Telegram Bot API, Supabase, Google APIs.",
+        short: "En digital maestro som orkestrerer familiesport, skaper ro i kaotiske timeplaner.",
+        full: "Se for deg en rolig havn midt i et hav av motstridende avtaler – denne boten er det fyrtårnet. Den samler sømløst alle barnas sportsforpliktelser fra flere kilder, og vever dem inn i et enkelt, oversiktlig Google Kalender-teppe. En smart digital assistent trer så inn, ikke bare lister opp hendelser, men foreslår omtenksomt de beste tidspunktene, som en klok veileder for familiens flyt. Foreldre får et sikkert kontrollpanel, mens alle andre nyter et gjennomsiktig vindu inn i ukens eventyr, noe som sikrer at ingen sprint eller trening blir glemt. Det er den stille arkitekten bak familieharmonien, som sikrer at hvert barn finner sin lekeplass, stressfritt.",
         image: "/images/projects/calendar-cover.jpg"
       },
       {
         title: "Ghost Interviewer AI",
-        short: "AI-intervjuforberedelse og coaching-plattform",
-        full: "AI-drevet intervjuforberedelsesplattform som simulerer ekte jobbintervjuer. Forbedret AI-oversettelse med optimaliserte prompter. Hjelper kandidater med å øve på norsk og engelsk med tilbakemelding i sanntid. TypeScript, Azure OpenAI, Supabase Edge Functions.",
+        short: "Din stille mentor, scenen hvor intervjuferdighetene dine blomstrer.",
+        full: "Tenk deg en tålmodig veileder som sitter med deg, stiller de utfordrende spørsmålene og lytter nøye til hvert svar. Dette prosjektet skaper nettopp et slikt rom – et privat øvingslokale hvor ambisjonene dine møter praktisk finpussing. Det undersøker forsiktig, og belyser deretter dine styrker og utviklingsområder, med umiddelbar, innsiktsfull tilbakemelding. For de som navigerer i nye farvann, spesielt det pulserende norske arbeidsmarkedet, er det en bro av selvtillit som sikrer at ditt sanne potensial skinner gjennom, uansett språk.",
         image: "/images/projects/ghost-interviewer-cover.jpg"
+      },
+      {
+        title: "Eye+ Camera Cloud",
+        short: "Din verden, trygt overvåket. Et våkent øye, alltid til stede.",
+        full: "Forestil deg en stille vokter, hvis blikk feier over hver krik og krok av dine kjære områder. Denne plattformen vever sammen mange kameraers våkne øyne til ett sømløst teppe, og leverer levende øyeblikk direkte til deg. Skulle en uønsket skygge røre seg, når en umiddelbar hvisken øret ditt. Og for de øyeblikkene du trenger å se igjen, fungerer den som en grundig minnebevarer, slik at du kan rulle ut fortiden og forstå hver hendelse med klarhet. Det er en ro i sjelen, nøyaktig skreddersydd, som sikrer at kun de rette øynene ser det de trenger å se.",
+        image: "/images/projects/eyeplus-cover.jpg"
+      },
+      {
+        title: "Lingva AI",
+        short: "Åpner globale samtaler og innsikter fra hjertet av hver video.",
+        full: "Forestil deg en verden hvor hvisken fra én kultur gjenlyder klart i ørene til en annen. Denne plattformen er en bro av forståelse, bygget av selve stoffet i talte ord. Den lytter til sjelen i videoinnhold, og overskrider babels forvirring for å avsløre dens kjernemelding. Enten det er det rike teppet av norsk, den universelle summingen av engelsk, den eldgamle kadensen av arabisk, eller den levende rytmen av somali, fanger den hver nyanse. Utover enkel oversettelse, destillerer den lange fortellinger til lysende sammendrag, plukker ut de gylne trådene av nøkkeløyeblikk og vever dem inn i en søkbar krønike.",
+        image: "/images/projects/lingleverika-cover.jpg"
+      },
+      {
+        title: "YouTube Kanalbehandler",
+        short: "En digital maestro, som orkestrerer historiene dine fra tekst til globale skjermer.",
+        full: "Denne utrettelige digitale håndverkeren fungerer som kanalens usynlige arkitekt, som forvandler rå ideer og artikler til fengslende visuelle historier. Den er en omhyggelig kurator, som lager uimotståelige miniatyrbilder, optimerer hvert ord for oppdagelse, og sikrer at hver video finner sitt perfekte øyeblikk til å skinne. Fra en idés stille fødsel til dens store premiere på utallige skjermer, orkestrerer dette systemet hver detalj, slik at skapere kan fokusere på sin visjon mens deres fortellinger uanstrengt når et globalt publikum.",
+        image: "/images/projects/youtube-manager-cover.jpg"
+      },
+      {
+        title: "Boytasks",
+        short: "Et daglig eventyr som vever læring og skjermtid sammen til en felles oppdagelsesreise for unge sinn.",
+        full: "Se for deg en digital veiviser som forvandler daglige lekser til en spennende skattejakt. For tre unge utforskere er skjermens lokkelse nå knyttet til et felles oppdrag. Hver morgen ankommer en liste med utfordringer i matematikk, lesing og grammatikk. Etter hvert som de mestrer oppgavene, avdekkes en del av en skjult kode. Først når alle brødrene samarbeider og setter sammen den komplette koden, åpnes porten til deres digitale underholdning, som en belønning for deres felles innsats og en gnist til livslang læring. Det er et vennlig dytt mot kunnskap, forkledd som et daglig spill.",
+        image: "/images/projects/boytasks-cover.jpg"
       }
     ],
 
@@ -557,33 +605,57 @@ export const translations = {
     projects_list: [
       {
         title: "Портфоліо & Новинна платформа",
-        short: "AI-платформа багатомовного контенту з 48 продакшн-функціями",
-        full: "Full-stack платформа автоматизації контенту на vitalii.no. Побудована на Next.js 15, Supabase та 29 Deno Edge Functions. AI-модерація контенту, багатомовне переписування (EN/NO/UA), відео-продакшн з Remotion, автопублікація в LinkedIn/Instagram/Facebook, BentoGrid UI з анімаціями GSAP/Three.js, адмін-панель з 10 вкладками. 48 продакшн-функцій, 1234 комітів, 20 GitHub Actions воркфлоїв.",
+        short: "Невпинний цифровий бард, що перетворює шепіт технологій на багатомовні оповіді, поширені світом.",
+        full: "Уявіть собі пильного розвідника, що сканує цифровий горизонт у пошуках новітніх інновацій, а потім вправного майстра, який перетворює ці відкриття на захопливі історії трьома мовами. Ця платформа і є тим майстром, невтомним ткачем оповідей, що не лише наповнюють мою особисту вітрину, а й висвітлюють ширший технологічний ландшафт. Це жива, дихаюча хроніка, яка гарантує, що важливі ідеї досягають різноманітної аудиторії через соціальні мережі та навіть захопливі відео-розповіді, все це оркестровано елегантною, невидимою рукою. Це свідчення того, як ретельна майстерність може принести ясність і зв'язок у швидкоплинний світ.",
         image: "/images/projects/portfolio-cover.jpg"
       },
       {
         title: "JobBot Norway",
-        short: "AI-платформа автоматизації пошуку роботи з 42 функціями",
-        full: "Інтелектуальна автоматизація пошуку роботи на норвезькому ринку. React 19 + TypeScript + Supabase + Azure OpenAI GPT-4. AI аналізує вакансії та генерує мотиваційні листи норвезькою. Skyvern-автоматизація заповнює форми на 10+ рекрутингових платформах. Telegram-бот як основний інтерфейс з 2FA-мостом. Самонавчальна система пам'яті форм. Multi-user з PostgreSQL RLS ізоляцією.",
+        short: "Ваш невтомний цифровий писар, що перетворює пошук роботи в Норвегії на легке відкриття.",
+        full: "Уявіть світ, де невпинний пошук нової роботи перетворюється на спокійну подорож. Цей цифровий компаньйон діє як ваш особистий розвідник, невтомно просіваючи величезний норвезький ринок праці. Він розуміє нюанси кожної можливості, а потім, з витонченістю досвідченого оповідача, створює індивідуальні супровідні листи, що справді чіпляють. Старанна цифрова рука потім заповнює складні форми на незліченних сайтах, запам'ятовуючи ваші дані, немов старий друг. Ви отримуєте тихі сповіщення про нові перспективи та стратегічну карту вашої подорожі, звільняючи вас зосередитися на ваших прагненнях, а не на паперовій тяганині.",
         image: "/images/projects/jobbot-cover.jpg"
       },
       {
         title: "Elvarika Мовна Платформа",
-        short: "AI-платформа вивчення мов для іммігрантів з 19 функціями",
-        full: "AI-платформа вивчення мов для іммігрантів у Норвегії. Гібридний NLP-двигун (Stanza + SpaCy) для 8 мов включно з арабською, сомалі, тигринья. Завантаження PDF з превʼю, AI-витягування лексики, SRS з голосовими командами, Dual SYNC TTS (3с на слово). Stripe, HR-дашборд, майстер-курси. React 18 + TypeScript + Supabase + Python NLP.",
+        short: "Ельваріка: Ваш голос у Норвегії, ваша історія норвезькою.",
+        full: "Ельваріка — це маяк для тих, хто розпочинає нову главу в Норвегії, мелодійний міст, створений для подорожі серця в нову мову. Вона шепоче секрети норвезької мови у ваше вухо, перетворюючи складні сторінки підручників на персоналізовану симфонію навчання. Завдяки магії розмовного слова та інтелектуального запам'ятовування, Ельваріка гарантує, що кожна нова фраза не тільки знайде шлях до вашої пам'яті, але й граціозно зійде з вашого язика, надаючи вам можливість вплести свою унікальну розповідь у яскраве полотно норвезького життя.",
         image: "/images/projects/elvarika-cover.jpg"
       },
       {
         title: "Календар Telegram Бот",
-        short: "Розумний бот-календар з інтеграцією Spond та AI-плануванням",
-        full: "Telegram бот для управління календарем з підтримкою Spond, Google Calendar та AI-плануванням. PIN-захищені вкладки адміна, публічний перегляд, валідація подій, Places Library. TypeScript, Telegram Bot API, Supabase, Google APIs.",
+        short: "Цифровий маестро, що організовує сімейний спорт, приносячи спокій у хаотичні графіки.",
+        full: "Уявіть собі тиху гавань серед моря суперечливих зустрічей – цей бот є тим маяком. Він бездоганно збирає всі спортивні зобов'язання ваших дітей з численних джерел, вплітаючи їх в єдиний, зрозумілий гобелен Google Календаря. Потім вступає розумний цифровий помічник, не просто перераховуючи події, а вдумливо пропонуючи найкращий час, наче мудрий наставник, що керує потоком родини. Батьки отримують безпечну панель керування, тоді як усі інші насолоджуються прозорим вікном у пригоди тижня, гарантуючи, що жодне тренування не буде пропущено. Це тихий архітектор сімейної гармонії, що забезпечує кожній дитині її поле для гри, без стресу.",
         image: "/images/projects/calendar-cover.jpg"
       },
       {
         title: "Ghost Interviewer AI",
-        short: "AI-платформа підготовки до співбесід",
-        full: "AI-платформа підготовки до співбесід що симулює реальні інтервʼю. Покращений AI-переклад з оптимізованими промптами. Допомагає кандидатам практикувати відповіді норвезькою та англійською з фідбеком в реальному часі. TypeScript, Azure OpenAI, Supabase.",
+        short: "Ваш особистий наставник для впевнених співбесід.",
+        full: "Уявіть собі тихого, терплячого провідника, який сидить поруч з вами, ставить складні запитання та уважно слухає кожне слово. Цей проєкт створює саме такий простір – приватну репетиційну кімнату, де ваші прагнення зустрічаються з практичним шліфуванням. Він делікатно досліджує, а потім висвітлює ваші сильні сторони та зони росту, пропонуючи миттєвий, глибокий зворотний зв'язок щодо ваших відповідей. Для тих, хто долає нові горизонти, особливо на жвавому норвезькому ринку праці, це міст впевненості, що гарантує, що ваш справжній потенціал засяє, незалежно від мови.",
         image: "/images/projects/ghost-interviewer-cover.jpg"
+      },
+      {
+        title: "Eye+ Camera Cloud",
+        short: "Ваш світ під наглядом. Пильне око, завжди поруч, завжди знає.",
+        full: "Уявіть собі тихого охоронця, чий погляд охоплює кожен куточок ваших дорогих просторів. Ця платформа об'єднує пильні очі багатьох камер в єдине, безшовне полотно, доставляючи живі моменти прямо до вас. Якщо ж тінь з'явиться там, де її не повинно бути, до вашого вуха миттєво долинає шепіт. А для тих моментів, які потрібно переглянути, вона слугує ретельним зберігачем пам'яті, дозволяючи розгорнути минуле та з ясністю зрозуміти кожну подію. Це спокій душі, точно налаштований, що гарантує, що лише правильні очі бачать те, що їм потрібно.",
+        image: "/images/projects/eyeplus-cover.jpg"
+      },
+      {
+        title: "Lingva AI",
+        short: "Відкриття глобальних розмов та інсайтів із серця кожного відео.",
+        full: "Уявіть світ, де шепіт однієї культури чітко лунає у вухах іншої. Ця платформа — міст розуміння, побудований із самої тканини сказаних слів. Вона слухає душу відеоконтенту, долаючи вавилонську плутанину мов, щоб розкрити його основне повідомлення. Чи то багатий гобелен норвезької, універсальне гудіння англійської, стародавній ритм арабської, чи жвавий ритм сомалійської, вона вловлює кожен нюанс. Окрім простого перекладу, вона перетворює довгі розповіді на яскраві підсумки, витягуючи золоті нитки ключових моментів і вплітаючи їх у пошукову хроніку.",
+        image: "/images/projects/lingleverika-cover.jpg"
+      },
+      {
+        title: "YouTube Channel Manager",
+        short: "Цифровий маестро, що організовує ваші історії від тексту до світових екранів.",
+        full: "Цей невтомний цифровий майстер служить невидимим архітектором вашого каналу, перетворюючи сирі ідеї та статті на захопливі візуальні історії. Це ретельний куратор, який створює неперевершені мініатюри, оптимізує кожне слово для пошуку та гарантує, що кожне відео знайде свій ідеальний момент для блиску. Від тихого народження ідеї до її грандіозної прем'єри на незліченних екранах, ця система організує кожну деталь, звільняючи творців зосередитися на своєму баченні, тоді як їхні наративи без зусиль досягають глобальної аудиторії.",
+        image: "/images/projects/youtube-manager-cover.jpg"
+      },
+      {
+        title: "Boytasks",
+        short: "Щоденний квест, що перетворює екранний час на спільну подорож навчання та відкриттів для юних умів.",
+        full: "Уявіть собі цифрового охоронця, мудрого оповідача, який щоденні уроки перетворює на захопливу пригоду. Для трьох юних дослідників ця система перетворює привабливість екранів на захопливий квест. Щоранку приходить сувій із завданнями з математики, читання та граматики. Коли вони долають кожне завдання, розкривається частина прихованого шифру. Лише коли всі брати об'єднують свої зусилля, складаючи повний код, цифрові ворота до їхніх улюблених відео відчиняються, винагороджуючи їхню спільну старанність та запалюючи любов до колективного навчання. Це ніжний поштовх до знань, замаскований під щоденну гру.",
+        image: "/images/projects/boytasks-cover.jpg"
       }
     ],
 

@@ -200,6 +200,21 @@ export const projects: ProjectInfo[] = [
     badge: 'E',
     color: { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
   },
+  {
+    id: 'boytasks',
+    name: {
+      en: 'Boytasks',
+      no: 'Boytasks',
+      ua: 'Boytasks',
+    },
+    description: {
+      en: 'Daily educational quest system for children with gamified YouTube access control',
+      no: 'Daglig pedagogisk questsystem for barn med gamifisert YouTube-tilgangskontroll',
+      ua: 'Щоденна освітня квест-система для дітей з ігровим контролем доступу до YouTube',
+    },
+    badge: 'B',
+    color: { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
+  },
 ];
 
 export function getCategoryInfo(id: FeatureCategory): CategoryInfo {
