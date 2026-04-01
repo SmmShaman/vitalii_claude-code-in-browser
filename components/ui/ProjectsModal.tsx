@@ -4,11 +4,23 @@ import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
+
+interface ProjectHighlight {
+  emoji: string;
+  title: string;
+  desc: string;
+}
 
 interface Project {
   title: string;
   short: string;
   full: string;
+  image?: string;
+  projectId?: string;
+  intro?: string;
+  highlights?: ProjectHighlight[];
+  featureCount?: number;
 }
 
 interface ProjectsModalProps {
@@ -16,9 +28,10 @@ interface ProjectsModalProps {
   onOpenChange: (open: boolean) => void;
   projects: Project[];
   activeProjectIndex: number;
+  onViewFeatures?: (projectId: string) => void;
 }
 
-export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex }: ProjectsModalProps) => {
+export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex, onViewFeatures }: ProjectsModalProps) => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -30,6 +43,14 @@ export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex
   const handleDetailClose = () => {
     setIsDetailOpen(false);
     setSelectedProject(null);
+  };
+
+  const handleViewFeatures = (projectId: string) => {
+    onViewFeatures?.(projectId);
+    // Close both modals
+    setIsDetailOpen(false);
+    setSelectedProject(null);
+    onOpenChange(false);
   };
 
   return (
@@ -69,7 +90,18 @@ export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex
                       onClick={() => handleProjectClick(project)}
                     >
                       <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
-                        {project.title}
+                        <span className="flex items-center gap-2">
+                          {project.image && (
+                            <Image
+                              src={project.image}
+                              alt={project.title}
+                              width={40}
+                              height={40}
+                              className="rounded-md object-cover w-10 h-10 flex-shrink-0"
+                            />
+                          )}
+                          {project.title}
+                        </span>
                         {isActive && (
                           <span className="text-xs bg-yellow-400/20 text-yellow-300 px-2 py-1 rounded-full">
                             Active
@@ -117,11 +149,69 @@ export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex
 
             {/* Project Details */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              {/* Cover Image */}
+              {selectedProject?.image && (
+                <div className="mb-6 overflow-hidden rounded-xl">
+                  <Image
+                    src={selectedProject.image}
+                    alt={selectedProject.title}
+                    width={900}
+                    height={200}
+                    className="w-full max-h-[200px] object-cover rounded-xl"
+                  />
+                </div>
+              )}
+
+              {/* Intro / Full Description */}
               <div className="prose prose-invert max-w-none">
                 <p className="text-base sm:text-lg text-cyan-50 leading-relaxed whitespace-pre-line">
-                  {selectedProject?.full}
+                  {selectedProject?.intro || selectedProject?.full}
                 </p>
               </div>
+
+              {/* Highlights Grid */}
+              {selectedProject?.highlights && selectedProject.highlights.length > 0 && (
+                <div className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedProject.highlights.map((highlight, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.06 }}
+                        className="bg-white/5 rounded-lg p-3 border border-white/10"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl leading-none flex-shrink-0">{highlight.emoji}</span>
+                          <div>
+                            <h4 className="font-bold text-white text-sm">{highlight.title}</h4>
+                            <p className="text-white/70 text-sm mt-0.5">{highlight.desc}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Feature Count Badge + Explore Button */}
+              {selectedProject?.projectId && (
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  {selectedProject.featureCount != null && selectedProject.featureCount > 0 && (
+                    <span className="text-sm text-white/60 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+                      {selectedProject.featureCount} published feature{selectedProject.featureCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {onViewFeatures && (
+                    <button
+                      onClick={() => handleViewFeatures(selectedProject.projectId!)}
+                      className="px-5 py-2 bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 rounded-lg transition-all duration-300 border border-teal-500/30 text-sm font-medium"
+                    >
+                      Explore Features &rarr;
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Back Button */}
               <div className="mt-6 flex justify-end">

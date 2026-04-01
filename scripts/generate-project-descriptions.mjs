@@ -2,81 +2,87 @@ import fs from 'fs';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
-const SYSTEM_PROMPT = `You are a creative copywriter for a tech portfolio website. Write project descriptions in a LITERARY, ARTISTIC style that tells a compelling story about what the project does for people.
+const SYSTEM_PROMPT = `You are a creative copywriter for a tech portfolio. Generate structured project descriptions.
 
-STRICT RULES:
-- "short": punchy memorable tagline, 60-90 characters
-- "full": MINIMUM 1000 characters, MAXIMUM 1500 characters. This is CRITICAL — count carefully!
-- Write as if telling a story to an intelligent non-technical person
-- Focus on WHAT the project does, WHY it matters, WHO benefits, HOW it changes their life
-- Use vivid metaphors, sensory language, and engaging narrative
-- DO NOT use framework names (no "React", "TypeScript", "Supabase", "Node.js", "PostgreSQL" etc.)
-- Instead of "AI-powered", describe what the intelligence actually DOES in human terms
-- Include specific details about functionality but expressed through metaphors and storytelling
-- Each description should feel like the opening paragraph of a novel about that product
-- Norwegian translations should feel native, not translated — use idiomatic Norwegian (Bokmål)
-- Ukrainian translations should feel native — use natural Ukrainian literary language
-- Output ONLY valid JSON, no markdown, no explanation, no code blocks
-
-OUTPUT FORMAT (strict JSON):
+OUTPUT FORMAT (strict JSON, no markdown):
 {
-  "short_en": "...",
+  "short_en": "tagline 60-90 chars",
   "short_no": "...",
   "short_ua": "...",
-  "full_en": "... (1000-1500 chars) ...",
-  "full_no": "... (1000-1500 chars) ...",
-  "full_ua": "... (1000-1500 chars) ..."
-}`;
+  "intro_en": "Artistic narrative paragraph, 500-800 chars. No tech jargon. Storytelling style.",
+  "intro_no": "Norwegian translation, native feel",
+  "intro_ua": "Ukrainian translation, native feel",
+  "highlights_en": [
+    {"emoji": "🤖", "title": "Feature Name", "desc": "One sentence what it does for the user"},
+    ...
+  ],
+  "highlights_no": [...same structure in Norwegian...],
+  "highlights_ua": [...same structure in Ukrainian...]
+}
+
+RULES:
+- intro: artistic, storytelling, vivid metaphors, NO framework names
+- highlights: 5-8 items based on REAL features provided in context
+- highlight titles: catchy but accurate, 3-5 words
+- highlight desc: practical benefit in one sentence, no jargon
+- Emojis should match the feature type (🤖 AI, 📰 content, 🎬 video, 🔒 security, 📊 analytics, 🌐 multilingual, 📱 mobile, 🔄 automation, etc.)
+- Norwegian must feel native (Bokmål), not translated
+- Ukrainian must feel native literary language`;
 
 const projects = [
   {
     id: 'portfolio',
-    context: 'Professional portfolio and automated news platform at vitalii.no. Automatically collects tech news from 20+ RSS feeds and Telegram channels every 10 minutes. AI pre-moderates content (filters spam/ads), then rewrites articles in 3 languages (English, Norwegian, Ukrainian). Auto-posts to LinkedIn, Instagram, Facebook with platform-specific AI-generated teasers. Video production pipeline: collects news → AI writes script → generates voiceover → renders video with animated subtitles → uploads to YouTube. Admin dashboard with 10 tabs for managing everything. BentoGrid UI with GSAP/Three.js particle animations. 65 published engineering features. 20 automated GitHub Actions workflows running 24/7. Contact form with 3-tier spam protection. Multilingual SEO with JSON-LD schemas.'
+    context: 'Professional portfolio and news platform at vitalii.no. Auto-collects tech news from 20+ RSS/Telegram sources every 10 min. AI moderates, rewrites in 3 languages, auto-posts to social media. Video pipeline: news→script→voiceover→animated video→YouTube. Admin dashboard, BentoGrid UI with animations. 65 features, 20 workflows.',
+    features: 'ai_automation: Social Auto-Publisher, AI Social Teasers, Multi-LLM Provider Support, AI Commit Miner, AI Duplicate Detection, AI Comment Replies, AI Pre-Moderation; media_production: Remotion Video Pipeline, AI Voiceover, Animated Subtitles, Image Generation (Nano Banana); bot_scraping: Telegram Scraper (MTKruto), RSS Monitor; frontend_ux: BentoGrid with GSAP/Three.js, Modal System, Multilingual SEO; devops_infra: 20 GitHub Actions, Auto-Deploy'
   },
   {
     id: 'jobbot',
-    context: 'Job hunting automation for the Norwegian market. AI reads job postings from FINN.no, NAV, LinkedIn and writes perfect cover letters in Norwegian tailored to each position. Browser robot (Skyvern) automatically fills application forms on 10+ Norwegian recruitment platforms (Webcruiter, Easycruit, Teamtailor, Workday). Telegram bot as main interface — user gets notifications about matching jobs, previews AI-written letters, approves with one tap. Self-learning form memory system — remembers which fields go where on each platform. Interactive map showing all applied jobs with status colors. Analytics dashboard with charts (applications per week, response rates). Multi-user system with completely isolated data per user. 45 published features.'
+    context: 'Job hunting automation for Norway. AI reads job postings, writes cover letters in Norwegian. Browser robot fills forms on 10+ platforms. Telegram bot interface. Self-learning form memory. Job map + analytics. 45 features.',
+    features: 'ai_automation: AI Cover Letter in 8s, PDF to JSON in 12s, AI Job Analyzer, MetaClaw Form AI, Job Aura; bot_scraping: Skyvern Auto-Recovery, Form Memory, Pocket Job Card, Multi-Platform Navigator, FINN.no Scraper; frontend_ux: Job Map (Leaflet), Analytics Dashboard, Application Timeline; devops_infra: CI/CD Pipeline, Auto-Retry System'
   },
   {
     id: 'project_23mai',
-    context: 'Language learning platform called Elvarika, designed specifically for immigrants in Norway. Helps people from 8 countries (Arabic, Somali, Tigrinya, Dari, Pashto speakers etc.) learn Norwegian through personalized audio playlists. Upload any PDF textbook — AI extracts vocabulary and creates study cards. Spaced repetition system with voice commands — say the word and it checks pronunciation. Revolutionary Dual SYNC TTS that pronounces each word clearly in 3 seconds (vs 220 seconds with standard TTS). Stripe payments for individual learners. HR dashboard for Norwegian companies to track employee language progress. Master courses system with structured learning paths. 19 published features.'
+    context: 'Elvarika — language learning for immigrants in Norway. 8 languages supported. PDF→vocabulary extraction. Spaced repetition with voice. Dual SYNC TTS (3s/word). Stripe payments, HR dashboard, master courses. 19 features.',
+    features: 'ai_automation: AI Vocabulary Extraction, Spaced Repetition Engine, Voice Command Recognition, Dual SYNC TTS, Pronunciation Checker, Adaptive Learning Path; frontend_ux: PDF Upload & Preview, Study Cards UI, Progress Dashboard; devops_infra: Stripe Integration, HR Analytics; other: Master Courses, Multi-language NLP'
   },
   {
     id: 'calendar_bot',
-    context: 'Telegram bot for managing children sports schedules in Norway. Connects to Spond (the most popular Norwegian sports app) with support for multiple accounts (multiple children in different teams). Syncs everything with Google Calendar automatically. AI analyzes schedule conflicts and suggests optimal arrangements. PIN-protected admin settings that only parents can access, while a public calendar view is available for grandparents, coaches etc. Event validation ensures no double-bookings. Google Places integration finds venues and shows directions. 3 published features.'
+    context: 'Telegram bot for kids sports schedules in Norway. Spond multi-account, Google Calendar sync, AI scheduling. PIN-protected admin, public calendar view. 3 features.',
+    features: 'ai_automation: Spond Multi-Account AI & Geo-Magic; bot_scraping: Calendar Bot Google Auth Decoupling; frontend_ux: PIN-Protected Admin Tabs'
   },
   {
     id: 'ghost_interviewer',
-    context: 'AI interview preparation platform specifically for the Norwegian job market. Simulates real job interviews — asks industry-specific questions, listens to spoken answers via microphone, provides real-time scoring and detailed feedback. Practices in both Norwegian and English — critical for immigrants who need to interview in Norwegian. AI translation engine ensures natural conversational flow in both languages. Tracks progress across multiple practice sessions. Specifically designed to help immigrants overcome the cultural and language barriers of Norwegian workplace interviews. 1 published feature.'
+    context: 'AI interview prep for Norwegian job market. Simulates interviews, real-time feedback, Norwegian + English. For immigrants. 1 feature.',
+    features: 'ai_automation: Real-time AI Translation Overhaul'
   },
   {
     id: 'eyeplus',
-    context: 'Cloud platform for Eye+ security cameras. Real-time video streaming from multiple cameras displayed on a single dashboard. Intelligent motion detection with instant push alerts — knows the difference between a person and a cat. Timeline playback to review past events with fast-forward and frame-by-frame. Role-based access control — building owners see everything, security guards see their zones, tenants see only their entrance. WebRTC technology for zero-latency live streams. Cloud storage for weeks of recordings with smart compression.'
+    context: 'Cloud platform for Eye+ security cameras. Multi-camera dashboard, motion detection, timeline playback, role-based access. WebRTC live streams.',
+    features: 'No published features yet — describe based on project context'
   },
   {
     id: 'lingleverika',
-    context: 'AI platform called Lingva AI that translates and deeply understands video content. Automatic speech recognition transcribes audio in real-time. Context-aware translation — understands idioms, cultural references, technical terms. Supports Norwegian, English, Arabic, Somali and more. Summarizes 2-hour videos into 5-minute highlights. Extracts key moments with timestamps — jump directly to important parts. Creates fully searchable transcripts — find any word spoken in any video. Designed for multicultural environments where people speak different languages.'
+    context: 'Lingva AI — video translation platform. Speech recognition, context-aware translation, video summarization, key moment extraction, searchable transcripts. Norwegian, English, Arabic, Somali.',
+    features: 'No published features yet — describe based on project context'
   },
   {
     id: 'youtube_manager',
-    context: 'Automated YouTube channel management system. Full OAuth 2.0 authentication with token refresh. Scheduled video uploads — set time and forget. Metadata optimization for YouTube search (titles, descriptions, tags). Integrates with Remotion video rendering engine — automatically transforms news articles into polished videos with AI voiceover and animated subtitles. Automatic thumbnail generation from video frames. Playlist management — auto-categorize videos. Cross-platform publishing triggers — when a YouTube video is published, automatically create posts on LinkedIn, Instagram, Facebook. Analytics dashboard tracking views, subscribers, engagement.'
+    context: 'Automated YouTube channel management. OAuth, scheduled uploads, metadata optimization, Remotion integration, thumbnail generation, playlist management, cross-platform publishing.',
+    features: 'No published features yet — describe based on project context'
   },
   {
     id: 'boytasks',
-    context: 'Parental educational control system designed for a family with 3 boys (grades 3-7). Every morning at 8 AM, each child receives an email with daily tasks in 4 subjects: math problems, Norwegian reading comprehension, English reading, and grammar exercises. When a child completes a task group, they receive a 4-digit code fragment. The genius twist: YouTube access is locked behind a master code that requires ALL children to complete ALL their tasks. The code changes daily. Children must collaborate — if one brother skips his math, nobody watches YouTube. Hosted at kids.vitalii.no with Google OAuth for parent access. Fun gamification with streaks, badges, and daily challenges.'
+    context: 'Parental educational control for 3 boys (grades 3-7). Daily tasks in 4 subjects at 8 AM. Complete tasks → get code fragments. YouTube unlocks only when ALL children complete ALL tasks. kids.vitalii.no.',
+    features: 'No published features yet — describe based on project context'
   }
 ];
 
 async function generateForProject(project) {
-  const userPrompt = `Write descriptions for project "${project.id}".
-Context: ${project.context}
-
-CRITICAL: The "full" description MUST be between 1000 and 1500 characters. Count carefully. This is a hard requirement.
-Return ONLY valid JSON with short_en, short_no, short_ua, full_en, full_no, full_ua.`;
+  const userPrompt = 'Write structured description for "' + project.id + '".\nContext: ' + project.context + '\nReal features: ' + project.features + '\n\nReturn ONLY valid JSON.';
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_API_KEY}`, {
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GOOGLE_API_KEY, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,25 +97,23 @@ Return ONLY valid JSON with short_en, short_no, short_ua, full_en, full_no, full
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          const enLen = parsed.full_en?.length || 0;
-          console.log(`[${project.id}] full_en: ${enLen} chars ${enLen >= 900 ? '✓' : '✗ TOO SHORT'}`);
-          if (enLen >= 900) return { id: project.id, ...parsed };
-          console.log(`[${project.id}] Retrying (attempt ${attempt + 2})...`);
+          const introLen = parsed.intro_en?.length || 0;
+          const hlCount = parsed.highlights_en?.length || 0;
+          console.log('[' + project.id + '] intro: ' + introLen + ' chars, highlights: ' + hlCount + (introLen >= 400 && hlCount >= 3 ? ' ✓' : ' ✗ RETRY'));
+          if (introLen >= 400 && hlCount >= 3) return { id: project.id, ...parsed };
           continue;
         }
       }
-      console.error(`[${project.id}] No valid JSON in response (attempt ${attempt + 1})`);
+      console.error('[' + project.id + '] No JSON (attempt ' + (attempt+1) + ')');
     } catch (e) {
-      console.error(`[${project.id}] Error:`, e.message);
+      console.error('[' + project.id + '] Error:', e.message);
     }
   }
   return null;
 }
 
 async function main() {
-  console.log('Generating 1000+ char descriptions for', projects.length, 'projects...\n');
-
-  // Run 3 at a time to avoid rate limits
+  console.log('Generating structured descriptions...\n');
   const results = [];
   for (let i = 0; i < projects.length; i += 3) {
     const batch = projects.slice(i, i + 3);
@@ -117,19 +121,16 @@ async function main() {
     results.push(...batchResults);
     if (i + 3 < projects.length) await new Promise(r => setTimeout(r, 2000));
   }
-
   const output = results.filter(Boolean);
-  console.log(`\nGenerated ${output.length}/${projects.length} descriptions\n`);
-
-  fs.writeFileSync(
-    '/mnt/c/Users/stuar/Projects/vitalii_claude-code-in-browser/scripts/project-descriptions.json',
-    JSON.stringify(output, null, 2)
-  );
-  console.log('Saved to scripts/project-descriptions.json');
-
+  console.log('\nGenerated ' + output.length + '/' + projects.length);
+  fs.writeFileSync('/mnt/c/Users/stuar/Projects/vitalii_claude-code-in-browser/scripts/project-descriptions.json', JSON.stringify(output, null, 2));
+  console.log('Saved');
   for (const r of output) {
-    console.log(`\n=== ${r.id} === (en:${r.full_en?.length} no:${r.full_no?.length} ua:${r.full_ua?.length})`);
-    console.log('short_en:', r.short_en);
+    console.log('\n=== ' + r.id + ' ===');
+    console.log('short:', r.short_en);
+    console.log('intro:', r.intro_en?.length, 'chars');
+    console.log('highlights:', r.highlights_en?.length, 'items');
+    r.highlights_en?.forEach(h => console.log('  ' + h.emoji + ' ' + h.title));
   }
 }
 

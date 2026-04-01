@@ -575,8 +575,14 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
     }
   };
 
-  // Get current project image — prefer DB carousel, fallback to translations
-  const effectiveProjects = carouselProjects.length > 0 ? carouselProjects : translations[lang].projects_list;
+  // Get current project image — merge DB data (featureCount) with translations (highlights)
+  const translationProjects = translations[lang].projects_list;
+  const effectiveProjects = carouselProjects.length > 0
+    ? carouselProjects.map(cp => {
+        const tp = translationProjects.find((t: Record<string, unknown>) => t.title === cp.title);
+        return { ...cp, intro: (tp as Record<string, unknown>)?.intro as string, highlights: (tp as Record<string, unknown>)?.highlights as Array<{emoji: string; title: string; desc: string}> };
+      })
+    : translationProjects;
   const currentProjectImage = effectiveProjects[currentProjectIndex]?.image || sections.find(s => s.id === 'projects')?.image;
 
   return (
@@ -1108,6 +1114,12 @@ export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoG
         onOpenChange={setIsProjectsModalOpen}
         projects={effectiveProjects}
         activeProjectIndex={activeProjectIndex}
+        onViewFeatures={(projectId) => {
+          setIsProjectsModalOpen(false);
+          setSelectedFeatureCategory(undefined);
+          setSelectedFeatureId(undefined);
+          setIsFeaturesModalOpen(true);
+        }}
       />
 
       {/* Features Modal */}
