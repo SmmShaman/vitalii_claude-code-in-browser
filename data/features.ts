@@ -186,11 +186,11 @@ export const projects: ProjectInfo[] = [
     color: { bg: 'bg-red-500/20', text: 'text-red-400' },
   },
   {
-    id: 'elvarika',
+    id: 'project_23mai',
     name: {
-      en: 'Elvarika',
-      no: 'Elvarika',
-      ua: 'Elvarika',
+      en: 'Elvarika Language Learning',
+      no: 'Elvarika Språklæring',
+      ua: 'Elvarika Мовна Платформа',
     },
     description: {
       en: 'AI language learning platform for immigrants in Norway',
