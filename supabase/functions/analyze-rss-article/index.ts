@@ -344,9 +344,9 @@ serve(async (req) => {
     // Fetch article content (or use provided text)
     let articleContent: { text: string; title: string; imageUrl: string | null }
 
-    if (requestData.content && requestData.content.length >= 100) {
-      // Direct text provided (e.g. forwarded Telegram post)
-      console.log('📋 Using provided text content')
+    if (requestData.content && requestData.content.length >= 30) {
+      // Direct text provided (e.g. forwarded Telegram post or RSS description)
+      console.log(`📋 Using provided text content (${requestData.content.length} chars)`)
       articleContent = {
         text: requestData.content,
         title: requestData.title || requestData.content.substring(0, 100),
@@ -354,10 +354,24 @@ serve(async (req) => {
       }
     } else {
       console.log('📥 Fetching article content from URL...')
-      articleContent = await fetchArticleContent(requestData.url)
+      try {
+        articleContent = await fetchArticleContent(requestData.url)
+      } catch (fetchErr: any) {
+        // Fallback: use title + description if page fetch fails
+        if (requestData.title && requestData.description) {
+          console.log(`⚠️ Page fetch failed (${fetchErr.message}), using title+description as fallback`)
+          articleContent = {
+            text: `${requestData.title}\n\n${requestData.description}`,
+            title: requestData.title,
+            imageUrl: requestData.imageUrl || null,
+          }
+        } else {
+          throw fetchErr
+        }
+      }
     }
 
-    if (!articleContent.text || articleContent.text.length < 100) {
+    if (!articleContent.text || articleContent.text.length < 30) {
       console.log('⚠️ Could not extract sufficient content from article')
       return new Response(
         JSON.stringify({

@@ -173,6 +173,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   url: article.url,
                   title: article.title,
+                  content: article.description || '', // Pass description as content to avoid page fetch failures
                   description: article.description,
                   imageUrl: article.imageUrl,
                   images: article.images || [],
