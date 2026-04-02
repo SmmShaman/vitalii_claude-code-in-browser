@@ -139,15 +139,14 @@ async function processWithPrompt(
       messages: [
         {
           role: 'system',
-          content: `You are a professional content writer and translator. You MUST return ONLY valid JSON with this EXACT structure:
+          content: `You are a professional trilingual news editor. You write in English, Norwegian (Bokmål), and Ukrainian. Return ONLY valid JSON:
 {
   "en": { "title": "...", "content": "...", "description": "..." },
   "no": { "title": "...", "content": "...", "description": "..." },
   "ua": { "title": "...", "content": "...", "description": "..." },
   "tags": ["tag1", "tag2", "tag3"]
 }
-
-CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each must contain "title", "content", and "description".`
+CRITICAL: ALL three languages (en, no, ua) are MANDATORY. Norwegian must be real Bokmål. Ukrainian must be real Ukrainian with Cyrillic. Each must have title, content, description.`
         },
         {
           role: 'user',
@@ -155,13 +154,13 @@ CRITICAL: The JSON MUST have "en", "no", and "ua" keys at the top level. Each mu
         }
       ],
       temperature: 0.5,
-      max_tokens: 6000
+      max_tokens: 12000
     })
   })
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error('Azure OpenAI error:', errorText)
+    console.error('LLM rewrite error:', errorText)
     throw new Error(`AI rewrite failed: ${response.status}`)
   }
 
