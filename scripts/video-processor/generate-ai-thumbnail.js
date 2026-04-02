@@ -15,7 +15,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
-const MODELS = ['gemini-3-pro-image-preview', 'gemini-2.5-pro-image', 'gemini-2.5-flash-image'];
+const MODELS = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-image'];
 const TIMEOUT_MS = 60_000;
 
 // ── 4 Overlay Styles (applied on real article images) ──

@@ -2268,7 +2268,7 @@ async function triggerRender(targetDate: string, chatId?: number, messageId?: nu
 // ══════════════════════════════════════════════════════════════
 
 const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
-const GEMINI_MODELS = ["gemini-3-pro-image-preview", "gemini-2.5-pro-image", "gemini-2.5-flash-image"];
+const GEMINI_MODELS = ["gemini-3-pro-image-preview", "gemini-2.5-flash-image"];
 const GEMINI_TIMEOUT = 45_000;
 const TOTAL_THUMBNAIL_TIMEOUT = 120_000; // 2 min max for all variants combined
 

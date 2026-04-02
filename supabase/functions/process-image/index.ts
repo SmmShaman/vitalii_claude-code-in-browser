@@ -815,7 +815,7 @@ async function validateGeneratedImage(
     )
 
     // Use Gemini for validation
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`
 
     const criticPrompt = `You are an expert image quality critic for a professional news website.
 Analyze this generated image and evaluate it.
