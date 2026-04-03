@@ -2973,12 +2973,14 @@ async function notifyComplete(targetDate: string, youtubeUrl: string): Promise<R
     .eq("target_date", targetDate)
     .single();
 
+  const youtubeVideoId = youtubeUrl ? (youtubeUrl.split("v=")[1] || "") : null;
+
   await supabase
     .from("daily_video_drafts")
     .update({
       status: "completed",
       youtube_url: youtubeUrl || null,
-      youtube_video_id: youtubeUrl ? (youtubeUrl.split("v=")[1] || "") : null,
+      youtube_video_id: youtubeVideoId,
     })
     .eq("target_date", targetDate);
 
@@ -2986,14 +2988,167 @@ async function notifyComplete(targetDate: string, youtubeUrl: string): Promise<R
   const displayDate = formatDateNorwegian(targetDate);
 
   if (youtubeUrl) {
-    await sendMessage(chatId, `🎉 <b>Відео готове!</b>\n\n📺 ${displayDate}\n🔗 ${youtubeUrl}\n\nЩоденне відео успішно опубліковано на YouTube!`, {
+    await sendMessage(chatId, `🎉 <b>Відео готове!</b>\n\n📺 ${displayDate}\n🔗 ${youtubeUrl}\n\n⏳ Генерую заставку...`, {
       disable_web_page_preview: false,
     });
   } else {
     await sendMessage(chatId, `✅ <b>Відео зрендерено!</b>\n\n📺 ${displayDate}\n📦 Збережено на GitHub (YouTube пропущено)`);
+    return json({ ok: true });
+  }
+
+  // Auto-generate single thumbnail and set on YouTube
+  try {
+    await autoGenerateAndSetThumbnail(targetDate, youtubeVideoId!, chatId);
+  } catch (e: any) {
+    console.error(`⚠️ Auto-thumbnail failed: ${e.message}`);
+    await sendMessage(chatId, `⚠️ Заставку не вдалось згенерувати: ${e.message.slice(0, 100)}`);
   }
 
   return json({ ok: true });
+}
+
+/**
+ * Generate a single thumbnail (dark_overlay style) and set it on YouTube automatically.
+ * Saves tokens by generating only 1 variant instead of 4.
+ */
+async function autoGenerateAndSetThumbnail(targetDate: string, youtubeVideoId: string, chatId: number | string): Promise<void> {
+  if (!GOOGLE_API_KEY) {
+    console.log("⏭️ No GOOGLE_API_KEY, skipping thumbnail");
+    return;
+  }
+
+  const { data: draft } = await supabase
+    .from("daily_video_drafts")
+    .select("article_ids, excluded_article_ids")
+    .eq("target_date", targetDate)
+    .single();
+
+  if (!draft) return;
+
+  const articleIds = (draft.article_ids || []).filter(
+    (id: string) => !(draft.excluded_article_ids || []).includes(id),
+  );
+
+  const { data: articles } = await supabase
+    .from("news")
+    .select("id, title_en, title_no, original_title, tags, image_url, processed_image_url")
+    .in("id", articleIds);
+
+  const ordered = articleIds.map((id: string) => articles?.find((a: any) => a.id === id)).filter(Boolean);
+  if (!ordered.length) return;
+
+  const displayDate = formatDateNorwegian(targetDate);
+
+  // Generate headline (reuse existing function)
+  let headline = await generateThumbnailHeadline(ordered);
+  if (!headline) {
+    const fallback = (ordered[0]?.title_no || ordered[0]?.title_en || "TECH-NYHETER").toUpperCase();
+    headline = fallback.split(/\s+/).slice(0, 3).join(" ");
+  }
+
+  // Get first article image
+  let imageBase64: string | null = null;
+  for (const a of ordered) {
+    const imgUrl = a.processed_image_url || a.image_url;
+    if (imgUrl) {
+      imageBase64 = await downloadImageAsBase64(imgUrl);
+      if (imageBase64) break;
+    }
+  }
+
+  // Generate 1 thumbnail — dark_overlay style (best readability)
+  const style = THUMBNAIL_STYLES[0]; // dark_overlay
+  const prompt = buildThumbPrompt(headline, displayDate, ordered.length, style, !!imageBase64);
+  console.log(`🖼️ Auto-thumbnail: ${style.name}, headline: "${headline}"`);
+
+  const buffer = await callGeminiImage(prompt, imageBase64 || undefined);
+  if (!buffer) {
+    await sendMessage(chatId, `⚠️ Gemini не згенерував заставку`);
+    return;
+  }
+
+  // Detect format and compress if needed
+  const isJpeg = buffer[0] === 0xFF && buffer[1] === 0xD8;
+  let uploadBuffer: Uint8Array = buffer;
+  let mimeType = isJpeg ? "image/jpeg" : "image/png";
+  let ext = isJpeg ? "jpg" : "png";
+
+  const MAX_SIZE = 1_500_000;
+  if (!isJpeg && uploadBuffer.length > MAX_SIZE) {
+    const jpegBuffer = await convertToJpegViaGemini(uploadBuffer);
+    if (jpegBuffer && jpegBuffer.length < uploadBuffer.length) {
+      uploadBuffer = jpegBuffer;
+      mimeType = "image/jpeg";
+      ext = "jpg";
+    }
+  }
+
+  // Upload to Supabase Storage
+  const storagePath = `thumbnails/${targetDate}/auto_thumbnail.${ext}`;
+  const { error: uploadErr } = await supabase.storage
+    .from("daily-videos")
+    .upload(storagePath, uploadBuffer, { contentType: mimeType, upsert: true, cacheControl: "3600" });
+
+  if (uploadErr) {
+    console.error(`❌ Thumbnail upload failed: ${uploadErr.message}`);
+    return;
+  }
+
+  const { data: urlData } = supabase.storage.from("daily-videos").getPublicUrl(storagePath);
+  const thumbnailUrl = urlData.publicUrl;
+
+  // Save to draft
+  await supabase.from("daily_video_drafts").update({
+    thumbnail_variants: [{ index: 0, style: style.id, styleName: style.name, url: thumbnailUrl }],
+    selected_thumbnail_url: thumbnailUrl,
+    clickbait_title: headline,
+  }).eq("target_date", targetDate);
+
+  // Set on YouTube
+  try {
+    const { getYouTubeConfig, getYouTubeAccessToken } = await import("../_shared/youtube-helpers.ts");
+    const ytConfig = getYouTubeConfig();
+
+    if (ytConfig) {
+      const accessToken = await getYouTubeAccessToken(ytConfig);
+      let imgBuffer = await resizeImage(uploadBuffer, 1280, 720);
+      let ytContentType = mimeType;
+
+      const MAX_YT_SIZE = 2 * 1024 * 1024;
+      if (imgBuffer.length > MAX_YT_SIZE) {
+        const jpegBuf = await convertToJpegViaGemini(imgBuffer);
+        if (jpegBuf && jpegBuf.length < MAX_YT_SIZE) {
+          imgBuffer = jpegBuf;
+          ytContentType = "image/jpeg";
+        }
+      }
+
+      const ytResp = await fetch(
+        `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${youtubeVideoId}&uploadType=media`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": ytContentType },
+          body: imgBuffer,
+        },
+      );
+
+      if (ytResp.ok) {
+        console.log(`✅ YouTube thumbnail set for ${youtubeVideoId}`);
+        await sendMessage(chatId, `🖼️ <b>Заставку встановлено!</b>\n\n🎨 ${style.name}\n📝 "${headline}"`, {
+          reply_markup: { inline_keyboard: [[{ text: "🔄 Перегенерувати", callback_data: `dv_thr_${targetDate}` }]] },
+        });
+      } else {
+        const errBody = await ytResp.text();
+        console.error(`❌ YouTube thumbnail failed: ${ytResp.status} ${errBody.slice(0, 200)}`);
+        await sendMessage(chatId, `⚠️ Заставку згенеровано, але не вдалось встановити на YouTube (${ytResp.status})`);
+      }
+    } else {
+      await sendMessage(chatId, `🖼️ <b>Заставку згенеровано!</b>\n\n🎨 ${style.name}\n📝 "${headline}"\n⚠️ YouTube credentials не налаштовані`);
+    }
+  } catch (ytErr: any) {
+    console.error(`⚠️ YouTube thumbnail error: ${ytErr.message}`);
+    await sendMessage(chatId, `🖼️ Заставку згенеровано, але YouTube помилка: ${ytErr.message.slice(0, 100)}`);
+  }
 }
 
 // ── Router ──
