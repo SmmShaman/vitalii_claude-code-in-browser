@@ -5,14 +5,20 @@
  */
 
 const THEME_STORAGE_KEY = 'vitalii_active_palette'
+const MODE_STORAGE_KEY = 'vitalii_color_mode'
+
+export type ColorMode = 'dark' | 'light'
 
 export interface ColorPalette {
   id: string
   name: string
   description: string
-  colors: Record<string, string> // CSS var name → RGB triplet
-  particleHex: number // THREE.js hex color
-  backgroundGradient: string // CSS gradient for particle container
+  colors: Record<string, string> // CSS var name → RGB triplet (dark mode)
+  light: Record<string, string>  // CSS var name → RGB triplet (light mode)
+  particleHex: number // THREE.js hex color (dark)
+  particleHexLight: number // THREE.js hex color (light)
+  backgroundGradient: string // CSS gradient for dark mode
+  backgroundGradientLight: string // CSS gradient for light mode
 }
 
 export const PALETTES: ColorPalette[] = [
@@ -46,8 +52,36 @@ export const PALETTES: ColorPalette[] = [
       '--text-listing-muted': '138 138 148',
       '--particle-color': '212 212 220',
     },
+    light: {
+      '--surface-dark': '245 245 248',
+      '--surface-darker': '238 238 242',
+      '--surface-deep': '242 242 246',
+      '--surface-elevated': '255 255 255',
+      '--surface-border': '218 218 225',
+      '--surface-border-hover': '195 195 205',
+      '--text-primary': '28 28 32',
+      '--text-secondary': '70 68 80',
+      '--text-muted': '110 108 125',
+      '--text-faint': '155 152 170',
+      '--accent-brand': '13 148 136',
+      '--accent-brand-light': '15 118 110',
+      '--accent-brand-lighter': '17 94 89',
+      '--accent-brand-dark': '45 212 191',
+      '--accent-brand-darker': '94 234 212',
+      '--focus-ring': '13 148 136',
+      '--focus-ring-dark': '15 118 110',
+      '--surface-listing': '240 240 244',
+      '--surface-listing-elevated': '248 248 252',
+      '--surface-listing-hover': '232 232 238',
+      '--surface-listing-border': '210 210 220',
+      '--text-listing-secondary': '80 78 95',
+      '--text-listing-muted': '120 118 135',
+      '--particle-color': '150 150 165',
+    },
     particleHex: 0xD4D4DC,
+    particleHexLight: 0x9696A5,
     backgroundGradient: 'linear-gradient(135deg, rgba(180, 180, 190, 0.05) 0%, rgba(140, 140, 155, 0.08) 100%)',
+    backgroundGradientLight: 'linear-gradient(135deg, rgba(180, 180, 210, 0.08) 0%, rgba(200, 200, 220, 0.12) 100%)',
   },
   {
     id: 'deep-ocean',
@@ -79,8 +113,36 @@ export const PALETTES: ColorPalette[] = [
       '--text-listing-muted': '120 145 175',
       '--particle-color': '125 211 252',
     },
+    light: {
+      '--surface-dark': '235 245 252',
+      '--surface-darker': '225 238 248',
+      '--surface-deep': '230 242 250',
+      '--surface-elevated': '245 252 255',
+      '--surface-border': '195 218 238',
+      '--surface-border-hover': '170 198 222',
+      '--text-primary': '10 25 42',
+      '--text-secondary': '30 55 82',
+      '--text-muted': '80 110 145',
+      '--text-faint': '120 148 178',
+      '--accent-brand': '8 145 178',
+      '--accent-brand-light': '14 116 144',
+      '--accent-brand-lighter': '22 78 99',
+      '--accent-brand-dark': '34 211 238',
+      '--accent-brand-darker': '125 211 252',
+      '--focus-ring': '8 145 178',
+      '--focus-ring-dark': '14 116 144',
+      '--surface-listing': '230 242 252',
+      '--surface-listing-elevated': '240 248 255',
+      '--surface-listing-hover': '218 235 248',
+      '--surface-listing-border': '190 215 235',
+      '--text-listing-secondary': '40 65 92',
+      '--text-listing-muted': '90 120 155',
+      '--particle-color': '80 160 200',
+    },
     particleHex: 0x7DD3FC,
+    particleHexLight: 0x50A0C8,
     backgroundGradient: 'linear-gradient(135deg, rgba(8, 145, 178, 0.06) 0%, rgba(13, 27, 42, 0.10) 100%)',
+    backgroundGradientLight: 'linear-gradient(135deg, rgba(8, 145, 178, 0.05) 0%, rgba(235, 245, 252, 0.1) 100%)',
   },
   {
     id: 'cyber-neon',
@@ -112,8 +174,36 @@ export const PALETTES: ColorPalette[] = [
       '--text-listing-muted': '130 180 170',
       '--particle-color': '103 232 249',
     },
+    light: {
+      '--surface-dark': '238 240 248',
+      '--surface-darker': '228 230 242',
+      '--surface-deep': '232 234 245',
+      '--surface-elevated': '248 250 255',
+      '--surface-border': '200 205 225',
+      '--surface-border-hover': '175 180 205',
+      '--text-primary': '8 8 18',
+      '--text-secondary': '25 25 45',
+      '--text-muted': '70 70 100',
+      '--text-faint': '110 110 140',
+      '--accent-brand': '6 182 212',
+      '--accent-brand-light': '8 145 178',
+      '--accent-brand-lighter': '22 78 99',
+      '--accent-brand-dark': '103 232 249',
+      '--accent-brand-darker': '165 243 252',
+      '--focus-ring': '6 182 212',
+      '--focus-ring-dark': '8 145 178',
+      '--surface-listing': '232 234 248',
+      '--surface-listing-elevated': '242 244 255',
+      '--surface-listing-hover': '222 225 240',
+      '--surface-listing-border': '195 200 220',
+      '--text-listing-secondary': '35 35 60',
+      '--text-listing-muted': '85 85 115',
+      '--particle-color': '80 140 180',
+    },
     particleHex: 0x67E8F9,
+    particleHexLight: 0x508CB4,
     backgroundGradient: 'linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(10, 10, 15, 0.10) 100%)',
+    backgroundGradientLight: 'linear-gradient(135deg, rgba(34, 211, 238, 0.06) 0%, rgba(238, 240, 248, 0.1) 100%)',
   },
   {
     id: 'midnight-rose',
@@ -145,8 +235,36 @@ export const PALETTES: ColorPalette[] = [
       '--text-listing-muted': '180 150 160',
       '--particle-color': '253 164 175',
     },
+    light: {
+      '--surface-dark': '252 240 244',
+      '--surface-darker': '248 232 238',
+      '--surface-deep': '250 236 242',
+      '--surface-elevated': '255 248 250',
+      '--surface-border': '235 210 218',
+      '--surface-border-hover': '220 188 200',
+      '--text-primary': '35 18 25',
+      '--text-secondary': '72 40 52',
+      '--text-muted': '125 90 105',
+      '--text-faint': '165 130 145',
+      '--accent-brand': '225 29 72',
+      '--accent-brand-light': '190 18 60',
+      '--accent-brand-lighter': '159 18 57',
+      '--accent-brand-dark': '251 113 133',
+      '--accent-brand-darker': '253 164 175',
+      '--focus-ring': '225 29 72',
+      '--focus-ring-dark': '190 18 60',
+      '--surface-listing': '248 235 240',
+      '--surface-listing-elevated': '252 242 246',
+      '--surface-listing-hover': '240 225 232',
+      '--surface-listing-border': '225 205 215',
+      '--text-listing-secondary': '60 35 45',
+      '--text-listing-muted': '110 80 92',
+      '--particle-color': '220 130 150',
+    },
     particleHex: 0xFDA4AF,
+    particleHexLight: 0xDC8296,
     backgroundGradient: 'linear-gradient(135deg, rgba(244, 63, 94, 0.05) 0%, rgba(26, 18, 21, 0.10) 100%)',
+    backgroundGradientLight: 'linear-gradient(135deg, rgba(244, 63, 94, 0.04) 0%, rgba(252, 240, 244, 0.1) 100%)',
   },
 ]
 
@@ -163,6 +281,15 @@ export function getActivePaletteId(): string {
   }
 }
 
+export function getActiveMode(): ColorMode {
+  if (typeof window === 'undefined') return 'dark'
+  try {
+    return (localStorage.getItem(MODE_STORAGE_KEY) as ColorMode) || 'dark'
+  } catch {
+    return 'dark'
+  }
+}
+
 export function setActivePaletteId(id: string): void {
   if (typeof window === 'undefined') return
   try {
@@ -170,20 +297,29 @@ export function setActivePaletteId(id: string): void {
   } catch { /* SSR or quota */ }
 }
 
-export function applyPalette(palette: ColorPalette): void {
+export function setActiveMode(mode: ColorMode): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(MODE_STORAGE_KEY, mode)
+  } catch { /* SSR or quota */ }
+}
+
+export function applyPalette(palette: ColorPalette, mode: ColorMode = 'dark'): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  for (const [varName, value] of Object.entries(palette.colors)) {
+  const colors = mode === 'light' ? palette.light : palette.colors
+  for (const [varName, value] of Object.entries(colors)) {
     root.style.setProperty(varName, value)
   }
+  // Set data-mode for CSS overrides (text-white → dark text in light mode)
+  root.setAttribute('data-mode', mode)
 }
 
 export function loadAndApplyPalette(): ColorPalette {
   const id = getActivePaletteId()
+  const mode = getActiveMode()
   const palette = getPaletteById(id)
-  if (id !== 'neutral-dark') {
-    applyPalette(palette)
-  }
+  applyPalette(palette, mode)
   return palette
 }
 

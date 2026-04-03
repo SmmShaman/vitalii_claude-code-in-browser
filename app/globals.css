@@ -61,6 +61,64 @@
   --text-caption: 0.75rem;
 }
 
+/* ═══════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES
+   Inverts hardcoded dark-theme Tailwind classes (text-white, bg-black, etc.)
+   so they work on light backgrounds without changing 700+ component files.
+   ═══════════════════════════════════════════════════ */
+html[data-mode="light"] {
+  color-scheme: light;
+}
+
+html[data-mode="light"] .text-white {
+  color: rgb(var(--text-primary)) !important;
+}
+html[data-mode="light"] .text-white\/90,
+html[data-mode="light"] .text-white\/80,
+html[data-mode="light"] .text-white\/70,
+html[data-mode="light"] .text-white\/60,
+html[data-mode="light"] .text-white\/50,
+html[data-mode="light"] .text-white\/30 {
+  color: rgb(var(--text-secondary)) !important;
+}
+html[data-mode="light"] .bg-white {
+  background-color: rgb(var(--surface-elevated)) !important;
+}
+html[data-mode="light"] .bg-white\/5,
+html[data-mode="light"] .bg-white\/10,
+html[data-mode="light"] .bg-white\/20 {
+  background-color: rgb(var(--surface-dark) / 0.06) !important;
+}
+html[data-mode="light"] .bg-black {
+  background-color: rgb(var(--surface-darker)) !important;
+}
+html[data-mode="light"] .bg-black\/50,
+html[data-mode="light"] .bg-black\/60,
+html[data-mode="light"] .bg-black\/80 {
+  background-color: rgb(var(--surface-dark) / 0.15) !important;
+}
+html[data-mode="light"] .border-white\/10,
+html[data-mode="light"] .border-white\/20 {
+  border-color: rgb(var(--surface-border)) !important;
+}
+html[data-mode="light"] .text-gray-400 {
+  color: rgb(var(--text-muted)) !important;
+}
+html[data-mode="light"] .text-gray-500 {
+  color: rgb(var(--text-faint)) !important;
+}
+html[data-mode="light"] .text-gray-300 {
+  color: rgb(var(--text-secondary)) !important;
+}
+html[data-mode="light"] .placeholder-gray-500::placeholder {
+  color: rgb(var(--text-faint)) !important;
+}
+html[data-mode="light"] .shadow-lg,
+html[data-mode="light"] .shadow-xl,
+html[data-mode="light"] .shadow-2xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.08);
+}
+
 @layer base {
   /* Focus Visible Styles - WCAG 2.4.7 */
   :focus-visible {

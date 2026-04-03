@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { PALETTES, applyPalette, getActivePaletteId, setActivePaletteId, getPaletteById, type ColorPalette } from '@/utils/theme'
+import { PALETTES, applyPalette, getActivePaletteId, setActivePaletteId, getActiveMode, setActiveMode, getPaletteById, type ColorPalette, type ColorMode } from '@/utils/theme'
 
 function rgbToHexStr(rgb: string): string {
   const [r, g, b] = rgb.split(' ').map(Number)
@@ -74,22 +74,36 @@ function PreviewCard({ palette }: { palette: ColorPalette }) {
 export function ThemeSettings() {
   const [activePaletteId, setActive] = useState('neutral-dark')
   const [savedPaletteId, setSavedId] = useState('neutral-dark')
+  const [mode, setMode] = useState<ColorMode>('dark')
+  const [savedMode, setSavedMode] = useState<ColorMode>('dark')
   const [saving, setSaving] = useState(false)
   const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   useEffect(() => {
     const id = getActivePaletteId()
+    const m = getActiveMode()
     setActive(id)
     setSavedId(id)
+    setMode(m)
+    setSavedMode(m)
   }, [])
 
-  const hasUnsavedChanges = activePaletteId !== savedPaletteId
+  const hasUnsavedChanges = activePaletteId !== savedPaletteId || mode !== savedMode
 
   // Preview only — apply CSS vars + localStorage, no DB save
   const handlePreview = (palette: ColorPalette) => {
-    applyPalette(palette)
+    applyPalette(palette, mode)
     setActive(palette.id)
     setActivePaletteId(palette.id)
+    setSaveResult(null)
+  }
+
+  // Toggle dark/light mode
+  const handleModeToggle = () => {
+    const newMode: ColorMode = mode === 'dark' ? 'light' : 'dark'
+    setMode(newMode)
+    setActiveMode(newMode)
+    applyPalette(getPaletteById(activePaletteId), newMode)
     setSaveResult(null)
   }
 
@@ -112,8 +126,25 @@ export function ThemeSettings() {
           is_active: true,
         })
       }
+      // Save mode too
+      const modeKey = 'ACTIVE_COLOR_MODE'
+      const { data: modeData } = await supabase
+        .from('api_settings')
+        .update({ key_value: mode })
+        .eq('key_name', modeKey)
+        .select()
+      if (!modeData || modeData.length === 0) {
+        await supabase.from('api_settings').insert({
+          key_name: modeKey,
+          key_value: mode,
+          description: 'Color mode: dark or light',
+          is_active: true,
+        })
+      }
+
       setSavedId(activePaletteId)
-      setSaveResult({ ok: true, msg: `${getPaletteById(activePaletteId).name} saved!` })
+      setSavedMode(mode)
+      setSaveResult({ ok: true, msg: `${getPaletteById(activePaletteId).name} (${mode}) saved!` })
     } catch (e: any) {
       setSaveResult({ ok: false, msg: e.message || 'Save failed' })
     } finally {
@@ -121,12 +152,14 @@ export function ThemeSettings() {
     }
   }
 
-  // Revert to saved palette
+  // Revert to saved palette + mode
   const handleRevert = () => {
     const palette = getPaletteById(savedPaletteId)
-    applyPalette(palette)
+    applyPalette(palette, savedMode)
     setActive(savedPaletteId)
     setActivePaletteId(savedPaletteId)
+    setMode(savedMode)
+    setActiveMode(savedMode)
     setSaveResult(null)
   }
 
@@ -163,6 +196,24 @@ export function ThemeSettings() {
             {saving ? 'Saving...' : hasUnsavedChanges ? '💾 Save' : 'Saved'}
           </button>
         </div>
+      </div>
+
+      {/* Dark / Light toggle */}
+      <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+        <span className="text-sm text-gray-400">Mode:</span>
+        <button
+          onClick={handleModeToggle}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            mode === 'dark'
+              ? 'bg-gray-800 text-white border border-white/20'
+              : 'bg-amber-50 text-amber-900 border border-amber-200'
+          }`}
+        >
+          {mode === 'dark' ? '🌙 Dark' : '☀️ Light'}
+        </button>
+        <span className="text-xs text-gray-500">
+          {mode === 'dark' ? 'Dark backgrounds, light text' : 'Light backgrounds, dark text'}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
