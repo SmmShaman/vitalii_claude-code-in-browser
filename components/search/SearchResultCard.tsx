@@ -93,7 +93,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
       transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.3) }}
       className="break-inside-avoid mb-4"
     >
-      <div className="group rounded-xl overflow-hidden border border-[#443D6E] bg-[#352F5A] hover:shadow-lg hover:border-[#5A5190] transition-all duration-300 hover:scale-[1.02]">
+      <div className="group rounded-xl overflow-hidden border border-[#443D35] bg-[#35302A] hover:shadow-lg hover:border-[#5A5140] transition-all duration-300 hover:scale-[1.02]">
         <Link href={href} className="block">
           {/* Image — natural aspect ratio, no cropping */}
           {displayImage ? (
@@ -128,21 +128,21 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
               {/* Play overlay for video thumbnails */}
               {isVideoThumbnail && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                  <div className="w-10 h-10 rounded-full bg-[#352F5A]/90 flex items-center justify-center">
-                    <div className="w-0 h-0 border-l-[14px] border-l-[#352F5A] border-y-[8px] border-y-transparent ml-1" />
+                  <div className="w-10 h-10 rounded-full bg-[#35302A]/90 flex items-center justify-center">
+                    <div className="w-0 h-0 border-l-[14px] border-l-[#35302A] border-y-[8px] border-y-transparent ml-1" />
                   </div>
                 </div>
               )}
             </div>
           ) : (
             /* Gradient placeholder when no image */
-            <div className="relative w-full aspect-video bg-gradient-to-br from-[#3D3768] to-[#2D2850] flex items-center justify-center overflow-hidden">
+            <div className="relative w-full aspect-video bg-gradient-to-br from-[#3D3730] to-[#2D2520] flex items-center justify-center overflow-hidden">
               {result.video_url ? (
-                <Video className="w-10 h-10 text-[#5A5190]" />
+                <Video className="w-10 h-10 text-[#5A5140]" />
               ) : isNews ? (
-                <Newspaper className="w-10 h-10 text-[#5A5190]" />
+                <Newspaper className="w-10 h-10 text-[#5A5140]" />
               ) : (
-                <BookOpen className="w-10 h-10 text-[#5A5190]" />
+                <BookOpen className="w-10 h-10 text-[#5A5140]" />
               )}
               <div
                 className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${
@@ -161,7 +161,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
             </h3>
 
             {result.description && (
-              <p className="text-xs text-[#B0ABCA] mt-1 line-clamp-2">{result.description}</p>
+              <p className="text-xs text-[#B0AB9A] mt-1 line-clamp-2">{result.description}</p>
             )}
           </div>
         </Link>
@@ -176,7 +176,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
                   onClick={() => {
                     router.push(`/${result.type === 'news' ? 'news' : 'blog'}?tag=${encodeURIComponent(tag.toLowerCase())}`)
                   }}
-                  className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3768] text-[#B0ABCA] hover:bg-[#4A4580] hover:text-brand-light transition-colors cursor-pointer"
+                  className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#3D3730] text-[#B0AB9A] hover:bg-[#4A4580] hover:text-brand-light transition-colors cursor-pointer"
                 >
                   #{tag}
                 </button>
@@ -184,7 +184,7 @@ export function SearchResultCard({ result, index }: SearchResultCardProps) {
             </div>
           )}
 
-          <div className="flex items-center gap-2 mt-2 text-[10px] text-[#8A84A8]">
+          <div className="flex items-center gap-2 mt-2 text-[10px] text-[#8A8478]">
             {result.published_at && (
               <span className="flex items-center gap-0.5">
                 <Calendar className="w-3 h-3" />

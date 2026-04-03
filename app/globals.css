@@ -11,11 +11,11 @@
   --primary-foreground: 210 40% 98%;
   --radius: 0.75rem;
 
-  /* Design tokens — surfaces */
-  --surface-dark: #1A1730;
-  --surface-darker: #0F0D1A;
-  --surface-elevated: #221F3A;
-  --surface-border: #2D2A40;
+  /* Design tokens — surfaces (warm charcoal, no AI-purple) */
+  --surface-dark: #1A1614;
+  --surface-darker: #0F0C0B;
+  --surface-elevated: #23201D;
+  --surface-border: #2D2A25;
 
   /* Design tokens — text */
   --text-primary: #EEEDF5;
@@ -36,8 +36,8 @@
   --accent-news-dark: #6d8c3c;
 
   /* Design tokens — surface extras */
-  --surface-deep: #141225;
-  --surface-border-hover: #4B4768;
+  --surface-deep: #14110F;
+  --surface-border-hover: #4B4740;
 
   /* Design tokens — focus (WCAG 3:1 minimum for UI) */
   --focus-ring: #2DD4BF;
