@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
-import { loadScheduleConfig, isInsidePublishingWindow, countInFlight } from '../_shared/schedule-helpers.ts'
+import { loadScheduleConfig, isInsidePublishingWindow, countInFlight, getOsloNow } from '../_shared/schedule-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +10,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-const VERSION = '2026-03-06-v1-schedule-publisher'
+const VERSION = '2026-04-03-v2-oslo-time-fix'
 
 /**
  * Schedule Publisher: triggered by cron every 5 min.
@@ -58,7 +58,9 @@ serve(async (req) => {
     }
 
     // 4. Pick next due scheduled article
-    const now = new Date().toISOString()
+    // scheduled_publish_at is stored in Oslo-as-UTC format (from computeScheduledTime),
+    // so compare with Oslo time, not real UTC
+    const now = getOsloNow().toISOString()
     const { data: nextArticle, error } = await supabase
       .from('news')
       .select('id, telegram_message_id, preset_config')

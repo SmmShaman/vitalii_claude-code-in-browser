@@ -69,7 +69,7 @@ export async function loadScheduleConfig(supabase: any): Promise<ScheduleConfig>
  * Returns a Date where getHours()/getMinutes() return Oslo local time.
  * Uses Intl.DateTimeFormat which works reliably on Deno (Supabase Edge Functions).
  */
-function getOsloNow(): Date {
+export function getOsloNow(): Date {
   const now = new Date()
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Oslo',
