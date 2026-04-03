@@ -9,14 +9,15 @@ function rgbToHexStr(rgb: string): string {
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()
 }
 
-function SwatchRow({ palette, compact = false }: { palette: ColorPalette; compact?: boolean }) {
+function SwatchRow({ palette, compact = false, mode = 'dark' as ColorMode }: { palette: ColorPalette; compact?: boolean; mode?: ColorMode }) {
+  const c = mode === 'light' ? palette.light : palette.colors
   const swatches = [
-    { label: 'Surface', rgb: palette.colors['--surface-dark'] },
-    { label: 'Elevated', rgb: palette.colors['--surface-elevated'] },
-    { label: 'Brand', rgb: palette.colors['--accent-brand'] },
-    { label: 'Brand Lt', rgb: palette.colors['--accent-brand-light'] },
-    { label: 'Text', rgb: palette.colors['--text-primary'] },
-    { label: 'Muted', rgb: palette.colors['--text-muted'] },
+    { label: 'Surface', rgb: c['--surface-dark'] },
+    { label: 'Elevated', rgb: c['--surface-elevated'] },
+    { label: 'Brand', rgb: c['--accent-brand'] },
+    { label: 'Brand Lt', rgb: c['--accent-brand-light'] },
+    { label: 'Text', rgb: c['--text-primary'] },
+    { label: 'Muted', rgb: c['--text-muted'] },
   ]
 
   return (
@@ -41,14 +42,15 @@ function SwatchRow({ palette, compact = false }: { palette: ColorPalette; compac
   )
 }
 
-function PreviewCard({ palette }: { palette: ColorPalette }) {
-  const bg = `rgb(${palette.colors['--surface-dark']})`
-  const elevated = `rgb(${palette.colors['--surface-elevated']})`
-  const border = `rgb(${palette.colors['--surface-border']})`
-  const text = `rgb(${palette.colors['--text-primary']})`
-  const muted = `rgb(${palette.colors['--text-muted']})`
-  const brand = `rgb(${palette.colors['--accent-brand']})`
-  const brandLight = `rgb(${palette.colors['--accent-brand-light']})`
+function PreviewCard({ palette, mode = 'dark' as ColorMode }: { palette: ColorPalette; mode?: ColorMode }) {
+  const c = mode === 'light' ? palette.light : palette.colors
+  const bg = `rgb(${c['--surface-dark']})`
+  const elevated = `rgb(${c['--surface-elevated']})`
+  const border = `rgb(${c['--surface-border']})`
+  const text = `rgb(${c['--text-primary']})`
+  const muted = `rgb(${c['--text-muted']})`
+  const brand = `rgb(${c['--accent-brand']})`
+  const brandLight = `rgb(${c['--accent-brand-light']})`
 
   return (
     <div className="rounded-lg p-3 mt-2" style={{ backgroundColor: bg, border: `1px solid ${border}` }}>
@@ -250,8 +252,8 @@ export function ThemeSettings() {
                 </div>
               </div>
               <p className="text-xs text-gray-400 mb-3">{palette.description}</p>
-              <SwatchRow palette={palette} />
-              <PreviewCard palette={palette} />
+              <SwatchRow palette={palette} mode={mode} />
+              <PreviewCard palette={palette} mode={mode} />
             </button>
           )
         })}
@@ -259,9 +261,9 @@ export function ThemeSettings() {
 
       {/* Current palette detail */}
       <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-        <h4 className="text-sm font-medium text-white mb-3">Current Palette Tokens</h4>
+        <h4 className="text-sm font-medium text-white mb-3">Current Palette Tokens ({mode})</h4>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs">
-          {Object.entries(PALETTES.find(p => p.id === activePaletteId)?.colors || {}).map(([key, rgb]) => (
+          {Object.entries((mode === 'light' ? PALETTES.find(p => p.id === activePaletteId)?.light : PALETTES.find(p => p.id === activePaletteId)?.colors) || {}).map(([key, rgb]) => (
             <div key={key} className="flex items-center gap-2">
               <div
                 className="w-5 h-5 rounded border border-white/10 flex-shrink-0"
