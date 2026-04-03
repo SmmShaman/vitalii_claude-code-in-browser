@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
+import { loadScheduleConfig, computeScheduledTime, classifyContentWeight, formatScheduledTime } from '../_shared/schedule-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,9 +13,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
-const VERSION = '2026-03-27-v4-gemini'
-const SOCIAL_SLOTS = ['09:00', '13:00', '15:00', '18:00']
-const PLATFORMS = ['linkedin', 'facebook', 'instagram'] as const
+const VERSION = '2026-04-03-v5-schedule-pipeline'
 
 async function sendTelegram(text: string) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return
@@ -25,28 +24,6 @@ async function sendTelegram(text: string) {
       body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }),
     })
   } catch (e) { console.error('Telegram failed:', e) }
-}
-
-async function callEdgeFunction(name: string, body: Record<string, unknown>): Promise<{ ok: boolean; data?: Record<string, unknown>; error?: string }> {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
-    const data = await res.json().catch(() => ({}))
-    return res.ok ? { ok: true, data } : { ok: false, error: `${res.status}: ${JSON.stringify(data).slice(0, 200)}` }
-  } catch (e) {
-    return { ok: false, error: String(e) }
-  }
-}
-
-function getTodayLanguage(): 'en' | 'no' {
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
-  return dayOfYear % 2 === 0 ? 'en' : 'no'
 }
 
 serve(async (req) => {
@@ -75,12 +52,8 @@ serve(async (req) => {
       .from('api_settings').select('key_value').eq('key_name', 'STREAM3_TOP_N').maybeSingle()
     const topN = parseInt(topNSetting?.key_value || '3', 10)
 
-    // Accept optional targetDate and language from request body
+    // Accept optional targetDate from request body
     const body = await req.json().catch(() => ({}))
-
-    // Language: from request or auto
-    const lang = body.language || getTodayLanguage()
-    console.log(`🌐 Auto-publish language: ${lang}`)
 
     // Target date: from request or yesterday
     let targetDay: Date
@@ -96,10 +69,10 @@ serve(async (req) => {
 
     console.log(`📅 Articles from ${dayStart.slice(0, 10)}`)
 
-    // Fetch articles
+    // Fetch articles with fields needed for scheduling
     const { data: articles, error: fetchError } = await supabase
       .from('news')
-      .select('id, original_title, title_en, slug_en, rss_analysis, image_url, processed_image_url, source_id, original_url, rss_source_url')
+      .select('id, original_title, title_en, slug_en, rss_analysis, image_url, processed_image_url, source_id, original_url, rss_source_url, source_type, auto_publish_status, original_content, video_url, original_video_url')
       .eq('is_published', true)
       .gte('published_at', dayStart)
       .lte('published_at', dayEnd)
@@ -123,89 +96,82 @@ serve(async (req) => {
       .sort((a, b) => b.linkedinScore - a.linkedinScore)
       .slice(0, topN)
 
-    console.log(`🏆 Top ${sorted.length} selected`)
+    // Filter out articles already scheduled/in-progress/completed
+    const eligible = sorted.filter(a => !a.auto_publish_status)
+    const skippedCount = sorted.length - eligible.length
 
-    // Auto-publish each article to all 3 platforms
-    const allResults: string[] = []
+    console.log(`🏆 Top ${sorted.length} selected, ${eligible.length} eligible, ${skippedCount} already scheduled`)
 
-    for (let i = 0; i < sorted.length; i++) {
-      const article = sorted[i]
-      const slot = SOCIAL_SLOTS[i] || SOCIAL_SLOTS[SOCIAL_SLOTS.length - 1]
+    if (!eligible.length) {
+      const msg = `📊 <b>Auto Social [${targetDay.toLocaleDateString('uk-UA')}]</b>\n\n⏭️ Усі топ-${sorted.length} вже заплановано або оброблено.`
+      await sendTelegram(msg)
+      return new Response(JSON.stringify({ success: true, scheduled: 0, skipped: skippedCount }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // Load schedule config
+    const schedConfig = await loadScheduleConfig(supabase)
+
+    // Default preset for auto-published articles
+    const presetConfig = {
+      variantIndex: null,
+      imageLanguage: 'en',
+      publicationType: 'news',
+      socialPlatforms: ['linkedin', 'facebook', 'instagram'],
+      skipQueue: false,
+    }
+
+    // Schedule each article sequentially (computeScheduledTime reads occupied slots)
+    const scheduledArticles: Array<{ title: string; score: number; time: string; window: string }> = []
+
+    for (const article of eligible) {
+      const weight = classifyContentWeight(article)
+      const { scheduledAt, window: winId, windowLabel } = await computeScheduledTime(weight, schedConfig, supabase)
+
+      const { error: updateError } = await supabase.from('news').update({
+        auto_publish_status: 'scheduled',
+        scheduled_publish_at: scheduledAt.toISOString(),
+        content_weight: weight,
+        schedule_window: winId,
+        preset_config: presetConfig,
+      }).eq('id', article.id)
+
+      if (updateError) {
+        console.error(`Failed to schedule ${article.id}: ${updateError.message}`)
+        continue
+      }
+
       const title = (article.title_en || article.original_title || 'Untitled').substring(0, 80)
-      const newsId = article.id
-
-      console.log(`\n📰 ${i + 1}/${sorted.length}: ${title} (LI:${article.linkedinScore})`)
-
-      const platformResults: string[] = []
-      const articleTitle = article.title_en || article.original_title || 'Untitled'
-      const articleSlug = (article as Record<string, unknown>).slug_en || ''
-      const articleUrl = articleSlug ? `https://vitalii.no/news/${articleSlug}` : ''
-      const imgUrl = article.processed_image_url || article.image_url || ''
-
-      // LinkedIn — direct API
-      try {
-        const liToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || ''
-        const liUrn = Deno.env.get('LINKEDIN_PERSON_URN') || ''
-        if (liToken && liUrn) {
-          const liText = `${articleTitle}\n\n${articleUrl}`
-          // deno-lint-ignore no-explicit-any
-          let shareContent: any = { shareCommentary: { text: liText }, shareMediaCategory: 'NONE' }
-          // Upload image if available
-          if (imgUrl) {
-            try {
-              const regRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
-                method: 'POST', headers: { 'Authorization': `Bearer ${liToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ registerUploadRequest: { recipes: ['urn:li:digitalmediaRecipe:feedshare-image'], owner: liUrn, serviceRelationships: [{ relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }] } }),
-              })
-              if (regRes.ok) {
-                const rd = await regRes.json()
-                const upUrl = rd.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl
-                const asset = rd.value?.asset
-                if (upUrl && asset) {
-                  const ib = await fetch(imgUrl).then(r => r.arrayBuffer())
-                  await fetch(upUrl, { method: 'PUT', headers: { 'Authorization': `Bearer ${liToken}` }, body: ib })
-                  shareContent = { shareCommentary: { text: liText }, shareMediaCategory: 'IMAGE', media: [{ status: 'READY', media: asset }] }
-                }
-              }
-            } catch { /* image upload failed, post without */ }
-          }
-          const liRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${liToken}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
-            body: JSON.stringify({ author: liUrn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': shareContent }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }),
-          })
-          platformResults.push(liRes.ok ? '✅ linkedin' : `❌ linkedin: ${liRes.status}`)
-        } else { platformResults.push('⏭️ linkedin') }
-      } catch (e: unknown) { platformResults.push(`❌ linkedin: ${e instanceof Error ? e.message.slice(0, 30) : 'err'}`) }
-
-      // Facebook — direct API
-      try {
-        const fbToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') || ''
-        const fbPage = Deno.env.get('FACEBOOK_PAGE_ID') || ''
-        if (fbToken && fbPage) {
-          const fbRes = await fetch(`https://graph.facebook.com/v18.0/${fbPage}/feed`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: articleTitle, link: articleUrl || undefined, access_token: fbToken }),
-          })
-          platformResults.push(fbRes.ok ? '✅ facebook' : `❌ facebook: ${fbRes.status}`)
-        } else { platformResults.push('⏭️ facebook') }
-      } catch (e: unknown) { platformResults.push(`❌ facebook: ${e instanceof Error ? e.message.slice(0, 30) : 'err'}`) }
-
-      // Instagram — skip (needs image + specific format)
-      platformResults.push('⏭️ instagram')
-
-      allResults.push(`<b>${i + 1}. ${escapeHtml(title)}</b>\n⏰ ${slot} | LI:${article.linkedinScore}/10\n${platformResults.join(' | ')}`)
+      scheduledArticles.push({
+        title,
+        score: article.linkedinScore,
+        time: formatScheduledTime(scheduledAt),
+        window: windowLabel,
+      })
+      console.log(`📅 Scheduled: ${title} → ${formatScheduledTime(scheduledAt)} (${windowLabel})`)
     }
 
     // Telegram summary
     const dateStr = targetDay.toLocaleDateString('uk-UA')
+    const summaryLines = scheduledArticles.map((a, i) =>
+      `<b>${i + 1}. ${escapeHtml(a.title)}</b>\n⏰ ${a.time} (${a.window}) | LI:${a.score}/10`
+    )
+
+    const skippedNote = skippedCount > 0
+      ? `\n⏭️ ${skippedCount} вже заплановано/оброблено`
+      : ''
+
+    const scheduleNote = !schedConfig.enabled
+      ? '\n⚠️ Schedule publisher вимкнений — статті чекають увімкнення'
+      : ''
+
     await sendTelegram(
-      `📊 <b>Auto Social [${dateStr}]</b>\n🌐 ${lang.toUpperCase()} | ${sorted.length} статей\n\n` +
-      allResults.join('\n\n')
+      `📊 <b>Auto Social [${dateStr}]</b>\n📅 Заплановано: ${scheduledArticles.length} статей${skippedNote}${scheduleNote}\n\n` +
+      summaryLines.join('\n\n')
     )
 
     return new Response(
-      JSON.stringify({ success: true, lang, published: sorted.length }),
+      JSON.stringify({ success: true, scheduled: scheduledArticles.length, skipped: skippedCount, articles: scheduledArticles }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
