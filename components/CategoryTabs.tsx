@@ -111,14 +111,14 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 ${
               hiddenTags.some(t => t.tag_name === activeTag)
                 ? 'bg-brand text-white'
-                : 'bg-[#3D3730] text-[#B0AB9A] hover:bg-[#4A4538]'
+                : 'bg-[#38383E] text-[#B0B0B8] hover:bg-[#48484E]'
             }`}
           >
             <ChevronDown className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {dropdownOpen && (
-            <div className="absolute top-full mt-1 right-0 z-50 bg-[#2D2520] border border-[#443D35] rounded-xl shadow-xl py-1 min-w-[160px] max-h-[240px] overflow-y-auto">
+            <div className="absolute top-full mt-1 right-0 z-50 bg-[#242428] border border-[#3C3C44] rounded-xl shadow-xl py-1 min-w-[160px] max-h-[240px] overflow-y-auto">
               {hiddenTags.map((tag) => (
                 <button
                   key={tag.tag_name}
@@ -129,7 +129,7 @@ export function CategoryTabs({ tags, activeTag, onTagChange }: CategoryTabsProps
                   className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                     activeTag === tag.tag_name
                       ? 'bg-brand/20 text-brand-light'
-                      : 'text-[#B0AB9A] hover:bg-[#3D3730]'
+                      : 'text-[#B0B0B8] hover:bg-[#38383E]'
                   }`}
                 >
                   {tag.tag_name}

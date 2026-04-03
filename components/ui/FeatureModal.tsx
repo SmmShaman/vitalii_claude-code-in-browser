@@ -329,7 +329,7 @@ export const FeatureModal = ({
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] animate-in fade-in" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-gradient-to-br from-surface to-[#2A2520] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-[60] overflow-hidden">
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-gradient-to-br from-surface to-[#28282C] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-[60] overflow-hidden">
             {selectedFeature && (() => {
               const catInfo = getCategoryInfo(selectedFeature.category);
               const project = getProjectInfo(selectedFeature.projectId, projectList);

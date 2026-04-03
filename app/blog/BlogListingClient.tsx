@@ -27,7 +27,7 @@ function BlogListingInner() {
   const languages: Language[] = ['NO', 'EN', 'UA']
 
   useEffect(() => {
-    document.body.style.backgroundColor = '#2D2520'
+    document.body.style.backgroundColor = '#242428'
     return () => { document.body.style.backgroundColor = '' }
   }, [])
 
@@ -126,13 +126,13 @@ function BlogListingInner() {
   const pageBgTint = getActivePageBg(activeTag, tags, 7)
 
   return (
-    <div className="min-h-screen bg-[#2D2520] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
+    <div className="min-h-screen bg-[#242428] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#2D2520]/95 backdrop-blur-sm border-b border-[#443D35]">
+      <header className="sticky top-0 z-50 bg-[#242428]/95 backdrop-blur-sm border-b border-[#3C3C44]">
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-2 text-[#B0AB9A] hover:text-content transition-colors group flex-shrink-0"
+            className="flex items-center gap-2 text-[#B0B0B8] hover:text-content transition-colors group flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span className="font-bold text-amber-500 text-lg hidden sm:inline">Vitalii Berbeha</span>
@@ -151,7 +151,7 @@ function BlogListingInner() {
                 className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   currentLanguage === lang
                     ? 'bg-brand text-white'
-                    : 'bg-[#35302A] text-[#B0AB9A] hover:bg-[#3D3730]'
+                    : 'bg-[#2E2E34] text-[#B0B0B8] hover:bg-[#38383E]'
                 }`}
               >
                 {lang}
@@ -162,7 +162,7 @@ function BlogListingInner() {
 
         {/* Category tabs */}
         {tags.length > 0 && (
-          <div className="px-4 sm:px-6 lg:px-8 py-2 border-t border-[#443D35]/50">
+          <div className="px-4 sm:px-6 lg:px-8 py-2 border-t border-[#3C3C44]/50">
             <CategoryTabs
               tags={tags}
               activeTag={activeTag}
@@ -180,12 +180,12 @@ function BlogListingInner() {
           </div>
         ) : results.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <SearchX className="w-12 h-12 text-[#8A8478] mb-4" />
-            <p className="text-lg font-medium text-[#B0AB9A]">{t('listing_no_articles')}</p>
+            <SearchX className="w-12 h-12 text-[#8A8A94] mb-4" />
+            <p className="text-lg font-medium text-[#B0B0B8]">{t('listing_no_articles')}</p>
           </div>
         ) : (
           <>
-            <div className="mb-3 text-xs text-[#8A8478]">
+            <div className="mb-3 text-xs text-[#8A8A94]">
               {totalCount} {t('search_results_count')}
             </div>
 
@@ -206,7 +206,7 @@ function BlogListingInner() {
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
-                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#35302A] text-content-secondary hover:bg-[#3D3730] disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-[#2E2E34] text-content-secondary hover:bg-[#38383E] disabled:opacity-50 transition-all flex items-center gap-2"
                 >
                   {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
                   {t('listing_load_more')}
@@ -224,7 +224,7 @@ function BlogListingInner() {
 
 function ListingSkeleton() {
   return (
-    <div className="min-h-screen bg-[#2D2520] flex items-center justify-center">
+    <div className="min-h-screen bg-[#242428] flex items-center justify-center">
       <Loader2 className="w-8 h-8 text-brand-light animate-spin" />
     </div>
   )

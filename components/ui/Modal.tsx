@@ -97,7 +97,7 @@ export function Modal({ children, title = 'Article' }: ModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-40 bg-[#0A0807]"
+        className="fixed inset-0 z-40 bg-[#0A0A0C]"
         onClick={onDismiss}
         aria-hidden="true"
       />

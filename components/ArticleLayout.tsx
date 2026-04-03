@@ -16,7 +16,7 @@ interface ArticleLayoutProps {
 
 export function ArticleLayout({ children, backHref = '/', backLabel }: ArticleLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#0F0C0B] flex flex-col">
+    <div className="min-h-screen bg-[#111113] flex flex-col">
       {/* Compact Sticky Header */}
       <ArticleHeader backHref={backHref} backLabel={backLabel} />
 

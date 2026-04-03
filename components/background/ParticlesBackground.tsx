@@ -55,7 +55,7 @@ export const ParticlesBackground = () => {
 
       const particlesMaterial = new THREE.PointsMaterial({
         size: 0.008,
-        color: 0xFDB5A2,
+        color: 0xD4D4DC,
         transparent: true,
         opacity: 0.7,
         blending: THREE.AdditiveBlending,
@@ -126,7 +126,7 @@ export const ParticlesBackground = () => {
       ref={containerRef}
       className="fixed inset-0 -z-10 pointer-events-none"
       style={{
-        background: 'linear-gradient(135deg, rgba(255, 85, 66, 0.06) 0%, rgba(200, 80, 60, 0.10) 100%)',
+        background: 'linear-gradient(135deg, rgba(180, 180, 190, 0.05) 0%, rgba(140, 140, 155, 0.08) 100%)',
       }}
     />
   );

@@ -40,14 +40,14 @@ const config: Config = {
         },
         // Design token colors — surfaces
         surface: {
-          DEFAULT: '#1A1614',
-          darker: '#0F0C0B',
-          deep: '#14110F',
-          elevated: '#23201D',
+          DEFAULT: '#1A1A1C',
+          darker: '#111113',
+          deep: '#141416',
+          elevated: '#232326',
         },
         'surface-border': {
-          DEFAULT: '#2D2A25',
-          hover: '#4B4740',
+          DEFAULT: '#2E2E32',
+          hover: '#4A4A50',
         },
         // Design token colors — text
         content: {
