@@ -24,9 +24,10 @@ import { SocialMediaAccountsManager } from '@/components/admin/SocialMediaAccoun
 import { NewsMonitorManager } from '@/components/admin/news-monitor'
 import { TagFrequencyTable } from '@/components/admin/TagFrequencyTable'
 import { SocialAnalyticsDashboard } from '@/components/admin/SocialAnalyticsDashboard'
+import { ThemeSettings } from '@/components/admin/ThemeSettings'
 
 type TabType = 'overview' | 'queue' | 'news' | 'blog' | 'monitor' | 'social' | 'analytics' | 'comments' | 'features' | 'settings'
-type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'tags' | 'debug'
+type SettingsSubTab = 'sources' | 'prompts' | 'images' | 'apikeys' | 'accounts' | 'schedule' | 'automation' | 'tags' | 'theme' | 'debug'
 
 interface HeaderStats {
   totalNews: number
@@ -314,6 +315,16 @@ export default function AdminDashboardPage() {
               Tags
             </button>
             <button
+              onClick={() => setSettingsSubTab('theme')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                settingsSubTab === 'theme'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              🎨 Theme
+            </button>
+            <button
               onClick={() => setSettingsSubTab('debug')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 settingsSubTab === 'debug'
@@ -360,6 +371,7 @@ export default function AdminDashboardPage() {
                 {settingsSubTab === 'schedule' && <AutoPublishSettings />}
                 {settingsSubTab === 'automation' && <CronScheduleSettings />}
                 {settingsSubTab === 'tags' && <TagFrequencyTable />}
+                {settingsSubTab === 'theme' && <ThemeSettings />}
                 {settingsSubTab === 'debug' && <DebugSettings />}
               </>
             )}

@@ -11,37 +11,46 @@
   --primary-foreground: 210 40% 98%;
   --radius: 0.75rem;
 
-  /* Design tokens — surfaces (neutral dark, no AI-purple) */
-  --surface-dark: #1A1A1C;
-  --surface-darker: #111113;
-  --surface-elevated: #232326;
-  --surface-border: #2E2E32;
+  /* Design tokens — surfaces (RGB triplets for Tailwind opacity support) */
+  --surface-dark: 26 26 28;
+  --surface-darker: 17 17 19;
+  --surface-elevated: 35 35 38;
+  --surface-border: 46 46 50;
+  --surface-deep: 20 20 22;
+  --surface-border-hover: 74 74 80;
 
   /* Design tokens — text */
-  --text-primary: #EEEDF5;
-  --text-secondary: #C8C5D6;
-  --text-muted: #9B97B0;
-  --text-faint: #6B6680;
+  --text-primary: 238 237 245;
+  --text-secondary: 200 197 214;
+  --text-muted: 155 151 176;
+  --text-faint: 107 102 128;
 
   /* Design tokens — accent */
-  --accent-brand: #0D9488;
-  --accent-brand-light: #2DD4BF;
-  --accent-brand-lighter: #5EEAD4;
-  --accent-brand-dark: #0F766E;
-  --accent-brand-darker: #115E59;
-  --accent-amber: #fbbf24;
-  --accent-red: #ef4444;
-  --accent-news: #88B04B;
-  --accent-news-light: #A5C85A;
-  --accent-news-dark: #6d8c3c;
-
-  /* Design tokens — surface extras */
-  --surface-deep: #141416;
-  --surface-border-hover: #4A4A50;
+  --accent-brand: 13 148 136;
+  --accent-brand-light: 45 212 191;
+  --accent-brand-lighter: 94 234 212;
+  --accent-brand-dark: 15 118 110;
+  --accent-brand-darker: 17 94 89;
+  --accent-amber: 251 191 36;
+  --accent-red: 239 68 68;
+  --accent-news: 136 176 75;
+  --accent-news-light: 165 200 90;
+  --accent-news-dark: 109 140 60;
 
   /* Design tokens — focus (WCAG 3:1 minimum for UI) */
-  --focus-ring: #2DD4BF;
-  --focus-ring-dark: #5EEAD4;
+  --focus-ring: 45 212 191;
+  --focus-ring-dark: 94 234 212;
+
+  /* Design tokens — listing/search pages */
+  --surface-listing: 36 36 40;
+  --surface-listing-elevated: 46 46 52;
+  --surface-listing-hover: 56 56 62;
+  --surface-listing-border: 60 60 68;
+  --text-listing-secondary: 176 176 184;
+  --text-listing-muted: 138 138 148;
+
+  /* Particle color (hex for THREE.js) */
+  --particle-color: 212 212 220;
 
   /* Design tokens — typography scale */
   --text-display: clamp(1.5rem, 3vw, 2.5rem);
@@ -55,7 +64,7 @@
 @layer base {
   /* Focus Visible Styles - WCAG 2.4.7 */
   :focus-visible {
-    outline: 3px solid #2DD4BF;
+    outline: 3px solid rgb(var(--focus-ring));
     outline-offset: 2px;
   }
 

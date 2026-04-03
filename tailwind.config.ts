@@ -38,37 +38,37 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
-        // Design token colors — surfaces
+        // Design token colors — surfaces (RGB triplets for palette switching)
         surface: {
-          DEFAULT: '#1A1A1C',
-          darker: '#111113',
-          deep: '#141416',
-          elevated: '#232326',
+          DEFAULT: 'rgb(var(--surface-dark) / <alpha-value>)',
+          darker: 'rgb(var(--surface-darker) / <alpha-value>)',
+          deep: 'rgb(var(--surface-deep) / <alpha-value>)',
+          elevated: 'rgb(var(--surface-elevated) / <alpha-value>)',
         },
         'surface-border': {
-          DEFAULT: '#2E2E32',
-          hover: '#4A4A50',
+          DEFAULT: 'rgb(var(--surface-border) / <alpha-value>)',
+          hover: 'rgb(var(--surface-border-hover) / <alpha-value>)',
         },
         // Design token colors — text
         content: {
-          DEFAULT: '#EEEDF5',
-          secondary: '#C8C5D6',
-          muted: '#9B97B0',
-          faint: '#6B6680',
+          DEFAULT: 'rgb(var(--text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--text-muted) / <alpha-value>)',
+          faint: 'rgb(var(--text-faint) / <alpha-value>)',
         },
         // Design token colors — brand accent
         brand: {
-          DEFAULT: '#0D9488',
-          light: '#2DD4BF',
-          lighter: '#5EEAD4',
-          dark: '#0F766E',
-          darker: '#115E59',
+          DEFAULT: 'rgb(var(--accent-brand) / <alpha-value>)',
+          light: 'rgb(var(--accent-brand-light) / <alpha-value>)',
+          lighter: 'rgb(var(--accent-brand-lighter) / <alpha-value>)',
+          dark: 'rgb(var(--accent-brand-dark) / <alpha-value>)',
+          darker: 'rgb(var(--accent-brand-darker) / <alpha-value>)',
         },
         // Section accent — news
         news: {
-          DEFAULT: '#88B04B',
-          light: '#A5C85A',
-          dark: '#6d8c3c',
+          DEFAULT: 'rgb(var(--accent-news) / <alpha-value>)',
+          light: 'rgb(var(--accent-news-light) / <alpha-value>)',
+          dark: 'rgb(var(--accent-news-dark) / <alpha-value>)',
         },
       },
       borderRadius: {

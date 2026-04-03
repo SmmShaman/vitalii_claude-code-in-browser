@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { getActivePaletteId, getPaletteById } from '@/utils/theme';
 
 export const ParticlesBackground = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,7 +56,7 @@ export const ParticlesBackground = () => {
 
       const particlesMaterial = new THREE.PointsMaterial({
         size: 0.008,
-        color: 0xD4D4DC,
+        color: getPaletteById(getActivePaletteId()).particleHex,
         transparent: true,
         opacity: 0.7,
         blending: THREE.AdditiveBlending,
@@ -126,7 +127,7 @@ export const ParticlesBackground = () => {
       ref={containerRef}
       className="fixed inset-0 -z-10 pointer-events-none"
       style={{
-        background: 'linear-gradient(135deg, rgba(180, 180, 190, 0.05) 0%, rgba(140, 140, 155, 0.08) 100%)',
+        background: getPaletteById(getActivePaletteId()).backgroundGradient,
       }}
     />
   );

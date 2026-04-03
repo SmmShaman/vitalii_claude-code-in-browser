@@ -27,7 +27,7 @@ function NewsListingInner() {
   const languages: Language[] = ['NO', 'EN', 'UA']
 
   useEffect(() => {
-    document.body.style.backgroundColor = '#242428'
+    document.body.style.backgroundColor = 'rgb(var(--surface-listing))'
     return () => { document.body.style.backgroundColor = '' }
   }, [])
 
@@ -128,9 +128,9 @@ function NewsListingInner() {
   const pageBgTint = getActivePageBg(activeTag, tags, 7)
 
   return (
-    <div className="min-h-screen bg-[#242428] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
+    <div className="min-h-screen bg-[rgb(var(--surface-listing))] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#242428]/95 backdrop-blur-sm border-b border-[#3C3C44]">
+      <header className="sticky top-0 z-50 bg-[rgb(var(--surface-listing))]/95 backdrop-blur-sm border-b border-[#3C3C44]">
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
           <Link
             href="/"
@@ -229,7 +229,7 @@ function NewsListingInner() {
 
 function ListingSkeleton() {
   return (
-    <div className="min-h-screen bg-[#242428] flex items-center justify-center">
+    <div className="min-h-screen bg-[rgb(var(--surface-listing))] flex items-center justify-center">
       <Loader2 className="w-8 h-8 text-brand-light animate-spin" />
     </div>
   )

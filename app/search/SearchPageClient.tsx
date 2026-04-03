@@ -28,7 +28,7 @@ function SearchPageInner() {
 
   // Override body background for this page
   useEffect(() => {
-    document.body.style.backgroundColor = '#242428'
+    document.body.style.backgroundColor = 'rgb(var(--surface-listing))'
     return () => { document.body.style.backgroundColor = '' }
   }, [])
 
@@ -195,9 +195,9 @@ function SearchPageInner() {
   const pageBgTint = getActivePageBg(tagParam || null, categoryTags, 7)
 
   return (
-    <div className="min-h-screen bg-[#242428] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
+    <div className="min-h-screen bg-[rgb(var(--surface-listing))] flex flex-col" style={{ backgroundImage: pageBgTint !== 'transparent' ? `linear-gradient(${pageBgTint}, ${pageBgTint})` : undefined }}>
       {/* Compact Sticky Header — 2 rows */}
-      <header className="sticky top-0 z-50 bg-[#242428]/95 backdrop-blur-sm border-b border-[#3C3C44]">
+      <header className="sticky top-0 z-50 bg-[rgb(var(--surface-listing))]/95 backdrop-blur-sm border-b border-[#3C3C44]">
         {/* Row 1: Brand + Search Input + Language */}
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
           <Link
@@ -392,8 +392,8 @@ function SearchPageInner() {
 // Skeleton for Suspense fallback
 function SearchSkeleton() {
   return (
-    <div className="min-h-screen bg-[#242428] flex flex-col">
-      <div className="sticky top-0 z-50 bg-[#242428] border-b border-[#3C3C44]">
+    <div className="min-h-screen bg-[rgb(var(--surface-listing))] flex flex-col">
+      <div className="sticky top-0 z-50 bg-[rgb(var(--surface-listing))] border-b border-[#3C3C44]">
         <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
           <div className="h-6 w-36 bg-[#38383E] rounded animate-pulse" />
           <div className="flex-1 max-w-2xl h-9 bg-[#38383E] rounded-lg animate-pulse" />
