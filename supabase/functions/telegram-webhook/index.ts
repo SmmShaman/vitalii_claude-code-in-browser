@@ -1175,6 +1175,25 @@ serve(async (req) => {
         return original.substring(0, maxOriginalLength) + '\n\n<i>... (скорочено)</i>' + appended
       }
 
+      // Helper: build 6-button pool keyboard (News×3 + Blog×3 + Reject)
+      // Each button triggers preset handler: pr_{variant}{type}{lang}_{newsId}
+      // variant=a (AI auto), type=n/b, lang=e/n/u
+      const buildPoolKeyboard = (nid: string) => ({
+        inline_keyboard: [
+          [
+            { text: '📰 News EN', callback_data: `pr_ane_${nid}` },
+            { text: '📰 News NO', callback_data: `pr_ann_${nid}` },
+            { text: '📰 News UA', callback_data: `pr_anu_${nid}` },
+          ],
+          [
+            { text: '📝 Blog EN', callback_data: `pr_abe_${nid}` },
+            { text: '📝 Blog NO', callback_data: `pr_abn_${nid}` },
+            { text: '📝 Blog UA', callback_data: `pr_abu_${nid}` },
+          ],
+          [{ text: '❌ Reject', callback_data: `reject_${nid}` }],
+        ],
+      })
+
       console.log('Callback received:', callbackData)
 
       // Parse callback data: publish_news_<id>, publish_blog_<id>, or reject_<id>
@@ -2396,18 +2415,8 @@ serve(async (req) => {
           }
         )
 
-        // Update message with STEP 2 buttons: Publish options
-        const newKeyboard = {
-          inline_keyboard: [
-            [
-              { text: '📰 В новини', callback_data: `publish_news_${newsId}` },
-              { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
-            ],
-            [
-              { text: '❌ Reject', callback_data: `reject_${newsId}` }
-            ]
-          ]
-        }
+        // Update message with pool keyboard (6 buttons + reject)
+        const newKeyboard = buildPoolKeyboard(newsId)
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`,
@@ -2755,27 +2764,7 @@ serve(async (req) => {
           }
         )
 
-        const publishKeyboard = isRssSource ? {
-          inline_keyboard: [
-            [
-              { text: '📰 В новини', callback_data: `publish_rss_news_${newsId}` },
-              { text: '📝 В блог', callback_data: `publish_rss_blog_${newsId}` }
-            ],
-            [
-              { text: '❌ Skip', callback_data: `reject_${newsId}` }
-            ]
-          ]
-        } : {
-          inline_keyboard: [
-            [
-              { text: '📰 Опублікувати', callback_data: `publish_news_${newsId}` },
-              { text: '📝 В блог', callback_data: `publish_blog_${newsId}` }
-            ],
-            [
-              { text: '❌ Reject', callback_data: `reject_${newsId}` }
-            ]
-          ]
-        }
+        const publishKeyboard = buildPoolKeyboard(newsId)
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
@@ -2930,18 +2919,8 @@ serve(async (req) => {
           }
         )
 
-        // Update message with RSS publish buttons
-        const rssPublishKeyboard = {
-          inline_keyboard: [
-            [
-              { text: '📰 В новини', callback_data: `publish_rss_news_${newsId}` },
-              { text: '📝 В блог', callback_data: `publish_rss_blog_${newsId}` }
-            ],
-            [
-              { text: '❌ Skip', callback_data: `reject_${newsId}` }
-            ]
-          ]
-        }
+        // Update message with pool keyboard
+        const rssPublishKeyboard = buildPoolKeyboard(newsId)
 
         await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
