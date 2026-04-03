@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { PALETTES, applyPalette, getActivePaletteId, setActivePaletteId, type ColorPalette } from '@/utils/theme'
+import { PALETTES, applyPalette, getActivePaletteId, setActivePaletteId, getPaletteById, type ColorPalette } from '@/utils/theme'
 
 function rgbToHexStr(rgb: string): string {
   const [r, g, b] = rgb.split(' ').map(Number)
@@ -73,39 +73,47 @@ function PreviewCard({ palette }: { palette: ColorPalette }) {
 
 export function ThemeSettings() {
   const [activePaletteId, setActive] = useState('neutral-dark')
+  const [savedPaletteId, setSavedId] = useState('neutral-dark')
   const [saving, setSaving] = useState(false)
   const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
-  // supabase client imported from @/integrations/supabase/client
 
   useEffect(() => {
-    setActive(getActivePaletteId())
+    const id = getActivePaletteId()
+    setActive(id)
+    setSavedId(id)
   }, [])
 
-  const handleSelect = async (palette: ColorPalette) => {
-    // Instant preview
+  const hasUnsavedChanges = activePaletteId !== savedPaletteId
+
+  // Preview only — apply CSS vars + localStorage, no DB save
+  const handlePreview = (palette: ColorPalette) => {
     applyPalette(palette)
     setActive(palette.id)
     setActivePaletteId(palette.id)
+    setSaveResult(null)
+  }
 
-    // Save to DB
+  // Save to DB — persists across sessions for all visitors
+  const handleSave = async () => {
     setSaving(true)
     setSaveResult(null)
     try {
       const { data } = await supabase
         .from('api_settings')
-        .update({ key_value: palette.id })
+        .update({ key_value: activePaletteId })
         .eq('key_name', 'ACTIVE_COLOR_PALETTE')
         .select()
 
       if (!data || data.length === 0) {
         await supabase.from('api_settings').insert({
           key_name: 'ACTIVE_COLOR_PALETTE',
-          key_value: palette.id,
+          key_value: activePaletteId,
           description: 'Active color palette for the site',
           is_active: true,
         })
       }
-      setSaveResult({ ok: true, msg: `${palette.name} applied` })
+      setSavedId(activePaletteId)
+      setSaveResult({ ok: true, msg: `${getPaletteById(activePaletteId).name} saved!` })
     } catch (e: any) {
       setSaveResult({ ok: false, msg: e.message || 'Save failed' })
     } finally {
@@ -113,40 +121,79 @@ export function ThemeSettings() {
     }
   }
 
+  // Revert to saved palette
+  const handleRevert = () => {
+    const palette = getPaletteById(savedPaletteId)
+    applyPalette(palette)
+    setActive(savedPaletteId)
+    setActivePaletteId(savedPaletteId)
+    setSaveResult(null)
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">Color Palette</h3>
-          <p className="text-sm text-gray-400">Switch the site color scheme instantly</p>
+          <p className="text-sm text-gray-400">Click to preview, then Save to apply for all visitors</p>
         </div>
-        {saveResult && (
-          <span className={`text-sm px-3 py-1 rounded-full ${saveResult.ok ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-            {saveResult.msg}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {saveResult && (
+            <span className={`text-sm px-3 py-1 rounded-full ${saveResult.ok ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+              {saveResult.msg}
+            </span>
+          )}
+          {hasUnsavedChanges && (
+            <button
+              onClick={handleRevert}
+              className="px-4 py-2 text-sm rounded-lg border border-white/20 text-gray-300 hover:bg-white/5 transition-colors"
+            >
+              Revert
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasUnsavedChanges}
+            className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
+              hasUnsavedChanges
+                ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/20'
+                : 'bg-white/5 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {saving ? 'Saving...' : hasUnsavedChanges ? '💾 Save' : 'Saved'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {PALETTES.map(palette => {
           const isActive = palette.id === activePaletteId
+          const isSaved = palette.id === savedPaletteId
+          const isPreview = isActive && !isSaved
           return (
             <button
               key={palette.id}
-              onClick={() => handleSelect(palette)}
+              onClick={() => handlePreview(palette)}
               disabled={saving}
               className={`text-left p-4 rounded-xl border-2 transition-all duration-200 ${
                 isActive
-                  ? 'border-green-500 bg-white/5 shadow-lg shadow-green-500/10'
+                  ? isPreview
+                    ? 'border-amber-500 bg-white/5 shadow-lg shadow-amber-500/10'
+                    : 'border-green-500 bg-white/5 shadow-lg shadow-green-500/10'
                   : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <span className="text-sm font-semibold text-white">{palette.name}</span>
-                  {isActive && (
+                  {isActive && isSaved && (
                     <span className="ml-2 text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">
-                      Active
+                      Saved
+                    </span>
+                  )}
+                  {isPreview && (
+                    <span className="ml-2 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">
+                      Preview
                     </span>
                   )}
                 </div>
