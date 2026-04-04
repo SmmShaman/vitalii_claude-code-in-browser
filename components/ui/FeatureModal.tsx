@@ -229,7 +229,7 @@ export const FeatureModal = ({
                   >
                     {Icon && <Icon className="w-4 h-4" />}
                     <span className="hidden sm:inline">{cat.label[lang]}</span>
-                    <span className="text-xs opacity-60">({count})</span>
+                    <span className="text-sm opacity-80">{count}</span>
                   </button>
                 );
               })}
