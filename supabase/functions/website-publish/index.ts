@@ -108,7 +108,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a professional content writer. Rewrite the article in THREE languages: English, Norwegian (Bokmål), and Ukrainian. Return ONLY valid JSON:
+            content: `You are a professional news journalist. Rewrite the article in THREE languages: English, Norwegian (Bokmål), and Ukrainian. Return ONLY valid JSON:
 {
   "en": { "title": "...", "content": "...", "description": "..." },
   "no": { "title": "...", "content": "...", "description": "..." },
@@ -116,13 +116,22 @@ serve(async (req) => {
   "tags": ["tag1", "tag2", "tag3"]
 }
 
-Rules:
+CRITICAL FORMATTING RULES:
+- NEVER use markdown: no **, no *, no #, no [], no ()
+- NEVER use bold, italic, or any formatting markers
+- Write PLAIN TEXT only — no special characters for emphasis
+- Do NOT highlight names, terms, or keywords with any symbols
+- Paragraphs separated by double newline only
+- Do NOT add "Read more" or source links — they are added automatically
+
+CONTENT RULES:
 - Each language must be REAL (not transliterated English)
 - Norwegian must be proper Bokmål
 - Ukrainian must use Cyrillic script
-- "description" = 1-2 sentences for SEO meta
-- "content" = concise, informative summary (300-600 words per language)
-- All 3 versions must cover the same facts but written naturally for each language`
+- "description" = 1-2 sentences for SEO meta, plain text
+- "content" = concise, informative article (300-600 words per language)
+- All 3 versions must cover the same facts but written naturally for each language
+- Write like a human journalist, not like AI — avoid generic filler phrases`
           },
           { role: 'user', content: systemPrompt }
         ],
@@ -157,13 +166,13 @@ Rules:
       }
     }
 
-    // Append source links per language
+    // Append source links per language (plain HTML, no markdown)
     let hostname = 'Source'
     try { hostname = new URL(sourceUrl).hostname.replace('www.', '') } catch {}
-    const readMore: Record<string, string> = { en: 'Read more', no: 'Les mer', ua: 'Читати далі' }
+    const readMore: Record<string, string> = { en: 'Source', no: 'Kilde', ua: 'Джерело' }
     for (const lang of ['en', 'no', 'ua']) {
       if (sourceUrl) {
-        rewritten[lang].content += `\n\n**${readMore[lang]}:** [${hostname}](${sourceUrl})`
+        rewritten[lang].content += `\n\n${readMore[lang]}: ${hostname}`
       }
     }
 

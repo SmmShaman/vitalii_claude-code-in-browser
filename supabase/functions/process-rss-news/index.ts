@@ -146,7 +146,15 @@ async function processWithPrompt(
   "ua": { "title": "...", "content": "...", "description": "..." },
   "tags": ["tag1", "tag2", "tag3"]
 }
-CRITICAL: ALL three languages (en, no, ua) are MANDATORY. Norwegian must be real Bokmål. Ukrainian must be real Ukrainian with Cyrillic. Each must have title, content, description.`
+CRITICAL RULES:
+- ALL three languages (en, no, ua) are MANDATORY
+- Norwegian must be real Bokmål. Ukrainian must be real Ukrainian with Cyrillic
+- Each must have title, content, description
+- NEVER use markdown formatting: no **, no *, no #, no [], no ()
+- Write PLAIN TEXT only — no bold, no italic, no links, no special symbols
+- Separate paragraphs with double newline only
+- Do NOT add source links — they are added automatically
+- Write like a human journalist, avoid AI-typical filler phrases`
         },
         {
           role: 'user',
@@ -209,18 +217,18 @@ CRITICAL: ALL three languages (en, no, ua) are MANDATORY. Norwegian must be real
   if (sourceUrl) {
     console.log(`📎 Appending source link to content: ${sourceUrl}`)
 
-    const formatSourceLink = (content: string, headerText: string, url: string): string => {
+    const appendSource = (content: string, label: string, url: string): string => {
       try {
         const hostname = new URL(url).hostname.replace('www.', '')
-        return `${content}\n\n**${headerText}:** [${hostname}](${url})`
+        return `${content}\n\n${label}: ${hostname}`
       } catch {
-        return `${content}\n\n**${headerText}:** [Source](${url})`
+        return content
       }
     }
 
-    rewrittenContent.en.content = formatSourceLink(rewrittenContent.en.content, 'Read more', sourceUrl)
-    rewrittenContent.no.content = formatSourceLink(rewrittenContent.no.content, 'Les mer', sourceUrl)
-    rewrittenContent.ua.content = formatSourceLink(rewrittenContent.ua.content, 'Детальніше', sourceUrl)
+    rewrittenContent.en.content = appendSource(rewrittenContent.en.content, 'Source', sourceUrl)
+    rewrittenContent.no.content = appendSource(rewrittenContent.no.content, 'Kilde', sourceUrl)
+    rewrittenContent.ua.content = appendSource(rewrittenContent.ua.content, 'Джерело', sourceUrl)
   }
 
   // Generate slugs with transliteration and unique suffix
