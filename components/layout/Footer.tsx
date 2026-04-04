@@ -207,11 +207,9 @@ export const Footer = () => {
           background: `linear-gradient(160deg, rgb(var(--surface-darker) / 0.88) 0%, rgb(var(--surface-dark) / 0.92) 50%, rgb(var(--surface-deep) / 0.9) 100%)`,
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          border: `1px solid rgb(var(--accent-brand) / 0.15)`,
-          boxShadow: `0 -1px 0 rgb(var(--accent-brand) / 0.1), 0 12px 40px rgba(0, 0, 0, 0.3)`,
         }}
       >
-        <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
+        <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-1">
           {/* Top row: Clock, Weather Info, Social Icons */}
           <div className="flex items-center justify-between gap-4">
             {/* Left: Clock */}

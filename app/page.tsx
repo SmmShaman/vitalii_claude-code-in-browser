@@ -91,7 +91,7 @@ export default function HomePage() {
 
       {/* Footer - Only show on desktop, mobile has BottomNavigation */}
       {!isMobile && (
-        <div className="flex-shrink-0 relative z-20 mt-3 sm:mt-4">
+        <div className="flex-shrink-0 relative z-20 mt-[20px]">
           <Footer />
         </div>
       )}
