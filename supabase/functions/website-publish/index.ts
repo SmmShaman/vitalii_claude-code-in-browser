@@ -12,7 +12,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-const VERSION = '2026-03-30-fix-azure-check'
+const VERSION = '2026-04-04-trilingual'
 
 interface WebsitePublishRequest {
   newsId: string
@@ -90,17 +90,14 @@ serve(async (req) => {
     const prompt = prompts[0]
     const openingStyle = getRandomOpeningStyle('news')
 
-    // Build single-language prompt
-    const langName = targetLang === 'no' ? 'Norwegian (Bokmål)' : 'English'
-    const readMoreText = targetLang === 'no' ? 'Les mer' : 'Read more'
-
+    // Build trilingual prompt
     const systemPrompt = prompt.prompt_text
       .replace('{title}', title)
       .replace('{content}', content.substring(0, 6000))
       .replace('{url}', sourceUrl)
       + `\n\nOPENING STYLE DIRECTIVE: ${openingStyle}`
 
-    console.log('📝 Rewriting with AI (single language)...')
+    console.log('📝 Rewriting with AI (trilingual EN/NO/UA)...')
 
     const response = await azureFetch('gemini', {
       method: 'POST',
@@ -111,20 +108,26 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a professional content writer. Rewrite the article in ${langName} ONLY. Return ONLY valid JSON:
+            content: `You are a professional content writer. Rewrite the article in THREE languages: English, Norwegian (Bokmål), and Ukrainian. Return ONLY valid JSON:
 {
-  "title": "...",
-  "content": "...",
-  "description": "...",
+  "en": { "title": "...", "content": "...", "description": "..." },
+  "no": { "title": "...", "content": "...", "description": "..." },
+  "ua": { "title": "...", "content": "...", "description": "..." },
   "tags": ["tag1", "tag2", "tag3"]
 }
 
-Write a concise, informative summary. The "description" should be 1-2 sentences for SEO meta description.`
+Rules:
+- Each language must be REAL (not transliterated English)
+- Norwegian must be proper Bokmål
+- Ukrainian must use Cyrillic script
+- "description" = 1-2 sentences for SEO meta
+- "content" = concise, informative summary (300-600 words per language)
+- All 3 versions must cover the same facts but written naturally for each language`
           },
           { role: 'user', content: systemPrompt }
         ],
         temperature: 0.5,
-        max_tokens: 3000
+        max_tokens: 8000
       })
     })
 
@@ -136,38 +139,51 @@ Write a concise, informative summary. The "description" should be 1-2 sentences 
     const data = await response.json()
     const aiContent = data.choices[0]?.message?.content?.trim()
 
-    const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
+    // Strip markdown fences
+    let cleaned = aiContent
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+    }
+
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('Failed to parse AI response')
 
     const rewritten = JSON.parse(jsonMatch[0])
-    if (!rewritten.title || !rewritten.content) {
-      throw new Error('AI response missing title or content')
+
+    // Validate all 3 languages present
+    for (const lang of ['en', 'no', 'ua']) {
+      if (!rewritten[lang]?.title || !rewritten[lang]?.content) {
+        throw new Error(`AI response missing ${lang} title or content`)
+      }
     }
 
-    // Append source link
-    if (sourceUrl) {
-      try {
-        const hostname = new URL(sourceUrl).hostname.replace('www.', '')
-        rewritten.content += `\n\n**${readMoreText}:** [${hostname}](${sourceUrl})`
-      } catch {
-        rewritten.content += `\n\n**${readMoreText}:** [Source](${sourceUrl})`
+    // Append source links per language
+    let hostname = 'Source'
+    try { hostname = new URL(sourceUrl).hostname.replace('www.', '') } catch {}
+    const readMore: Record<string, string> = { en: 'Read more', no: 'Les mer', ua: 'Читати далі' }
+    for (const lang of ['en', 'no', 'ua']) {
+      if (sourceUrl) {
+        rewritten[lang].content += `\n\n**${readMore[lang]}:** [${hostname}](${sourceUrl})`
       }
     }
 
     const tags = rewritten.tags || []
     const uniqueSuffix = newsId.substring(0, 8)
 
-    // Generate slugs for all 3 languages from the single title (for SEO/routing)
-    const slug = generateLocalizedSlug(rewritten.title, targetLang, uniqueSuffix)
-
-    // Build update object: fill target language, generate slugs for all
+    // Build update object with all 3 languages
     const update: Record<string, any> = {
-      // Primary language content
-      [`title_${targetLang}`]: rewritten.title,
-      [`content_${targetLang}`]: rewritten.content,
-      [`description_${targetLang}`]: rewritten.description || '',
-      [`slug_${targetLang}`]: slug,
-      // Tags & status
+      title_en: rewritten.en.title,
+      content_en: rewritten.en.content,
+      description_en: rewritten.en.description || '',
+      slug_en: generateLocalizedSlug(rewritten.en.title, 'en', uniqueSuffix),
+      title_no: rewritten.no.title,
+      content_no: rewritten.no.content,
+      description_no: rewritten.no.description || '',
+      slug_no: generateLocalizedSlug(rewritten.no.title, 'no', uniqueSuffix),
+      title_ua: rewritten.ua.title,
+      content_ua: rewritten.ua.content,
+      description_ua: rewritten.ua.description || '',
+      slug_ua: generateLocalizedSlug(rewritten.ua.title, 'ua', uniqueSuffix),
       tags: tags.length > 0 ? tags : null,
       is_rewritten: true,
       is_published: true,
@@ -176,10 +192,9 @@ Write a concise, informative summary. The "description" should be 1-2 sentences 
       pre_moderation_status: 'approved',
     }
 
-    // Generate slugs for other languages too (for routing/SEO)
-    const otherLangs = ['en', 'no', 'ua'].filter(l => l !== targetLang)
-    for (const lang of otherLangs) {
-      update[`slug_${lang}`] = generateLocalizedSlug(rewritten.title, lang, uniqueSuffix)
+    // Preserve original image from RSS source
+    if (news.image_url && !news.processed_image_url) {
+      update.processed_image_url = news.image_url
     }
 
     const { error: updateError } = await supabase
@@ -189,7 +204,7 @@ Write a concise, informative summary. The "description" should be 1-2 sentences 
 
     if (updateError) throw updateError
 
-    console.log(`✅ Published to website: ${newsId} (${targetLang})`)
+    console.log(`✅ Published to website: ${newsId} (EN/NO/UA trilingual)`)
 
     // Cross-link enrichment (non-blocking)
     fetch(`${SUPABASE_URL}/functions/v1/enrich-article-links`, {
@@ -208,7 +223,7 @@ Write a concise, informative summary. The "description" should be 1-2 sentences 
       .eq('id', prompt.id)
 
     return new Response(
-      JSON.stringify({ success: true, newsId, language: targetLang }),
+      JSON.stringify({ success: true, newsId, languages: ['en', 'no', 'ua'] }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
