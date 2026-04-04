@@ -73,46 +73,98 @@ html[data-mode="light"] {
 html[data-mode="light"] .text-white {
   color: rgb(var(--text-primary)) !important;
 }
-html[data-mode="light"] .text-white\/90,
+/* Text opacity variants — map to appropriate contrast levels */
+html[data-mode="light"] .text-white\/95,
+html[data-mode="light"] .text-white\/90 {
+  color: rgb(var(--text-primary)) !important;
+}
 html[data-mode="light"] .text-white\/80,
-html[data-mode="light"] .text-white\/70,
-html[data-mode="light"] .text-white\/60,
-html[data-mode="light"] .text-white\/50,
-html[data-mode="light"] .text-white\/30 {
+html[data-mode="light"] .text-white\/70 {
   color: rgb(var(--text-secondary)) !important;
 }
+html[data-mode="light"] .text-white\/60,
+html[data-mode="light"] .text-white\/50 {
+  color: rgb(var(--text-muted)) !important;
+}
+html[data-mode="light"] .text-white\/40,
+html[data-mode="light"] .text-white\/30 {
+  color: rgb(var(--text-faint)) !important;
+}
+/* Decorative near-invisible text — keep subtle but visible */
+html[data-mode="light"] .text-white\/20,
+html[data-mode="light"] .text-white\/10,
+html[data-mode="light"] .text-white\/5 {
+  color: rgb(var(--surface-border)) !important;
+}
+
+/* White backgrounds → use surface tokens */
 html[data-mode="light"] .bg-white {
   background-color: rgb(var(--surface-elevated)) !important;
 }
 html[data-mode="light"] .bg-white\/5,
-html[data-mode="light"] .bg-white\/10,
-html[data-mode="light"] .bg-white\/20 {
-  background-color: rgb(var(--surface-dark) / 0.06) !important;
+html[data-mode="light"] .bg-white\/10 {
+  background-color: rgb(var(--text-primary) / 0.04) !important;
 }
+html[data-mode="light"] .bg-white\/20,
+html[data-mode="light"] .bg-white\/30 {
+  background-color: rgb(var(--text-primary) / 0.06) !important;
+}
+
+/* Black backgrounds → light equivalents */
 html[data-mode="light"] .bg-black {
   background-color: rgb(var(--surface-darker)) !important;
 }
-html[data-mode="light"] .bg-black\/50,
-html[data-mode="light"] .bg-black\/60,
-html[data-mode="light"] .bg-black\/80 {
-  background-color: rgb(var(--surface-dark) / 0.15) !important;
+html[data-mode="light"] .bg-black\/40 {
+  background-color: rgb(var(--text-primary) / 0.08) !important;
 }
+html[data-mode="light"] .bg-black\/50 {
+  background-color: rgb(var(--text-primary) / 0.10) !important;
+}
+html[data-mode="light"] .bg-black\/60 {
+  background-color: rgb(var(--text-primary) / 0.12) !important;
+}
+html[data-mode="light"] .bg-black\/80 {
+  background-color: rgb(var(--text-primary) / 0.18) !important;
+}
+
+/* Borders */
 html[data-mode="light"] .border-white\/10,
-html[data-mode="light"] .border-white\/20 {
+html[data-mode="light"] .border-white\/20,
+html[data-mode="light"] .border-white\/30 {
   border-color: rgb(var(--surface-border)) !important;
+}
+
+/* Gradients from-black → from-surface for light mode */
+html[data-mode="light"] .from-black\/30,
+html[data-mode="light"] .from-black\/40,
+html[data-mode="light"] .from-black\/50,
+html[data-mode="light"] .from-black\/60 {
+  --tw-gradient-from: rgb(var(--text-primary) / 0.08) !important;
+}
+
+/* Gray text — consistent with token system */
+html[data-mode="light"] .text-gray-300 {
+  color: rgb(var(--text-secondary)) !important;
 }
 html[data-mode="light"] .text-gray-400 {
   color: rgb(var(--text-muted)) !important;
 }
-html[data-mode="light"] .text-gray-500 {
+html[data-mode="light"] .text-gray-500,
+html[data-mode="light"] .text-gray-600 {
   color: rgb(var(--text-faint)) !important;
 }
-html[data-mode="light"] .text-gray-300 {
-  color: rgb(var(--text-secondary)) !important;
+
+/* Form inputs — borders & placeholders */
+html[data-mode="light"] .border-gray-600,
+html[data-mode="light"] .border-gray-700 {
+  border-color: rgb(var(--surface-border)) !important;
 }
-html[data-mode="light"] .placeholder-gray-500::placeholder {
+html[data-mode="light"] .placeholder-gray-500::placeholder,
+html[data-mode="light"] .placeholder-gray-400::placeholder {
   color: rgb(var(--text-faint)) !important;
 }
+
+/* Shadows — lighter for light mode */
 html[data-mode="light"] .shadow-lg,
 html[data-mode="light"] .shadow-xl,
 html[data-mode="light"] .shadow-2xl {
