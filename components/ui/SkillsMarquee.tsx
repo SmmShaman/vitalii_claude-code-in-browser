@@ -425,7 +425,7 @@ export function SkillsMarquee() {
           return (
             <span key={`ch-${i}`} ref={el => { charRefs.current[i] = el }}
               className="absolute top-0 left-0 pointer-events-auto cursor-pointer select-none"
-              style={{ fontFamily: 'Comfortaa, sans-serif', fontSize: '10px', lineHeight: '14px',
+              style={{ fontFamily: 'Comfortaa, sans-serif', fontSize: '9px', lineHeight: '12px',
                 color: c.color, fontWeight: 600, willChange: 'transform' }}
               onMouseEnter={onHoverIn} onMouseLeave={onHoverOut} onClick={handleCharClick}
             >{ch.char}</span>
