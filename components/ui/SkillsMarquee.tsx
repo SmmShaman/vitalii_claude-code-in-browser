@@ -77,11 +77,12 @@ function measureAllPaths(gridEl: HTMLElement, origin: DOMRect): { paths: Path[];
   }
   const vHalf = vMids.length > 0 ? vMids[0].half : hHalf
 
-  // --- Outer contour: same offset from sections as internal midlines ---
-  const cx1 = Math.max(2, secLeft - vHalf)
-  const cx2 = Math.min(origin.width - 2, secRight + vHalf)
-  const cy1 = Math.max(2, secTop - hHalf)
-  const cy2 = Math.min(origin.height - 2, secBottom + hHalf)
+  // --- Outer contour: offset from sections by half-gap, clamped to grid area ---
+  // Clamp to grid bounds + gap (don't extend into header/footer areas)
+  const cx1 = Math.max(secLeft - vHalf, secLeft - gap / 2)
+  const cx2 = Math.min(secRight + vHalf, secRight + gap / 2)
+  const cy1 = Math.max(secTop - hHalf, secTop - gap / 2)
+  const cy2 = Math.min(secBottom + hHalf, secBottom + gap / 2)
   const cw = cx2 - cx1
   const ch = cy2 - cy1
 
@@ -268,12 +269,14 @@ export function SkillsMarquee() {
 
     pathsRef.current = layout.paths
 
-    // Character sizing based on gap
-    const fs = Math.max(8, Math.min(11, layout.gap * 0.45))
+    // Character sizing based on gap — keep chars well within street width
+    // gap=20px → fs=8px, lineHeight=10px → 5px clearance each side
+    const fs = Math.max(7, Math.min(10, layout.gap * 0.4))
+    const lh = Math.round(fs * 1.2)
     for (const el of charRefs.current) {
       if (!el) continue
       el.style.fontSize = `${fs}px`
-      el.style.lineHeight = `${Math.round(fs * 1.4)}px`
+      el.style.lineHeight = `${lh}px`
     }
 
     // Measure char widths → cumulative offsets within each skill
