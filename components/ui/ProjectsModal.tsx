@@ -109,7 +109,7 @@ export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex
                         )}
                       </h3>
 
-                      <p className="text-sm text-content-secondary mb-2">
+                      <p className="text-base text-content-secondary mb-2 leading-relaxed">
                         {project.short}
                       </p>
 
@@ -185,7 +185,7 @@ export const ProjectsModal = ({ open, onOpenChange, projects, activeProjectIndex
                           <span className="text-2xl leading-none flex-shrink-0">{highlight.emoji}</span>
                           <div>
                             <h4 className="font-bold text-content text-sm">{highlight.title}</h4>
-                            <p className="text-content-secondary text-sm mt-0.5">{highlight.desc}</p>
+                            <p className="text-content-secondary text-base mt-0.5 leading-relaxed">{highlight.desc}</p>
                           </div>
                         </div>
                       </motion.div>

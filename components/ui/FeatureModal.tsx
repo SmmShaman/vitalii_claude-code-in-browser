@@ -373,7 +373,7 @@ export const FeatureModal = ({
                       <h4 className="text-sm font-semibold text-content-secondary uppercase tracking-wider mb-2">
                         {t.problem}
                       </h4>
-                      <p className="text-sm text-content-secondary leading-relaxed">
+                      <p className="text-base text-content-secondary leading-relaxed">
                         {selectedFeature.problem[lang]}
                       </p>
                     </div>
@@ -383,7 +383,7 @@ export const FeatureModal = ({
                       <h4 className="text-sm font-semibold text-brand-light uppercase tracking-wider mb-2">
                         {t.solution}
                       </h4>
-                      <p className="text-sm text-content-secondary leading-relaxed">
+                      <p className="text-base text-content-secondary leading-relaxed">
                         {selectedFeature.solution[lang]}
                       </p>
                     </div>
@@ -393,7 +393,7 @@ export const FeatureModal = ({
                       <h4 className="text-sm font-semibold text-brand uppercase tracking-wider mb-2">
                         {t.result}
                       </h4>
-                      <p className="text-sm text-content-secondary leading-relaxed">
+                      <p className="text-base text-content-secondary leading-relaxed">
                         {selectedFeature.result[lang]}
                       </p>
                     </div>

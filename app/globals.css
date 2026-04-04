@@ -171,6 +171,19 @@ html[data-mode="light"] .shadow-2xl {
   --tw-shadow-color: rgba(0, 0, 0, 0.08);
 }
 
+/* ═══════════════════════════════════════════════════
+   TYPOGRAPHY RHYTHM — consistent line heights
+   ═══════════════════════════════════════════════════ */
+h1, h2, h3, .text-3xl, .text-4xl, .text-5xl {
+  line-height: 1.2;
+}
+h4, h5, .text-xl, .text-2xl {
+  line-height: 1.3;
+}
+.text-base, .text-lg {
+  line-height: 1.6;
+}
+
 @layer base {
   /* Focus Visible Styles - WCAG 2.4.7 */
   :focus-visible {

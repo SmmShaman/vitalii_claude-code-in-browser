@@ -214,21 +214,21 @@ const ServicesExplosionOverlay = ({
 
                       {/* Short description */}
                       {service.description && (
-                        <p className="text-content-secondary text-xs mb-2 italic">
+                        <p className="text-content-secondary text-sm mb-2 italic">
                           {service.description}
                         </p>
                       )}
 
                       {/* Detailed description */}
                       {service.detailedDescription && (
-                        <p className="text-content-secondary text-sm leading-relaxed">
+                        <p className="text-content-secondary text-base leading-relaxed">
                           {service.detailedDescription}
                         </p>
                       )}
 
                       {/* Simple explanation */}
                       {service.simpleExplanation && (
-                        <p className="text-content-secondary text-xs leading-relaxed mt-2">
+                        <p className="text-content-secondary text-sm leading-relaxed mt-2">
                           {service.simpleExplanation}
                         </p>
                       )}
@@ -1522,7 +1522,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                 ref={aboutTextRef}
                 className="h-full overflow-y-auto pr-2 scrollbar-thin scroll-smooth"
               >
-                <p className="text-sm leading-relaxed text-content-secondary whitespace-pre-line">
+                <p className="text-base leading-relaxed text-content-secondary whitespace-pre-line">
                   {typedText}
                   {isTyping && (
                     <span className="inline-block w-0.5 h-4 bg-brand-light ml-0.5 animate-[cursor-blink_1s_steps(2)_infinite]" />
@@ -1566,7 +1566,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                     >
                       {flatServicesList[currentServiceIndex]?.title}
                     </h3>
-                    <p className="text-content-muted text-xs mt-2 italic">
+                    <p className="text-content-muted text-sm mt-2 italic">
                       {flatServicesList[currentServiceIndex]?.description}
                     </p>
                   </motion.div>
