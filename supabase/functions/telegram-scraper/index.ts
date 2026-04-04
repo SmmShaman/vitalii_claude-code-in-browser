@@ -772,8 +772,8 @@ serve(async (req) => {
                 approvedCount++
                 totalApproved++
 
-                // 🤖 Auto-publish: fire-and-forget if enabled
-                if (isAutoPublishEnabled) {
+                // 🤖 Auto-publish: only for RSS sources, Telegram channels go to manual moderation
+                if (false) { // DISABLED for telegram-scraper: Telegram news must go through manual bot moderation
                   console.log(`🤖 Auto-publish enabled — firing auto-publish pipeline for post ${post.messageId}`)
                   try {
                     // Fire-and-forget: don't await the response
