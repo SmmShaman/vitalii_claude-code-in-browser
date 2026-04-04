@@ -293,7 +293,7 @@ export const ServicesDetail = ({ categories, isOpen, onClose }: ServicesDetailPr
                                 fontFamily: '"Host Grotesk", sans-serif',
                                 fontWeight: 400,
                                 fontSize: 'clamp(0.55rem, 0.9vw, 0.75rem)',
-                                color: '#9B97B0',
+                                color: 'rgb(var(--text-muted))',
                                 lineHeight: 1.3,
                               }}
                             >

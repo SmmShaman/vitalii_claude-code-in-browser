@@ -190,9 +190,9 @@ export const Footer = () => {
   const textAccent = isMobile ? 'text-content' : ''
   const hoverBg = isMobile ? 'hover:bg-surface-elevated active:bg-surface-border' : 'hover:bg-white/10 active:bg-white/20'
 
-  // Desktop refined colors (Obsidian Prism)
-  const dPrimary = 'rgba(245, 243, 255, 0.95)'
-  const dSecondary = 'rgba(167, 160, 195, 0.8)'
+  // Desktop refined colors — use CSS variables for palette support
+  const dPrimary = 'rgb(var(--text-primary))'
+  const dSecondary = 'rgb(var(--text-muted))'
   const dAccent = '#fbbf24'
 
   return (
@@ -279,7 +279,7 @@ export const Footer = () => {
                 onMouseLeave={() => setSelectedSocial(null)}
               >
                 <Mail className="w-4 h-4 sm:w-4 sm:h-4" style={{
-                  color: !isMobile && selectedSocial === 'Email' ? '#EA4335' : (isMobile ? '#EA4335' : 'rgba(167, 160, 195, 0.5)'),
+                  color: !isMobile && selectedSocial === 'Email' ? '#EA4335' : (isMobile ? '#EA4335' : 'rgb(var(--text-faint))'),
                   filter: !isMobile && selectedSocial === 'Email' ? 'drop-shadow(0 0 8px rgba(234, 67, 53, 0.25))' : 'none',
                   transition: 'color 0.3s ease, filter 0.3s ease',
                 }} />
@@ -312,7 +312,7 @@ export const Footer = () => {
                     onMouseLeave={() => setSelectedSocial(null)}
                   >
                     <Icon className="w-4 h-4 sm:w-4 sm:h-4" style={{
-                      color: !isMobile && selectedSocial === social.label ? social.color : (isMobile ? social.color : 'rgba(167, 160, 195, 0.5)'),
+                      color: !isMobile && selectedSocial === social.label ? social.color : (isMobile ? social.color : 'rgb(var(--text-faint))'),
                       filter: !isMobile && selectedSocial === social.label ? `drop-shadow(0 0 8px ${social.color}25)` : 'none',
                       transition: 'color 0.3s ease, filter 0.3s ease',
                     }} />

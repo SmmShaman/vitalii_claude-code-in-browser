@@ -399,7 +399,7 @@ export const ServicesAnimation = ({ categories, currentLanguage = 'EN' }: Servic
                 style={{
                   fontSize: isHovered ? hoverFontSize : 'clamp(1.2rem, 3.5vw, 2.5rem)',
                   fontWeight: 900,
-                  color: '#EEEDF5',
+                  color: 'rgb(var(--text-primary))',
                   lineHeight: 1.3,
                   wordBreak: 'normal',
                   overflowWrap: 'normal',
