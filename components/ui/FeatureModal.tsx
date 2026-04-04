@@ -19,20 +19,20 @@ function FeatureMeta({ feature, projectUrl }: { feature: Feature; projectUrl?: s
   const date = ext.createdAt ? new Date(ext.createdAt).toLocaleDateString('no-NO') : null
 
   return (
-    <div className="flex flex-wrap items-center gap-3 text-xs text-white/30">
+    <div className="flex flex-wrap items-center gap-3 text-xs text-content-faint">
       {date && <span>{date}</span>}
       {commits.slice(0, 2).map(hash => {
         const short = hash.slice(0, 7)
         return repoUrl ? (
           <a key={hash} href={`${repoUrl}/commit/${hash}`} target="_blank" rel="noopener noreferrer"
-            className="font-mono text-white/40 hover:text-white/80 underline decoration-white/20 hover:decoration-white/60 transition-colors">
+            className="font-mono text-content-faint hover:text-content-secondary underline decoration-content-faint/50 hover:decoration-content-secondary/50 transition-colors">
             {short}
           </a>
         ) : <span key={hash} className="font-mono">{short}</span>
       })}
       {projectUrl && (
         <a href={projectUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-white/40 hover:text-white/70 transition-colors">
+          className="inline-flex items-center gap-1 text-content-faint hover:text-content-muted transition-colors">
           <ExternalLink className="w-3 h-3" /> {projectUrl}
         </a>
       )}
@@ -186,18 +186,18 @@ export const FeatureModal = ({
       <Dialog.Root open={open && !isDetailOpen} onOpenChange={handleOpenChange}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 animate-in fade-in" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-6xl max-h-[90vh] bg-gradient-to-br from-surface to-surface-elevated backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-50 overflow-hidden">
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-6xl max-h-[90vh] bg-gradient-to-br from-surface to-surface-elevated backdrop-blur-md rounded-2xl shadow-2xl border border-surface-border z-50 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
-              <Dialog.Title className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-surface-border">
+              <Dialog.Title className="text-xl sm:text-2xl font-bold text-content flex items-center gap-2">
                 {activeFilter ? (
                   <>
-                    <span className="text-sm font-normal text-white/50">{t.title} /</span>
-                    <span className={`text-lg ${techFilter ? 'text-blue-400' : 'text-white/80'}`}>{activeFilter}</span>
-                    <span className="text-xs text-white/30">({filteredFeatures.length})</span>
+                    <span className="text-sm font-normal text-content-muted">{t.title} /</span>
+                    <span className={`text-lg ${techFilter ? 'text-brand-light' : 'text-content-secondary'}`}>{activeFilter}</span>
+                    <span className="text-xs text-content-faint">({filteredFeatures.length})</span>
                     <button
                       onClick={() => setTechFilter(null)}
-                      className="ml-1 text-white/40 hover:text-white/80"
+                      className="ml-1 text-content-faint hover:text-content-secondary"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -206,7 +206,7 @@ export const FeatureModal = ({
                   t.title
                 )}
               </Dialog.Title>
-              <Dialog.Close className="text-white/70 hover:text-white transition-colors">
+              <Dialog.Close className="text-content-muted hover:text-content transition-colors">
                 <X className="w-6 h-6" />
               </Dialog.Close>
             </div>
@@ -224,7 +224,7 @@ export const FeatureModal = ({
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                       isActive
                         ? `${cat.color.bg} ${cat.color.text} border border-current/30`
-                        : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80 border border-transparent'
+                        : 'bg-surface-elevated text-content-muted hover:bg-surface-border hover:text-content-secondary border border-transparent'
                     }`}
                   >
                     {Icon && <Icon className="w-4 h-4" />}
@@ -243,8 +243,8 @@ export const FeatureModal = ({
                   onClick={() => setProjectFilter(filter)}
                   className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
                     projectFilter === filter
-                      ? 'bg-white/20 text-white'
-                      : 'bg-white/5 text-white/50 hover:bg-white/10'
+                      ? 'bg-surface-border text-content'
+                      : 'bg-surface-elevated text-content-muted hover:bg-surface-border'
                   }`}
                 >
                   {filter === 'all' ? t.allProjects : getProjectInfo(filter, projectList).name[lang]}
@@ -267,7 +267,7 @@ export const FeatureModal = ({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ delay: index * 0.02 }}
-                        className="p-4 rounded-lg cursor-pointer bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group"
+                        className="p-4 rounded-lg cursor-pointer bg-surface-elevated border border-surface-border hover:bg-surface-border hover:border-surface-border-hover transition-all duration-300 group"
                         onClick={() => handleFeatureClick(feature)}
                       >
                         {/* Project badge */}
@@ -275,16 +275,16 @@ export const FeatureModal = ({
                           <span className={`text-[10px] px-2 py-0.5 rounded-full ${project.color.bg} ${project.color.text}`}>
                             {project.name[lang]}
                           </span>
-                          <span className="text-[10px] text-white/30">{feature.id.toUpperCase()}</span>
+                          <span className="text-[10px] text-content-faint">{feature.id.toUpperCase()}</span>
                         </div>
 
                         {/* Title */}
-                        <h3 className="text-sm font-semibold text-white mb-1.5 line-clamp-2 group-hover:text-white/90">
+                        <h3 className="text-sm font-semibold text-content mb-1.5 line-clamp-2 group-hover:text-content-secondary">
                           {feature.title[lang]}
                         </h3>
 
                         {/* Short description */}
-                        <p className="text-xs text-white/50 mb-3 line-clamp-2">
+                        <p className="text-xs text-content-muted mb-3 line-clamp-2">
                           {feature.shortDescription[lang]}
                         </p>
 
@@ -299,7 +299,7 @@ export const FeatureModal = ({
                             </span>
                           ))}
                           {feature.techStack.length > 3 && (
-                            <span className="text-[10px] text-white/30">
+                            <span className="text-[10px] text-content-faint">
                               +{feature.techStack.length - 3}
                             </span>
                           )}
@@ -311,7 +311,7 @@ export const FeatureModal = ({
               </div>
 
               {filteredFeatures.length === 0 && (
-                <div className="text-center py-12 text-white/40">
+                <div className="text-center py-12 text-content-faint">
                   No features in this category for selected project
                 </div>
               )}
@@ -329,7 +329,7 @@ export const FeatureModal = ({
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] animate-in fade-in" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-gradient-to-br from-surface to-[#28282C] backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-[60] overflow-hidden">
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl max-h-[90vh] bg-gradient-to-br from-surface to-surface-elevated backdrop-blur-md rounded-2xl shadow-2xl border border-surface-border z-[60] overflow-hidden">
             {selectedFeature && (() => {
               const catInfo = getCategoryInfo(selectedFeature.category);
               const project = getProjectInfo(selectedFeature.projectId, projectList);
@@ -339,20 +339,20 @@ export const FeatureModal = ({
               return (
                 <>
                   {/* Header */}
-                  <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
+                  <div className="flex items-center justify-between p-4 sm:p-6 border-b border-surface-border">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`p-2 rounded-lg ${catInfo.color.bg} shrink-0`}>
                         {Icon && <Icon className={`w-5 h-5 ${catInfo.color.text}`} />}
                       </div>
                       <div className="min-w-0">
-                        <Dialog.Title className="text-lg sm:text-xl font-bold text-white truncate">
+                        <Dialog.Title className="text-lg sm:text-xl font-bold text-content truncate">
                           {selectedFeature.title[lang]}
                         </Dialog.Title>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className={`text-xs px-2 py-0.5 rounded-full ${project.color.bg} ${project.color.text}`}>
                             {project.name[lang]}
                           </span>
-                          <span className="text-xs text-white/30">
+                          <span className="text-xs text-content-faint">
                             {currentIdx + 1} {t.featureOf} {categoryFeatures.length}
                           </span>
                         </div>
@@ -360,7 +360,7 @@ export const FeatureModal = ({
                     </div>
                     <button
                       onClick={handleDetailClose}
-                      className="text-white/70 hover:text-white transition-colors shrink-0"
+                      className="text-content-muted hover:text-content transition-colors shrink-0"
                     >
                       <X className="w-6 h-6" />
                     </button>
@@ -370,37 +370,37 @@ export const FeatureModal = ({
                   <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
                     {/* Problem */}
                     <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">
+                      <h4 className="text-sm font-semibold text-content-secondary uppercase tracking-wider mb-2">
                         {t.problem}
                       </h4>
-                      <p className="text-sm text-white/80 leading-relaxed">
+                      <p className="text-sm text-content-secondary leading-relaxed">
                         {selectedFeature.problem[lang]}
                       </p>
                     </div>
 
                     {/* Solution */}
                     <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-2">
+                      <h4 className="text-sm font-semibold text-brand-light uppercase tracking-wider mb-2">
                         {t.solution}
                       </h4>
-                      <p className="text-sm text-white/80 leading-relaxed">
+                      <p className="text-sm text-content-secondary leading-relaxed">
                         {selectedFeature.solution[lang]}
                       </p>
                     </div>
 
                     {/* Result */}
                     <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-green-400 uppercase tracking-wider mb-2">
+                      <h4 className="text-sm font-semibold text-brand uppercase tracking-wider mb-2">
                         {t.result}
                       </h4>
-                      <p className="text-sm text-white/80 leading-relaxed">
+                      <p className="text-sm text-content-secondary leading-relaxed">
                         {selectedFeature.result[lang]}
                       </p>
                     </div>
 
                     {/* Tech Stack */}
                     <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-2">
+                      <h4 className="text-sm font-semibold text-content-muted uppercase tracking-wider mb-2">
                         {t.techStack}
                       </h4>
                       <div className="flex flex-wrap gap-2">
@@ -424,7 +424,7 @@ export const FeatureModal = ({
                             <button
                               key={tag}
                               onClick={() => handleHashtagClick(tag)}
-                              className="text-xs text-white/40 hover:text-white/80 hover:bg-white/10 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                              className="text-xs text-content-faint hover:text-content-secondary hover:bg-surface-elevated px-1.5 py-0.5 rounded transition-all cursor-pointer"
                             >
                               {tag}
                             </button>
@@ -437,10 +437,10 @@ export const FeatureModal = ({
                     <FeatureMeta feature={selectedFeature} projectUrl={project.url} />
 
                     {/* Navigation */}
-                    <div className="flex items-center justify-between mt-8 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-between mt-8 pt-4 border-t border-surface-border">
                       <button
                         onClick={() => navigateFeature('prev')}
-                        className="flex items-center gap-1 px-3 py-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-lg transition-all text-sm"
+                        className="flex items-center gap-1 px-3 py-2 bg-surface-elevated hover:bg-surface-border text-content-muted hover:text-content rounded-lg transition-all text-sm"
                       >
                         <ChevronLeft className="w-4 h-4" />
                         <span className="hidden sm:inline">Prev</span>
@@ -448,14 +448,14 @@ export const FeatureModal = ({
 
                       <button
                         onClick={handleDetailClose}
-                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all text-sm border border-white/20"
+                        className="px-4 py-2 bg-surface-elevated hover:bg-surface-border text-content rounded-lg transition-all text-sm border border-surface-border"
                       >
                         {t.back}
                       </button>
 
                       <button
                         onClick={() => navigateFeature('next')}
-                        className="flex items-center gap-1 px-3 py-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-lg transition-all text-sm"
+                        className="flex items-center gap-1 px-3 py-2 bg-surface-elevated hover:bg-surface-border text-content-muted hover:text-content rounded-lg transition-all text-sm"
                       >
                         <span className="hidden sm:inline">Next</span>
                         <ChevronRight className="w-4 h-4" />

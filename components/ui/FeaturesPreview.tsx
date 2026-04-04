@@ -57,7 +57,7 @@ export const FeaturesPreview = ({
             return (
               <motion.div
                 key={feature.id}
-                className="p-2 rounded-md bg-white/5 hover:bg-white/10 cursor-pointer transition-all border border-transparent hover:border-white/10 group"
+                className="p-2 rounded-md bg-surface-elevated/50 hover:bg-surface-elevated cursor-pointer transition-all border border-transparent hover:border-surface-border group"
                 onClick={(e) => {
                   e.stopPropagation();
                   onFeatureClick(feature.id);
@@ -74,7 +74,7 @@ export const FeaturesPreview = ({
                       </span>
                     );
                   })()}
-                  <p className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate group-hover:text-white">
+                  <p className="text-[10px] sm:text-[11px] font-medium text-content-secondary truncate group-hover:text-content">
                     {feature.title[lang]}
                   </p>
                 </div>
@@ -103,7 +103,7 @@ export const FeaturesPreview = ({
           return (
             <motion.button
               key={cat.id}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg ${cat.color.bg} border border-white/5 hover:border-white/15 transition-all cursor-pointer`}
+              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg ${cat.color.bg} border border-surface-border/50 hover:border-surface-border-hover transition-all cursor-pointer`}
               onClick={(e) => {
                 e.stopPropagation();
                 onCategoryClick(cat.id);
@@ -115,7 +115,7 @@ export const FeaturesPreview = ({
               <span className={`text-[8px] sm:text-[9px] font-medium ${cat.color.text} truncate`}>
                 {shortLabels[cat.id][lang]}
               </span>
-              <span className="text-[7px] text-white/30 shrink-0">
+              <span className="text-[7px] text-content-faint shrink-0">
                 {count}
               </span>
             </motion.button>

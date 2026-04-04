@@ -33,13 +33,13 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
   const SWIPE_THRESHOLD = 50; // Minimum distance for swipe detection
   const SWIPE_TIME_THRESHOLD = 300; // Maximum time for swipe (ms)
 
-  // Unique neon colors for each project
+  // Neon colors for each project — derived from brand tokens
   const projectColors = [
-    { from: '#fc51c9', via: '#e707f7', to: '#9c27b0' }, // Pink/Magenta/Purple
-    { from: '#05ddfa', via: '#00bfff', to: '#4169e1' }, // Cyan/Blue
-    { from: '#ffeb3b', via: '#ffc107', to: '#ff9800' }, // Yellow/Amber/Orange
-    { from: '#4caf50', via: '#8bc34a', to: '#cddc39' }, // Green/Light Green/Lime
-    { from: '#ff6b6b', via: '#ff5252', to: '#f44336' }, // Red/Pink Red/Red
+    { from: 'rgb(var(--accent-brand-light))', via: 'rgb(var(--accent-brand))', to: 'rgb(var(--accent-brand-dark))' },
+    { from: 'rgb(var(--accent-brand-lighter))', via: 'rgb(var(--accent-brand-light))', to: 'rgb(var(--accent-brand))' },
+    { from: 'rgb(var(--accent-brand))', via: 'rgb(var(--accent-brand-dark))', to: 'rgb(var(--accent-brand-darker))' },
+    { from: 'rgb(var(--accent-brand-light))', via: 'rgb(var(--accent-brand))', to: 'rgb(var(--accent-brand-darker))' },
+    { from: 'rgb(var(--accent-brand-lighter))', via: 'rgb(var(--accent-brand-light))', to: 'rgb(var(--accent-brand-dark))' },
   ];
 
   // Notify parent when index changes
@@ -245,7 +245,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
       {/* Background text "Projects" */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
         <h2
-          className="font-bold text-white/10 select-none text-center"
+          className="font-bold text-content/10 select-none text-center"
           style={{ fontSize: 'clamp(2.5rem, 6vw, 5rem)' }}
         >
           {backgroundText}
@@ -264,7 +264,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
       >
         <div className="p-4 bg-surface rounded-lg pointer-events-auto relative overflow-hidden shadow-lg">
           {/* === IMPROVEMENT 5: Progress indicator bar === */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-surface-border rounded-full overflow-hidden">
             <div
               ref={progressRef}
               className="h-full"
@@ -334,8 +334,8 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
                     }}
                     className="relative rounded-lg overflow-hidden shadow-md cursor-pointer group"
                     style={{
-                      background: `linear-gradient(135deg, ${color.from}20, ${color.to}30)`,
-                      border: `1px solid ${color.via}40`,
+                      background: `linear-gradient(135deg, rgb(var(--accent-brand-light) / 0.12), rgb(var(--accent-brand-dark) / 0.19))`,
+                      border: `1px solid rgb(var(--accent-brand) / 0.25)`,
                     }}
                   >
                     {/* Project Image Background */}
@@ -354,14 +354,14 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
                     <div
                       className="absolute inset-0"
                       style={{
-                        background: `linear-gradient(to top, ${color.to}90 0%, transparent 60%)`,
+                        background: `linear-gradient(to top, rgb(var(--accent-brand-dark) / 0.56) 0%, transparent 60%)`,
                       }}
                     />
 
                     {/* Content */}
                     <div className="relative h-full flex flex-col justify-end p-1.5 sm:p-2">
                       <h5
-                        className="font-bold text-white leading-tight line-clamp-2 drop-shadow-md"
+                        className="font-bold text-content leading-tight line-clamp-2 drop-shadow-md"
                         style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)' }}
                       >
                         {project.title}
@@ -370,8 +370,7 @@ export const ProjectsCarousel = ({ projects, onCardClick, backgroundText, onInde
 
                     {/* Hover indicator */}
                     <div
-                      className="absolute top-1 right-1 w-2 h-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: color.from }}
+                      className="absolute top-1 right-1 w-2 h-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-brand-light"
                     />
                   </motion.div>
                 );
