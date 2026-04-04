@@ -1123,33 +1123,37 @@ BRANDING ELEMENTS (small, subtle, do not distract):
       ? `\n\n${languageInstructions[language]}`
       : `\n\nNo text on the image except "vitalii.no" at the bottom.`
 
-    // Quality boost instructions for better image generation
-    const qualityBoost = `CRITICAL QUALITY REQUIREMENTS:
-- Generate in highest possible resolution (8K quality)
-- Use vibrant, saturated colors with strong contrast
-- Ensure all details are sharp and crisp, no blur or artifacts
-- Apply professional studio lighting with soft shadows
-- Create rich textures and depth with photorealistic materials
-- Use dynamic color range for visual impact`
+    // Anti-AI-slop style instructions
+    const styleGuide = `VISUAL STYLE — MANDATORY (anti-AI-slop):
+- Shot on Canon EOS R5, 35mm lens, f/2.8, natural ambient light
+- Editorial photography style — like Bloomberg, Reuters, The Verge covers
+- Color palette: warm neutrals, muted earth tones, desaturated teals
+- FORBIDDEN colors: purple gradients, neon purple, magenta glow, violet haze
+- FORBIDDEN effects: plastic/glossy surfaces, lens flares, chromatic aberration, bloom glow
+- Add subtle film grain (Kodak Portra 400 texture), slight vignette
+- Natural imperfections: micro dust, uneven light falloff, soft depth of field
+- If people present: natural skin with visible pores, no airbrushing, no beauty filter
+- Lighting: golden hour or overcast daylight — NOT studio neon
+- Composition: rule of thirds, editorial magazine layout feel
+- Overall mood: professional, trustworthy, journalistic — NOT sci-fi, NOT futuristic`
 
     // Aspect ratio description for the prompt
     const aspectRatioDescription = aspectRatio === '16:9'
-      ? '16:9 landscape (wide horizontal format, suitable for LinkedIn/Facebook feed)'
-      : '1:1 square (suitable for Instagram and profile posts)'
+      ? '16:9 landscape (wide horizontal, editorial magazine cover)'
+      : '1:1 square (Instagram editorial post)'
 
     const requestBody = {
       contents: [{
         parts: [{
           text: `${langInstruction}
 
-${qualityBoost}
+${styleGuide}
 
-Generate a professional news illustration for LinkedIn/Instagram.
+Create an editorial news photograph for a professional news website.
 
 Visual concept: ${effectivePrompt}
 
-Style: Modern, professional, ${aspectRatioDescription}.
-IMPORTANT: The image MUST be in ${aspectRatio} aspect ratio.
+Format: ${aspectRatioDescription}, ${aspectRatio} aspect ratio.
 
 REMINDER: ${language === 'ua' ? 'All text on the image must be in UKRAINIAN (Cyrillic). No Norwegian or English text!' : language === 'en' ? 'All text on the image must be in ENGLISH. No Norwegian or Ukrainian text!' : language === 'no' ? 'All text on the image must be in NORWEGIAN.' : 'No text on the image except vitalii.no watermark.'}`
         }]
