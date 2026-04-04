@@ -607,7 +607,7 @@ const NewsListOverlay = ({
                     <p className="text-content-muted text-xs line-clamp-2 mb-1.5">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-[11px] text-content-faint">
+                    <div className="flex items-center gap-3 text-xs text-content-faint">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -1246,7 +1246,7 @@ const BlogListOverlay = ({
                     <p className="text-content-muted text-xs line-clamp-2 mb-1.5">
                       {getLocalizedField(item, 'description')}
                     </p>
-                    <div className="flex items-center gap-3 text-[11px] text-content-faint">
+                    <div className="flex items-center gap-3 text-xs text-content-faint">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.published_at)}
@@ -1513,7 +1513,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('about_title') as string} color={sectionColors.home.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.home.icon }}>
+              <div className="absolute top-3 right-3 text-xs font-medium opacity-60" style={{ color: sectionColors.home.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1545,7 +1545,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('services_title') as string} color={sectionColors.services.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.services.icon }}>
+              <div className="absolute top-3 right-3 text-xs font-medium opacity-60" style={{ color: sectionColors.services.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1598,7 +1598,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('projects_title') as string} color={sectionColors.projects.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.projects.icon }}>
+              <div className="absolute top-3 right-3 text-xs font-medium opacity-60" style={{ color: sectionColors.projects.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 
@@ -1676,9 +1676,9 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                       className="flex items-center gap-2 p-1.5 rounded-md mb-1 bg-white/5 active:bg-white/10"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-medium text-white/90 truncate">{feature.title[langKey as 'en' | 'no' | 'ua']}</p>
+                        <p className="text-xs font-medium text-white/90 truncate">{feature.title[langKey as 'en' | 'no' | 'ua']}</p>
                       </div>
-                      <span className={`text-[8px] px-1.5 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text} shrink-0`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text} shrink-0`}>
                         {feature.techStack[0]}
                       </span>
                     </motion.div>
@@ -1700,10 +1700,10 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
                       }}
                       className={`flex flex-col items-center p-1.5 rounded-lg ${cat.color.bg} border border-white/5`}
                     >
-                      <span className={`text-[8px] font-medium ${cat.color.text} text-center leading-tight`}>
+                      <span className={`text-[10px] font-medium ${cat.color.text} text-center leading-tight`}>
                         {cat.label[langKey as 'en' | 'no' | 'ua']}
                       </span>
-                      <span className="text-[7px] text-white/30">{count}</span>
+                      <span className="text-[10px] text-white/30">{count}</span>
                     </motion.button>
                   )
                 })}
@@ -1886,7 +1886,7 @@ export const BentoGridMobile = ({ onHoveredSectionChange }: BentoGridMobileProps
               <VerticalLabel text={t('contact_title' as any) || 'Contact'} color={sectionColors.contact.icon} />
 
               {/* Hint to tap */}
-              <div className="absolute top-3 right-3 text-[11px] font-medium opacity-60" style={{ color: sectionColors.contact.icon }}>
+              <div className="absolute top-3 right-3 text-xs font-medium opacity-60" style={{ color: sectionColors.contact.icon }}>
                 {t('tap_to_expand' as any) || 'Tap to expand'}
               </div>
 

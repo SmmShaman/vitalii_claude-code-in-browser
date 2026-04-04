@@ -95,7 +95,7 @@ export function CookieConsentBanner() {
             {/* Cookie policy link */}
             <Link
               href="/informasjonskapsler"
-              className="text-white/60 text-[11px] hover:text-white/90 hover:underline transition-colors inline-flex items-center gap-1 mb-4"
+              className="text-white/60 text-xs hover:text-white/90 hover:underline transition-colors inline-flex items-center gap-1 mb-4"
               onClick={() => updateConsent(analyticsEnabled)}
             >
               {t('cookie_read_more')} →

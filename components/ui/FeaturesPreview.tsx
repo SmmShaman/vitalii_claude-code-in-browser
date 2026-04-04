@@ -69,12 +69,12 @@ export const FeaturesPreview = ({
                   {(() => {
                     const proj = getProjectInfo(feature.projectId, dynamicProjects);
                     return (
-                      <span className={`text-[7px] px-1 py-0.5 rounded shrink-0 ${proj.color.bg} ${proj.color.text}`}>
+                      <span className={`text-[10px] px-1 py-0.5 rounded shrink-0 ${proj.color.bg} ${proj.color.text}`}>
                         {proj.badge}
                       </span>
                     );
                   })()}
-                  <p className="text-[10px] sm:text-[11px] font-medium text-content-secondary truncate group-hover:text-content">
+                  <p className="text-[10px] sm:text-xs font-medium text-content-secondary truncate group-hover:text-content">
                     {feature.title[lang]}
                   </p>
                 </div>
@@ -83,7 +83,7 @@ export const FeaturesPreview = ({
                   {feature.techStack.slice(0, 3).map((tech) => (
                     <span
                       key={tech}
-                      className={`text-[7px] px-1 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text}`}
+                      className={`text-[10px] px-1 py-0.5 rounded ${catInfo.color.bg} ${catInfo.color.text}`}
                     >
                       {tech}
                     </span>
@@ -112,10 +112,10 @@ export const FeaturesPreview = ({
               whileTap={{ scale: 0.97 }}
             >
               {Icon && <Icon className={`w-3 h-3 ${cat.color.text} shrink-0`} />}
-              <span className={`text-[8px] sm:text-[9px] font-medium ${cat.color.text} truncate`}>
+              <span className={`text-[10px] sm:text-[10px] font-medium ${cat.color.text} truncate`}>
                 {shortLabels[cat.id][lang]}
               </span>
-              <span className="text-[7px] text-content-faint shrink-0">
+              <span className="text-[10px] text-content-faint shrink-0">
                 {count}
               </span>
             </motion.button>

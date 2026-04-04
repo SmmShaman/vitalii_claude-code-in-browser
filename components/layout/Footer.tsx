@@ -263,7 +263,7 @@ export const Footer = () => {
             {/* Right: Contact label + Email + Social Icons */}
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {/* Contact label */}
-              <span className={`${textSecondary} text-[11px] mr-1 hidden md:inline`} style={!isMobile ? { color: dSecondary } : undefined}>
+              <span className={`${textSecondary} text-xs mr-1 hidden md:inline`} style={!isMobile ? { color: dSecondary } : undefined}>
                 {t('footer_contact_me')}
               </span>
               {/* Email Button */}
@@ -349,7 +349,7 @@ export const Footer = () => {
           {/* Business info & cookie links */}
           <div className="flex items-center justify-center mt-1">
             <div
-              className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px]"
+              className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs"
               style={{
                 background: 'rgb(var(--surface-elevated) / 0.9)',
                 color: 'rgb(var(--text-secondary))',
@@ -361,7 +361,7 @@ export const Footer = () => {
               <span style={{ color: 'rgb(var(--text-faint))' }}>|</span>
               <button
                 onClick={handleOpenCookieSettings}
-                className="hover:underline transition-colors cursor-pointer bg-transparent border-none text-[11px] focus:outline-none focus:ring-1 focus:ring-brand-light rounded"
+                className="hover:underline transition-colors cursor-pointer bg-transparent border-none text-xs focus:outline-none focus:ring-1 focus:ring-brand-light rounded"
                 style={{ color: 'rgb(var(--text-muted))' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(var(--text-primary))'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(var(--text-muted))'}
@@ -371,7 +371,7 @@ export const Footer = () => {
               <span style={{ color: 'rgb(var(--text-faint))' }}>|</span>
               <a
                 href="/informasjonskapsler"
-                className="hover:underline transition-colors text-[11px] focus:outline-none focus:ring-1 focus:ring-brand-light rounded"
+                className="hover:underline transition-colors text-xs focus:outline-none focus:ring-1 focus:ring-brand-light rounded"
                 style={{ color: 'rgb(var(--text-muted))' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(var(--text-primary))'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(var(--text-muted))'}

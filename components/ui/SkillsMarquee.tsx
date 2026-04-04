@@ -475,7 +475,7 @@ export function SkillsMarquee() {
                     className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain"
                     style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.6))' }}
                   />
-                  <span className="text-white/70 text-[9px] sm:text-[10px] font-medium whitespace-nowrap"
+                  <span className="text-white/70 text-[10px] font-medium whitespace-nowrap"
                     style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
                   >{skill.name}</span>
                 </motion.div>
