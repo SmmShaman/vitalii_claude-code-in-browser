@@ -91,7 +91,7 @@ export function Sidebar({ currentType, currentSlug }: SidebarProps) {
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-brand-light hover:text-[#A5B4FC] transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-brand-light hover:text-brand-lighter transition-colors"
           >
             {currentLanguage === 'UA' ? 'Дізнатись більше' : currentLanguage === 'NO' ? 'Les mer' : 'Learn more'}
             <ArrowRight className="w-4 h-4" />

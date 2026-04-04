@@ -116,7 +116,7 @@ export const ContactForm = () => {
   return (
     <div className="w-full h-full flex flex-col justify-center p-6">
       <div className="flex items-center gap-4 mb-6">
-        <Mail className="w-12 h-12 text-blue-500" />
+        <Mail className="w-12 h-12 text-brand" />
         <div>
           <h2 className="text-3xl font-bold text-white">{t('contact_title')}</h2>
           <p className="text-white/90">{t('contact_description')}</p>
@@ -167,7 +167,7 @@ export const ContactForm = () => {
             id="name"
             type="text"
             {...register('name')}
-            className="w-full px-3 py-3 bg-black/50 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="w-full px-3 py-3 bg-black/50 border-2 border-surface-border rounded-lg text-content placeholder-content-faint focus:outline-none focus:border-brand-light focus:ring-1 focus:ring-brand-light transition-colors"
             placeholder={t('name')}
             disabled={isSubmitting}
           />
@@ -184,7 +184,7 @@ export const ContactForm = () => {
             id="email"
             type="email"
             {...register('email')}
-            className="w-full px-3 py-3 bg-black/50 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="w-full px-3 py-3 bg-black/50 border-2 border-surface-border rounded-lg text-content placeholder-content-faint focus:outline-none focus:border-brand-light focus:ring-1 focus:ring-brand-light transition-colors"
             placeholder={t('email')}
             disabled={isSubmitting}
           />
@@ -201,7 +201,7 @@ export const ContactForm = () => {
             id="message"
             rows={4}
             {...register('message')}
-            className="w-full px-3 py-3 bg-black/50 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none transition-colors"
+            className="w-full px-3 py-3 bg-black/50 border-2 border-surface-border rounded-lg text-content placeholder-content-faint focus:outline-none focus:border-brand-light focus:ring-1 focus:ring-brand-light resize-none transition-colors"
             placeholder={t('message')}
             disabled={isSubmitting}
           />
@@ -213,7 +213,7 @@ export const ContactForm = () => {
         <button
           type="submit"
           disabled={isSubmitting || isInCooldown()}
-          className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold rounded-lg hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 px-4 bg-brand text-white font-semibold rounded-lg hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>

@@ -193,7 +193,7 @@ export const Footer = () => {
   // Desktop refined colors — use CSS variables for palette support
   const dPrimary = 'rgb(var(--text-primary))'
   const dSecondary = 'rgb(var(--text-muted))'
-  const dAccent = '#fbbf24'
+  const dAccent = 'rgb(var(--accent-amber))'
 
   return (
     <footer className="h-full w-full flex items-center overflow-y-auto">
@@ -204,11 +204,11 @@ export const Footer = () => {
         style={isMobile ? {
           background: 'transparent',
         } : {
-          background: 'linear-gradient(160deg, rgba(15, 15, 25, 0.88) 0%, rgba(25, 20, 45, 0.92) 50%, rgba(18, 12, 35, 0.9) 100%)',
+          background: `linear-gradient(160deg, rgb(var(--surface-darker) / 0.88) 0%, rgb(var(--surface-dark) / 0.92) 50%, rgb(var(--surface-deep) / 0.9) 100%)`,
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(167, 139, 250, 0.1)',
-          boxShadow: '0 -1px 0 rgba(167, 139, 250, 0.08), 0 12px 40px rgba(0, 0, 0, 0.4)',
+          border: `1px solid rgb(var(--accent-brand) / 0.15)`,
+          boxShadow: `0 -1px 0 rgb(var(--accent-brand) / 0.1), 0 12px 40px rgba(0, 0, 0, 0.3)`,
         }}
       >
         <div className="h-full flex flex-col justify-center px-3 sm:px-4 md:px-6 py-2">
@@ -289,9 +289,9 @@ export const Footer = () => {
               <div
                 className="w-px h-5 mx-1.5"
                 style={!isMobile ? {
-                  background: 'linear-gradient(180deg, transparent 0%, rgba(167, 139, 250, 0.4) 50%, transparent 100%)',
+                  background: `linear-gradient(180deg, transparent 0%, rgb(var(--accent-brand) / 0.4) 50%, transparent 100%)`,
                 } : {
-                  background: '#d1d5db',
+                  background: 'rgb(var(--surface-border))',
                 }}
               />
 
@@ -351,30 +351,30 @@ export const Footer = () => {
             <div
               className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px]"
               style={{
-                background: 'rgba(255, 255, 255, 0.9)',
-                color: 'rgba(30, 25, 50, 0.7)',
+                background: 'rgb(var(--surface-elevated) / 0.9)',
+                color: 'rgb(var(--text-secondary))',
               }}
             >
               <span className="tracking-wide">
                 BERBEHA · 932 905 736 · Hagegata 8, Lena
               </span>
-              <span style={{ color: 'rgba(30, 25, 50, 0.25)' }}>|</span>
+              <span style={{ color: 'rgb(var(--text-faint))' }}>|</span>
               <button
                 onClick={handleOpenCookieSettings}
                 className="hover:underline transition-colors cursor-pointer bg-transparent border-none text-[11px] focus:outline-none focus:ring-1 focus:ring-brand-light rounded"
-                style={{ color: 'rgba(30, 25, 50, 0.55)' }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.9)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.55)'}
+                style={{ color: 'rgb(var(--text-muted))' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(var(--text-primary))'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(var(--text-muted))'}
               >
                 Cookies
               </button>
-              <span style={{ color: 'rgba(30, 25, 50, 0.25)' }}>|</span>
+              <span style={{ color: 'rgb(var(--text-faint))' }}>|</span>
               <a
                 href="/informasjonskapsler"
                 className="hover:underline transition-colors text-[11px] focus:outline-none focus:ring-1 focus:ring-brand-light rounded"
-                style={{ color: 'rgba(30, 25, 50, 0.55)' }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.9)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(30, 25, 50, 0.55)'}
+                style={{ color: 'rgb(var(--text-muted))' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(var(--text-primary))'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(var(--text-muted))'}
               >
                 Erklæring
               </a>
