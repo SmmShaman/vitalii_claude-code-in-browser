@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
+import { HUMANIZER_PORTFOLIO } from '../_shared/humanizer-prompt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,6 +89,8 @@ TRILINGUAL CONTENT (en, no, ua):
 - Norwegian (Bokmål): natural Norwegian, NOT transliterated English. Use Norwegian tech terminology where it exists.
 - Ukrainian: conversational dev tone, technical terms can stay in English (як "API", "Edge Function", "deploy")
 - All three languages must have EQUAL depth and detail — ua/no are NOT shorter summaries of en
+
+${HUMANIZER_PORTFOLIO}
 
 Return ONLY valid JSON (no markdown fences):
 {

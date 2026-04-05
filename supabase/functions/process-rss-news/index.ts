@@ -1,4 +1,5 @@
 import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
+import { HUMANIZER_ARTICLE, VOICE_JOURNALISM } from '../_shared/humanizer-prompt.ts'
 const VERSION_STAMP = '2026-03-29-force-redeploy'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
@@ -154,7 +155,10 @@ CRITICAL RULES:
 - Write PLAIN TEXT only — no bold, no italic, no links, no special symbols
 - Separate paragraphs with double newline only
 - Do NOT add source links — they are added automatically
-- Write like a human journalist, avoid AI-typical filler phrases`
+
+${HUMANIZER_ARTICLE}
+
+${VOICE_JOURNALISM}`
         },
         {
           role: 'user',

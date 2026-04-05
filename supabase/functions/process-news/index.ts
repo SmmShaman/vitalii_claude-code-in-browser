@@ -1,4 +1,5 @@
 import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
+import { HUMANIZER_ARTICLE, VOICE_JOURNALISM } from '../_shared/humanizer-prompt.ts'
 const VERSION_STAMP = '2026-03-29-force-redeploy'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
@@ -109,7 +110,13 @@ async function processWithPrompt(
       messages: [
         {
           role: 'system',
-          content: `You are a professional trilingual news editor. You write in English, Norwegian (Bokmål), and Ukrainian. Return ONLY valid JSON:
+          content: `You are a professional trilingual news editor. You write in English, Norwegian (Bokmål), and Ukrainian.
+
+${HUMANIZER_ARTICLE}
+
+${VOICE_JOURNALISM}
+
+Return ONLY valid JSON:
 {
   "en": { "title": "...", "content": "...", "description": "..." },
   "no": { "title": "...", "content": "...", "description": "..." },

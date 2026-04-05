@@ -9,6 +9,7 @@
  */
 
 import { callLLM } from './llm-helper.js';
+import { HUMANIZER_VIDEO, VOICE_SPOKEN } from './humanizer-rules.js';
 
 /**
  * Generate a voiceover script from news article text.
@@ -42,7 +43,11 @@ RULES:
 - STRICTLY ${targetWordCount} words maximum (this is critical — TTS will speak at ~2 words/sec)
 - Short, punchy sentences. Conversational tone, not robotic.
 - The story must feel COMPLETE — never end mid-sentence or mid-thought
-- Do NOT try to cover every detail from the article — pick the most compelling angle`;
+- Do NOT try to cover every detail from the article — pick the most compelling angle
+
+${HUMANIZER_VIDEO}
+
+${VOICE_SPOKEN}`;
 
   const userPrompt = `Write a ${Math.round(maxDurationSeconds)}-second voiceover script (max ${targetWordCount} words) for this news:\n\n${articleText.substring(0, 3000)}`;
 

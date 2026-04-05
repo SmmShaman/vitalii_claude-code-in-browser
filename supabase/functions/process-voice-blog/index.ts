@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { HUMANIZER_ARTICLE, VOICE_JOURNALISM } from '../_shared/humanizer-prompt.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -63,7 +64,8 @@ serve(async (req) => {
       .limit(1)
       .single()
 
-    const systemPrompt = promptData?.prompt_text || `Convert raw text into a polished trilingual blog post. Return JSON with en/no/ua titles, content, descriptions, tags, category.`
+    const basePrompt = promptData?.prompt_text || `Convert raw text into a polished trilingual blog post. Return JSON with en/no/ua titles, content, descriptions, tags, category.`
+    const systemPrompt = `${basePrompt}\n\n${HUMANIZER_ARTICLE}\n\n${VOICE_JOURNALISM}`
 
     // Get Google API key
     let apiKey = GOOGLE_API_KEY

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 const VERSION_STAMP = '2026-03-29-force-redeploy'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
+import { HUMANIZER_SOCIAL } from '../_shared/humanizer-prompt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -303,7 +304,9 @@ Reply (just the text, no quotes):`;
               role: 'system',
               content: `You are a social media manager for Vitalii Berbeha, an e-commerce and marketing expert.
 Write replies that are professional, insightful, and engaging. Avoid generic responses.
-Match the tone and formality level of the platform (${platform}).`
+Match the tone and formality level of the platform (${platform}).
+
+${HUMANIZER_SOCIAL}`
             },
             { role: 'user', content: prompt }
           ],

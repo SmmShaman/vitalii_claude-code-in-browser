@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { callLLM, extractJSON } from '../_shared/gemini-llm.ts'
+import { HUMANIZER_PORTFOLIO } from '../_shared/humanizer-prompt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,6 +69,8 @@ IMPORTANT:
 - If the original is already good (problem >120, solution >200, result >120 chars), keep the same length — just polish the style, don't expand.
 - TARGET LENGTHS: problem 150-350 chars, solution 250-500 chars, result 150-350 chars. Do NOT exceed these.
 - Be concise. Every sentence must add value. No filler phrases like "soul-crushing", "immediate and profound".
+
+${HUMANIZER_PORTFOLIO}
 
 Return ONLY valid JSON (no markdown fences):
 {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { HUMANIZER_SOCIAL, VOICE_SOCIAL } from '../_shared/humanizer-prompt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,33 +48,9 @@ The author is a full-stack developer who set himself a public challenge: documen
 
 The series creates a narrative: each post is one step in this journey. Readers should want to follow along and not miss the next one.
 
-ANTI-AI WRITING RULES (CRITICAL — apply to ALL platforms):
-Your output must read like a real person wrote it, not an AI. Scan your draft for these patterns and eliminate every one:
+${HUMANIZER_SOCIAL}
 
-1. NO inflated significance: never use "testament to", "pivotal moment", "evolving landscape", "vital role", "indelible mark", "setting the stage", "key turning point", "at its core".
-2. NO promotional fluff: never use "groundbreaking", "vibrant", "stunning", "breathtaking", "nestled", "in the heart of", "renowned", "showcasing".
-3. NO -ing tacking: do not end clauses with "highlighting...", "underscoring...", "ensuring...", "reflecting...", "contributing to...", "fostering...".
-4. NO copula avoidance: use "is/are/has" instead of "serves as", "stands as", "represents", "marks", "boasts", "features".
-5. NO negative parallelisms: never write "It's not just X; it's Y" or "Not only X but also Y".
-6. NO rule of three: do not force ideas into groups of three for rhetorical effect.
-7. NO em dash overuse: use commas or periods instead of — dashes. Maximum one em dash per post.
-8. NO bold headers in body text: write flowing prose, not "**Speed:** faster" formatted lists.
-9. NO AI vocabulary: avoid "delve", "crucial", "enhance", "foster", "garner", "intricate", "tapestry", "underscore", "pivotal", "landscape" (abstract), "interplay", "additionally".
-10. NO false ranges: do not use "from X to Y" constructions where X and Y are not on a real scale.
-11. NO generic conclusions: never end with "the future looks bright", "exciting times lie ahead", "continues to thrive".
-12. NO sycophantic artifacts: never write "Great question!", "I hope this helps", "Let me know if...".
-13. NO signposting: never write "Let's dive in", "Here's what you need to know", "Let's break this down".
-14. NO excessive hedging: do not write "could potentially", "it might be argued that", "it is important to note".
-15. NO persuasive authority tropes: avoid "The real question is", "What really matters", "fundamentally", "the heart of the matter".
-
-VOICE GUIDELINES:
-- Write like a real dev talking to peers, not a press release.
-- Vary sentence length: short punchy ones mixed with longer ones. Not all the same rhythm.
-- Have opinions. React to your own work. "I genuinely didn't expect this to work" is better than neutral reporting.
-- Use "I" naturally. First person is honest, not unprofessional.
-- Be specific: real function names, real numbers, real file paths. Not "improved performance" but "cut response time from 12s to 0.8s".
-- Let some imperfection in. Perfect structure feels algorithmic.
-- Acknowledge complexity: "This works but I'm still not 100% happy with the retry logic" is human.
+${VOICE_SOCIAL}
 
 CONTENT RULES:
 - Rotate hook styles: curiosity gap, contrarian, data-first, transformation, story-driven, problem-first. Each platform gets a DIFFERENT hook.

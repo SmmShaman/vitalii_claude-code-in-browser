@@ -6,6 +6,7 @@ import { escapeHtml } from '../_shared/social-media-helpers.ts'
 import { formatCompactVariants, buildManualKeyboard } from '../_shared/telegram-format-helpers.ts'
 import { classifyContentWeight, loadScheduleConfig, computeScheduledTime, formatScheduledTime, countInFlight } from '../_shared/schedule-helpers.ts'
 import { dispatchToWorker } from '../_shared/webhook-dispatch.ts'
+import { HUMANIZER_SOCIAL, VOICE_SOCIAL } from '../_shared/humanizer-prompt.ts'
 
 /**
  * Extract external source links from text content
@@ -349,6 +350,7 @@ serve(async (req) => {
                   'TAGS: ' + (post?.tags || []).join(', ') + '\n\n' +
                   'LINKEDIN (1200-1800 chars): Hook under 210 chars, storytelling, NO links in body, 3-5 hashtags, CTA question.\n' +
                   'FACEBOOK (under 280 chars): Short hook, 1-2 hashtags, conversational.\n\n' +
+                  HUMANIZER_SOCIAL + '\n\n' + VOICE_SOCIAL + '\n\n' +
                   'Return ONLY JSON: {"linkedin_post":"...","facebook_post":"..."}'
                 const gr = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + gk, {
                   method: 'POST', headers: { 'Content-Type': 'application/json' },

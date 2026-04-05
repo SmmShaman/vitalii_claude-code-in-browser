@@ -1,4 +1,5 @@
 import { azureFetch } from '../_shared/azure-to-gemini-shim.ts'
+import { HUMANIZER_ARTICLE, VOICE_JOURNALISM } from '../_shared/humanizer-prompt.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
@@ -131,7 +132,10 @@ CONTENT RULES:
 - "description" = 1-2 sentences for SEO meta, plain text
 - "content" = concise, informative article (300-600 words per language)
 - All 3 versions must cover the same facts but written naturally for each language
-- Write like a human journalist, not like AI — avoid generic filler phrases`
+
+${HUMANIZER_ARTICLE}
+
+${VOICE_JOURNALISM}`
           },
           { role: 'user', content: systemPrompt }
         ],

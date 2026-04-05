@@ -3,6 +3,7 @@ const VERSION_STAMP = '2026-03-29-force-redeploy'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
 import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
+import { HUMANIZER_ARTICLE, VOICE_JOURNALISM } from '../_shared/humanizer-prompt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -252,6 +253,10 @@ STRICT RULES:
 - If the author's text is ~${processedContent.split(/\\s+/).length} words, the blog post should be 150-300 words per language — NOT 500+
 - Keep the author's specific details (years, names, prices, platforms he mentioned)
 - If unsure whether something was said — leave it out` : 'Rewrite the article content engagingly.'}
+
+${HUMANIZER_ARTICLE}
+
+${VOICE_JOURNALISM}
 
 You MUST return ONLY valid JSON (no markdown fences):
 {

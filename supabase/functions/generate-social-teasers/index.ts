@@ -3,6 +3,7 @@ const VERSION_STAMP = '2026-03-29-force-redeploy'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
+import { HUMANIZER_SOCIAL, VOICE_SOCIAL } from '../_shared/humanizer-prompt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -219,7 +220,11 @@ CRITICAL RULES:
 2. MINIMUM 2 paragraphs - this is mandatory!
 3. Include emojis as specified in the prompt.
 4. Output language: ${LANGUAGE_NAMES[language]}
-5. Do NOT copy the article text - create intrigue!`
+5. Do NOT copy the article text - create intrigue!
+
+${HUMANIZER_SOCIAL}
+
+${VOICE_SOCIAL}`
         },
         {
           role: 'user',

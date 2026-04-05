@@ -19,6 +19,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
+import { HUMANIZER_VIDEO, VOICE_SPOKEN } from "../_shared/humanizer-prompt.ts";
 
 const VERSION = "2026-03-30-v33-azure-removed";
 const MAX_DETAILED = 10;
@@ -554,6 +555,11 @@ Tags: ${[...new Set(group.articleIds.flatMap((id: string) => (articleMap.get(id)
   const perSegPrompt = `You are a Norwegian news anchor. Write a voiceover script for ONE news segment.
 LANGUAGE: Clean Norwegian Bokmål. "kunstig intelligens" not "AI", "programvare" not "software". TTS-friendly. Short clear sentences.
 Also extract 3-4 Google Image search queries for REAL NEWS PHOTOS (not flags/logos/icons).
+
+${HUMANIZER_VIDEO}
+
+${VOICE_SPOKEN}
+
 Return JSON:
 {
   "scriptNo": "Norwegian script (3-5 sentences, ~${wordsPerArticle * 2} words)",
@@ -574,6 +580,11 @@ Return JSON:
   try {
     const introResponse = await callAI(
       `You are a Norwegian news anchor. Write intro and outro for a daily news digest with ${groups.length} stories.
+
+${HUMANIZER_VIDEO}
+
+${VOICE_SPOKEN}
+
 Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berbeha. ...", "outroScript": "Det var alt for i dag. Abonner på kanalen og trykk liker-knappen! ...", "introTranslationEn": "...", "outroTranslationEn": "..."}`,
       `Write intro/outro for ${displayDate} digest with ${groups.length} stories`,
       1000,
@@ -1186,6 +1197,10 @@ RULES:
 - segmentScripts.length MUST equal ${detailedCount}
 - segmentTranslations.length MUST equal ${detailedCount}
 - Be engaging, professional, conversational
+
+${HUMANIZER_VIDEO}
+
+${VOICE_SPOKEN}
 
 Return JSON:
 {
