@@ -360,16 +360,22 @@ ${blogPromptText}`
     const category = rewrittenContent.category || rewrittenContent.en.category || 'Tech'
 
     // Dedup check: prevent duplicate voice blog posts from webhook retries
+    // Uses fuzzy match (first 100 chars) because Gemini transcription varies slightly each time
     if (requestData.sourceType === 'voice' && requestData.content) {
-      const { data: existingPost } = await supabase
+      const prefix = requestData.content.slice(0, 100)
+      const { data: existingPosts } = await supabase
         .from('blog_posts')
-        .select('id')
-        .eq('original_voice_text', requestData.content)
+        .select('id, created_at')
+        .not('original_voice_text', 'is', null)
+        .like('original_voice_text', `${prefix.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle()
-      if (existingPost) {
-        console.log(`⚠️ Voice blog already exists: ${existingPost.id}, skipping duplicate`)
-        return new Response(JSON.stringify({ success: true, blogPostId: existingPost.id, isDuplicate: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (existingPosts && existingPosts.length > 0) {
+        const age = Date.now() - new Date(existingPosts[0].created_at).getTime()
+        if (age < 30 * 60 * 1000) {
+          console.log(`⚠️ Similar voice blog exists (${existingPosts[0].id}, ${Math.round(age/1000)}s ago), skipping`)
+          return new Response(JSON.stringify({ success: true, blogPostId: existingPosts[0].id, isDuplicate: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
       }
     }
 

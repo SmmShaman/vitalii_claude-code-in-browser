@@ -50,16 +50,22 @@ serve(async (req) => {
     if (!rawText || !chatId) throw new Error('rawText and chatId required')
 
     // Dedup check: prevent duplicate voice blog posts from webhook retries
+    // Uses fuzzy match (first 100 chars) because Gemini transcription varies slightly each time
     if (!blogPostId) {
-      const { data: existingPost } = await supabase
+      const prefix = rawText.slice(0, 100)
+      const { data: existingPosts } = await supabase
         .from('blog_posts')
-        .select('id')
-        .eq('original_voice_text', rawText)
+        .select('id, created_at')
+        .not('original_voice_text', 'is', null)
+        .like('original_voice_text', `${prefix.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle()
-      if (existingPost) {
-        console.log(`⚠️ Voice blog already exists: ${existingPost.id}, skipping`)
-        return new Response(JSON.stringify({ success: true, blogPostId: existingPost.id, isDuplicate: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (existingPosts && existingPosts.length > 0) {
+        const age = Date.now() - new Date(existingPosts[0].created_at).getTime()
+        if (age < 30 * 60 * 1000) { // within 30 minutes = likely duplicate
+          console.log(`⚠️ Similar voice blog exists (${existingPosts[0].id}, ${Math.round(age/1000)}s ago), skipping`)
+          return new Response(JSON.stringify({ success: true, blogPostId: existingPosts[0].id, isDuplicate: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
       }
     }
 
