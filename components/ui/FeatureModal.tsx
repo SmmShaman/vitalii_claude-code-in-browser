@@ -237,7 +237,7 @@ export const FeatureModal = ({
 
             {/* Project Filter */}
             <div className="px-4 sm:px-6 pt-3 flex flex-wrap gap-2">
-              {(['all' as const, ...projectList.filter(p => features.some(f => f.projectId === p.id)).map(p => p.id)]).map((filter) => (
+              {(['all' as const, ...projectList.map(p => p.id)]).map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setProjectFilter(filter)}

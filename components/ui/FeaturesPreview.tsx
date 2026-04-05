@@ -37,7 +37,15 @@ export const FeaturesPreview = ({
 }: FeaturesPreviewProps) => {
   const lang = currentLanguage;
 
-  const latestFeatures = useMemo(() => features.slice(0, 3), [features]);
+  const latestFeatures = useMemo(() => {
+    const sorted = [...features].sort((a, b) => {
+      if (a.createdAt && b.createdAt) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (a.createdAt) return -1;
+      if (b.createdAt) return 1;
+      return 0;
+    });
+    return sorted.slice(0, 3);
+  }, [features]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -64,7 +72,7 @@ export const FeaturesPreview = ({
                 }}
                 whileHover={{ scale: 1.01 }}
               >
-                {/* Row 1: badge + title */}
+                {/* Row 1: badge + date + title */}
                 <div className="flex items-center gap-1.5">
                   {(() => {
                     const proj = getProjectInfo(feature.projectId, dynamicProjects);
@@ -74,6 +82,11 @@ export const FeaturesPreview = ({
                       </span>
                     );
                   })()}
+                  {feature.createdAt && (
+                    <span className="text-[9px] text-content-faint shrink-0 tabular-nums">
+                      {new Date(feature.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    </span>
+                  )}
                   <p className="text-[10px] sm:text-xs font-medium text-content-secondary truncate group-hover:text-content">
                     {feature.title[lang]}
                   </p>

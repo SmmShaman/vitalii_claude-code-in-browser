@@ -21,6 +21,7 @@ export interface Feature {
   result: { en: string; no: string; ua: string };
   techStack: string[];
   hashtags: string[];
+  createdAt?: string;
 }
 
 export interface CategoryInfo {

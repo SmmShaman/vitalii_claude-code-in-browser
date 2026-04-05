@@ -18,7 +18,7 @@ export async function GET() {
       .from('features')
       .select('*, feature_projects(repo_url)')
       .eq('status', 'published')
-      .order('feature_id', { ascending: true })
+      .order('created_at', { ascending: false })
 
     if (error) throw error
 
