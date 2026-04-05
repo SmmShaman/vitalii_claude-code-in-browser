@@ -49,6 +49,20 @@ serve(async (req) => {
 
     if (!rawText || !chatId) throw new Error('rawText and chatId required')
 
+    // Dedup check: prevent duplicate voice blog posts from webhook retries
+    if (!blogPostId) {
+      const { data: existingPost } = await supabase
+        .from('blog_posts')
+        .select('id')
+        .eq('original_voice_text', rawText)
+        .limit(1)
+        .maybeSingle()
+      if (existingPost) {
+        console.log(`⚠️ Voice blog already exists: ${existingPost.id}, skipping`)
+        return new Response(JSON.stringify({ success: true, blogPostId: existingPost.id, isDuplicate: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+    }
+
     // Update status
     if (messageId) {
       await editTelegramMessage(chatId, messageId, '🧠 <b>Генерую блог-пост...</b>\n\nОбробляю текст AI...')
@@ -65,7 +79,19 @@ serve(async (req) => {
       .single()
 
     const basePrompt = promptData?.prompt_text || `Convert raw text into a polished trilingual blog post. Return JSON with en/no/ua titles, content, descriptions, tags, category.`
-    const systemPrompt = `${basePrompt}\n\n${HUMANIZER_ARTICLE}\n\n${VOICE_JOURNALISM}`
+    const wordCount = rawText.split(/\s+/).length
+    const voiceSafeguards = `
+VOICE DICTATION MODE — CRITICAL RULES:
+The text below is the author's OWN words transcribed from a voice message.
+1. Write ONLY about topics and ideas the author actually mentioned.
+2. PRESERVE ALL specific names: tools, platforms, companies, URLs, products, people. If the author said "Skyvern", "Finn.no", "Perplexity" — these MUST appear in the output.
+3. Do NOT invent details, examples, backstory, or emotional context the author did not say.
+4. Do NOT generalize specific experiences into abstract motivation. If the author described a concrete problem with a specific tool, write about THAT tool and THAT problem.
+5. Do NOT add "I remember when...", "Back in those days..." or nostalgic filler.
+6. Keep roughly the same level of detail as the original (~${wordCount} words ±30% per language).
+7. If unsure whether something was said — leave it out.
+8. The blog post should feel like the author's voice cleaned up, NOT a completely different text inspired by the topic.`
+    const systemPrompt = `${basePrompt}\n\n${voiceSafeguards}\n\n${HUMANIZER_ARTICLE}\n\n${VOICE_JOURNALISM}`
 
     // Get Google API key
     let apiKey = GOOGLE_API_KEY
@@ -85,7 +111,7 @@ serve(async (req) => {
           contents: [{
             parts: [{ text: `${systemPrompt}\n\nRAW TEXT FROM VOICE MESSAGE:\n${rawText.slice(0, 5000)}` }],
           }],
-          generationConfig: { temperature: 0.5, maxOutputTokens: 16000 },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 16000 },
         }),
       },
     )

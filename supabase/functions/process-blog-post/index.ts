@@ -359,6 +359,20 @@ ${blogPromptText}`
     const extractedTags = rewrittenContent.tags || rewrittenContent.en.tags || ['ai', 'technology']
     const category = rewrittenContent.category || rewrittenContent.en.category || 'Tech'
 
+    // Dedup check: prevent duplicate voice blog posts from webhook retries
+    if (requestData.sourceType === 'voice' && requestData.content) {
+      const { data: existingPost } = await supabase
+        .from('blog_posts')
+        .select('id')
+        .eq('original_voice_text', requestData.content)
+        .limit(1)
+        .maybeSingle()
+      if (existingPost) {
+        console.log(`⚠️ Voice blog already exists: ${existingPost.id}, skipping duplicate`)
+        return new Response(JSON.stringify({ success: true, blogPostId: existingPost.id, isDuplicate: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+    }
+
     // Create blog post with all fields
     const { data: blogPost, error: insertError } = await supabase
       .from('blog_posts')
