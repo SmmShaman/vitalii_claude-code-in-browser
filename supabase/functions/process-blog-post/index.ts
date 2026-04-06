@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-const VERSION_STAMP = '2026-03-29-force-redeploy'
+const VERSION_STAMP = '2026-04-06-structured-brief-enrichment'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { generateLocalizedSlug } from '../_shared/slug-helpers.ts'
 import { getRandomOpeningStyle } from '../_shared/opening-styles.ts'
@@ -50,16 +50,37 @@ async function findSourceLink(title: string, content: string, existingUrl?: stri
 }
 
 /**
- * Generate new image using AI
+ * Generate new image using AI via structured brief system
+ * Creates a temp news record so process-image can use the full pipeline
  */
-async function generateImage(imageUrl: string | null, title: string, description: string): Promise<string | null> {
+async function generateImage(
+  supabase: any,
+  title_en: string, title_ua: string, title_no: string,
+  content_en: string, description_en: string, description_ua: string, description_no: string,
+  language: 'en' | 'no' | 'ua' = 'en'
+): Promise<string | null> {
   try {
-    if (!imageUrl) {
-      console.log('⚠️ No image URL provided, skipping generation')
+    console.log('🖼️ Generating blog image via structured brief system...')
+
+    // Create temp news record for process-image (it only works with news table)
+    const { data: tempNews, error: insertErr } = await supabase
+      .from('news')
+      .insert({
+        title_en, title_ua, title_no,
+        content_en,
+        description_en, description_ua, description_no,
+        pre_moderation_status: 'approved'
+      })
+      .select('id')
+      .single()
+
+    if (insertErr || !tempNews) {
+      console.warn('⚠️ Failed to create temp news for image generation:', insertErr?.message)
       return null
     }
 
-    console.log('🖼️ Generating new image with AI...')
+    console.log(`📋 Temp news created: ${tempNews.id}`)
+
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/process-image`,
       {
@@ -69,22 +90,25 @@ async function generateImage(imageUrl: string | null, title: string, description
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          imageUrl,
-          promptType: 'linkedin_optimize',
-          newsTitle: title,
-          newsDescription: description
+          newsId: tempNews.id,
+          generateFromPrompt: true,
+          language
         })
       }
     )
 
+    // Clean up temp news record
+    await supabase.from('news').delete().eq('id', tempNews.id)
+    console.log(`🗑️ Temp news deleted: ${tempNews.id}`)
+
     if (!response.ok) {
-      console.warn('⚠️ Image generation failed, using original')
+      console.warn('⚠️ Image generation failed')
       return null
     }
 
     const result = await response.json()
-    if (result.success && result.processedImageUrl && result.processedImageUrl !== imageUrl) {
-      console.log(`✅ New image generated: ${result.processedImageUrl}`)
+    if (result.success && result.processedImageUrl) {
+      console.log(`✅ Blog image generated via structured brief: ${result.processedImageUrl}`)
       return result.processedImageUrl
     }
     return null
@@ -223,9 +247,43 @@ STRICT RULES:
         throw new Error('Voice processing failed — Stage 2 (retelling) returned empty')
       }
 
-      processedContent = stage2
+      // Stage 2.5: Enrich with project context (links, portfolio references)
+      console.log('  Stage 2.5: Enriching with project context...')
+      const stage25 = await callGemini(
+        `You are Vitalii Berbeha, a developer from Norway (vitalii.no). Below is a cleaned blog post draft.
+
+CLEANED TEXT:
+${stage2}
+
+YOUR TASK: Enrich this text with concrete project context. Add:
+1. If the text mentions a project name — add a brief line about what it is (e.g., "Jobke — my job search automation platform")
+2. If specific tools/services are mentioned — add what they do in 1 sentence (only if not already explained)
+3. Add 1-2 sentences of personal developer insight: what you learned, what surprised you, or what you'd do differently
+4. If relevant, mention where readers can find more on vitalii.no
+
+STRICT RULES:
+- Keep ALL original content and details from the cleaned text
+- Do NOT remove or replace any of the author's original points
+- Add enrichment ORGANICALLY — weave it into the text, don't add a separate section
+- Keep the same language as the input
+- Total result should be 20-40% longer than the input, not more
+- Write as first person ("I", "my")
+- Do NOT add generic motivational conclusions
+
+Return ONLY the enriched text.`,
+        3000
+      )
+
+      if (stage25?.trim() && stage25.split(/\s+/).length > stage2.split(/\s+/).length * 0.8) {
+        processedContent = stage25
+        console.log(`  Stage 2.5 result (${stage25.split(/\s+/).length} words, enriched from ${stage2.split(/\s+/).length}): ${stage25.slice(0, 150)}`)
+      } else {
+        processedContent = stage2
+        console.log('  Stage 2.5: enrichment skipped (too short or empty)')
+      }
+
       processedTitle = stage1.slice(0, 100)
-      console.log('  ✅ 3-stage voice processing complete')
+      console.log('  ✅ Voice processing complete (3+enrichment stages)')
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -245,14 +303,14 @@ STRICT RULES:
     const finalPrompt = `You are a professional blog writer. Write from first-person perspective, sharing personal insights authentically.
 
 ${requestData.sourceType === 'voice' ? `IMPORTANT — VOICE DICTATION MODE:
-The text below is the author's OWN words (cleaned from voice dictation).
-STRICT RULES:
-- Write ONLY about topics and ideas the author actually mentioned
-- Do NOT invent details, examples, backstory, or emotional context he didn't say
-- Do NOT add "I remember when...", "Back in those days..." or nostalgic filler
-- If the author's text is ~${processedContent.split(/\\s+/).length} words, the blog post should be 150-300 words per language — NOT 500+
-- Keep the author's specific details (years, names, prices, platforms he mentioned)
-- If unsure whether something was said — leave it out` : 'Rewrite the article content engagingly.'}
+The text below is the author's OWN words (cleaned and enriched from voice dictation).
+RULES:
+- Keep ALL details, project names, tools, and context from the text — it has already been enriched
+- Write as first person, personal developer blog style
+- Keep the author's specific details (years, names, prices, platforms)
+- Do NOT add nostalgic filler ("I remember when...", "Back in those days...")
+- Do NOT add generic motivational conclusions
+- Target 200-400 words per language` : 'Rewrite the article content engagingly.'}
 
 ${HUMANIZER_ARTICLE}
 
@@ -333,7 +391,12 @@ ${blogPromptText}`
     // 🖼️ Generate new image with AI — use allSettled so one failure doesn't block the other
     const [sourceResult, imageResult] = await Promise.allSettled([
       findSourceLink(requestData.title, requestData.content, requestData.sourceLink || requestData.url),
-      generateImage(requestData.imageUrl, rewrittenContent.en.title, rewrittenContent.en.description)
+      generateImage(
+        supabase,
+        rewrittenContent.en.title, rewrittenContent.ua.title, rewrittenContent.no.title,
+        rewrittenContent.en.content, rewrittenContent.en.description,
+        rewrittenContent.ua.description, rewrittenContent.no.description
+      )
     ])
     const foundSourceUrl = sourceResult.status === 'fulfilled' ? sourceResult.value : null
     const generatedImageUrl = imageResult.status === 'fulfilled' ? imageResult.value : null
