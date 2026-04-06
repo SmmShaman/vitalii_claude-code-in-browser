@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { HUMANIZER_SOCIAL } from '../_shared/humanizer-prompt.ts'
+import { callLLM } from '../_shared/gemini-llm.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,12 +23,97 @@ const MODEL_TIMEOUT_MS = 40_000
 const RETRY_DELAY_MS = 2_000
 
 // ==========================================
+// STRUCTURED BRIEF SYSTEM
+// ==========================================
+
+interface StructuredBrief {
+  narrative_type: 'comparison' | 'product' | 'announcement' | 'problem_solution' | 'tutorial' | 'analysis'
+  entities: Array<{ name: string; role: string; visual_hint: string }>
+  core_message: string
+  mood: string
+  setting: string
+}
+
+const COMPOSITION_TEMPLATES: Record<string, string> = {
+  comparison: `Split-screen composition. Left side: the OLD/problematic approach (muted warm tones, error states, frustration cues). Right side: the NEW/better solution (fresh cool tones, success states, clean UI). Clear visual contrast between the two halves.`,
+  product: `Hero shot composition. The main product/tool is centered and prominent. Supporting context elements arranged around it. Clean background with subtle depth. The product should be recognizable and dominant.`,
+  announcement: `Bold headline-forward composition. Key news fact or number is large and prominent. Supporting visual below or behind the text. Newspaper/breaking news editorial aesthetic.`,
+  problem_solution: `Before/after layout. Top or left shows the problem state (darker, cluttered). Bottom or right shows the solution (cleaner, brighter). Transition element connecting them (arrow, gradient, or split line).`,
+  tutorial: `Step-by-step visual. 2-3 panels or numbered elements showing a process flow. Clean, instructional aesthetic. Each step is clearly separated and labeled.`,
+  analysis: `Data-driven composition. Key numbers, charts, or statistics featured prominently. Professional analytical aesthetic with clean typography. Supporting visual context behind the data.`,
+}
+
+async function generateStructuredBrief(title: string, content: string): Promise<StructuredBrief | null> {
+  try {
+    const systemPrompt = `You are an editorial art director. Analyze the article and produce a structured image brief.
+
+Return ONLY valid JSON (no markdown, no backticks) with this exact structure:
+{
+  "narrative_type": "comparison" | "product" | "announcement" | "problem_solution" | "tutorial" | "analysis",
+  "entities": [
+    { "name": "exact name from article", "role": "main_subject|old_solution|new_solution|context|tool|company|person", "visual_hint": "concrete visual: browser window, mobile app, logo, chart, device, interface element" }
+  ],
+  "core_message": "one sentence: the key takeaway of the article",
+  "mood": "professional_optimistic|serious|innovative|dramatic|neutral",
+  "setting": "developer_workspace|office|abstract|outdoor|lab|conference|digital_interface"
+}
+
+Rules:
+- Extract ALL specific products, companies, tools, websites, and people mentioned
+- visual_hint must be CONCRETE and DRAWABLE: "laptop showing Finn.no form with red error", not "technology concept"
+- If article compares old vs new approach → narrative_type = "comparison"
+- If article announces news/numbers/results → narrative_type = "announcement"
+- If article describes a specific product/tool → narrative_type = "product"
+- Maximum 6 entities, minimum 2`
+
+    const userMessage = `TITLE: ${title}\n\nCONTENT: ${content.substring(0, 1500)}`
+    const result = await callLLM(systemPrompt, userMessage, { temperature: 0.2, maxTokens: 500 })
+
+    // Clean JSON from potential markdown wrapping
+    const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const brief = JSON.parse(cleaned) as StructuredBrief
+
+    // Validate
+    if (!brief.narrative_type || !brief.entities || brief.entities.length === 0) {
+      console.error('❌ Invalid brief structure:', brief)
+      return null
+    }
+
+    console.log(`📋 Structured brief: type=${brief.narrative_type}, entities=${brief.entities.length}, mood=${brief.mood}`)
+    return brief
+  } catch (e: any) {
+    console.error('❌ Failed to generate structured brief:', e.message)
+    return null
+  }
+}
+
+function assemblePromptFromBrief(brief: StructuredBrief, localizedTitle: string): string {
+  const composition = COMPOSITION_TEMPLATES[brief.narrative_type] || COMPOSITION_TEMPLATES.analysis
+
+  const entitiesSection = brief.entities
+    .map(e => `- "${e.name}" (${e.role}): show as ${e.visual_hint}`)
+    .join('\n')
+
+  return `${composition}
+
+SPECIFIC ELEMENTS THAT MUST BE VISIBLE IN THE IMAGE:
+${entitiesSection}
+
+HEADLINE ON IMAGE: "${localizedTitle}"
+MOOD: ${brief.mood}
+SETTING: ${brief.setting}
+CORE MESSAGE: ${brief.core_message}
+
+CENTER-WEIGHTED COMPOSITION (MANDATORY): Keep all critical visual elements and text within the center 70% of the frame. Edges should have ambient/background content only — this ensures the image works when cropped to 1:1 for social media.`
+}
+
+// ==========================================
 // CASCADING PROVIDERS CONFIGURATION
 // ==========================================
 
 interface CascadingProvider {
   name: string
-  type: 'grok' | 'gemini'
+  type: 'gemini'
   model: string
   apiKeyEnv: string
   priority: number
@@ -102,96 +189,7 @@ async function trackProviderUsage(
 // ==========================================
 
 /**
- * Get API key from env var first, then fall back to api_settings table
- */
-async function getProviderApiKey(supabase: any, keyName: string): Promise<string | null> {
-  const envKey = Deno.env.get(keyName)
-  if (envKey) return envKey
-
-  try {
-    const { data } = await supabase
-      .from('api_settings')
-      .select('key_value')
-      .eq('key_name', keyName)
-      .eq('is_active', true)
-      .single()
-    return data?.key_value || null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Generate image with xAI Grok (grok-imagine-image)
- * OpenAI-compatible API: POST https://api.x.ai/v1/images/generations
- */
-async function generateWithGrok(prompt: string, aspectRatio: '1:1' | '16:9', supabase: any): Promise<string | null> {
-  const apiKey = await getProviderApiKey(supabase, 'XAI_API_KEY')
-  if (!apiKey) {
-    console.log('⚠️ Grok: missing XAI_API_KEY')
-    return null
-  }
-
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
-
-    // Grok supports size as "WxH" string
-    const size = aspectRatio === '16:9' ? '1024x576' : '1024x1024'
-
-    const response = await fetch('https://api.x.ai/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'grok-imagine-image',
-        prompt,
-        size,
-        n: 1,
-        response_format: 'b64_json',
-      }),
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error(`❌ Grok error: ${response.status} - ${errText.substring(0, 200)}`)
-      return null
-    }
-
-    const result = await response.json()
-    const b64 = result.data?.[0]?.b64_json
-    if (!b64) {
-      // Fallback: check for URL format
-      const url = result.data?.[0]?.url
-      if (url) {
-        const imgResp = await fetch(url)
-        if (imgResp.ok) {
-          const arrayBuffer = await imgResp.arrayBuffer()
-          const base64 = btoa(
-            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-          )
-          console.log('✅ Grok generated image successfully (URL format)')
-          return base64
-        }
-      }
-      console.error('❌ Grok: no image in response')
-      return null
-    }
-    console.log('✅ Grok generated image successfully')
-    return b64
-  } catch (e: any) {
-    console.error('❌ Grok error:', e.name === 'AbortError' ? 'Timeout' : e.message)
-    return null
-  }
-}
-
-/**
- * Generate image using cascading providers (Grok → Nano Banana fallback)
+ * Generate image using cascading providers (Nano Banana Pro)
  * Returns base64 image data or null if all fail
  */
 async function generateImageCascading(
@@ -199,50 +197,31 @@ async function generateImageCascading(
   apiKey: string,
   supabase: any,
   language?: 'en' | 'no' | 'ua',
-  aspectRatio: '1:1' | '16:9' = '1:1'
+  aspectRatio: '1:1' | '16:9' | '4:5' = '16:9',
+  articleContext?: { title: string; description?: string; content?: string }
 ): Promise<{ base64: string; provider: string; model: string } | null> {
-  // Simplified prompt for Grok (no text/branding instructions)
-  const cleanPrompt = `Professional news illustration for LinkedIn. ${prompt}. Style: Modern, professional, high quality. No text on image.`
-
   for (const provider of CASCADING_PROVIDERS) {
     console.log(`🔄 Cascading: trying ${provider.name} (priority ${provider.priority})...`)
 
-    let base64: string | null = null
-
-    switch (provider.type) {
-      case 'grok':
-        base64 = await generateWithGrok(cleanPrompt, aspectRatio, supabase)
-        break
-      case 'gemini':
-        // For Gemini fallback, use existing function with full prompt (supports text)
-        const imageUrl = await generateImageFromText(prompt, apiKey, language, 'general', false, aspectRatio)
-        if (imageUrl) {
-          try {
-            const resp = await fetch(imageUrl)
-            if (resp.ok) {
-              const ab = await resp.arrayBuffer()
-              base64 = btoa(new Uint8Array(ab).reduce((d, b) => d + String.fromCharCode(b), ''))
-            }
-          } catch { /* fall through */ }
-          if (base64) {
-            await trackProviderUsage(supabase, provider.name, provider.model, true)
-            return { base64, provider: provider.name, model: provider.model }
-          }
+    // For Gemini, use existing function with full prompt (supports text)
+    const imageUrl = await generateImageFromText(prompt, apiKey, language, 'general', false, aspectRatio, articleContext)
+    if (imageUrl) {
+      try {
+        const resp = await fetch(imageUrl)
+        if (resp.ok) {
+          const ab = await resp.arrayBuffer()
+          const base64 = btoa(new Uint8Array(ab).reduce((d, b) => d + String.fromCharCode(b), ''))
+          await trackProviderUsage(supabase, provider.name, provider.model, true)
+          return { base64, provider: provider.name, model: provider.model }
         }
-        await trackProviderUsage(supabase, provider.name, provider.model, false)
-        continue
-    }
-
-    if (base64) {
-      await trackProviderUsage(supabase, provider.name, provider.model, true)
-      return { base64, provider: provider.name, model: provider.model }
+      } catch { /* fall through */ }
     }
 
     await trackProviderUsage(supabase, provider.name, provider.model, false)
     console.log(`⚠️ ${provider.name} failed, trying next...`)
   }
 
-  console.log('❌ All providers failed (Grok + Nano Banana)')
+  console.log('❌ All cascading providers failed')
   return null
 }
 
@@ -316,8 +295,8 @@ interface ProcessImageRequest {
   generateFromPrompt?: boolean
   // Language for text on the image (ua, no, en)
   language?: 'en' | 'no' | 'ua'
-  // Aspect ratio for generated images: '1:1' for Instagram, '16:9' for LinkedIn/Facebook
-  aspectRatio?: '1:1' | '16:9'
+  // Aspect ratio: '16:9' website/LinkedIn/Facebook (default), '4:5' Instagram portrait, '1:1' Instagram square
+  aspectRatio?: '1:1' | '16:9' | '4:5'
 }
 
 interface ProcessImageResponse {
@@ -327,8 +306,8 @@ interface ProcessImageResponse {
   originalImageUrl?: string
   error?: string
   message?: string
-  aspectRatio?: '1:1' | '16:9'
-  provider?: string  // Which provider generated the image (Grok / Nano Banana)
+  aspectRatio?: '1:1' | '16:9' | '4:5'
+  provider?: string  // Which provider generated the image (Nano Banana Pro)
   debug?: {
     version: string
     timestamp: string
@@ -354,14 +333,14 @@ serve(async (req) => {
       promptType: requestData.promptType,
       generateFromPrompt: requestData.generateFromPrompt,
       hasNewsContext: !!(requestData.newsTitle || requestData.newsDescription),
-      aspectRatio: requestData.aspectRatio || '1:1'
+      aspectRatio: requestData.aspectRatio || '16:9'
     })
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     // TEXT-TO-IMAGE MODE: Generate image from prompt stored in DB
     if (requestData.generateFromPrompt && requestData.newsId) {
-      const aspectRatio = requestData.aspectRatio || '1:1'
+      const aspectRatio = requestData.aspectRatio || '16:9'
       console.log('🎨 Text-to-image mode: generating from stored prompt', requestData.language ? `(language: ${requestData.language})` : '', `(aspectRatio: ${aspectRatio})`)
       return await handleTextToImageGeneration(supabase, requestData.newsId, requestData.language, aspectRatio)
     }
@@ -471,7 +450,7 @@ async function handleTextToImageGeneration(
   supabase: any,
   newsId: string,
   language?: 'en' | 'no' | 'ua',
-  aspectRatio: '1:1' | '16:9' = '1:1',
+  aspectRatio: '1:1' | '16:9' | '4:5' = '16:9',
   retryCount: number = 0,
   previousIssues: string[] = []
 ): Promise<Response> {
@@ -481,7 +460,7 @@ async function handleTextToImageGeneration(
   // 1. Get news record with the stored prompt
   const { data: news, error: newsError } = await supabase
     .from('news')
-    .select('id, image_generation_prompt, title_en, description_en, processed_image_url, processed_image_url_wide, image_retry_count')
+    .select('id, image_generation_prompt, title_en, title_no, title_ua, content_en, description_en, description_no, description_ua, processed_image_url, processed_image_url_wide, image_retry_count')
     .eq('id', newsId)
     .single()
 
@@ -523,20 +502,31 @@ async function handleTextToImageGeneration(
     )
   }
 
-  // 2. Get the prompt - prefer stored prompt, fallback to generating one
+  // 2. Generate structured brief from article content, then assemble prompt
+  const localizedTitle = (language === 'ua' ? news.title_ua : language === 'no' ? news.title_no : news.title_en) || news.title_en || ''
   let imagePrompt = news.image_generation_prompt
 
-  if (!imagePrompt) {
-    console.log('⚠️ No stored prompt, generating a default one from title')
-    const aspectRatioDescription = aspectRatio === '16:9' ? '16:9 landscape (wide)' : '1:1 square'
-    imagePrompt = `Create a professional, modern illustration for a LinkedIn article about: ${news.title_en || 'technology news'}.
-Style: Clean, professional, tech-focused.
-Aspect ratio: ${aspectRatioDescription}.
-No text on the image.
-Colors: Vibrant but professional.`
+  if (news.content_en && news.title_en) {
+    console.log('📋 Generating structured brief from article...')
+    const brief = await generateStructuredBrief(news.title_en, news.content_en)
+    if (brief) {
+      const briefPrompt = assemblePromptFromBrief(brief, localizedTitle)
+      // Merge: structured brief as primary, stored prompt as additional visual guidance
+      imagePrompt = imagePrompt
+        ? `${briefPrompt}\n\nADDITIONAL VISUAL GUIDANCE (from art director): ${imagePrompt}`
+        : briefPrompt
+      console.log('✅ Structured brief assembled, narrative:', brief.narrative_type)
+    } else {
+      console.log('⚠️ Brief generation failed, using stored prompt')
+    }
   }
 
-  console.log('📝 Using prompt:', imagePrompt.substring(0, 200) + '...')
+  if (!imagePrompt) {
+    console.log('⚠️ No prompt available, using basic fallback')
+    imagePrompt = `Professional editorial illustration for: ${news.title_en || 'technology news'}. Clean, modern, 16:9 landscape format.`
+  }
+
+  console.log('📝 Using prompt:', imagePrompt.substring(0, 300) + '...')
 
   // 3. Check generation mode
   const generationMode = await getImageGenerationMode(supabase)
@@ -550,8 +540,12 @@ Colors: Vibrant but professional.`
 
     const googleApiKey = await getGoogleApiKey(supabase) || ''
 
+    const localizedTitle = (language === 'ua' ? news.title_ua : language === 'no' ? news.title_no : news.title_en) || news.title_en || ''
+    const localizedDesc = (language === 'ua' ? news.description_ua : language === 'no' ? news.description_no : news.description_en) || news.description_en || ''
+
     const result = await generateImageCascading(
-      imagePrompt, googleApiKey, supabase, language, aspectRatio
+      imagePrompt, googleApiKey, supabase, language, aspectRatio,
+      { title: localizedTitle, description: localizedDesc, content: news.content_en }
     )
 
     if (!result) {
@@ -578,10 +572,10 @@ Colors: Vibrant but professional.`
       image_model_used: result.model,
       image_retry_count: 0,
     }
+    // Always save to main field (website uses processed_image_url)
+    updateData.processed_image_url = processedImageUrl
     if (aspectRatio === '16:9') {
       updateData.processed_image_url_wide = processedImageUrl
-    } else {
-      updateData.processed_image_url = processedImageUrl
     }
 
     await supabase.from('news').update(updateData).eq('id', newsId)
@@ -608,50 +602,8 @@ Colors: Vibrant but professional.`
   }
 
   // ==========================================
-  // GEMINI ONLY MODE: Try Grok first, then Gemini
+  // GEMINI ONLY MODE
   // ==========================================
-
-  // Try Grok first (even in gemini_only mode) — only on first attempt
-  if (retryCount === 0) {
-    console.log('🔄 Trying Grok as primary provider...')
-    const grokCleanPrompt = `Professional news illustration for LinkedIn. ${imagePrompt}. Style: Modern, professional, high quality. No text on image.`
-    const grokResult = await generateWithGrok(grokCleanPrompt, aspectRatio, supabase)
-
-    if (grokResult) {
-      await trackProviderUsage(supabase, 'Grok', 'grok-imagine-image', true)
-
-      const processedImageUrl = await uploadProcessedImage(grokResult)
-
-      const updateData: Record<string, any> = {
-        image_processed_at: new Date().toISOString(),
-        image_provider_used: 'Grok',
-        image_model_used: 'grok-imagine-image',
-        image_retry_count: 0,
-      }
-      if (aspectRatio === '16:9') {
-        updateData.processed_image_url_wide = processedImageUrl
-      } else {
-        updateData.processed_image_url = processedImageUrl
-      }
-      await supabase.from('news').update(updateData).eq('id', newsId)
-
-      console.log(`✅ Image generated by Grok (${aspectRatio}): ${processedImageUrl}`)
-      return new Response(
-        JSON.stringify({
-          success: true,
-          processedImageUrl,
-          aspectRatio,
-          provider: 'Grok',
-          message: `Image generated by Grok (${aspectRatio})`,
-          debug: { version: VERSION, timestamp: new Date().toISOString(), lastApiError: null, provider: 'Grok', model: 'grok-imagine-image' }
-        } as ProcessImageResponse),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    await trackProviderUsage(supabase, 'Grok', 'grok-imagine-image', false)
-    console.log('⚠️ Grok failed, falling back to Nano Banana (Gemini)...')
-  }
 
   // If retrying, add improvement feedback from previous validation
   if (retryCount > 0 && previousIssues.length > 0) {
@@ -682,7 +634,12 @@ Generate a BETTER image addressing all these issues.`
   const newsCategory = 'general'
   console.log('🖼️ Calling Gemini for text-to-image generation... (version:', VERSION, ')')
   console.log('📐 Aspect ratio:', aspectRatio)
-  const processedImageUrl = await generateImageFromText(imagePrompt, googleApiKey, language, newsCategory, false, aspectRatio)
+  const geminiLocalizedTitle = (language === 'ua' ? news.title_ua : language === 'no' ? news.title_no : news.title_en) || news.title_en || ''
+  const geminiLocalizedDesc = (language === 'ua' ? news.description_ua : language === 'no' ? news.description_no : news.description_en) || news.description_en || ''
+  const processedImageUrl = await generateImageFromText(
+    imagePrompt, googleApiKey, language, newsCategory, false, aspectRatio,
+    { title: geminiLocalizedTitle, description: geminiLocalizedDesc, content: news.content_en }
+  )
 
   if (!processedImageUrl) {
     console.log('❌ Image generation failed')
@@ -733,10 +690,10 @@ Generate a BETTER image addressing all these issues.`
     image_model_used: usedModel,
   }
 
+  // Always save to main field (website uses processed_image_url)
+  updateData.processed_image_url = processedImageUrl
   if (aspectRatio === '16:9') {
     updateData.processed_image_url_wide = processedImageUrl
-  } else {
-    updateData.processed_image_url = processedImageUrl
   }
 
   const { error: updateError } = await supabase.from('news').update(updateData).eq('id', newsId)
@@ -1055,7 +1012,8 @@ async function generateImageFromText(
   language?: 'en' | 'no' | 'ua',
   category?: string,
   useAbstractFallback?: boolean,
-  aspectRatio: '1:1' | '16:9' = '1:1'
+  aspectRatio: '1:1' | '16:9' | '4:5' = '16:9',
+  articleContext?: { title: string; description?: string; content?: string }
 ): Promise<string | null> {
   lastApiError = null
 
@@ -1123,7 +1081,7 @@ BRANDING ELEMENTS (small, subtle, do not distract):
       ? `\n\n${languageInstructions[language]}`
       : `\n\nNo text on the image except "vitalii.no" at the bottom.`
 
-    // Anti-AI-slop style instructions
+    // Anti-AI-slop VISUAL style instructions
     const styleGuide = `VISUAL STYLE — MANDATORY (anti-AI-slop):
 - Shot on Canon EOS R5, 35mm lens, f/2.8, natural ambient light
 - Editorial photography style — like Bloomberg, Reuters, The Verge covers
@@ -1135,12 +1093,40 @@ BRANDING ELEMENTS (small, subtle, do not distract):
 - If people present: natural skin with visible pores, no airbrushing, no beauty filter
 - Lighting: golden hour or overcast daylight — NOT studio neon
 - Composition: rule of thirds, editorial magazine layout feel
-- Overall mood: professional, trustworthy, journalistic — NOT sci-fi, NOT futuristic`
+- Overall mood: professional, trustworthy, journalistic — NOT sci-fi, NOT futuristic
 
-    // Aspect ratio description for the prompt
-    const aspectRatioDescription = aspectRatio === '16:9'
-      ? '16:9 landscape (wide horizontal, editorial magazine cover)'
-      : '1:1 square (Instagram editorial post)'
+TEXT ON IMAGE — ANTI-AI-SLOP RULES (MANDATORY for any headline, caption, or label rendered on the image):
+${HUMANIZER_SOCIAL}`
+
+    // Aspect ratio with concrete pixel dimensions per platform
+    const ASPECT_RATIO_SPECS: Record<string, string> = {
+      '16:9': '16:9 landscape, 1200×675 pixels. For website hero, LinkedIn, Facebook, Twitter/X. Wide editorial magazine cover feel.',
+      '4:5': '4:5 portrait, 1080×1350 pixels. For Instagram feed (highest engagement format). Vertical, mobile-first composition.',
+      '1:1': '1:1 square, 1080×1080 pixels. For Instagram square posts. Centered, balanced composition.',
+    }
+    const aspectRatioDescription = ASPECT_RATIO_SPECS[aspectRatio] || ASPECT_RATIO_SPECS['16:9']
+
+    // Article context section — tells Gemini what the article is actually about
+    const articleSection = articleContext
+      ? `\nARTICLE CONTEXT — the image illustrates THIS specific article:
+HEADLINE: "${articleContext.title}"
+${articleContext.description ? `SUMMARY: ${articleContext.description.substring(0, 300)}` : ''}
+${articleContext.content ? `ARTICLE TEXT (extract key entities from here): ${articleContext.content.substring(0, 800)}` : ''}
+
+VISUAL GROUNDING RULES (CRITICAL):
+1. READ the article text above. Identify specific products, companies, tools, technologies, and brands mentioned.
+2. The image MUST contain visual hints or references to at least 2-3 specific entities from the article.
+   Examples of visual hints: UI mockups, browser windows, product shapes, recognizable icons, text labels with product names, screenshots, interface elements.
+3. If the article mentions specific websites (like Finn.no) — show browser address bars or form elements.
+4. If the article mentions specific tools (like Skyvern, Perplexity) — show their names as subtle labels, UI panels, or screen content.
+5. Do NOT create a generic abstract image. The viewer must be able to guess WHAT the article is about by looking at the image.
+
+TEXT ON IMAGE RULES:
+- Any headline, title, or caption on the image MUST be derived from the HEADLINE above.
+- You may shorten the headline but keep the core meaning.
+- Do NOT invent your own headline or topic. The text must reflect what this article is about.
+- Translate the headline to match the required language (see language rules above).\n`
+      : ''
 
     const requestBody = {
       contents: [{
@@ -1149,7 +1135,7 @@ BRANDING ELEMENTS (small, subtle, do not distract):
 
 ${styleGuide}
 
-Create an editorial news photograph for a professional news website.
+${articleSection}Create an editorial news photograph for a professional news website.
 
 Visual concept: ${effectivePrompt}
 
@@ -1178,7 +1164,7 @@ REMINDER: ${language === 'ua' ? 'All text on the image must be in UKRAINIAN (Cyr
       // Content policy block → try abstract fallback (same model)
       if (result?.contentPolicy && !useAbstractFallback) {
         console.log('🔄 Retrying with abstract fallback prompt to bypass content policy...')
-        return generateImageFromText(prompt, apiKey, language, category, true, aspectRatio)
+        return generateImageFromText(prompt, apiKey, language, category, true, aspectRatio, articleContext)
       }
       if (result?.contentPolicy && useAbstractFallback) {
         lastApiError = `Content policy blocked even abstract prompt on ${modelName}`
@@ -1196,7 +1182,7 @@ REMINDER: ${language === 'ua' ? 'All text on the image must be in UKRAINIAN (Cyr
           return retryResult.imageUrl
         }
         if (retryResult?.contentPolicy && !useAbstractFallback) {
-          return generateImageFromText(prompt, apiKey, language, category, true, aspectRatio)
+          return generateImageFromText(prompt, apiKey, language, category, true, aspectRatio, articleContext)
         }
 
         // Move to next model

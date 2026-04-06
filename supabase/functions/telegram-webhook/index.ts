@@ -3435,7 +3435,7 @@ serve(async (req) => {
 
         // Get today's image generation count for provider info
         let todayImageCount = 0
-        let activeProvider = 'Grok → Nano Banana'
+        let activeProvider = 'Nano Banana Pro'
         try {
           const today = new Date().toISOString().split('T')[0]
           const { data: usageData } = await supabase
