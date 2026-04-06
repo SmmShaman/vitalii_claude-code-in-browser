@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-const VERSION_STAMP = '2026-04-01-voice-any-strict-prompts'
+const VERSION_STAMP = '2026-04-06-text-blog-social-fix'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 import { triggerVideoProcessing, isGitHubActionsEnabled, triggerLinkedInVideo, triggerFacebookVideo, triggerInstagramVideo } from '../_shared/github-actions.ts'
 import { escapeHtml } from '../_shared/social-media-helpers.ts'
@@ -182,26 +182,179 @@ serve(async (req) => {
           const statusMsgId = statusMsg?.result?.message_id
           if (!statusMsgId) console.warn('⚠️ Failed to get status message ID from Telegram')
 
-          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ newsId: '00000000-0000-0000-0000-000000000000', title: directText.slice(0, 100), content: directText, sourceType: 'voice' }),
-          }).then(async (res) => {
-            const data = await res.json()
-            if (data.success) {
-              const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-              const { data: post } = await supabase.from('blog_posts').select('title_ua, slug_en').eq('id', data.blogPostId).single()
+          // /blog direct text: same pipeline as voice — await blog creation, then image + social
+          try {
+            const blogRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ newsId: '00000000-0000-0000-0000-000000000000', title: directText.slice(0, 100), content: directText, sourceType: 'voice' }),
+            })
+            const blogData = await blogRes.json()
+
+            if (blogData.success && blogData.blogPostId) {
+              const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+              const baseUrl = Deno.env.get('SUPABASE_URL')!
+              const { data: post } = await supa.from('blog_posts').select('title_ua, title_en, title_no, slug_en, tags, reading_time, image_url, content_en').eq('id', blogData.blogPostId).single()
+
+              const blogUrl = `https://vitalii.no/blog/${post?.slug_en || ''}`
+              const bpId = blogData.blogPostId
+
               await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `✅ <b>Опубліковано!</b>\n\n📌 ${post?.title_ua || ''}\n🔗 https://vitalii.no/blog/${post?.slug_en || ''}`, parse_mode: 'HTML' }),
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: '✅ <b>Блог опубліковано!</b>\n\n🖼️ Генерую зображення + публікую в соцмережі...', parse_mode: 'HTML' }),
+              })
+
+              const getKey = async (name: string) => {
+                const { data: r } = await supa.from('api_settings').select('key_value').eq('key_name', name).single()
+                return r?.key_value || Deno.env.get(name) || ''
+              }
+
+              // Image generation via Gemini
+              const imagePromise = (async () => {
+                try {
+                  const gKey = await getKey('GOOGLE_API_KEY')
+                  if (!gKey) return null
+                  console.log('🖼️ Generating blog cover via Gemini (/blog direct)...')
+                  const imgRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${gKey}`,
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Professional blog cover image. Topic: ${post?.title_en || ''}. ${(post?.content_en || '').slice(0, 200)}. Dark background, modern tech aesthetic, no text, no logos. 16:9 landscape.` }] }],
+                        generationConfig: { responseModalities: ['image', 'text'] },
+                      }),
+                    },
+                  )
+                  if (!imgRes.ok) { console.error('Gemini image:', imgRes.status); return null }
+                  const imgData = await imgRes.json()
+                  for (const part of imgData?.candidates?.[0]?.content?.parts || []) {
+                    if (part.inlineData) {
+                      const b64 = part.inlineData.data as string
+                      const raw = atob(b64)
+                      const arr = new Uint8Array(raw.length)
+                      for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
+                      const path = `blog-covers/direct-${Date.now()}.png`
+                      const { error: upErr } = await supa.storage.from('news-images').upload(path, arr, { contentType: 'image/png', upsert: true })
+                      if (!upErr) {
+                        const url = `${baseUrl}/storage/v1/object/public/news-images/${path}`
+                        await supa.from('blog_posts').update({ image_url: url, processed_image_url: url }).eq('id', bpId)
+                        console.log('🖼️ Image saved:', url)
+                        return url
+                      } else { console.error('Upload err:', upErr) }
+                    }
+                  }
+                  return null
+                } catch (e) { console.error('Image failed:', e); return null }
+              })()
+
+              // Social posting (LinkedIn + Facebook)
+              const socialPromise = (async () => {
+                const results: string[] = []
+                const blogTitle = post?.title_en || ''
+                const blogUrlSocial = `https://vitalii.no/blog/${post?.slug_en || ''}`
+                const postContent = (post?.content_en || '').slice(0, 500)
+
+                let liText = blogTitle + '\n\n' + (post?.tags || []).map((t: string) => '#' + t.replace(/\s/g, '')).join(' ')
+                let fbText = blogTitle
+                try {
+                  const gk = await getKey('GOOGLE_API_KEY')
+                  if (gk) {
+                    const sp = 'Generate social media posts for this blog. Author is a full-stack developer.\n' +
+                      'TITLE: ' + blogTitle + '\nCONTENT: ' + postContent + '\nURL: ' + blogUrlSocial + '\n' +
+                      'TAGS: ' + (post?.tags || []).join(', ') + '\n\n' +
+                      'LINKEDIN (1200-1800 chars): Hook under 210 chars, storytelling, NO links in body, 3-5 hashtags, CTA question.\n' +
+                      'FACEBOOK (under 280 chars): Short hook, 1-2 hashtags, conversational.\n\n' +
+                      HUMANIZER_SOCIAL + '\n\n' + VOICE_SOCIAL + '\n\n' +
+                      'Return ONLY JSON: {"linkedin_post":"...","facebook_post":"..."}'
+                    const gr = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + gk, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ contents: [{ parts: [{ text: sp }] }], generationConfig: { temperature: 0.6, maxOutputTokens: 4000 } }),
+                    })
+                    if (gr.ok) {
+                      const gt = ((await gr.json())?.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+                      try { const p = JSON.parse(gt); if (p.linkedin_post) liText = p.linkedin_post; if (p.facebook_post) fbText = p.facebook_post } catch { /* keep defaults */ }
+                    }
+                  }
+                } catch { /* keep defaults */ }
+
+                // LinkedIn
+                try {
+                  const liToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || await getKey('LINKEDIN_ACCESS_TOKEN')
+                  const liUrn = Deno.env.get('LINKEDIN_PERSON_URN') || await getKey('LINKEDIN_PERSON_URN')
+                  if (liToken && liUrn) {
+                    let shareContent: any = { shareCommentary: { text: liText }, shareMediaCategory: 'NONE' }
+                    const imgWait = await imagePromise
+                    if (imgWait) {
+                      try {
+                        const regRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+                          method: 'POST', headers: { 'Authorization': 'Bearer ' + liToken, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ registerUploadRequest: { recipes: ['urn:li:digitalmediaRecipe:feedshare-image'], owner: liUrn, serviceRelationships: [{ relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }] } }),
+                        })
+                        if (regRes.ok) {
+                          const rd = await regRes.json()
+                          const upUrl = rd.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl
+                          const asset = rd.value?.asset
+                          if (upUrl && asset) {
+                            const ib = await fetch(imgWait).then(r => r.arrayBuffer())
+                            await fetch(upUrl, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + liToken }, body: ib })
+                            shareContent = { shareCommentary: { text: liText }, shareMediaCategory: 'IMAGE', media: [{ status: 'READY', media: asset }] }
+                          }
+                        }
+                      } catch (ie) { console.error('LI img:', ie) }
+                    }
+                    const liRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+                      method: 'POST',
+                      headers: { 'Authorization': 'Bearer ' + liToken, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+                      body: JSON.stringify({ author: liUrn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': shareContent }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }),
+                    })
+                    if (liRes.ok) {
+                      const su = liRes.headers.get('x-restli-id') || ''
+                      results.push('✅ <a href="https://www.linkedin.com/feed/update/' + su + '">LinkedIn</a>')
+                    } else { results.push('❌ LinkedIn: ' + liRes.status) }
+                  } else { results.push('⏭️ LinkedIn: no credentials') }
+                } catch (e: unknown) { results.push('❌ LinkedIn: ' + (e instanceof Error ? e.message.slice(0, 40) : 'error')) }
+
+                // Facebook
+                try {
+                  const fbToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') || await getKey('FACEBOOK_PAGE_ACCESS_TOKEN')
+                  const fbPage = Deno.env.get('FACEBOOK_PAGE_ID') || await getKey('FACEBOOK_PAGE_ID')
+                  if (fbToken && fbPage) {
+                    const fbRes = await fetch('https://graph.facebook.com/v18.0/' + fbPage + '/feed', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ message: fbText, link: blogUrlSocial, access_token: fbToken }),
+                    })
+                    if (fbRes.ok) {
+                      const fd = await fbRes.json()
+                      results.push('✅ <a href="https://facebook.com/' + fd.id + '">Facebook</a>')
+                    } else { results.push('❌ Facebook: ' + fbRes.status) }
+                  } else { results.push('⏭️ Facebook: no credentials') }
+                } catch (e: unknown) { results.push('❌ Facebook: ' + (e instanceof Error ? e.message.slice(0, 40) : 'error')) }
+
+                return results
+              })()
+
+              const [imageUrl, socialResults] = await Promise.all([imagePromise, socialPromise])
+
+              const preview = `✅ <b>Блог-пост опубліковано!</b>\n\n` +
+                `📌 <b>${post?.title_ua || ''}</b>\n\n` +
+                `🏷 ${(post?.tags || []).join(', ')}\n` +
+                `📖 ~${post?.reading_time || 1} хв\n` +
+                `🖼️ ${imageUrl ? 'Зображення ✅' : 'Без зображення'}\n` +
+                `🌐 EN: ${post?.title_en || ''}\n` +
+                `🌐 NO: ${post?.title_no || ''}\n\n` +
+                `📢 Соцмережі:\n${socialResults.join('\n')}\n\n` +
+                `🔗 ${blogUrl}`
+
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: preview, parse_mode: 'HTML', disable_web_page_preview: false }),
               })
             } else {
               await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ ${data.error || 'unknown'}` }),
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ ${blogData.error || 'unknown'}` }),
               })
             }
-          }).catch(e => console.error('blog dispatch failed:', e))
+          } catch (e) { console.error('blog dispatch failed:', e) }
 
           return new Response('OK')
         }
@@ -471,25 +624,180 @@ serve(async (req) => {
           const statusMsgId = statusMsg?.result?.message_id
           if (!statusMsgId) console.warn('⚠️ Failed to get status message ID from Telegram')
 
-          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ newsId: '00000000-0000-0000-0000-000000000000', title: msgText.slice(0, 100), content: msgText, sourceType: 'voice' }),
-          }).then(async (res) => {
-            const data = await res.json()
-            if (data.success) {
-              const { data: post } = await supabaseCheck.from('blog_posts').select('title_ua, slug_en').eq('id', data.blogPostId).single()
+          // Text blog: same pipeline as voice — await blog creation, then image + social in parallel
+          try {
+            const blogRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-blog-post`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ newsId: '00000000-0000-0000-0000-000000000000', title: msgText.slice(0, 100), content: msgText, sourceType: 'voice' }),
+            })
+            const blogData = await blogRes.json()
+
+            if (blogData.success && blogData.blogPostId) {
+              const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+              const baseUrl = Deno.env.get('SUPABASE_URL')!
+              const { data: post } = await supa.from('blog_posts').select('title_ua, title_en, title_no, slug_en, tags, reading_time, image_url, content_en').eq('id', blogData.blogPostId).single()
+
+              const blogUrl = `https://vitalii.no/blog/${post?.slug_en || ''}`
+              const bpId = blogData.blogPostId
+
               await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `✅ <b>Опубліковано!</b>\n\n📌 ${post?.title_ua || ''}\n🔗 https://vitalii.no/blog/${post?.slug_en || ''}`, parse_mode: 'HTML' }),
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: '✅ <b>Блог опубліковано!</b>\n\n🖼️ Генерую зображення + публікую в соцмережі...', parse_mode: 'HTML' }),
+              })
+
+              // Helper to get API key from DB or env
+              const getKey = async (name: string) => {
+                const { data: r } = await supa.from('api_settings').select('key_value').eq('key_name', name).single()
+                return r?.key_value || Deno.env.get(name) || ''
+              }
+
+              // Image generation via Gemini
+              const imagePromise = (async () => {
+                try {
+                  const gKey = await getKey('GOOGLE_API_KEY')
+                  if (!gKey) return null
+                  console.log('🖼️ Generating blog cover via Gemini (text blog)...')
+                  const imgRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${gKey}`,
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Professional blog cover image. Topic: ${post?.title_en || ''}. ${(post?.content_en || '').slice(0, 200)}. Dark background, modern tech aesthetic, no text, no logos. 16:9 landscape.` }] }],
+                        generationConfig: { responseModalities: ['image', 'text'] },
+                      }),
+                    },
+                  )
+                  if (!imgRes.ok) { console.error('Gemini image:', imgRes.status); return null }
+                  const imgData = await imgRes.json()
+                  for (const part of imgData?.candidates?.[0]?.content?.parts || []) {
+                    if (part.inlineData) {
+                      const b64 = part.inlineData.data as string
+                      const raw = atob(b64)
+                      const arr = new Uint8Array(raw.length)
+                      for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
+                      const path = `blog-covers/text-${Date.now()}.png`
+                      const { error: upErr } = await supa.storage.from('news-images').upload(path, arr, { contentType: 'image/png', upsert: true })
+                      if (!upErr) {
+                        const url = `${baseUrl}/storage/v1/object/public/news-images/${path}`
+                        await supa.from('blog_posts').update({ image_url: url, processed_image_url: url }).eq('id', bpId)
+                        console.log('🖼️ Image saved:', url)
+                        return url
+                      } else { console.error('Upload err:', upErr) }
+                    }
+                  }
+                  return null
+                } catch (e) { console.error('Image failed:', e); return null }
+              })()
+
+              // Social posting (LinkedIn + Facebook)
+              const socialPromise = (async () => {
+                const results: string[] = []
+                const blogTitle = post?.title_en || ''
+                const blogUrlSocial = `https://vitalii.no/blog/${post?.slug_en || ''}`
+                const postContent = (post?.content_en || '').slice(0, 500)
+
+                let liText = blogTitle + '\n\n' + (post?.tags || []).map((t: string) => '#' + t.replace(/\s/g, '')).join(' ')
+                let fbText = blogTitle
+                try {
+                  const gk = await getKey('GOOGLE_API_KEY')
+                  if (gk) {
+                    const sp = 'Generate social media posts for this blog. Author is a full-stack developer.\n' +
+                      'TITLE: ' + blogTitle + '\nCONTENT: ' + postContent + '\nURL: ' + blogUrlSocial + '\n' +
+                      'TAGS: ' + (post?.tags || []).join(', ') + '\n\n' +
+                      'LINKEDIN (1200-1800 chars): Hook under 210 chars, storytelling, NO links in body, 3-5 hashtags, CTA question.\n' +
+                      'FACEBOOK (under 280 chars): Short hook, 1-2 hashtags, conversational.\n\n' +
+                      HUMANIZER_SOCIAL + '\n\n' + VOICE_SOCIAL + '\n\n' +
+                      'Return ONLY JSON: {"linkedin_post":"...","facebook_post":"..."}'
+                    const gr = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + gk, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ contents: [{ parts: [{ text: sp }] }], generationConfig: { temperature: 0.6, maxOutputTokens: 4000 } }),
+                    })
+                    if (gr.ok) {
+                      const gt = ((await gr.json())?.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+                      try { const p = JSON.parse(gt); if (p.linkedin_post) liText = p.linkedin_post; if (p.facebook_post) fbText = p.facebook_post } catch { /* keep defaults */ }
+                    }
+                  }
+                } catch { /* keep defaults */ }
+
+                // LinkedIn
+                try {
+                  const liToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || await getKey('LINKEDIN_ACCESS_TOKEN')
+                  const liUrn = Deno.env.get('LINKEDIN_PERSON_URN') || await getKey('LINKEDIN_PERSON_URN')
+                  if (liToken && liUrn) {
+                    let shareContent: any = { shareCommentary: { text: liText }, shareMediaCategory: 'NONE' }
+                    const imgWait = await imagePromise
+                    if (imgWait) {
+                      try {
+                        const regRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+                          method: 'POST', headers: { 'Authorization': 'Bearer ' + liToken, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ registerUploadRequest: { recipes: ['urn:li:digitalmediaRecipe:feedshare-image'], owner: liUrn, serviceRelationships: [{ relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }] } }),
+                        })
+                        if (regRes.ok) {
+                          const rd = await regRes.json()
+                          const upUrl = rd.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl
+                          const asset = rd.value?.asset
+                          if (upUrl && asset) {
+                            const ib = await fetch(imgWait).then(r => r.arrayBuffer())
+                            await fetch(upUrl, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + liToken }, body: ib })
+                            shareContent = { shareCommentary: { text: liText }, shareMediaCategory: 'IMAGE', media: [{ status: 'READY', media: asset }] }
+                          }
+                        }
+                      } catch (ie) { console.error('LI img:', ie) }
+                    }
+                    const liRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+                      method: 'POST',
+                      headers: { 'Authorization': 'Bearer ' + liToken, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+                      body: JSON.stringify({ author: liUrn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': shareContent }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }),
+                    })
+                    if (liRes.ok) {
+                      const su = liRes.headers.get('x-restli-id') || ''
+                      results.push('✅ <a href="https://www.linkedin.com/feed/update/' + su + '">LinkedIn</a>')
+                    } else { results.push('❌ LinkedIn: ' + liRes.status) }
+                  } else { results.push('⏭️ LinkedIn: no credentials') }
+                } catch (e: unknown) { results.push('❌ LinkedIn: ' + (e instanceof Error ? e.message.slice(0, 40) : 'error')) }
+
+                // Facebook
+                try {
+                  const fbToken = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') || await getKey('FACEBOOK_PAGE_ACCESS_TOKEN')
+                  const fbPage = Deno.env.get('FACEBOOK_PAGE_ID') || await getKey('FACEBOOK_PAGE_ID')
+                  if (fbToken && fbPage) {
+                    const fbRes = await fetch('https://graph.facebook.com/v18.0/' + fbPage + '/feed', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ message: fbText, link: blogUrlSocial, access_token: fbToken }),
+                    })
+                    if (fbRes.ok) {
+                      const fd = await fbRes.json()
+                      results.push('✅ <a href="https://facebook.com/' + fd.id + '">Facebook</a>')
+                    } else { results.push('❌ Facebook: ' + fbRes.status) }
+                  } else { results.push('⏭️ Facebook: no credentials') }
+                } catch (e: unknown) { results.push('❌ Facebook: ' + (e instanceof Error ? e.message.slice(0, 40) : 'error')) }
+
+                return results
+              })()
+
+              const [imageUrl, socialResults] = await Promise.all([imagePromise, socialPromise])
+
+              const preview = `✅ <b>Блог-пост опубліковано!</b>\n\n` +
+                `📌 <b>${post?.title_ua || ''}</b>\n\n` +
+                `🏷 ${(post?.tags || []).join(', ')}\n` +
+                `📖 ~${post?.reading_time || 1} хв\n` +
+                `🖼️ ${imageUrl ? 'Зображення ✅' : 'Без зображення'}\n` +
+                `🌐 EN: ${post?.title_en || ''}\n` +
+                `🌐 NO: ${post?.title_no || ''}\n\n` +
+                `📢 Соцмережі:\n${socialResults.join('\n')}\n\n` +
+                `🔗 ${blogUrl}`
+
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: preview, parse_mode: 'HTML', disable_web_page_preview: false }),
               })
             } else {
               await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ ${data.error || 'unknown'}` }),
+                body: JSON.stringify({ chat_id: chatId, message_id: statusMsgId, text: `❌ ${blogData.error || 'unknown'}` }),
               })
             }
-          }).catch(e => console.error('text blog dispatch failed:', e))
+          } catch (e) { console.error('text blog dispatch failed:', e) }
 
           return new Response('OK')
         }
