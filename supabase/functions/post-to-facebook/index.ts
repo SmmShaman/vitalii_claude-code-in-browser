@@ -29,11 +29,24 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-// Localized CTA for Facebook posts (fallback when no AI teaser)
-const FACEBOOK_CTA: Record<string, string> = {
-  en: '🔗 Read more',
-  no: '🔗 Les mer',
-  ua: '🔗 Читати далі'
+// Localized source attribution label
+const SOURCE_LABEL: Record<string, string> = {
+  en: 'Source',
+  no: 'Kilde',
+  ua: 'Джерело'
+}
+
+/**
+ * Extract domain from a URL (e.g., "https://www.tu.no/article/123" → "tu.no")
+ */
+function extractDomain(url: string | undefined | null): string | null {
+  if (!url) return null
+  try {
+    const hostname = new URL(url).hostname
+    return hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -255,9 +268,13 @@ serve(async (req) => {
     // Use AI teaser if available, otherwise fallback to basic format
     // Facebook Graph API recommends < 500 chars for engagement, max ~63206 chars
     let message: string
+    const sourceLabel = SOURCE_LABEL[requestData.language] || SOURCE_LABEL.en
+    const sourceDomain = extractDomain(content.sourceLink)
+
     if (teaser) {
-      const cta = FACEBOOK_CTA[requestData.language] || FACEBOOK_CTA.en
-      message = `${teaser}\n\n${cta}: ${articleUrl}`.substring(0, 2000)
+      // Source attribution + article link (Facebook link param already creates preview)
+      const sourceAttr = sourceDomain ? `\n\n${sourceLabel}: ${content.sourceLink}` : ''
+      message = `${teaser}${sourceAttr}\n🔗 ${articleUrl}`.substring(0, 2000)
       console.log('📝 Using AI-generated teaser for Facebook post')
     } else {
       message = formatFacebookPost(

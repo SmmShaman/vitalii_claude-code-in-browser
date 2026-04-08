@@ -221,6 +221,8 @@ CRITICAL RULES:
 3. Include emojis as specified in the prompt.
 4. Output language: ${LANGUAGE_NAMES[language]}
 5. Do NOT copy the article text - create intrigue!
+6. NO markdown syntax (*, **, _, __, #, \`) — social platforms show these as raw characters. For emphasis use «guillemets» around quotes, ALL CAPS for 1-2 key terms (sparingly), or line breaks.
+7. Do NOT include any CTA like "Read more", "Читати далі", "Les mer", or source links — those are added automatically after your text.
 
 ${HUMANIZER_SOCIAL}
 

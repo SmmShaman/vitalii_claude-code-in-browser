@@ -26,11 +26,24 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-// Localized CTA for Instagram captions (used with AI teaser)
-const INSTAGRAM_TEASER_CTA: Record<string, string> = {
-  en: '🔗 Read on vitalii.no',
-  no: '🔗 Les på vitalii.no',
-  ua: '🔗 Читати на vitalii.no'
+// Localized source attribution for Instagram captions (no clickable links in Instagram)
+const SOURCE_LABEL: Record<string, string> = {
+  en: 'Source',
+  no: 'Kilde',
+  ua: 'Джерело'
+}
+
+/**
+ * Extract domain from a URL (e.g., "https://www.tu.no/article/123" → "tu.no")
+ */
+function extractDomain(url: string | undefined | null): string | null {
+  if (!url) return null
+  try {
+    const hostname = new URL(url).hostname
+    return hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -376,9 +389,10 @@ serve(async (req) => {
     // Use AI teaser if available, otherwise fallback to basic format
     let caption: string
     if (teaser) {
-      const cta = INSTAGRAM_TEASER_CTA[requestData.language] || INSTAGRAM_TEASER_CTA.en
-      // Instagram: teaser already includes emojis and hashtags from AI prompt
-      caption = `${teaser}\n\n${cta}`.substring(0, 2200)
+      // Instagram: no clickable links, so just show source domain
+      const sourceLabel = SOURCE_LABEL[requestData.language] || SOURCE_LABEL.en
+      const sourceDomain = extractDomain(content.sourceLink) || 'vitalii.no'
+      caption = `${teaser}\n\n${sourceLabel}: ${sourceDomain}`.substring(0, 2200)
       console.log('📝 Using AI-generated teaser for Instagram caption')
     } else {
       caption = formatInstagramCaption(

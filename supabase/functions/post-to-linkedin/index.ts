@@ -535,11 +535,24 @@ async function uploadImageToLinkedIn(imageUrl: string): Promise<string | null> {
   }
 }
 
-// Localized CTA for LinkedIn fallback
-const LINKEDIN_READ_MORE_CTA: Record<string, string> = {
-  en: 'Read more',
-  no: 'Les mer',
-  ua: 'Читати далі'
+// Localized source attribution label
+const SOURCE_LABEL: Record<string, string> = {
+  en: 'Source',
+  no: 'Kilde',
+  ua: 'Джерело'
+}
+
+/**
+ * Extract domain from a URL (e.g., "https://www.tu.no/article/123" → "tu.no")
+ */
+function extractDomain(url: string | undefined | null): string | null {
+  if (!url) return null
+  try {
+    const hostname = new URL(url).hostname
+    return hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -562,18 +575,22 @@ async function postToLinkedIn(content: {
     let commentary: string
 
     if (content.teaser) {
-      // Use AI-generated teaser - already includes emojis and CTA
+      // Use AI-generated teaser - already includes emojis
       commentary = content.teaser
-      // Add link to full article (teaser should end with CTA like "Read full article →")
-      commentary += `\n\n🔗 ${content.url}`
       console.log('📝 Using AI-generated teaser for LinkedIn post')
     } else {
-      // Fallback to old behavior: title + description with localized CTA
-      const readMoreText = LINKEDIN_READ_MORE_CTA[content.language] || LINKEDIN_READ_MORE_CTA.en
+      // Fallback: title + description
       commentary = `${content.title}\n\n${content.description}`
-      commentary += `\n\n🔗 ${readMoreText}: ${content.url}`
       console.log('📝 Using title+description fallback for LinkedIn post')
     }
+
+    // Append source attribution + article link
+    const sourceLabel = SOURCE_LABEL[content.language] || SOURCE_LABEL.en
+    const sourceDomain = extractDomain(content.sourceLink)
+    if (sourceDomain) {
+      commentary += `\n\n${sourceLabel}: ${content.sourceLink}`
+    }
+    commentary += `\n🔗 ${content.url}`
 
     const safeCommentary = commentary.substring(0, 2900)
 
