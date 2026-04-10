@@ -86,7 +86,7 @@ export default function HomePage() {
       </div>
 
       {/* Desktop layout: CSS-driven visibility to prevent CLS from SSR hydration mismatch */}
-      <div className="h-screen-safe w-full max-w-[100vw] flex-col relative p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden hidden md:flex">
+      <div className="h-screen-safe w-full max-w-[100vw] flex-col relative p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden bg-surface hidden md:flex">
         {/* Header - desktop */}
         <div className="flex-shrink-0 relative z-20 mb-3 sm:mb-5">
           <Header hoveredSection={hoveredSection} />
