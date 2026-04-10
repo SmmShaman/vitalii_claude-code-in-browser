@@ -1,0 +1,10 @@
+// Barrel export for mobile BentoGrid sub-components
+export { MobileAboutSection } from './MobileAboutSection'
+export { MobileServicesSection } from './MobileServicesSection'
+export { MobileProjectsSection } from './MobileProjectsSection'
+export { MobileFeaturesSection } from './MobileFeaturesSection'
+export { MobileNewsSection } from './MobileNewsSection'
+export { MobileBlogSection } from './MobileBlogSection'
+export { MobileContactSection } from './MobileContactSection'
+export { sectionColors, projectColors } from './types'
+export type { SectionColorConfig, SocialLink, TranslateFn } from './types'
