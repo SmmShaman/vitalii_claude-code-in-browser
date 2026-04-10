@@ -60,6 +60,22 @@ if (!SKIP_YOUTUBE && process.env.YOUTUBE_CLIENT_ID) {
 
 // ── Helpers ──
 
+// Image magic bytes for validation
+const IMAGE_SIGNATURES = {
+  jpg: [0xFF, 0xD8, 0xFF],
+  png: [0x89, 0x50, 0x4E, 0x47],
+  webp: [0x52, 0x49, 0x46, 0x46], // RIFF
+  gif: [0x47, 0x49, 0x46],
+};
+
+function isValidImage(buffer) {
+  if (buffer.length < 8) return false;
+  for (const [, sig] of Object.entries(IMAGE_SIGNATURES)) {
+    if (sig.every((byte, i) => buffer[i] === byte)) return true;
+  }
+  return false;
+}
+
 async function downloadFile(url, destPath) {
   try {
     const res = await fetch(url, {
@@ -70,6 +86,13 @@ async function downloadFile(url, destPath) {
     if (!res.ok) return false;
     const buffer = Buffer.from(await res.arrayBuffer());
     if (buffer.length < 1000) return false; // Too small, probably an error page
+
+    // Validate image format via magic bytes
+    if (!isValidImage(buffer)) {
+      console.log(`    ⚠️ Invalid image (not JPG/PNG/WebP): ${url.slice(0, 80)}`);
+      return false;
+    }
+
     await fs.writeFile(destPath, buffer);
     return true;
   } catch {

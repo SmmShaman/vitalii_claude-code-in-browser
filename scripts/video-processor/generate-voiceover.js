@@ -41,8 +41,12 @@ export const VOICE_PRESETS = {
     female: 'Nova NO',
   },
   ua: {
-    male: 'Финн',
-    female: 'Пернилла',
+    male: 'Остап',
+    female: 'Поліна',
+  },
+  ru: {
+    male: 'Александр',
+    female: 'Алена',
   },
 };
 
