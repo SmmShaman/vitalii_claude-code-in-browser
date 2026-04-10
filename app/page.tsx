@@ -73,7 +73,7 @@ export default function HomePage() {
       />
 
       {/* Mobile layout: CSS-driven visibility to prevent CLS from SSR hydration mismatch */}
-      <div className="h-screen-safe w-full max-w-[100vw] flex flex-col relative overflow-hidden bg-white md:hidden">
+      <div className="h-screen-safe w-full max-w-[100vw] flex flex-col relative overflow-hidden bg-surface md:hidden">
         {/* Header - mobile */}
         <div className="flex-shrink-0 relative z-20 p-3 pb-2">
           <Header hoveredSection={hoveredSection} />
