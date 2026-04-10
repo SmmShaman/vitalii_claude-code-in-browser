@@ -55,6 +55,7 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  manifest: '/manifest.json',
   alternates: {
     canonical: siteUrl,
     languages: {
@@ -63,6 +64,11 @@ export const metadata: Metadata = {
       no: siteUrl,
       uk: siteUrl,
     },
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Vitalii',
   },
 }
 

@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
     ]
   },
   images: {
+    // Optimized breakpoints for mobile-first responsive images
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Prefer AVIF (smaller), fall back to WebP
+    formats: ['image/avif', 'image/webp'],
     // Wildcard needed: news/blog images are scraped from many external sources
     remotePatterns: [
       {
