@@ -425,27 +425,98 @@ serve(async (req) => {
         if (videoWaitValid) {
           // Voice for video — transcribe then analyze
           await supabaseCheck.from('api_settings').delete().eq('key_name', `video_waiting_${chatId}`)
-          console.log(`🎬 Voice video: ${message.voice.duration}s`)
+          console.log(`🎬 Voice video: ${message.voice.duration}s, file_id: ${message.voice.file_id}`)
 
-          // Transcribe voice
-          const txRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-voice`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ voiceFileId: message.voice.file_id }),
+          // Show status
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: '🔄 <b>Транскрибую голосове повідомлення для відео...</b>', parse_mode: 'HTML' }),
           })
-          const txData = await txRes.json()
 
-          if (txData.success && txData.text) {
-            // Dispatch to custom-video-bot
-            fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/custom-video-bot?action=analyze_prompt`, {
+          try {
+            // Transcribe voice
+            const txRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-voice`, {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: txData.text, chatId: chatId }),
-            }).catch(err => console.error('custom-video-bot voice dispatch failed:', err))
-          } else {
+              body: JSON.stringify({ voiceFileId: message.voice.file_id }),
+            })
+
+            console.log(`🎬 transcribe-voice response status: ${txRes.status}`)
+            const txText = await txRes.text()
+            console.log(`🎬 transcribe-voice response: ${txText.slice(0, 300)}`)
+
+            let txData: any
+            try { txData = JSON.parse(txText) } catch { txData = {} }
+
+            if (txData.success && txData.text) {
+              console.log(`🎬 Raw transcription: "${txData.text.slice(0, 200)}..."`)
+
+              // Send raw transcription for reference
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text: `📝 <b>Транскрипція:</b>\n<i>${txData.text.slice(0, 500)}</i>\n\n🧠 Уточнюю намір...`, parse_mode: 'HTML' }),
+              })
+
+              // Stage 1: Extract real intent from messy voice transcription (same as blog pipeline)
+              const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY') || ''
+              let cleanedPrompt = txData.text
+              if (GOOGLE_API_KEY) {
+                try {
+                  const intentRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_API_KEY}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        systemInstruction: { parts: [{ text: `You are a voice transcription interpreter. The user dictated a video creation request via voice message.
+The transcription may contain:
+- Filler words ("ну", "тобто", "як-то", "ага", "так")
+- Repetitions and self-corrections
+- Unclear sentence boundaries
+- Mixed languages (Ukrainian/Russian/English)
+
+Your task: Extract the REAL INTENT of what the user wants as a VIDEO topic.
+Return a clean, clear description of what video the user wants to create.
+Keep ALL specific details: names, URLs, project names, features mentioned.
+Write in the SAME language as the user spoke.
+Return ONLY the cleaned request, nothing else.` }] },
+                        contents: [{ role: 'user', parts: [{ text: `Raw voice transcription:\n"${txData.text}"\n\nWhat does the user actually want? Extract the video creation request:` }] }],
+                        generationConfig: { temperature: 0.1, maxOutputTokens: 500 },
+                      }),
+                    }
+                  )
+                  if (intentRes.ok) {
+                    const intentData = await intentRes.json()
+                    const extracted = (intentData.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || '').join('').trim()
+                    if (extracted && extracted.length > 10) {
+                      console.log(`🎬 Cleaned intent: "${extracted.slice(0, 200)}"`)
+                      cleanedPrompt = extracted
+                    }
+                  }
+                } catch (e: any) {
+                  console.warn(`🎬 Intent extraction failed (using raw): ${e.message}`)
+                }
+              }
+
+              // Dispatch cleaned prompt to custom-video-bot
+              fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/custom-video-bot?action=analyze_prompt`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: cleanedPrompt, chatId: chatId }),
+              }).catch(err => console.error('custom-video-bot voice dispatch failed:', err))
+            } else {
+              const errDetail = txData.error || txData.message || `status=${txRes.status}`
+              console.error(`🎬 ❌ Transcription failed: ${errDetail}`)
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text: `❌ Не вдалося транскрибувати: ${errDetail}\n\n💡 Спробуйте надіслати текстом замість голосу.`, parse_mode: 'HTML' }),
+              })
+            }
+          } catch (txErr: any) {
+            console.error(`🎬 ❌ Transcription exception: ${txErr.message}`)
             await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chat_id: chatId, text: '❌ Не вдалося транскрибувати голосове повідомлення', parse_mode: 'HTML' }),
+              body: JSON.stringify({ chat_id: chatId, text: `❌ Помилка транскрипції: ${txErr.message}\n\n💡 Спробуйте текстом.`, parse_mode: 'HTML' }),
             })
           }
           return new Response('OK')
