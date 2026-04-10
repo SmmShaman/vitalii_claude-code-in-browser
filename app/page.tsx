@@ -33,7 +33,7 @@ export default function HomePage() {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null)
   const isMobile = useIsMobile()
 
-  // Update hovered section — low priority, не блокує анімації
+  // Update hovered section — low priority, does not block animations
   const handleSectionChange = useCallback((sectionId: string | null) => {
     startTransition(() => {
       setHoveredSection(sectionId)
@@ -52,7 +52,7 @@ export default function HomePage() {
   const currentNeonColor = getCurrentColor()
 
   return (
-    <div className={`h-screen-safe w-full max-w-[100vw] flex flex-col relative ${isMobile ? 'overflow-hidden bg-white' : 'p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden'}`}>
+    <>
       {/* Structured Data for SEO */}
       <script
         type="application/ld+json"
@@ -72,29 +72,39 @@ export default function HomePage() {
         }}
       />
 
-      {/* Header - Smaller on mobile */}
-      <div className={`flex-shrink-0 relative z-20 ${isMobile ? 'p-3 pb-2' : 'mb-3 sm:mb-5'}`}>
-        <Header hoveredSection={hoveredSection} />
+      {/* Mobile layout: CSS-driven visibility to prevent CLS from SSR hydration mismatch */}
+      <div className="h-screen-safe w-full max-w-[100vw] flex flex-col relative overflow-hidden bg-white md:hidden">
+        {/* Header - mobile */}
+        <div className="flex-shrink-0 relative z-20 p-3 pb-2">
+          <Header hoveredSection={hoveredSection} />
+        </div>
+
+        {/* Main Content - mobile */}
+        <main className="relative z-10 flex-1 min-h-0 px-2">
+          <BentoGridMobile onHoveredSectionChange={handleSectionChange} />
+        </main>
       </div>
 
-      {/* Main Content - Different layouts for mobile/desktop */}
-      <main id="main-content" className={`relative z-10 ${isMobile ? 'flex-1 min-h-0 px-2' : 'flex-1 min-h-0 overflow-hidden'}`}>
-        {isMobile ? (
-          <BentoGridMobile onHoveredSectionChange={handleSectionChange} />
-        ) : (
+      {/* Desktop layout: CSS-driven visibility to prevent CLS from SSR hydration mismatch */}
+      <div className="h-screen-safe w-full max-w-[100vw] flex-col relative p-3 sm:p-5 pb-3 sm:pb-4 overflow-hidden hidden md:flex">
+        {/* Header - desktop */}
+        <div className="flex-shrink-0 relative z-20 mb-3 sm:mb-5">
+          <Header hoveredSection={hoveredSection} />
+        </div>
+
+        {/* Main Content - desktop */}
+        <main id="main-content" className="relative z-10 flex-1 min-h-0 overflow-hidden">
           <BentoGrid onHoveredSectionChange={handleSectionChange} />
-        )}
-      </main>
+        </main>
 
-      {/* Skills Marquee - page level, behind sections (z-8), visible in gaps */}
-      {!isMobile && <SkillsMarquee />}
+        {/* Skills Marquee - page level, behind sections (z-8), visible in gaps */}
+        <SkillsMarquee />
 
-      {/* Footer - Only show on desktop, mobile has BottomNavigation */}
-      {!isMobile && (
+        {/* Footer - Only on desktop, mobile has BottomNavigation */}
         <div className="flex-shrink-0 relative z-20 mt-[20px]">
           <Footer />
         </div>
-      )}
-    </div>
+      </div>
+    </>
   )
 }
