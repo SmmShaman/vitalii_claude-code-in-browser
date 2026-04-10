@@ -1,0 +1,148 @@
+name: Custom Video Render
+
+on:
+  # Telegram bot triggers render via repository_dispatch
+  repository_dispatch:
+    types: [custom-video-render]
+
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      draft_id:
+        description: 'Custom video draft UUID'
+        required: true
+        type: string
+      format:
+        description: 'Video format'
+        required: true
+        default: 'horizontal'
+        type: choice
+        options:
+          - horizontal
+          - vertical
+      language:
+        description: 'Video language'
+        required: true
+        default: 'en'
+        type: choice
+        options:
+          - 'en'
+          - 'no'
+          - 'ua'
+      youtube_privacy:
+        description: 'YouTube privacy'
+        required: false
+        default: 'unlisted'
+        type: choice
+        options:
+          - unlisted
+          - public
+          - private
+      skip_youtube:
+        description: 'Skip YouTube upload'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  render-custom-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Chrome dependencies (for Remotion)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64
+
+      - name: Install video-processor dependencies
+        working-directory: ./scripts/video-processor
+        run: npm ci
+
+      - name: Install Remotion project dependencies
+        working-directory: ./scripts/remotion-video
+        run: npm ci
+
+      - name: Render custom video
+        working-directory: ./scripts/video-processor
+        env:
+          # YouTube
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+
+          # Supabase
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          # LLM
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
+          # TTS (Zvukogram)
+          ZVUKOGRAM_TOKEN: ${{ secrets.ZVUKOGRAM_TOKEN }}
+          ZVUKOGRAM_EMAIL: ${{ secrets.ZVUKOGRAM_EMAIL }}
+
+          # Pexels
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
+          # Pixabay (BGM)
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+
+          # Google Custom Search
+          GOOGLE_CSE_ID: ${{ secrets.GOOGLE_CSE_ID }}
+
+          # Telegram (completion notification)
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+          # Video settings
+          DRAFT_ID: ${{ github.event.client_payload.draft_id || github.event.inputs.draft_id || '' }}
+          FORMAT: ${{ github.event.client_payload.format || github.event.inputs.format || 'horizontal' }}
+          LANGUAGE: ${{ github.event.client_payload.language || github.event.inputs.language || 'en' }}
+          YOUTUBE_PRIVACY: ${{ github.event.client_payload.youtube_privacy || github.event.inputs.youtube_privacy || 'unlisted' }}
+          SKIP_YOUTUBE: ${{ github.event.client_payload.skip_youtube || github.event.inputs.skip_youtube || 'false' }}
+        run: node custom-video-compilation.js
+
+      - name: Upload video artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-video-output
+          path: /tmp/custom_video_*.mp4
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          DRAFT_ID="${{ github.event.client_payload.draft_id || github.event.inputs.draft_id || '' }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"❌ <b>Custom video render failed!</b>\n\nDraft: <code>${DRAFT_ID}</code>\n🔗 <a href=\\\"${RUN_URL}\\\">View logs</a>\", \"parse_mode\": \"HTML\", \"disable_web_page_preview\": true}"
+
+          # Update draft status to failed
+          if [ -n "$DRAFT_ID" ]; then
+            curl -s -X POST "${SUPABASE_URL}/functions/v1/custom-video-bot?action=notify_complete" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{\"draftId\": \"${DRAFT_ID}\", \"error\": \"Render failed — see GitHub Actions logs\"}"
+          fi

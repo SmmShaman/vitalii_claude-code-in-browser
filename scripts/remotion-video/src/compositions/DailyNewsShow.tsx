@@ -119,6 +119,8 @@ export interface DailyNewsShowProps {
   date: string;
   showTitle?: string;
   language?: string;
+  /** Show type: 'daily' for news digest, 'custom' for portfolio/custom video */
+  showType?: 'daily' | 'custom';
   /** News segments (one per article) */
   segments: NewsSegment[];
   /** Voiceover */
@@ -195,6 +197,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
   outroAvatarSrc,
   introBackgroundImages = [],
   introProfileImageSrc,
+  showType = 'daily',
 }) => {
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
@@ -238,6 +241,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
           language={language}
           backgroundImages={introBackgroundImages}
           profileImageSrc={introProfileImageSrc}
+          showType={showType}
         />
         {introAvatarSrc && (
           <AvatarOverlay

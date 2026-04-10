@@ -272,6 +272,75 @@ export async function triggerInstagramVideo(
   }
 }
 
+interface TriggerCustomVideoRenderOptions {
+  draftId: string;
+  format?: 'horizontal' | 'vertical';
+  language?: string;
+  youtubePrivacy?: 'public' | 'unlisted' | 'private';
+  skipYoutube?: boolean;
+}
+
+/**
+ * Trigger the custom video render GitHub Action.
+ * Uses repository_dispatch to pass draft ID from Telegram /video flow.
+ */
+export async function triggerCustomVideoRender(
+  options: TriggerCustomVideoRenderOptions
+): Promise<{ success: boolean; error?: string }> {
+  const ghPat = Deno.env.get('GH_PAT');
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+
+  if (!ghPat) {
+    console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');
+    return { success: false, error: 'GitHub PAT not configured' };
+  }
+
+  const { draftId, format = 'horizontal', language = 'en', youtubePrivacy = 'unlisted', skipYoutube = false } = options;
+
+  console.log(`🚀 Triggering GitHub Action: custom-video-render`);
+  console.log(`   Draft ID: ${draftId}`);
+  console.log(`   Format: ${format}`);
+  console.log(`   Language: ${language}`);
+  console.log(`   YouTube privacy: ${youtubePrivacy}`);
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${ghRepo}/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${ghPat}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event_type: 'custom-video-render',
+          client_payload: {
+            draft_id: draftId,
+            format: format,
+            language: language,
+            youtube_privacy: youtubePrivacy,
+            skip_youtube: skipYoutube ? 'true' : 'false',
+          },
+        }),
+      }
+    );
+
+    if (response.status === 204) {
+      console.log('✅ Custom video render GitHub Action triggered successfully');
+      return { success: true };
+    }
+
+    const errorText = await response.text();
+    console.error(`❌ GitHub Action trigger failed: ${response.status} ${errorText}`);
+    return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+
+  } catch (error: any) {
+    console.error('❌ Failed to trigger custom video render Action:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 interface TriggerDailyVideoRenderOptions {
   draftId: string;
   targetDate: string;

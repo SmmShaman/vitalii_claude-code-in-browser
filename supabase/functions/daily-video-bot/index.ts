@@ -117,37 +117,64 @@ function formatDateNorwegian(dateStr: string): string {
 
 async function callAI(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
   if (LLM_PROVIDER === "gemini" && GEMINI_API_KEY) {
-    console.log("🤖 Using Gemini 2.5 Flash Lite");
-    const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: maxTokens,
-            responseMimeType: "application/json",
-          },
-        }),
+    const MAX_RETRIES = 3;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`🤖 Gemini 2.5 Flash Lite (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: maxTokens,
+                responseMimeType: "application/json",
+              },
+            }),
+          }
+        );
+        if (!resp.ok) {
+          const status = resp.status;
+          const errText = await resp.text().catch(() => "");
+          if ((status === 429 || status === 503) && attempt < MAX_RETRIES) {
+            const delay = 2 ** attempt * 3000; // 3s, 6s, 12s
+            console.warn(`⚠️ Gemini ${status}, retrying in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          throw new Error(`Gemini: ${status} ${errText.substring(0, 200)}`);
+        }
+        const data = await resp.json();
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        let text = "";
+        for (const part of parts) {
+          if (part.text) text = part.text.trim();
+        }
+        if (!text && attempt < MAX_RETRIES) {
+          console.warn(`⚠️ Gemini returned empty text, retrying...`);
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        console.log(`🤖 Gemini response: ${text.substring(0, 100)}...`);
+        // Strip markdown code block if present
+        if (text.startsWith("```")) {
+          text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+        }
+        return text;
+      } catch (e) {
+        if (attempt < MAX_RETRIES && (e as Error).message?.includes("aborted")) {
+          console.warn(`⚠️ Gemini timeout, retrying...`);
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        throw e;
       }
-    );
-    if (!resp.ok) throw new Error(`Gemini: ${resp.status} ${await resp.text()}`);
-    const data = await resp.json();
-    // Gemini may return multiple parts (thinking + response), get the last text part
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    let text = "";
-    for (const part of parts) {
-      if (part.text) text = part.text.trim();
     }
-    console.log(`🤖 Gemini response: ${text.substring(0, 100)}...`);
-    // Strip markdown code block if present
-    if (text.startsWith("```")) {
-      text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
-    }
-    return text;
+    throw new Error("Gemini: all retries exhausted");
   }
 
   if (LLM_PROVIDER === "groq" && GROQ_API_KEY) {
@@ -1507,6 +1534,7 @@ Return JSON:
   const aiResponse = await callAI(
     systemPrompt,
     `Create visual scenario for ${displayDate} (${detailedScripts.length} detailed articles):\n\n${articleInfo}`,
+    12000,
   );
   let scenario: any;
   try {

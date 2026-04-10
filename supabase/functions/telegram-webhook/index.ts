@@ -379,10 +379,79 @@ serve(async (req) => {
         return new Response('OK')
       }
 
-      // ── Voice message: ANY voice message triggers blog pipeline ──
+      // ── /video command: custom video generation ──
+      if (msgText === '/video' || msgText.startsWith('/video ')) {
+        const directText = msgText.replace('/video', '').trim()
+        if (directText) {
+          // Direct text after /video — analyze prompt immediately
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/custom-video-bot?action=analyze_prompt`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: directText, chatId: chatId }),
+          }).catch(err => console.error('custom-video-bot dispatch failed:', err))
+          return new Response('OK')
+        }
+
+        // No text — set waiting state
+        const supabaseForState = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        await supabaseForState.from('api_settings').upsert({
+          key_name: `video_waiting_${chatId}`,
+          key_value: new Date().toISOString(),
+          description: 'Temporary: chat waiting for video prompt input (expires 30min)',
+          is_active: true,
+        }, { onConflict: 'key_name' })
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: '🎬 <b>Створення відео</b>\n\nОпишіть тему відео текстом або голосовим повідомленням.\n\nПриклади:\n• "Зроби відео про AI автоматизацію контенту"\n• "Video about my social media integration features"\n• "Lag en video om Supabase-prosjektene mine"',
+            parse_mode: 'HTML',
+          }),
+        })
+        return new Response('OK')
+      }
+
+      // ── Voice message: check video_waiting first, then blog pipeline ──
       if (message.voice) {
-        // Clear waiting state if exists
+        // Check if video_waiting state is active
         const supabaseCheck = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        const { data: videoWait } = await supabaseCheck.from('api_settings').select('key_value').eq('key_name', `video_waiting_${chatId}`).maybeSingle()
+        const videoWaitValid = videoWait?.key_value && (() => {
+          const createdAt = new Date(videoWait.key_value).getTime()
+          return !isNaN(createdAt) && (Date.now() - createdAt) < 30 * 60 * 1000
+        })()
+
+        if (videoWaitValid) {
+          // Voice for video — transcribe then analyze
+          await supabaseCheck.from('api_settings').delete().eq('key_name', `video_waiting_${chatId}`)
+          console.log(`🎬 Voice video: ${message.voice.duration}s`)
+
+          // Transcribe voice
+          const txRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/transcribe-voice`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ voiceFileId: message.voice.file_id }),
+          })
+          const txData = await txRes.json()
+
+          if (txData.success && txData.text) {
+            // Dispatch to custom-video-bot
+            fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/custom-video-bot?action=analyze_prompt`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: txData.text, chatId: chatId }),
+            }).catch(err => console.error('custom-video-bot voice dispatch failed:', err))
+          } else {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: chatId, text: '❌ Не вдалося транскрибувати голосове повідомлення', parse_mode: 'HTML' }),
+            })
+          }
+          return new Response('OK')
+        }
+
+        // Clear blog waiting state if exists
         await supabaseCheck.from('api_settings').delete().eq('key_name', `blog_waiting_${chatId}`)
 
         console.log(`🎙️ Voice blog: ${message.voice.duration}s`)
@@ -603,9 +672,27 @@ serve(async (req) => {
       } // end blog voice handler
       } // end if voice message
 
-      // ── Text message after /blog (waiting state) ──
+      // ── Text message after /video or /blog (waiting state) ──
       if (msgText && !msgText.startsWith('/') && !message.forward_from_chat) {
         const supabaseCheck = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+        // Check video_waiting first
+        const { data: videoWaitText } = await supabaseCheck.from('api_settings').select('key_value').eq('key_name', `video_waiting_${chatId}`).maybeSingle()
+        const videoWaitTextValid = videoWaitText?.key_value && (() => {
+          const createdAt = new Date(videoWaitText.key_value).getTime()
+          return !isNaN(createdAt) && (Date.now() - createdAt) < 30 * 60 * 1000
+        })()
+        if (videoWaitTextValid) {
+          await supabaseCheck.from('api_settings').delete().eq('key_name', `video_waiting_${chatId}`)
+          console.log(`🎬 Text video via /video waiting state: ${msgText.length} chars`)
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/custom-video-bot?action=analyze_prompt`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: msgText, chatId: chatId }),
+          }).catch(err => console.error('custom-video-bot text dispatch failed:', err))
+          return new Response('OK')
+        }
+
         const { data: waitState } = await supabaseCheck.from('api_settings').select('key_value').eq('key_name', `blog_waiting_${chatId}`).maybeSingle()
         const waitingIsValid = waitState?.key_value && (() => {
           // TTL check: waiting state expires after 30 minutes
@@ -1776,6 +1863,35 @@ serve(async (req) => {
         const rsaParts = callbackData.replace('dv_rsa_', '').split('_')
         socialLanguage = rsaParts[0] // article index
         newsId = rsaParts.slice(1).join('_') // target_date
+      // ── Custom Video callbacks (cv_*) — newsId = draft UUID ──
+      } else if (callbackData.startsWith('cv_sok_')) {
+        action = 'cv_sok'
+        newsId = callbackData.replace('cv_sok_', '')
+      } else if (callbackData.startsWith('cv_srg_')) {
+        action = 'cv_srg'
+        newsId = callbackData.replace('cv_srg_', '')
+      } else if (callbackData.startsWith('cv_ren_')) {
+        action = 'cv_ren'
+        newsId = callbackData.replace('cv_ren_', '')
+      } else if (callbackData.startsWith('cv_img_')) {
+        action = 'cv_img'
+        newsId = callbackData.replace('cv_img_', '')
+      } else if (callbackData.startsWith('cv_rok_')) {
+        action = 'cv_rok'
+        newsId = callbackData.replace('cv_rok_', '')
+      } else if (callbackData.startsWith('cv_vrg_')) {
+        action = 'cv_vrg'
+        newsId = callbackData.replace('cv_vrg_', '')
+      } else if (callbackData.startsWith('cv_skip_')) {
+        action = 'cv_skip'
+        newsId = callbackData.replace('cv_skip_', '')
+      } else if (callbackData.startsWith('cv_fmt_')) {
+        action = 'cv_fmt'
+        newsId = callbackData.replace('cv_fmt_', '')
+      } else if (callbackData.startsWith('cv_dur_')) {
+        action = 'cv_dur'
+        newsId = callbackData.replace('cv_dur_', '')
+
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
         newsId = callbackData.replace('reject_', '')
@@ -5126,6 +5242,44 @@ serve(async (req) => {
             ...(action === 'dv_th' ? { variant_index: Number(socialLanguage) } : {}),
           })
         }).catch(err => console.error('❌ Daily video bot dispatch failed:', err))
+
+      // ── Custom Video action handlers ──
+      } else if (action.startsWith('cv_')) {
+        const draftId = newsId  // In cv_* callbacks, newsId = draft UUID
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+        const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+        const cvActionMap: Record<string, string> = {
+          'cv_sok': 'generate_script',
+          'cv_srg': 'regenerate_script',
+          'cv_ren': 'generate_scenario',
+          'cv_img': 'prepare_images',
+          'cv_rok': 'trigger_render',
+          'cv_vrg': 'generate_scenario',
+          'cv_skip': 'cancel',
+          'cv_fmt': 'toggle_format',
+          'cv_dur': 'toggle_duration',
+        }
+
+        const cvAction = cvActionMap[action] || action
+        console.log(`🎬 Custom Video: ${action} → ${cvAction} for ${draftId}`)
+
+        // Answer callback immediately
+        await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callback_query_id: callbackId, text: '⏳ Обробляю...', show_alert: false })
+          }
+        )
+
+        // Fire-and-forget dispatch to custom-video-bot
+        fetch(`${SUPABASE_URL}/functions/v1/custom-video-bot?action=${cvAction}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draftId: draftId, chatId: chatId })
+        }).catch(err => console.error('❌ Custom video bot dispatch failed:', err))
 
       } else if (action === 'reject') {
         console.log('News rejected by user, ID:', newsId)

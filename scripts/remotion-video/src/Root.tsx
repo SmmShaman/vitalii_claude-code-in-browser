@@ -41,6 +41,7 @@ const DAILY_SHOW_PROPS = {
   date: "",
   showTitle: "Daglig Nyhetsoppdatering",
   language: "no",
+  showType: "daily" as "daily" | "custom",
   segments: [] as any[],
   voiceoverSrc: "",
   subtitles: [] as { text: string; startTime: number; endTime: number }[],

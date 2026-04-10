@@ -38,6 +38,8 @@ export interface ShowIntroSceneProps {
   backgroundImages?: string[];
   /** Profile/logo image (circular overlay) */
   profileImageSrc?: string;
+  /** Show type: 'daily' for news digest, 'custom' for portfolio/custom video */
+  showType?: 'daily' | 'custom';
 }
 
 export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
@@ -48,6 +50,7 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
   language = "no",
   backgroundImages = [],
   profileImageSrc,
+  showType = 'daily',
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -116,8 +119,9 @@ export const ShowIntroScene: React.FC<ShowIntroSceneProps> = ({
     clampBoth,
   );
 
-  const countLabel =
-    language === "no"
+  const countLabel = showType === 'custom'
+    ? "vitalii.no"
+    : language === "no"
       ? `${articleCount} ${articleCount === 1 ? "sak" : "saker"} i dag`
       : `${articleCount} ${articleCount === 1 ? "story" : "stories"} today`;
 
