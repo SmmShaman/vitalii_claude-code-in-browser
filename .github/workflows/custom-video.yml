@@ -64,7 +64,9 @@ jobs:
       - name: Install Chrome dependencies (for Remotion)
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64
+          sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64 || true
+          # Remotion downloads its own Chrome via @remotion/renderer — skip snap chromium-browser
+          npx remotion browser ensure 2>/dev/null || true
 
       - name: Install video-processor dependencies
         working-directory: ./scripts/video-processor
@@ -141,8 +143,8 @@ jobs:
 
           # Update draft status to failed
           if [ -n "$DRAFT_ID" ]; then
-            curl -s -X POST "${SUPABASE_URL}/functions/v1/custom-video-bot?action=notify_complete" \
+            curl -s -X POST "${SUPABASE_URL}/functions/v1/custom-video-bot?action=cancel" \
               -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
               -H "Content-Type: application/json" \
-              -d "{\"draftId\": \"${DRAFT_ID}\", \"error\": \"Render failed — see GitHub Actions logs\"}"
+              -d "{\"draftId\": \"${DRAFT_ID}\", \"chatId\": \"${TELEGRAM_CHAT_ID}\"}"
           fi

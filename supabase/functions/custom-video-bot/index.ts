@@ -1135,6 +1135,12 @@ async function notifyComplete(
 
     if (!draft) throw new Error("Draft not found");
 
+    // Only mark completed if we have a real YouTube URL
+    if (!youtubeVideoId || !youtubeUrl) {
+      console.log("⚠️ notify_complete called without YouTube data — skipping");
+      return json({ ok: false, error: "No YouTube URL provided" });
+    }
+
     // Update DB
     await supabase
       .from("custom_video_drafts")
