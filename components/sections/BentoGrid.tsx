@@ -22,6 +22,7 @@ import { translations } from '@/utils/translations';
 import { debugLog } from '@/utils/debug';
 import { trackSectionClick } from '@/utils/gtm';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { sectionNeonColors, heroContrastColors, oppositeSections } from './colors';
 
 // Grid layout constants
 const GAP_SIZE_DESKTOP = 20; // Desktop gap between windows in pixels
@@ -79,35 +80,8 @@ interface BentoGridProps {
   onHoveredSectionChange?: (sectionId: string | null) => void;
 }
 
-// Neon colors for each section - exported for use in background
-export const sectionNeonColors: { [key: string]: { primary: string; secondary: string } } = {
-  about: { primary: '#AF601A', secondary: '#c97a2e' }, // Насичений коричнево-оранжевий
-  services: { primary: '#EC008C', secondary: '#ff33a8' }, // Яскравий фуксієвий рожевий
-  projects: { primary: '#009B77', secondary: '#00c49a' }, // Emerald
-  features: { primary: '#F5A0C0', secondary: '#F0B0D0' }, // Rose Pink (підсилений для темного фону)
-  news: { primary: '#88B04B', secondary: '#a3c96a' }, // Greenery
-  blog: { primary: '#0F4C81', secondary: '#1a6bb3' }, // Classic Blue
-};
-
-// Контрастні кольори для Hero тексту (комплементарні пари для максимального контрасту)
-export const heroContrastColors: { [key: string]: string } = {
-  about: '#009B77',      // Teal/Cyan для коричнево-оранжевого
-  services: '#00FF80',   // Lime Green для фуксії
-  projects: '#FF4040',   // Vibrant Red для смарагдового
-  features: '#0F4C81',     // Navy Blue для світло-рожевого
-  news: '#734BB0',       // Royal Purple для зеленого
-  blog: '#AF601A',       // Warm Orange для синього
-};
-
-// Opposite section mapping (kept for reference)
-export const oppositeSections: { [key: string]: string } = {
-  about: 'blog',
-  services: 'news',
-  projects: 'features',
-  features: 'projects',
-  news: 'services',
-  blog: 'about',
-};
+// Re-export color constants for backward compatibility
+export { sectionNeonColors, heroContrastColors, oppositeSections } from './colors';
 
 export const BentoGrid = ({ onFullscreenChange, onHoveredSectionChange }: BentoGridProps = {}) => {
   const { t, currentLanguage } = useTranslations();

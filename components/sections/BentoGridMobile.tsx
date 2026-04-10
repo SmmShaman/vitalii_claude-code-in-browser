@@ -15,10 +15,6 @@ import {
   sectionColors,
 } from './mobile'
 
-// Re-export sectionColors for external consumers (page.tsx)
-export { sectionColors }
-export { sectionColors as sectionNeonColorsMobile }
-
 interface BentoGridMobileProps {
   onHoveredSectionChange?: (sectionId: string | null) => void
 }
