@@ -56,3 +56,11 @@ skills-lock.json
 
 # Deno lock (machine-generated)
 deno.lock
+
+# Lighthouse CI local artifacts
+.lighthouseci/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
