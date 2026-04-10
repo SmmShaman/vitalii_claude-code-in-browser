@@ -147,6 +147,7 @@ const BlogListOverlay = ({
                       <img
                         src={item.processed_image_url || item.image_url || item.cover_image_url}
                         alt={getLocalizedField(item, 'title')}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     </div>

@@ -69,7 +69,7 @@ const ProjectsExplosionOverlay = ({
           {/* Hero image */}
           {project.image && (
             <div className="h-56 overflow-hidden relative">
-              <img src={project.image} alt={project.title} className="w-full h-full object-cover" />
+              <img src={project.image} alt={project.title} loading="lazy" className="w-full h-full object-cover" />
               <div
                 className="absolute inset-0"
                 style={{
@@ -186,6 +186,7 @@ const ProjectsExplosionOverlay = ({
                   <img
                     src={project.image}
                     alt={project.title}
+                    loading="lazy"
                     className="absolute inset-0 w-full h-full object-cover opacity-60"
                   />
                 )}
@@ -301,7 +302,7 @@ export const MobileProjectsSection = ({ t, currentLanguage, sectionRef, isMounte
               >
                 {currentProject?.image && (
                   <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
-                    <img src={currentProject.image} alt={currentProject.title} className="w-full h-full object-cover" />
+                    <img src={currentProject.image} alt={currentProject.title} loading="lazy" className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">

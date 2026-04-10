@@ -246,6 +246,7 @@ const ContactsOverlay = ({
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(selectedSocial.href)}&format=svg`}
                     alt={`QR Code for ${selectedSocial.label}`}
+                    loading="lazy"
                     width={150}
                     height={150}
                     className="rounded-lg"
