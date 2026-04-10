@@ -1,9 +1,20 @@
 // Theme initialization — runs before React hydration to prevent flash.
-// Reads palette + mode from localStorage and applies CSS variables.
+// Priority: server data-attributes (from DB) > localStorage > defaults.
+// Server attributes ensure ALL devices see the admin-selected palette.
 (function () {
   try {
-    var mode = localStorage.getItem('vitalii_color_mode') || 'dark';
-    var id = localStorage.getItem('vitalii_active_palette') || 'neutral-dark';
+    var root = document.documentElement;
+    var serverPalette = root.getAttribute('data-server-palette');
+    var serverMode = root.getAttribute('data-server-mode');
+
+    // Server-provided palette takes priority (synced across all devices)
+    var id = serverPalette || localStorage.getItem('vitalii_active_palette') || 'neutral-dark';
+    var mode = serverMode || localStorage.getItem('vitalii_color_mode') || 'dark';
+
+    // Sync localStorage with server value so future navigations are instant
+    if (serverPalette) localStorage.setItem('vitalii_active_palette', id);
+    if (serverMode) localStorage.setItem('vitalii_color_mode', mode);
+
     var isDefault = id === 'neutral-dark' && mode === 'dark';
 
     // Set data-mode for CSS overrides (text-white inversion etc.)

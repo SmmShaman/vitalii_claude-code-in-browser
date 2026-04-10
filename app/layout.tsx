@@ -12,6 +12,32 @@ const comfortaa = Comfortaa({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vitalii-berbeha.netlify.app'
 
+// Server-side palette fetch — ensures all devices see the same palette
+async function getServerPalette(): Promise<{ palette: string; mode: string }> {
+  const defaults = { palette: 'neutral-dark', mode: 'dark' }
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !key) return defaults
+
+    const res = await fetch(
+      `${url}/rest/v1/api_settings?key_name=in.(ACTIVE_COLOR_PALETTE,ACTIVE_COLOR_MODE)&select=key_name,key_value`,
+      {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        next: { revalidate: 60 }, // re-fetch every 60 seconds
+      }
+    )
+    if (!res.ok) return defaults
+
+    const rows: { key_name: string; key_value: string }[] = await res.json()
+    const palette = rows.find(r => r.key_name === 'ACTIVE_COLOR_PALETTE')?.key_value || defaults.palette
+    const mode = rows.find(r => r.key_name === 'ACTIVE_COLOR_MODE')?.key_value || defaults.mode
+    return { palette, mode }
+  } catch {
+    return defaults
+  }
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -81,15 +107,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
   modal,
 }: {
   children: React.ReactNode
   modal: React.ReactNode
 }) {
+  const { palette, mode } = await getServerPalette()
+
   return (
-    <html lang="en" className={comfortaa.variable}>
+    <html lang="en" className={comfortaa.variable} data-server-palette={palette} data-server-mode={mode}>
       <head>
         {/* Preload hero images for LCP — BentoGrid About & Services sections */}
         <link rel="preload" as="image" href="/images/hero/about.webp" type="image/webp" />
