@@ -50,34 +50,63 @@ serve(async (req) => {
     audioBase64 = btoa(audioBase64)
     console.log(`🎙️ Downloaded ${Math.round(audioBuffer.byteLength / 1024)}KB audio`)
 
-    // Step 3: Send to Gemini for transcription
+    // Step 3: Send to Gemini for transcription (with retry + model fallback)
     const mimeType = filePath.endsWith('.oga') || filePath.endsWith('.ogg') ? 'audio/ogg' : 'audio/mpeg'
+    const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash']
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: "Transcribe this audio message. Return ONLY the spoken text, nothing else. The language may be Ukrainian, Russian, English, or Norwegian. Preserve the original language." },
-              { inline_data: { mime_type: mimeType, data: audioBase64 } },
-            ],
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
-        }),
-      },
-    )
+    let text = ''
+    let lastError = ''
 
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text()
-      throw new Error(`Gemini ${geminiRes.status}: ${err.slice(0, 200)}`)
+    for (const model of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          console.log(`🧠 Trying ${model} (attempt ${attempt + 1})...`)
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: "Transcribe this audio message. Return ONLY the spoken text, nothing else. The language may be Ukrainian, Russian, English, or Norwegian. Preserve the original language." },
+                    { inline_data: { mime_type: mimeType, data: audioBase64 } },
+                  ],
+                }],
+                generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
+              }),
+            },
+          )
+
+          if (geminiRes.status === 429 || geminiRes.status === 503) {
+            lastError = `${model} ${geminiRes.status}: overloaded`
+            console.log(`  ⏳ ${lastError}, ${attempt === 0 ? 'retrying...' : 'trying next model...'}`)
+            if (attempt === 0) await new Promise(r => setTimeout(r, 3000))
+            continue
+          }
+
+          if (!geminiRes.ok) {
+            const err = await geminiRes.text()
+            lastError = `${model} ${geminiRes.status}: ${err.slice(0, 100)}`
+            console.log(`  ❌ ${lastError}`)
+            break // Try next model
+          }
+
+          const geminiData = await geminiRes.json()
+          text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (text) {
+            console.log(`✅ Transcribed with ${model}: ${text.slice(0, 100)}...`)
+            break
+          }
+        } catch (e: any) {
+          lastError = `${model}: ${e.message}`
+          console.log(`  ❌ ${lastError}`)
+        }
+      }
+      if (text) break
     }
 
-    const geminiData = await geminiRes.json()
-    const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    console.log(`✅ Transcribed: ${text.slice(0, 100)}...`)
+    if (!text) throw new Error(`All models failed. Last: ${lastError}`)
 
     return new Response(JSON.stringify({ success: true, text, audioSize: audioBuffer.byteLength }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
