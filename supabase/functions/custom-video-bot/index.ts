@@ -406,15 +406,17 @@ Return JSON:
   "suggestedDuration": 60-300,
   "mood": "energetic" | "corporate" | "cinematic" | "ambient" | "electronic" | "inspiring",
   "language": "${language}",
-  "briefSummary": "2-sentence description of what the video will cover"
+  "briefSummary": "2-sentence description IN UKRAINIAN of what the video will cover"
 }
 
 Rules:
+- ALWAYS write briefSummary in Ukrainian regardless of input language
 - If user mentions portfolio features, projects, or personal work → contentType="portfolio", match feature keys
 - If user asks about general topics (trends, tutorials) → contentType="freeform"
 - If mixed → contentType="mixed"
 - suggestedDuration: short showcase=60-90, case study=120-180, overview=180-300
-- Select 3-8 most relevant features (fewer for short videos)`;
+- Select 3-8 most relevant features (fewer for short videos)
+- If the user prompt is very short or unclear (like just a greeting), set contentType="unclear" and briefSummary explaining you need more details`;
 
     const analysisRaw = await callAI(analysisPrompt, `Analyze this request: ${userPrompt}`, 2000);
     const analysis = JSON.parse(analysisRaw);
@@ -442,18 +444,56 @@ Rules:
       throw new Error(`DB insert failed: ${insertError?.message}`);
     }
 
-    // 4. Send analysis to Telegram
+    // 4. Handle unclear requests
+    if (analysis.contentType === "unclear") {
+      await editMessage(chatId, statusMsgId, [
+        `⚠️ <b>Запит не зрозумілий</b>`,
+        ``,
+        `${escapeHtml(analysis.briefSummary || "Потрібно більше деталей.")}`,
+        ``,
+        `💡 Приклади запитів:`,
+        `• "Зроби відео про мій проект Elvarika з vitalii.no"`,
+        `• "Покажи мої AI-фічі з портфоліо"`,
+        `• "Відео-огляд моїх останніх проектів"`,
+      ].join("\n"));
+      return json({ ok: true, unclear: true });
+    }
+
+    // 5. Send analysis to Telegram
     const langEmoji = { en: "🇬🇧", no: "🇳🇴", ua: "🇺🇦" }[analysis.language] || "🌐";
     const featureCount = (analysis.matchedFeatureKeys || []).length;
-    const contentLabel = { portfolio: "портфоліо", freeform: "довільна тема", mixed: "портфоліо + тема" }[analysis.contentType] || analysis.contentType;
+    const contentLabels: Record<string, string> = {
+      portfolio: "портфоліо",
+      freeform: "довільна тема",
+      mixed: "портфоліо + тема",
+      web_scrape: "аналіз веб-сторінки",
+    };
+    const contentLabel = contentLabels[analysis.contentType] || analysis.contentType;
+
+    const styleLabels: Record<string, string> = {
+      showcase: "демонстрація",
+      case_study: "кейс-стаді",
+      overview: "огляд",
+      explainer: "пояснення",
+    };
+    const moodLabels: Record<string, string> = {
+      energetic: "енергійний",
+      corporate: "діловий",
+      cinematic: "кінематографічний",
+      ambient: "атмосферний",
+      electronic: "електронний",
+      inspiring: "надихаючий",
+      serious: "серйозний",
+      lighthearted: "легкий",
+    };
 
     const briefText = [
       `📋 <b>Аналіз запиту:</b>`,
       ``,
       `<b>Тема:</b> ${escapeHtml(analysis.briefSummary || userPrompt.slice(0, 100))}`,
       `<b>Тип:</b> ${contentLabel}${featureCount > 0 ? ` (${featureCount} фіч)` : ""}`,
-      `<b>Мова:</b> ${langEmoji} | <b>Тривалість:</b> ~${analysis.suggestedDuration}с | <b>Стиль:</b> ${analysis.videoStyle}`,
-      `<b>Настрій:</b> ${analysis.mood}`,
+      `<b>Мова:</b> ${langEmoji} | <b>Тривалість:</b> ~${analysis.suggestedDuration}с | <b>Стиль:</b> ${styleLabels[analysis.videoStyle] || analysis.videoStyle}`,
+      `<b>Настрій:</b> ${moodLabels[analysis.mood] || analysis.mood}`,
     ].join("\n");
 
     const draftId = draft.id;
