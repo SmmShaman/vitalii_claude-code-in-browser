@@ -614,6 +614,7 @@ async function generateScript(
     const langName = { en: "English", no: "Norwegian Bokmål", ua: "Ukrainian" }[draft.language] || "English";
 
     const scriptPrompt = `You are a professional video scriptwriter writing for Vitalii Berbeha's video channel.
+This script will be read by a Ukrainian TTS engine that CANNOT pronounce English words correctly.
 
 PRESENTER: ${PROFILE_BIO}
 
@@ -635,26 +636,41 @@ Write a video script in ${langName}. Return ONLY valid JSON:
   "intro": "Opening text (2-3 sentences, ~${wordsPerSegment} words)",
   "segments": [
     {
-      "topic": "Short topic title",
+      "topic": "Short topic title in Ukrainian",
       "text": "Segment narration (~${wordsPerSegment} words)",
       "featureKey": "p01 or null if freeform"
     }
   ],
   "outro": "Closing call-to-action (~${wordsPerSegment} words, mention vitalii.no)",
-  "youtubeTitle": "Catchy title under 80 chars",
+  "youtubeTitle": "Catchy title under 80 chars in Ukrainian",
   "youtubeDescription": "3-sentence description with vitalii.no link",
   "youtubeTags": ["tag1", "tag2", "tag3"]
 }
 
-RULES:
+CRITICAL TTS RULES (Ukrainian voice engine):
+- ALL English tech terms MUST be transliterated to Ukrainian phonetics:
+  React → Ріект, TypeScript → Тайпскріпт, Next.js → Некст Джей Ес,
+  Supabase → Супабейс, Remotion → Ремоушн, Azure → Ажур,
+  Gemini → Джеміні, LinkedIn → Лінкедін, Instagram → Інстаграм,
+  Edge Functions → Едж Фанкшнз, API → АПІ, AI → ЕйАй,
+  RSS → Ер Ес Ес, TTS → Ті Ті Ес, LLM → Ел Ел Ем,
+  YouTube → Ютюб, Telegram → Телеграм, GitHub → Гітхаб,
+  Pexels → Пексельз, Deno → Діно, Node.js → Ноуд Джей Ес
+- ANY English word not in the list above — transliterate it phonetically to Cyrillic
+- NEVER leave English words in Latin script in the text field
+
+SCRIPT STRUCTURE RULES:
 - Write for the EAR (spoken audio), not the eye
-- Keep sentences SHORT (max 15 words)
-- Use specific numbers, names, tools — NOT vague statements
-- First person: "I built", "my system", "we achieved"
+- Keep sentences SHORT (max 12 words)
+- Each segment MUST have a complete thought with proper conclusion
+- NEVER end a segment mid-sentence or mid-thought
+- Last sentence of each segment should feel like a natural pause point
+- First person: "Я створив", "моя система", "ми досягли"
 - NO AI-speak: no "delve", "landscape", "groundbreaking", "testament"
-- Each segment = one clear topic with beginning-middle-end
-- Intro greets viewer: "Привіт, я Віталій..." (or English/Norwegian equivalent)
-- Outro: subscribe CTA + mention vitalii.no`;
+- Each segment = one clear topic with beginning-middle-END
+- Segment transitions should flow naturally: end of segment N should connect to start of segment N+1
+- Intro greets: "Привіт, я Віталій..."
+- Outro: subscribe CTA + mention "віталій крапка но" (vitalii.no spoken)`;
 
     const scriptRaw = await callAI(scriptPrompt, `Generate script for: ${draft.user_prompt}`, 8000);
     const script = JSON.parse(scriptRaw);
