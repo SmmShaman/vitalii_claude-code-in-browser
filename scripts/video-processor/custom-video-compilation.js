@@ -193,7 +193,7 @@ async function main() {
         const introFilename = `custom_intro_${Date.now()}.mp3`;
         await fs.copyFile(introResult.audioPath, path.join(publicDir, introFilename));
         introAudioFilename = introFilename;
-        introDuration = introResult.durationSeconds || introResult.duration || 5;
+        introDuration = Number(introResult.durationSeconds || introResult.duration) || 5;
         console.log(`  ✅ Intro: ${introDuration}s`);
       }
     } catch (e) {
@@ -223,7 +223,7 @@ async function main() {
         audioFilename = `custom_seg${i}_${Date.now()}.mp3`;
         await fs.copyFile(voResult.audioPath, path.join(publicDir, audioFilename));
         subtitles = voResult.subtitles || [];
-        segDuration = voResult.durationSeconds || voResult.duration || Math.ceil((seg.text || '').split(/\s+/).length / 2.5);
+        segDuration = Number(voResult.durationSeconds || voResult.duration) || Math.ceil((seg.text || '').split(/\s+/).length / 2.5);
         console.log(`    ✅ Audio: ${segDuration}s, ${subtitles.length} subtitle words`);
       }
     } catch (e) {
@@ -280,7 +280,7 @@ async function main() {
         const outroFilename = `custom_outro_${Date.now()}.mp3`;
         await fs.copyFile(outroResult.audioPath, path.join(publicDir, outroFilename));
         outroAudioFilename = outroFilename;
-        outroDuration = outroResult.durationSeconds || outroResult.duration || 5;
+        outroDuration = Number(outroResult.durationSeconds || outroResult.duration) || 5;
         console.log(`  ✅ Outro: ${outroDuration}s`);
       }
     } catch (e) {
