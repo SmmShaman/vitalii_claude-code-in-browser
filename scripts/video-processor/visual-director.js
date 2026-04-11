@@ -61,19 +61,19 @@ const CATEGORY_TRANSITION_MAP = {
   news:     ['fade', 'wipeLeft'],
 };
 
-// ── Keyword patterns for phrase classification (Norwegian + English) ──
+// ── Keyword patterns for phrase classification (Norwegian + English + Ukrainian) ──
 
 const KEYWORD_PATTERNS = {
-  numbers: /(\d+[\.,]?\d*)\s*(%|prosent|percent|millioner|milliarder|kroner|dollar|euro|brukere|users|ganger|times)/i,
-  comparison: /(sammenlignet med|compared to|versus|vs\.?|fra\s+\d+.*?til\s+\d+|from\s+\d+.*?to\s+\d+|økte?\s+fra|reduced from|dobl|tredobl|halvert)/i,
-  growth: /(vokser|vekst|øk[te]*|økning|increase|growth|rising|expanding|dobl|tredobl|oppsving|boost|surge|rekord|record|lansert|launch)/i,
-  decline: /(fall[er]*|nedgang|reduksjon|decrease|decline|drop|falling|shrink|kutt|cuts|layoff|lost|mist[et]*|taper)/i,
-  list: /(for det første|for det andre|for det tredje|firstly|secondly|thirdly|blant annet|including|several|mange|multiple|tre ting|three|four|five|fire|fem)/i,
-  technology: /(teknologi|software|hardware|kunstig intelligens|algoritme|maskinlæring|machine learning|robot|automasjon|digital|chip|prosessor|GPU|server|cloud|sky|kode|plattform)/i,
-  geography: /(land|country|region|verden|world|global|europa|europe|asia|amerika|america|norge|norway|kina|china|usa|india|japan|storbritannia|uk)/i,
-  timeline: /(innen\s+\d{4}|by\s+\d{4}|neste år|next year|i fremtiden|in the future|planlegger|plans? to|roadmap|milestone|fase|phase|Q[1-4]\s+\d{4})/i,
-  focus: /(spesielt|especially|særlig|notably|viktigst|most importantly|nøkkelen|the key|fokus|focus|sentral|central|hovedsakelig|primarily)/i,
-  urgency: /(umiddelbart|immediately|breaking|akutt|kritisk|critical|haster|urgent|rask|quick|plutselig|suddenly|nå må|must now)/i,
+  numbers: /(\d+[\.,]?\d*)\s*(%|prosent|percent|millioner|milliarder|kroner|dollar|euro|brukere|users|ganger|times|відсотків|процентів|мільйонів|мільярдів|тисяч|гривень|користувачів|разів|мов|секунд|хвилин|годин|каналів|статей|фіч)/i,
+  comparison: /(sammenlignet med|compared to|versus|vs\.?|fra\s+\d+.*?til\s+\d+|from\s+\d+.*?to\s+\d+|økte?\s+fra|reduced from|dobl|tredobl|halvert|порівняно з|від\s+\d+.*?до\s+\d+|зросло?\s+від|зменшилося?\s+від|замість)/i,
+  growth: /(vokser|vekst|øk[te]*|økning|increase|growth|rising|expanding|dobl|tredobl|oppsving|boost|surge|rekord|record|lansert|launch|зросло|зріс|збільшилось|зростання|підвищення|покращення|запуск|рекорд)/i,
+  decline: /(fall[er]*|nedgang|reduksjon|decrease|decline|drop|falling|shrink|kutt|cuts|layoff|lost|mist[et]*|taper|зменшилось|впало|скоротилось|знизилось|втратили|скорочення)/i,
+  list: /(for det første|for det andre|for det tredje|firstly|secondly|thirdly|blant annet|including|several|mange|multiple|tre ting|three|four|five|fire|fem|по-перше|по-друге|по-третє|серед них|включаючи|декілька|багато)/i,
+  technology: /(teknologi|software|hardware|kunstig intelligens|algoritme|maskinlæring|machine learning|robot|automasjon|digital|chip|prosessor|GPU|server|cloud|sky|kode|plattform|технологія|алгоритм|штучний інтелект|автоматизація|платформа|нейромережа|бот|сервер)/i,
+  geography: /(land|country|region|verden|world|global|europa|europe|asia|amerika|america|norge|norway|kina|china|usa|india|japan|storbritannia|uk|країна|світ|глобально|європа|норвегія|україна)/i,
+  timeline: /(innen\s+\d{4}|by\s+\d{4}|neste år|next year|i fremtiden|in the future|planlegger|plans? to|roadmap|milestone|fase|phase|Q[1-4]\s+\d{4}|до\s+\d{4}|наступного року|в майбутньому|планує|етап|фаза)/i,
+  focus: /(spesielt|especially|særlig|notably|viktigst|most importantly|nøkkelen|the key|fokus|focus|sentral|central|hovedsakelig|primarily|особливо|найважливіше|ключовий|головне|фокус|центральний|передусім)/i,
+  urgency: /(umiddelbart|immediately|breaking|akutt|kritisk|critical|haster|urgent|rask|quick|plutselig|suddenly|nå må|must now|негайно|критично|терміново|швидко|раптово)/i,
 };
 
 // ── Metaphor → preferred text/background effects ──

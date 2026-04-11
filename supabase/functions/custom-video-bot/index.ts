@@ -158,6 +158,11 @@ const UI: Record<string, Record<string, string>> = {
   ct_freeform: { en: "freeform topic", no: "fritt tema", ua: "довільна тема" },
   ct_mixed: { en: "portfolio + topic", no: "portefølje + tema", ua: "портфоліо + тема" },
   ct_web_scrape: { en: "web page analysis", no: "nettsideanalyse", ua: "аналіз веб-сторінки" },
+  ct_project_deep_dive: { en: "project deep dive", no: "prosjektdypdykk", ua: "глибокий аналіз проекту" },
+  project_label: { en: "Project", no: "Prosjekt", ua: "Проект" },
+  features_label: { en: "features", no: "funksjoner", ua: "фіч" },
+  data_points: { en: "data points", no: "datapunkter", ua: "дата-поінтів" },
+  tech_stack: { en: "Tech", no: "Teknologi", ua: "Технології" },
   // Style labels
   st_showcase: { en: "showcase", no: "utstilling", ua: "демонстрація" },
   st_case_study: { en: "case study", no: "casestudie", ua: "кейс-стаді" },
@@ -554,15 +559,26 @@ async function analyzePrompt(
       await editMessage(chatId, statusMsgId, t("analyzing_content", language));
     }
 
-    // 1. Fetch portfolio features for matching
-    const { data: features } = await supabase
-      .from("portfolio_features")
-      .select("feature_key, category, title_en, title_no, title_ua, short_description_en, short_description_no, short_description_ua, tech_stack")
-      .eq("is_active", true);
+    // 1. Fetch projects + portfolio features for matching (parallel)
+    const [{ data: projects }, { data: features }] = await Promise.all([
+      supabase.from("feature_projects")
+        .select("id, name_en, name_no, name_ua, description_en, description_no, description_ua, image_url, repo_url")
+        .eq("is_active", true),
+      supabase.from("portfolio_features")
+        .select("feature_key, category, title_en, title_no, title_ua, short_description_en, short_description_no, short_description_ua, tech_stack")
+        .eq("is_active", true),
+    ]);
 
-    // 2. AI analysis: classify content type, match features, plan video
+    // 2. AI analysis: classify content type, detect project, match features
+    const langKey = language === "ua" ? "ua" : language === "no" ? "no" : "en";
+    const langFull = language === "ua" ? "Ukrainian" : language === "no" ? "Norwegian" : "English";
+
+    const projectList = (projects || []).map((p) =>
+      `- [${p.id}] ${p[`name_${langKey}`] || p.name_en}`
+    ).join("\n");
+
     const featureList = (features || []).map((f, i) =>
-      `${i + 1}. [${f.feature_key}] ${f.category}: ${f[`title_${language}`] || f.title_en} — ${f[`short_description_${language}`] || f.short_description_en}`
+      `${i + 1}. [${f.feature_key}] ${f.category}: ${f[`title_${langKey}`] || f.title_en} — ${f[`short_description_${langKey}`] || f.short_description_en}`
     ).join("\n");
 
     const analysisPrompt = `You are a video content planner for Vitalii Berbeha's portfolio (vitalii.no).
@@ -572,34 +588,107 @@ Analyze the user's request and plan a video:
 USER REQUEST: "${userPrompt}"
 ${scrapedContent ? `\nSCRAPED WEB CONTENT:\n${scrapedContent.slice(0, 3000)}` : ""}
 
+AVAILABLE PROJECTS:
+${projectList}
+
 AVAILABLE PORTFOLIO FEATURES:
 ${featureList}
 
 Return JSON:
 {
-  "contentType": "portfolio" | "freeform" | "mixed",
+  "contentType": "project_deep_dive" | "portfolio" | "freeform" | "mixed" | "unclear",
+  "detectedProject": "project_id or null",
   "topics": ["topic1", "topic2"],
   "matchedFeatureKeys": ["p01", "p05", ...],
   "videoStyle": "showcase" | "case_study" | "overview" | "explainer",
   "suggestedDuration": 60-300,
   "mood": "energetic" | "corporate" | "cinematic" | "ambient" | "electronic" | "inspiring",
   "language": "${language}",
-  "briefSummary": "2-sentence description of what the video will cover"
+  "briefSummary": "2-sentence description in ${langFull} of what the video will cover"
 }
 
 Rules:
-- Write briefSummary in the detected language (${language === "ua" ? "Ukrainian" : language === "no" ? "Norwegian" : "English"})
-- If user mentions portfolio features, projects, or personal work → contentType="portfolio", match feature keys
+- If user asks about a SPECIFIC PROJECT (Elvarika, JobBot, Calendar Bot, etc.) → contentType="project_deep_dive", detectedProject=matching project ID
+- If user asks about portfolio features or personal work in general → contentType="portfolio", detectedProject=null
 - If user asks about general topics (trends, tutorials) → contentType="freeform"
-- If mixed → contentType="mixed"
-- suggestedDuration: short showcase=60-90, case study=120-180, overview=180-300
-- Select 3-8 most relevant features (fewer for short videos)
-- If the user prompt is very short or unclear (like just a greeting), set contentType="unclear" and briefSummary explaining you need more details`;
+- For project_deep_dive: match only features RELEVANT to that project (3-8 max)
+- For portfolio: select 3-8 most relevant features across all projects
+- suggestedDuration: short showcase=60-90, case study=120-180, deep dive=180-300
+- If the user prompt is very short or unclear, set contentType="unclear"`;
 
     const analysisRaw = await callAI(analysisPrompt, `Analyze this request: ${userPrompt}`, 2000);
     const analysis = safeJsonParse(analysisRaw);
 
-    // 3. Create draft record
+    // 3. Build research brief if specific project detected
+    let researchBrief: any = null;
+    const detectedProjectId = analysis.detectedProject;
+    const contentType = scrapedContent ? "web_scrape" : (analysis.contentType || "portfolio");
+
+    if (detectedProjectId && contentType === "project_deep_dive") {
+      console.log(`  🔬 Building research brief for project: ${detectedProjectId}`);
+      await editMessage(chatId, statusMsgId, `🔬 ${t("analyzing_content", language)} (${detectedProjectId})`);
+
+      // Load full project description
+      const project = (projects || []).find((p: any) => p.id === detectedProjectId);
+
+      // Load project-specific features from features table (NOT portfolio_features)
+      const { data: projectFeatures } = await supabase
+        .from("features")
+        .select("id, feature_key, category, title_en, title_no, title_ua, short_description_en, short_description_no, short_description_ua, problem_en, problem_no, problem_ua, solution_en, solution_no, solution_ua, result_en, result_no, result_ua, tech_stack, hashtags")
+        .eq("project_id", detectedProjectId)
+        .eq("status", "published");
+
+      // Extract data points from feature narratives
+      const dataPointsRegex = /(\d+[\.,]?\d*)\s*(%|мов|мільйонів|тисяч|секунд|хвилин|годин|каналів|статей|фіч|users|languages|seconds|minutes|hours|channels|articles|features|times|x)/gi;
+      const featuresWithData = (projectFeatures || []).map((f: any) => {
+        const narrative = `${f[`problem_${langKey}`] || f.problem_en || ""} ${f[`solution_${langKey}`] || f.solution_en || ""} ${f[`result_${langKey}`] || f.result_en || ""}`;
+        const dataPoints: any[] = [];
+        let m;
+        const rx = new RegExp(dataPointsRegex.source, dataPointsRegex.flags);
+        while ((m = rx.exec(narrative)) !== null) {
+          dataPoints.push({ value: m[1], label: m[2], context: narrative.slice(Math.max(0, m.index - 30), m.index + m[0].length + 30).trim() });
+        }
+        return {
+          feature_key: f.feature_key || f.id,
+          title: f[`title_${langKey}`] || f.title_en,
+          problem: f[`problem_${langKey}`] || f.problem_en,
+          solution: f[`solution_${langKey}`] || f.solution_en,
+          result: f[`result_${langKey}`] || f.result_en,
+          techStack: f.tech_stack || [],
+          dataPoints,
+        };
+      });
+
+      // Collect all tech stacks
+      const allTech = new Set<string>();
+      for (const f of featuresWithData) {
+        for (const t of f.techStack) allTech.add(t);
+      }
+
+      researchBrief = {
+        detectedProject: detectedProjectId,
+        projectName: project?.[`name_${langKey}`] || project?.name_en || detectedProjectId,
+        projectDescription: project?.[`description_${langKey}`] || project?.description_en || "",
+        projectImage: project?.image_url || "",
+        repoUrl: project?.repo_url || "",
+        featureCount: featuresWithData.length,
+        features: featuresWithData,
+        techStackSummary: Array.from(allTech),
+        allDataPoints: featuresWithData.flatMap((f: any) => f.dataPoints),
+        availableImages: {
+          cover: project?.image_url || "",
+          hero: ["about.webp", "services.webp", "projects.webp", "skills.webp", "news.webp", "blog.webp"],
+        },
+      };
+
+      console.log(`  ✅ Research brief: ${featuresWithData.length} features, ${researchBrief.allDataPoints.length} data points, ${allTech.size} technologies`);
+    }
+
+    // 4. Create draft record
+    const enrichedBrief = researchBrief
+      ? { ...analysis, research: researchBrief }
+      : analysis;
+
     const { data: draft, error: insertError } = await supabase
       .from("custom_video_drafts")
       .insert({
@@ -607,11 +696,11 @@ Rules:
         user_chat_id: chatId,
         language: analysis.language || language,
         video_style: analysis.videoStyle || "showcase",
-        content_type: scrapedContent ? "web_scrape" : (analysis.contentType || "portfolio"),
-        target_duration_seconds: analysis.suggestedDuration || 90,
+        content_type: contentType,
+        target_duration_seconds: analysis.suggestedDuration || (detectedProjectId ? 180 : 90),
         relevant_features: analysis.matchedFeatureKeys || [],
         web_research: scrapedContent ? [{ urls: detectedUrls, content: scrapedContent.slice(0, 8000), images: scrapedImages }] : [],
-        content_brief: analysis,
+        content_brief: enrichedBrief,
         format: "horizontal",
         status: "pending_script",
         telegram_message_ids: [statusMsgId],
@@ -641,20 +730,37 @@ Rules:
     // 5. Send analysis to Telegram
     const langEmoji = { en: "🇬🇧", no: "🇳🇴", ua: "🇺🇦" }[analysis.language] || "🌐";
     const featureCount = (analysis.matchedFeatureKeys || []).length;
-    const contentLabel = t(`ct_${analysis.contentType}`, language) || analysis.contentType;
+    const contentLabel = t(`ct_${contentType}`, language) || contentType;
     const styleLabel = t(`st_${analysis.videoStyle}`, language) || analysis.videoStyle;
     const moodLabel = t(`md_${analysis.mood}`, language) || analysis.mood;
 
-    const briefText = [
+    const briefLines = [
       t("analysis_title", language),
       ``,
       `<b>${t("topic", language)}:</b> ${escapeHtml(analysis.briefSummary || userPrompt.slice(0, 100))}`,
-      `<b>${t("type_label", language)}:</b> ${contentLabel}${featureCount > 0 ? ` (${featureCount})` : ""}`,
+    ];
+
+    // Show project details for deep dive
+    if (researchBrief) {
+      briefLines.push(
+        `<b>${t("project_label", language)}:</b> ${escapeHtml(researchBrief.projectName)}`,
+        `<b>${t("type_label", language)}:</b> ${contentLabel} (${researchBrief.featureCount} ${t("features_label", language)}, ${researchBrief.allDataPoints.length} ${t("data_points", language)})`,
+        `<b>${t("tech_stack", language)}:</b> ${researchBrief.techStackSummary.slice(0, 6).join(", ")}${researchBrief.techStackSummary.length > 6 ? "..." : ""}`,
+      );
+    } else {
+      briefLines.push(
+        `<b>${t("type_label", language)}:</b> ${contentLabel}${featureCount > 0 ? ` (${featureCount})` : ""}`,
+      );
+    }
+
+    briefLines.push(
       `<b>${t("lang_label", language)}:</b> ${langEmoji} | <b>${t("duration_label", language)}:</b> ~${analysis.suggestedDuration}s | <b>${t("style_label", language)}:</b> ${styleLabel}`,
       `<b>${t("mood_label", language)}:</b> ${moodLabel}`,
       ``,
       t("select_lang", language),
-    ].join("\n");
+    );
+
+    const briefText = briefLines.join("\n");
 
     const draftId = draft.id;
 
@@ -734,9 +840,31 @@ async function generateScript(
     lang = draft.language || "en";
     await editMessage(chatId, statusMsgId, t("generating_script", lang));
 
-    // 2. Load portfolio features if needed
+    // 2. Build feature context — use research brief for deep dive, portfolio_features otherwise
     let featureContent = "";
-    if (draft.content_type !== "freeform" && draft.relevant_features?.length > 0) {
+    let projectContext = "";
+    const research = draft.content_brief?.research;
+
+    if (research && draft.content_type === "project_deep_dive") {
+      // Deep dive: use rich research brief with full narratives
+      projectContext = `PROJECT: ${research.projectName}\n\nPROJECT STORY:\n${(research.projectDescription || "").slice(0, 1500)}\n`;
+
+      if (research.techStackSummary?.length > 0) {
+        projectContext += `\nTECH STACK: ${research.techStackSummary.join(", ")}\n`;
+      }
+
+      // Include full features with data points (limit to 8 most relevant)
+      const rf = (research.features || []).slice(0, 8);
+      featureContent = rf.map((f: any, i: number) => {
+        let entry = `FEATURE ${i + 1}: ${f.title}\n  Problem: ${f.problem || ""}\n  Solution: ${f.solution || ""}\n  Result: ${f.result || ""}`;
+        if (f.techStack?.length > 0) entry += `\n  Tech: ${f.techStack.join(", ")}`;
+        if (f.dataPoints?.length > 0) {
+          entry += `\n  DATA POINTS: ${f.dataPoints.map((d: any) => `${d.value} ${d.label}`).join(", ")}`;
+        }
+        return entry;
+      }).join("\n\n");
+    } else if (draft.content_type !== "freeform" && draft.relevant_features?.length > 0) {
+      // Generic portfolio: use portfolio_features table as before
       const { data: features } = await supabase
         .from("portfolio_features")
         .select("*")
@@ -744,7 +872,7 @@ async function generateScript(
         .eq("is_active", true);
 
       if (features && features.length > 0) {
-        featureContent = features.map((f, i) => {
+        featureContent = features.map((f: any, i: number) => {
           const title = f[`title_${lang}`] || f.title_en;
           const problem = f[`problem_${lang}`] || f.problem_en;
           const solution = f[`solution_${lang}`] || f.solution_en;
@@ -834,6 +962,23 @@ TTS RULES (English voice engine):
 - Intro greets: "Hi, I'm Vitalii..."
 - Outro: mention "vitalii dot no" (vitalii.no spoken)`;
 
+    const isDeepDive = draft.content_type === "project_deep_dive" && research;
+
+    const storyRules = isDeepDive ? `
+STORYTELLING RULES (project deep dive):
+- This is a STORY about a specific project, NOT a feature list
+- Start with WHY: what problem inspired this project? What pain did it solve?
+- Use SPECIFIC numbers from the DATA POINTS (don't invent, use exactly as provided)
+- Each segment = narrative arc: setup → insight → payoff
+- Embed data naturally in speech: "8 мов — від арабської до тигрінья"
+- Connect segments as chapters of one story, not independent topics
+- End with IMPACT: what changed because this project exists?
+- Choose 3-5 MOST COMPELLING features, don't try to cover all of them
+- Add dataPoints array per segment with real numbers for visual infographics` : `
+STRUCTURE RULES:
+- Each segment = one clear topic with beginning-middle-END
+- Select the most relevant features to cover`;
+
     const scriptPrompt = `You are a professional video scriptwriter writing for Vitalii Berbeha's video channel.
 
 PRESENTER: ${PROFILE_BIO}
@@ -845,7 +990,8 @@ SEGMENTS: ${segmentCount} content segments + intro + outro
 WORDS PER SEGMENT: ~${wordsPerSegment} words
 STYLE: ${draft.video_style}
 
-${featureContent ? `PORTFOLIO FEATURES TO COVER:\n${featureContent}` : ""}
+${projectContext}
+${featureContent ? `${isDeepDive ? "PROJECT FEATURES (choose 3-5 most compelling)" : "PORTFOLIO FEATURES TO COVER"}:\n${featureContent}` : ""}
 ${webContext}
 
 ${HUMANIZER_VIDEO}
@@ -858,7 +1004,8 @@ Write a video script in ${langName}. Return ONLY valid JSON:
     {
       "topic": "Short topic title in ${langName}",
       "text": "Segment narration (~${wordsPerSegment} words)",
-      "featureKey": "p01 or null if freeform"
+      "featureKey": "feature key or null if freeform",
+      "dataPoints": [{"value": "8", "label": "languages", "type": "counter"}]
     }
   ],
   "outro": "Closing call-to-action (~${wordsPerSegment} words, mention vitalii.no)",
@@ -867,16 +1014,17 @@ Write a video script in ${langName}. Return ONLY valid JSON:
   "youtubeTags": ["tag1", "tag2", "tag3"]
 }
 ${ttsRules}
+${storyRules}
 
-SCRIPT STRUCTURE RULES:
+SCRIPT RULES:
 - Write for the EAR (spoken audio), not the eye
 - Keep sentences SHORT (max 12 words)
 - Each segment MUST have a complete thought with proper conclusion
 - NEVER end a segment mid-sentence or mid-thought
 - Last sentence of each segment should feel like a natural pause point
 - NO AI-speak: no "delve", "landscape", "groundbreaking", "testament"
-- Each segment = one clear topic with beginning-middle-END
-- Segment transitions should flow naturally: end of segment N should connect to start of segment N+1`;
+- Segment transitions should flow naturally: end of segment N should connect to start of segment N+1
+- dataPoints: extract real numbers from the features for visual infographics (counter, keyFigure, comparison types)`;
 
     const scriptRaw = await callAI(scriptPrompt, `Generate script for: ${draft.user_prompt}`, 8000);
     const script = safeJsonParse(scriptRaw);
@@ -1024,16 +1172,37 @@ async function generateScenario(
     await editMessage(chatId, statusMsgId, t("scenario_gen", lang));
 
     const segments = draft.segment_scripts || [];
+    const scenarioResearch = draft.content_brief?.research;
+    const siteBaseUrl = "https://vitalii.no";
 
-    // 2. AI visual scenario planning
+    // 2. Build segment info with dataPoints for AI
+    const segmentInfo = segments.map((s: any, i: number) => {
+      let info = `${i + 1}. [${s.topic}]: ${s.text?.slice(0, 150)}...`;
+      if (s.dataPoints?.length > 0) {
+        info += `\n   DATA POINTS: ${s.dataPoints.map((d: any) => `${d.value} ${d.label} (${d.type})`).join(", ")}`;
+      }
+      return info;
+    }).join("\n");
+
+    // Available site images
+    const siteImagesList = scenarioResearch?.availableImages
+      ? `\nAVAILABLE PROJECT IMAGES (prefer these over generic stock):
+- Project cover: ${scenarioResearch.availableImages.cover || "none"}
+- Hero images: ${(scenarioResearch.availableImages.hero || []).join(", ")}
+- Use site assets for project-specific segments, external search for conceptual/technology illustrations`
+      : "";
+
+    // AI visual scenario planning
     const scenarioPrompt = `You are a video visual director. Plan the visual composition for each segment of a custom video.
 
 VIDEO: ${draft.youtube_title || draft.user_prompt}
 STYLE: ${draft.video_style}
 LANGUAGE: ${draft.language}
+${scenarioResearch ? `PROJECT: ${scenarioResearch.projectName}` : ""}
 
 SEGMENTS:
-${segments.map((s: any, i: number) => `${i + 1}. [${s.topic}]: ${s.text?.slice(0, 150)}...`).join("\n")}
+${segmentInfo}
+${siteImagesList}
 
 For each segment, return JSON:
 {
@@ -1054,18 +1223,32 @@ For each segment, return JSON:
 
 RULES for imageSearchQueries:
 - Use REAL names: "Supabase Edge Functions dashboard", "Remotion video rendering", "Next.js 15 app router"
+- For portfolio projects: search for app screenshots, technology diagrams, architecture visuals
 - Each query = different visual aspect
 - 3-4 queries per segment
-- NO generic stock phrases`;
+- NO generic stock phrases
+- If segment has DATA POINTS, include them in facts array for infographic overlays`;
 
     const scenarioRaw = await callAI(scenarioPrompt, "Plan the visual scenario", 6000);
     const scenario = safeJsonParse(scenarioRaw);
 
-    // 3. Search images for each segment (parallel with error boundaries)
+    // 3. Collect available images: site assets first, then web scraped, then search
     const webResearchImages: string[] = [];
+
+    // Inject site project images as high-priority sources
+    if (scenarioResearch?.availableImages?.cover) {
+      webResearchImages.push(`${siteBaseUrl}${scenarioResearch.availableImages.cover}`);
+    }
+    for (const hi of (scenarioResearch?.availableImages?.hero || [])) {
+      webResearchImages.push(`${siteBaseUrl}/images/hero/${hi}`);
+    }
+
+    // Add web-scraped images
     if (draft.web_research?.length > 0 && draft.web_research[0]?.images) {
       webResearchImages.push(...draft.web_research[0].images);
-      console.log(`  🖼 ${webResearchImages.length} images from scraped URLs`);
+    }
+    if (webResearchImages.length > 0) {
+      console.log(`  🖼 ${webResearchImages.length} priority images (site + scraped)`);
     }
 
     const imageSourcesMap: Record<string, string[]> = {};

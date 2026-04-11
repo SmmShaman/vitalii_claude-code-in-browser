@@ -26,6 +26,7 @@ import os from 'os';
 import { execSync } from 'child_process';
 import { generateVoiceover, VOICE_PRESETS } from './generate-voiceover.js';
 import { downloadPexelsMedia } from './pexels-media.js';
+import { directVisuals } from './visual-director.js';
 
 // ── Config ──
 
@@ -320,6 +321,95 @@ async function main() {
 
   console.log(`\n⏱ Total duration: ${totalDuration}s`);
 
+  // Step 2.5: Visual Director — phrase-level visual planning
+  console.log('\n🎨 Step 2.5: Visual direction...');
+  let visualDirectives = [];
+  try {
+    const segmentScripts = segments.map(s => s.text);
+    const segmentVoiceovers = remotionSegments.map(rs => ({
+      subtitles: rs.subtitles,
+      durationSeconds: rs.durationSeconds,
+    }));
+
+    // Build article-like objects for Visual Director context
+    const articles = segments.map(s => ({
+      title_en: s.topic,
+      content_en: s.text,
+      category: s.category || 'portfolio',
+    }));
+
+    visualDirectives = await directVisuals(
+      segmentScripts,
+      remotionSegments,
+      segmentVoiceovers,
+      articles,
+    );
+    console.log(`  ✅ Visual directives: ${visualDirectives.length} segments`);
+  } catch (e) {
+    console.log(`  ⚠️ Visual Director failed, using defaults: ${e.message}`);
+  }
+
+  // Merge visual directives into Remotion segments
+  for (let i = 0; i < remotionSegments.length; i++) {
+    const vd = visualDirectives[i] || {};
+    if (vd.mood) remotionSegments[i].mood = vd.mood;
+    if (vd.transition) remotionSegments[i].transition = vd.transition;
+    if (vd.textReveal) remotionSegments[i].textReveal = vd.textReveal;
+    if (vd.statsVisualType) remotionSegments[i].statsVisualType = vd.statsVisualType;
+    if (vd.facts?.length > 0) remotionSegments[i].facts = vd.facts;
+    if (vd.dataOverlays?.length > 0) remotionSegments[i].dataOverlays = vd.dataOverlays;
+    if (vd.visualBlocks?.length > 0) remotionSegments[i].visualBlocks = vd.visualBlocks;
+    if (vd.imageCycleDuration) remotionSegments[i].imageCycleDuration = vd.imageCycleDuration;
+  }
+
+  // Step 2.6: Per-phrase image search (from Visual Director)
+  const SERPER_KEY = process.env.SERPER_API_KEY;
+  const totalBlocks = visualDirectives.reduce((s, vd) => s + (vd?.visualBlocks?.length || 0), 0);
+  const totalQueries = visualDirectives.reduce((s, vd) => s + (vd?.visualBlocks || []).filter(b => b.imageSearchQuery).length, 0);
+  console.log(`  📊 Total blocks: ${totalBlocks}, with imageSearchQuery: ${totalQueries}`);
+
+  if (SERPER_KEY && totalQueries > 0) {
+    console.log('\n🔍 Step 2.6: Per-phrase image search...');
+    for (let i = 0; i < visualDirectives.length; i++) {
+      const blocks = visualDirectives[i]?.visualBlocks || [];
+      let phraseImagesFound = 0;
+      for (let j = 0; j < blocks.length; j++) {
+        const query = blocks[j].imageSearchQuery;
+        if (!query) continue;
+        try {
+          const resp = await fetch('https://google.serper.dev/images', {
+            method: 'POST',
+            headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q: query, num: 3 }),
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const imgUrl = data.images?.[0]?.imageUrl;
+            if (imgUrl) {
+              const filename = `custom_phrase_${i}_${j}_${Date.now()}.jpg`;
+              const ok = await downloadFile(imgUrl, path.join(publicDir, filename));
+              if (ok) {
+                blocks[j].phraseImageSrc = filename;
+                phraseImagesFound++;
+              }
+            }
+          }
+        } catch { /* skip failed searches */ }
+      }
+      if (phraseImagesFound > 0) {
+        console.log(`  🔍 Seg ${i + 1}: ${phraseImagesFound}/${blocks.length} phrase images`);
+        // Update segment's visualBlocks with downloaded filenames
+        if (remotionSegments[i].visualBlocks) {
+          for (let j = 0; j < remotionSegments[i].visualBlocks.length; j++) {
+            if (blocks[j]?.phraseImageSrc) {
+              remotionSegments[i].visualBlocks[j].phraseImageSrc = blocks[j].phraseImageSrc;
+            }
+          }
+        }
+      }
+    }
+  }
+
   // Step 3: Background music
   console.log('\n🎵 Step 3: Setting up background music...');
   let bgmSrc = null;
@@ -384,6 +474,18 @@ async function main() {
     await fs.copyFile(logoPath, path.join(publicDir, 'intro_logo.png'));
     introProfileImageSrc = 'intro_logo.png';
   } catch { /* skip */ }
+
+  // Copy project cover image if available (from research brief)
+  const projectImage = draft.content_brief?.research?.availableImages?.cover;
+  if (projectImage) {
+    const projectImgSrc = path.join(scriptDir, '..', '..', 'public', projectImage);
+    const projectImgDest = `project_cover${path.extname(projectImage)}`;
+    try {
+      await fs.copyFile(projectImgSrc, path.join(publicDir, projectImgDest));
+      introBackgroundImages.unshift(projectImgDest); // Put project cover first
+      console.log(`  📸 Project cover: ${projectImgDest}`);
+    } catch { /* skip — may not exist in CI */ }
+  }
 
   console.log(`  📸 ${introBackgroundImages.length} bg images, profile: ${introProfileImageSrc ? 'yes' : 'no'}`);
 
