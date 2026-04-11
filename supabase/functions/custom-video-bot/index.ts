@@ -22,7 +22,7 @@ import { HUMANIZER_VIDEO, VOICE_SPOKEN } from "../_shared/humanizer-prompt.ts";
 import { collectImages, searchSerperImages, searchPexelsImages } from "../_shared/image-search.ts";
 import { findBestMusic, mapContentToMood, getLocalTrackFilename } from "../_shared/music-search.ts";
 
-const VERSION = "2026-04-10-v1";
+const VERSION = "2026-04-11-v2";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -97,6 +97,153 @@ async function sendMediaGroup(chatId: string | number, media: any[]): Promise<vo
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// ── i18n UI Strings ──
+
+const UI: Record<string, Record<string, string>> = {
+  analyzing: { en: "🔍 Analyzing request...", no: "🔍 Analyserer forespørselen...", ua: "🔍 Аналізую запит..." },
+  scraping: { en: "🌐 Scraping URL(s)...", no: "🌐 Skraper URL(er)...", ua: "🌐 Скрейплю URL(s)..." },
+  analyzing_content: { en: "🔍 Analyzing content...", no: "🔍 Analyserer innhold...", ua: "🔍 Аналізую контент..." },
+  analysis_title: { en: "📋 <b>Request analysis:</b>", no: "📋 <b>Analyse av forespørsel:</b>", ua: "📋 <b>Аналіз запиту:</b>" },
+  topic: { en: "Topic", no: "Tema", ua: "Тема" },
+  type_label: { en: "Type", no: "Type", ua: "Тип" },
+  lang_label: { en: "Language", no: "Språk", ua: "Мова" },
+  duration_label: { en: "Duration", no: "Varighet", ua: "Тривалість" },
+  style_label: { en: "Style", no: "Stil", ua: "Стиль" },
+  mood_label: { en: "Mood", no: "Stemning", ua: "Настрій" },
+  select_lang: { en: "Select video language:", no: "Velg videospråk:", ua: "Оберіть мову відео:" },
+  duration_btn: { en: "⏱ Duration", no: "⏱ Varighet", ua: "⏱ Тривалість" },
+  format_btn: { en: "📐 Format", no: "📐 Format", ua: "📐 Формат" },
+  cancel_btn: { en: "❌ Cancel", no: "❌ Avbryt", ua: "❌ Скасувати" },
+  generating_script: { en: "✍️ Generating video script...", no: "✍️ Genererer videomanus...", ua: "✍️ Генерую сценарій відео..." },
+  script_title: { en: "📝 <b>Video script</b>", no: "📝 <b>Videomanus</b>", ua: "📝 <b>Сценарій відео</b>" },
+  intro: { en: "🎬 Intro", no: "🎬 Intro", ua: "🎬 Інтро" },
+  outro: { en: "🔚 Outro", no: "🔚 Outro", ua: "🔚 Аутро" },
+  approve_btn: { en: "✅ Approve", no: "✅ Godkjenn", ua: "✅ Затвердити" },
+  regenerate_btn: { en: "🔄 Regenerate", no: "🔄 Regenerer", ua: "🔄 Перегенерувати" },
+  edit_hint: { en: "💡 To edit — reply to the script message", no: "💡 For å redigere — svar på manusmeldingen", ua: "💡 Для правок — відповідайте на повідомлення зі скриптом" },
+  edits_saved: { en: "✅ Edits saved. Regenerating script...", no: "✅ Endringer lagret. Regenererer manus...", ua: "✅ Правки збережені. Перегенеровую скрипт..." },
+  scenario_gen: { en: "🎨 Creating visual scenario + searching images & music...", no: "🎨 Lager visuelt scenario + søker bilder og musikk...", ua: "🎨 Створюю візуальний сценарій + шукаю зображення та музику..." },
+  scenario_title: { en: "🎨 <b>Visual scenario:</b>", no: "🎨 <b>Visuelt scenario:</b>", ua: "🎨 <b>Візуальний сценарій:</b>" },
+  view_images: { en: "🖼 View images", no: "🖼 Se bilder", ua: "🖼 Переглянути зображення" },
+  render_now: { en: "✅ Render now", no: "✅ Render nå", ua: "✅ Рендерити відразу" },
+  re_search: { en: "🔄 Re-search", no: "🔄 Søk på nytt", ua: "🔄 Перешукати" },
+  render_started: { en: "🎬 <b>Rendering started!</b>", no: "🎬 <b>Rendering startet!</b>", ua: "🎬 <b>Рендеринг запущено!</b>" },
+  render_eta: { en: "⏱ Expected time: 10-20 minutes", no: "⏱ Forventet tid: 10-20 minutter", ua: "⏱ Очікуваний час: 10-20 хвилин" },
+  render_notify: { en: "Will notify when the video is ready.", no: "Varsler når videoen er klar.", ua: "Повідомлю коли відео буде готове." },
+  render_failed: { en: "❌ Render error", no: "❌ Feil ved rendering", ua: "❌ Помилка запуску рендерингу" },
+  retry_btn: { en: "🔄 Retry render", no: "🔄 Prøv igjen", ua: "🔄 Спробувати знову" },
+  video_published: { en: "✅ <b>Video published!</b>", no: "✅ <b>Video publisert!</b>", ua: "✅ <b>Відео опубліковано!</b>" },
+  video_rendered: { en: "✅ <b>Video rendered!</b>", no: "✅ <b>Video rendert!</b>", ua: "✅ <b>Відео зрендерено!</b>" },
+  yt_skipped: { en: "⚠️ YouTube upload was skipped", no: "⚠️ YouTube-opplasting ble hoppet over", ua: "⚠️ Завантаження на YouTube пропущено" },
+  cancelled: { en: "❌ Video cancelled.", no: "❌ Video avbrutt.", ua: "❌ Відео скасовано." },
+  format_changed: { en: "📐 Format changed to", no: "📐 Format endret til", ua: "📐 Формат змінено на" },
+  duration_changed: { en: "⏱ Duration changed to", no: "⏱ Varighet endret til", ua: "⏱ Тривалість змінена на" },
+  script_will_regen: { en: "⚠️ Script will be regenerated with new settings", no: "⚠️ Manus regenereres med nye innstillinger", ua: "⚠️ Скрипт буде перегенеровано з новими налаштуваннями" },
+  summary: { en: "📊 <b>Summary:</b>", no: "📊 <b>Oppsummering:</b>", ua: "📊 <b>Підсумок:</b>" },
+  segments: { en: "Segments", no: "Segmenter", ua: "Сегментів" },
+  images: { en: "Images", no: "Bilder", ua: "Зображень" },
+  music: { en: "Music", no: "Musikk", ua: "Музика" },
+  total_images: { en: "Total images", no: "Totalt bilder", ua: "Загалом зображень" },
+  no_images: { en: "⚠️ No images found", no: "⚠️ Ingen bilder funnet", ua: "⚠️ Зображень не знайдено" },
+  unclear_title: { en: "⚠️ <b>Request unclear</b>", no: "⚠️ <b>Forespørselen er uklar</b>", ua: "⚠️ <b>Запит не зрозумілий</b>" },
+  unclear_examples: { en: "💡 Examples:", no: "💡 Eksempler:", ua: "💡 Приклади запитів:" },
+  error_analysis: { en: "❌ Analysis error", no: "❌ Analysefeil", ua: "❌ Помилка аналізу" },
+  error_script: { en: "❌ Script generation error", no: "❌ Feil ved manusgenerering", ua: "❌ Помилка генерації скрипту" },
+  error_scenario: { en: "❌ Scenario error", no: "❌ Scenariefeil", ua: "❌ Помилка сценарію" },
+  error_generic: { en: "❌ Error", no: "❌ Feil", ua: "❌ Помилка" },
+  // Content type labels
+  ct_portfolio: { en: "portfolio", no: "portefølje", ua: "портфоліо" },
+  ct_freeform: { en: "freeform topic", no: "fritt tema", ua: "довільна тема" },
+  ct_mixed: { en: "portfolio + topic", no: "portefølje + tema", ua: "портфоліо + тема" },
+  ct_web_scrape: { en: "web page analysis", no: "nettsideanalyse", ua: "аналіз веб-сторінки" },
+  // Style labels
+  st_showcase: { en: "showcase", no: "utstilling", ua: "демонстрація" },
+  st_case_study: { en: "case study", no: "casestudie", ua: "кейс-стаді" },
+  st_overview: { en: "overview", no: "oversikt", ua: "огляд" },
+  st_explainer: { en: "explainer", no: "forklaring", ua: "пояснення" },
+  // Mood labels
+  md_energetic: { en: "energetic", no: "energisk", ua: "енергійний" },
+  md_corporate: { en: "corporate", no: "profesjonell", ua: "діловий" },
+  md_cinematic: { en: "cinematic", no: "filmatisk", ua: "кінематографічний" },
+  md_ambient: { en: "ambient", no: "ambient", ua: "атмосферний" },
+  md_electronic: { en: "electronic", no: "elektronisk", ua: "електронний" },
+  md_inspiring: { en: "inspiring", no: "inspirerende", ua: "надихаючий" },
+  md_serious: { en: "serious", no: "seriøs", ua: "серйозний" },
+  md_lighthearted: { en: "lighthearted", no: "lettsindig", ua: "легкий" },
+};
+
+function t(key: string, lang: string): string {
+  return UI[key]?.[lang] || UI[key]?.en || key;
+}
+
+// ── Safe JSON Parse ──
+
+function safeJsonParse(raw: string): any {
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Try to extract JSON object/array from surrounding text
+    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+    const match = objectMatch || arrayMatch;
+    if (match) {
+      try { return JSON.parse(match[0]); } catch { /* fall through */ }
+    }
+    throw new Error(`Failed to parse AI JSON: ${cleaned.slice(0, 100)}...`);
+  }
+}
+
+// ── URL Safety Check (SSRF prevention) ──
+
+function isUrlSafe(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    if (!["http:", "https:"].includes(url.protocol)) return false;
+    const hostname = url.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0" || hostname === "[::1]") return false;
+    if (hostname.endsWith(".local") || hostname.endsWith(".internal")) return false;
+    // Block private IP ranges
+    const parts = hostname.split(".").map(Number);
+    if (parts.length === 4 && parts.every((p) => !isNaN(p))) {
+      if (parts[0] === 10) return false;
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
+      if (parts[0] === 192 && parts[1] === 168) return false;
+      if (parts[0] === 169 && parts[1] === 254) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ── Safe HTML Truncation ──
+
+function safeTruncateHtml(html: string, maxLen: number): string {
+  if (html.length <= maxLen) return html;
+  let truncated = html.slice(0, maxLen - 20);
+  // Remove partial tag at the end
+  const lastOpen = truncated.lastIndexOf("<");
+  const lastClose = truncated.lastIndexOf(">");
+  if (lastOpen > lastClose) {
+    truncated = truncated.slice(0, lastOpen);
+  }
+  // Close unclosed formatting tags
+  const tagPairs: [string, string][] = [["<b>", "</b>"], ["<i>", "</i>"], ["<code>", "</code>"]];
+  for (const [open, close] of tagPairs) {
+    const opens = (truncated.match(new RegExp(open.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length;
+    const closes = (truncated.match(new RegExp(close.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length;
+    for (let j = closes; j < opens; j++) {
+      truncated += close;
+    }
+  }
+  return truncated + "\n\n[...]";
 }
 
 // ── LLM Helper ──
@@ -331,8 +478,18 @@ async function analyzePrompt(
   const language = detectLanguage(userPrompt);
   console.log(`   Detected language: ${language}`);
 
+  // Cleanup expired video_waiting entries
+  try {
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await supabase
+      .from("api_settings")
+      .delete()
+      .like("key_name", "video_waiting_%")
+      .lt("key_value", thirtyMinAgo);
+  } catch { /* non-critical */ }
+
   // Send initial status
-  const statusMsgId = await sendMessage(chatId, "🔍 Аналізую запит...");
+  const statusMsgId = await sendMessage(chatId, t("analyzing", language));
 
   try {
     // 0. Detect and scrape URLs from the prompt
@@ -342,9 +499,13 @@ async function analyzePrompt(
     let scrapedTitle = "";
 
     if (detectedUrls.length > 0) {
-      await editMessage(chatId, statusMsgId, `🌐 Скрейплю ${detectedUrls.length} URL(s)...`);
+      await editMessage(chatId, statusMsgId, t("scraping", language));
 
       for (const url of detectedUrls.slice(0, 3)) {
+        if (!isUrlSafe(url)) {
+          console.log(`  ⚠️ Blocked unsafe URL: ${url}`);
+          continue;
+        }
         const scraped = await scrapePageContent(url);
         if (scraped.success) {
           scrapedTitle = scraped.title || scrapedTitle;
@@ -373,7 +534,7 @@ async function analyzePrompt(
         }
       }
 
-      await editMessage(chatId, statusMsgId, "🔍 Аналізую контент...");
+      await editMessage(chatId, statusMsgId, t("analyzing_content", language));
     }
 
     // 1. Fetch portfolio features for matching
@@ -406,11 +567,11 @@ Return JSON:
   "suggestedDuration": 60-300,
   "mood": "energetic" | "corporate" | "cinematic" | "ambient" | "electronic" | "inspiring",
   "language": "${language}",
-  "briefSummary": "2-sentence description IN UKRAINIAN of what the video will cover"
+  "briefSummary": "2-sentence description of what the video will cover"
 }
 
 Rules:
-- ALWAYS write briefSummary in Ukrainian regardless of input language
+- Write briefSummary in the detected language (${language === "ua" ? "Ukrainian" : language === "no" ? "Norwegian" : "English"})
 - If user mentions portfolio features, projects, or personal work → contentType="portfolio", match feature keys
 - If user asks about general topics (trends, tutorials) → contentType="freeform"
 - If mixed → contentType="mixed"
@@ -419,7 +580,7 @@ Rules:
 - If the user prompt is very short or unclear (like just a greeting), set contentType="unclear" and briefSummary explaining you need more details`;
 
     const analysisRaw = await callAI(analysisPrompt, `Analyze this request: ${userPrompt}`, 2000);
-    const analysis = JSON.parse(analysisRaw);
+    const analysis = safeJsonParse(analysisRaw);
 
     // 3. Create draft record
     const { data: draft, error: insertError } = await supabase
@@ -434,6 +595,7 @@ Rules:
         relevant_features: analysis.matchedFeatureKeys || [],
         web_research: scrapedContent ? [{ urls: detectedUrls, content: scrapedContent.slice(0, 8000), images: scrapedImages }] : [],
         content_brief: analysis,
+        format: "horizontal",
         status: "pending_script",
         telegram_message_ids: [statusMsgId],
       })
@@ -447,14 +609,14 @@ Rules:
     // 4. Handle unclear requests
     if (analysis.contentType === "unclear") {
       await editMessage(chatId, statusMsgId, [
-        `⚠️ <b>Запит не зрозумілий</b>`,
+        t("unclear_title", language),
         ``,
-        `${escapeHtml(analysis.briefSummary || "Потрібно більше деталей.")}`,
+        `${escapeHtml(analysis.briefSummary || "")}`,
         ``,
-        `💡 Приклади запитів:`,
+        t("unclear_examples", language),
         `• "Зроби відео про мій проект Elvarika з vitalii.no"`,
-        `• "Покажи мої AI-фічі з портфоліо"`,
-        `• "Відео-огляд моїх останніх проектів"`,
+        `• "Make a video about my AI features"`,
+        `• "Lag en video om mine siste prosjekter"`,
       ].join("\n"));
       return json({ ok: true, unclear: true });
     }
@@ -462,38 +624,19 @@ Rules:
     // 5. Send analysis to Telegram
     const langEmoji = { en: "🇬🇧", no: "🇳🇴", ua: "🇺🇦" }[analysis.language] || "🌐";
     const featureCount = (analysis.matchedFeatureKeys || []).length;
-    const contentLabels: Record<string, string> = {
-      portfolio: "портфоліо",
-      freeform: "довільна тема",
-      mixed: "портфоліо + тема",
-      web_scrape: "аналіз веб-сторінки",
-    };
-    const contentLabel = contentLabels[analysis.contentType] || analysis.contentType;
-
-    const styleLabels: Record<string, string> = {
-      showcase: "демонстрація",
-      case_study: "кейс-стаді",
-      overview: "огляд",
-      explainer: "пояснення",
-    };
-    const moodLabels: Record<string, string> = {
-      energetic: "енергійний",
-      corporate: "діловий",
-      cinematic: "кінематографічний",
-      ambient: "атмосферний",
-      electronic: "електронний",
-      inspiring: "надихаючий",
-      serious: "серйозний",
-      lighthearted: "легкий",
-    };
+    const contentLabel = t(`ct_${analysis.contentType}`, language) || analysis.contentType;
+    const styleLabel = t(`st_${analysis.videoStyle}`, language) || analysis.videoStyle;
+    const moodLabel = t(`md_${analysis.mood}`, language) || analysis.mood;
 
     const briefText = [
-      `📋 <b>Аналіз запиту:</b>`,
+      t("analysis_title", language),
       ``,
-      `<b>Тема:</b> ${escapeHtml(analysis.briefSummary || userPrompt.slice(0, 100))}`,
-      `<b>Тип:</b> ${contentLabel}${featureCount > 0 ? ` (${featureCount} фіч)` : ""}`,
-      `<b>Мова:</b> ${langEmoji} | <b>Тривалість:</b> ~${analysis.suggestedDuration}с | <b>Стиль:</b> ${styleLabels[analysis.videoStyle] || analysis.videoStyle}`,
-      `<b>Настрій:</b> ${moodLabels[analysis.mood] || analysis.mood}`,
+      `<b>${t("topic", language)}:</b> ${escapeHtml(analysis.briefSummary || userPrompt.slice(0, 100))}`,
+      `<b>${t("type_label", language)}:</b> ${contentLabel}${featureCount > 0 ? ` (${featureCount})` : ""}`,
+      `<b>${t("lang_label", language)}:</b> ${langEmoji} | <b>${t("duration_label", language)}:</b> ~${analysis.suggestedDuration}s | <b>${t("style_label", language)}:</b> ${styleLabel}`,
+      `<b>${t("mood_label", language)}:</b> ${moodLabel}`,
+      ``,
+      t("select_lang", language),
     ].join("\n");
 
     const draftId = draft.id;
@@ -502,14 +645,16 @@ Rules:
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "✅ Генерувати скрипт", callback_data: `cv_sok_${draftId}` },
+            { text: "🇺🇦 UA", callback_data: `cv_lu_${draftId}` },
+            { text: "🇳🇴 NO", callback_data: `cv_ln_${draftId}` },
+            { text: "🇬🇧 EN", callback_data: `cv_le_${draftId}` },
           ],
           [
-            { text: "⏱ Тривалість", callback_data: `cv_dur_${draftId}` },
-            { text: "📐 Формат", callback_data: `cv_fmt_${draftId}` },
+            { text: t("duration_btn", language), callback_data: `cv_dur_${draftId}` },
+            { text: t("format_btn", language), callback_data: `cv_fmt_${draftId}` },
           ],
           [
-            { text: "❌ Скасувати", callback_data: `cv_skip_${draftId}` },
+            { text: t("cancel_btn", language), callback_data: `cv_skip_${draftId}` },
           ],
         ],
       },
@@ -518,9 +663,32 @@ Rules:
     return json({ ok: true, draftId, analysis });
   } catch (e: any) {
     console.error(`❌ analyze_prompt error: ${e.message}`);
-    await editMessage(chatId, statusMsgId, `❌ Помилка аналізу: ${escapeHtml(e.message)}`);
+    await editMessage(chatId, statusMsgId, `${t("error_analysis", language)}: ${escapeHtml(e.message)}`);
     return json({ error: e.message }, 500);
   }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ACTION: set_language
+// ═════════════════════════════════════════════════════════════════════════════
+
+async function setLanguage(
+  draftId: string,
+  language: string,
+  chatId: string | number,
+): Promise<Response> {
+  console.log(`\n🌐 set_language v${VERSION}: ${language}`);
+
+  await supabase
+    .from("custom_video_drafts")
+    .update({ language, updated_at: new Date().toISOString() })
+    .eq("id", draftId);
+
+  const langEmoji = { en: "🇬🇧", no: "🇳🇴", ua: "🇺🇦" }[language] || "🌐";
+  await sendMessage(chatId, `${langEmoji} ${t("lang_label", language)}: <b>${language.toUpperCase()}</b>`);
+
+  // Auto-proceed to script generation
+  return await generateScript(draftId, chatId);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -534,7 +702,8 @@ async function generateScript(
   console.log(`\n📝 generate_script v${VERSION}`);
   console.log(`   Draft: ${draftId}`);
 
-  const statusMsgId = await sendMessage(chatId, "✍️ Генерую сценарій відео...");
+  let lang = "ua"; // will be overwritten from draft
+  const statusMsgId = await sendMessage(chatId, t("generating_script", "ua"));
 
   try {
     // 1. Load draft
@@ -545,6 +714,8 @@ async function generateScript(
       .single();
 
     if (!draft) throw new Error("Draft not found");
+    lang = draft.language || "en";
+    await editMessage(chatId, statusMsgId, t("generating_script", lang));
 
     // 2. Load portfolio features if needed
     let featureContent = "";
@@ -556,7 +727,6 @@ async function generateScript(
         .eq("is_active", true);
 
       if (features && features.length > 0) {
-        const lang = draft.language || "en";
         featureContent = features.map((f, i) => {
           const title = f[`title_${lang}`] || f.title_en;
           const problem = f[`problem_${lang}`] || f.problem_en;
@@ -611,10 +781,39 @@ async function generateScript(
     const segmentCount = Math.min(Math.max(Math.round(duration / 20), 2), 8);
     const wordsPerSegment = Math.round(wordsTotal / (segmentCount + 2)); // +2 for intro/outro
 
-    const langName = { en: "English", no: "Norwegian Bokmål", ua: "Ukrainian" }[draft.language] || "English";
+    const langName = { en: "English", no: "Norwegian Bokmål", ua: "Ukrainian" }[lang] || "English";
+
+    // Language-aware TTS rules
+    const ttsRules = lang === "ua" ? `
+CRITICAL TTS RULES (Ukrainian voice engine):
+- ALL English tech terms MUST be transliterated to Ukrainian phonetics:
+  React → Ріект, TypeScript → Тайпскріпт, Next.js → Некст Джей Ес,
+  Supabase → Супабейс, Remotion → Ремоушн, Azure → Ажур,
+  Gemini → Джеміні, LinkedIn → Лінкедін, Instagram → Інстаграм,
+  Edge Functions → Едж Фанкшнз, API → АПІ, AI → ЕйАй,
+  RSS → Ер Ес Ес, TTS → Ті Ті Ес, LLM → Ел Ел Ем,
+  YouTube → Ютюб, Telegram → Телеграм, GitHub → Гітхаб,
+  Pexels → Пексельз, Deno → Діно, Node.js → Ноуд Джей Ес
+- ANY English word not in the list above — transliterate it phonetically to Cyrillic
+- NEVER leave English words in Latin script in the text field
+- First person: "Я створив", "моя система", "ми досягли"
+- Intro greets: "Привіт, я Віталій..."
+- Outro: mention "віталій крапка но" (vitalii.no spoken)` : lang === "no" ? `
+TTS RULES (Norwegian voice engine):
+- Use standard Norwegian Bokmål
+- Technical terms can stay in English (React, TypeScript, Supabase, etc.)
+- Use natural Norwegian sentence structure
+- First person: "Jeg har bygget", "mitt system", "vi oppnådde"
+- Intro greets: "Hei, jeg er Vitalii..."
+- Outro: mention "vitalii punkt no" (vitalii.no spoken)` : `
+TTS RULES (English voice engine):
+- Use natural conversational English
+- Technical terms in standard English pronunciation
+- First person: "I built", "my system", "we achieved"
+- Intro greets: "Hi, I'm Vitalii..."
+- Outro: mention "vitalii dot no" (vitalii.no spoken)`;
 
     const scriptPrompt = `You are a professional video scriptwriter writing for Vitalii Berbeha's video channel.
-This script will be read by a Ukrainian TTS engine that CANNOT pronounce English words correctly.
 
 PRESENTER: ${PROFILE_BIO}
 
@@ -636,28 +835,17 @@ Write a video script in ${langName}. Return ONLY valid JSON:
   "intro": "Opening text (2-3 sentences, ~${wordsPerSegment} words)",
   "segments": [
     {
-      "topic": "Short topic title in Ukrainian",
+      "topic": "Short topic title in ${langName}",
       "text": "Segment narration (~${wordsPerSegment} words)",
       "featureKey": "p01 or null if freeform"
     }
   ],
   "outro": "Closing call-to-action (~${wordsPerSegment} words, mention vitalii.no)",
-  "youtubeTitle": "Catchy title under 80 chars in Ukrainian",
-  "youtubeDescription": "3-sentence description with vitalii.no link",
+  "youtubeTitle": "Catchy title under 80 chars in ${langName}",
+  "youtubeDescription": "3-sentence description in ${langName} with vitalii.no link",
   "youtubeTags": ["tag1", "tag2", "tag3"]
 }
-
-CRITICAL TTS RULES (Ukrainian voice engine):
-- ALL English tech terms MUST be transliterated to Ukrainian phonetics:
-  React → Ріект, TypeScript → Тайпскріпт, Next.js → Некст Джей Ес,
-  Supabase → Супабейс, Remotion → Ремоушн, Azure → Ажур,
-  Gemini → Джеміні, LinkedIn → Лінкедін, Instagram → Інстаграм,
-  Edge Functions → Едж Фанкшнз, API → АПІ, AI → ЕйАй,
-  RSS → Ер Ес Ес, TTS → Ті Ті Ес, LLM → Ел Ел Ем,
-  YouTube → Ютюб, Telegram → Телеграм, GitHub → Гітхаб,
-  Pexels → Пексельз, Deno → Діно, Node.js → Ноуд Джей Ес
-- ANY English word not in the list above — transliterate it phonetically to Cyrillic
-- NEVER leave English words in Latin script in the text field
+${ttsRules}
 
 SCRIPT STRUCTURE RULES:
 - Write for the EAR (spoken audio), not the eye
@@ -665,15 +853,12 @@ SCRIPT STRUCTURE RULES:
 - Each segment MUST have a complete thought with proper conclusion
 - NEVER end a segment mid-sentence or mid-thought
 - Last sentence of each segment should feel like a natural pause point
-- First person: "Я створив", "моя система", "ми досягли"
 - NO AI-speak: no "delve", "landscape", "groundbreaking", "testament"
 - Each segment = one clear topic with beginning-middle-END
-- Segment transitions should flow naturally: end of segment N should connect to start of segment N+1
-- Intro greets: "Привіт, я Віталій..."
-- Outro: subscribe CTA + mention "віталій крапка но" (vitalii.no spoken)`;
+- Segment transitions should flow naturally: end of segment N should connect to start of segment N+1`;
 
     const scriptRaw = await callAI(scriptPrompt, `Generate script for: ${draft.user_prompt}`, 8000);
-    const script = JSON.parse(scriptRaw);
+    const script = safeJsonParse(scriptRaw);
 
     // 5. Validate
     if (!script.intro || !script.segments || script.segments.length === 0) {
@@ -701,48 +886,44 @@ SCRIPT STRUCTURE RULES:
     ).join("\n\n");
 
     const scriptPreview = [
-      `📝 <b>Сценарій відео</b> (${script.segments.length} сегментів, ~${duration}с)`,
+      `${t("script_title", lang)} (${script.segments.length} ${t("segments", lang).toLowerCase()}, ~${duration}s)`,
       ``,
-      `<b>🎬 Інтро:</b>`,
+      `<b>${t("intro", lang)}:</b>`,
       escapeHtml(script.intro),
       ``,
       segmentsText,
       ``,
-      `<b>🔚 Аутро:</b>`,
+      `<b>${t("outro", lang)}:</b>`,
       escapeHtml(script.outro),
       ``,
       `🎥 <b>YouTube:</b> ${escapeHtml(script.youtubeTitle || "")}`,
     ].join("\n");
 
-    // Truncate if over Telegram limit
-    const maxLen = 4000;
-    const finalText = scriptPreview.length > maxLen
-      ? scriptPreview.slice(0, maxLen - 20) + "\n\n[...]"
-      : scriptPreview;
+    const finalText = safeTruncateHtml(scriptPreview, 4000);
 
     await editMessage(chatId, statusMsgId, finalText, {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "✅ Затвердити", callback_data: `cv_ren_${draftId}` },
-            { text: "🔄 Перегенерувати", callback_data: `cv_srg_${draftId}` },
+            { text: t("approve_btn", lang), callback_data: `cv_ren_${draftId}` },
+            { text: t("regenerate_btn", lang), callback_data: `cv_srg_${draftId}` },
           ],
           [
-            { text: "❌ Скасувати", callback_data: `cv_skip_${draftId}` },
+            { text: t("cancel_btn", lang), callback_data: `cv_skip_${draftId}` },
           ],
         ],
       },
     });
 
     // Note about editing
-    await sendMessage(chatId, `💡 Для правок — відповідайте на повідомлення зі скриптом\n<code>cv_edit_${draftId}</code>`, {
+    await sendMessage(chatId, `${t("edit_hint", lang)}\n<code>cv_edit_${draftId}</code>`, {
       disable_web_page_preview: true,
     });
 
     return json({ ok: true, draftId, segmentCount: script.segments.length });
   } catch (e: any) {
     console.error(`❌ generate_script error: ${e.message}`);
-    await editMessage(chatId, statusMsgId, `❌ Помилка генерації скрипту: ${escapeHtml(e.message)}`);
+    await editMessage(chatId, statusMsgId, `${t("error_script", lang)}: ${escapeHtml(e.message)}`);
 
     await supabase
       .from("custom_video_drafts")
@@ -784,13 +965,14 @@ async function applyEdit(
       })
       .eq("id", draftId);
 
-    await sendMessage(chatId, "✅ Правки збережені. Перегенеровую скрипт...");
+    const lang = draft?.language || "ua";
+    await sendMessage(chatId, t("edits_saved", lang));
 
     // Regenerate
     return await generateScript(draftId, chatId);
   } catch (e: any) {
     console.error(`❌ apply_edit error: ${e.message}`);
-    await sendMessage(chatId, `❌ Помилка: ${escapeHtml(e.message)}`);
+    await sendMessage(chatId, `${t("error_generic", "ua")}: ${escapeHtml(e.message)}`);
     return json({ error: e.message }, 500);
   }
 }
@@ -805,7 +987,8 @@ async function generateScenario(
 ): Promise<Response> {
   console.log(`\n🎨 generate_scenario v${VERSION}`);
 
-  const statusMsgId = await sendMessage(chatId, "🎨 Створюю візуальний сценарій + шукаю зображення та музику...");
+  let lang = "ua";
+  const statusMsgId = await sendMessage(chatId, t("scenario_gen", "ua"));
 
   try {
     // 1. Load draft
@@ -816,6 +999,8 @@ async function generateScenario(
       .single();
 
     if (!draft) throw new Error("Draft not found");
+    lang = draft.language || "ua";
+    await editMessage(chatId, statusMsgId, t("scenario_gen", lang));
 
     const segments = draft.segment_scripts || [];
 
@@ -853,10 +1038,9 @@ RULES for imageSearchQueries:
 - NO generic stock phrases`;
 
     const scenarioRaw = await callAI(scenarioPrompt, "Plan the visual scenario", 6000);
-    const scenario = JSON.parse(scenarioRaw);
+    const scenario = safeJsonParse(scenarioRaw);
 
-    // 3. Search images for each segment (parallel)
-    // Include pre-scraped images from URLs
+    // 3. Search images for each segment (parallel with error boundaries)
     const webResearchImages: string[] = [];
     if (draft.web_research?.length > 0 && draft.web_research[0]?.images) {
       webResearchImages.push(...draft.web_research[0].images);
@@ -875,11 +1059,15 @@ RULES for imageSearchQueries:
       );
       allImages.push(...scrapedForSegment);
 
-      // Search via Serper for each query
+      // Search via Serper for each query (with error boundaries)
       for (const q of queries.slice(0, 3)) {
-        const imgs = await searchSerperImages(q, 3);
-        for (const img of imgs) {
-          if (!allImages.includes(img)) allImages.push(img);
+        try {
+          const imgs = await searchSerperImages(q, 3);
+          for (const img of imgs) {
+            if (!allImages.includes(img)) allImages.push(img);
+          }
+        } catch (e: any) {
+          console.warn(`    ⚠️ Image search failed for "${q}": ${e.message}`);
         }
         await new Promise(r => setTimeout(r, 300)); // Rate limit
       }
@@ -887,9 +1075,13 @@ RULES for imageSearchQueries:
       // Pexels fallback if not enough
       if (allImages.length < 4) {
         const topic = segments[idx]?.topic || seg.headline || "";
-        const pexels = await searchPexelsImages(topic, 4 - allImages.length);
-        for (const img of pexels) {
-          if (!allImages.includes(img)) allImages.push(img);
+        try {
+          const pexels = await searchPexelsImages(topic, 4 - allImages.length);
+          for (const img of pexels) {
+            if (!allImages.includes(img)) allImages.push(img);
+          }
+        } catch (e: any) {
+          console.warn(`    ⚠️ Pexels fallback failed for "${topic}": ${e.message}`);
         }
       }
 
@@ -897,7 +1089,13 @@ RULES for imageSearchQueries:
       console.log(`   Segment ${idx + 1}: ${allImages.length} images found`);
     });
 
-    await Promise.all(imagePromises);
+    const imageResults = await Promise.allSettled(imagePromises);
+    for (let i = 0; i < imageResults.length; i++) {
+      if (imageResults[i].status === "rejected") {
+        console.warn(`  ⚠️ Image search failed for segment ${i + 1}: ${(imageResults[i] as PromiseRejectedResult).reason?.message || "unknown"}`);
+        if (!imageSourcesMap[String(i)]) imageSourcesMap[String(i)] = [];
+      }
+    }
 
     // 4. Search background music
     const mood = draft.content_brief?.mood || mapContentToMood(
@@ -927,29 +1125,29 @@ RULES for imageSearchQueries:
     }).join("\n");
 
     const musicInfo = track.source === "pixabay"
-      ? `🎵 Музика: ${escapeHtml(track.title)} (${track.duration}с, Pixabay)`
-      : `🎵 Музика: ${localFile || "local fallback"}`;
+      ? `🎵 ${t("music", lang)}: ${escapeHtml(track.title)} (${track.duration}s, Pixabay)`
+      : `🎵 ${t("music", lang)}: ${localFile || "local fallback"}`;
 
     await editMessage(chatId, statusMsgId, [
-      `🎨 <b>Візуальний сценарій:</b>`,
+      t("scenario_title", lang),
       ``,
       scenarioSummary,
       ``,
       musicInfo,
       ``,
-      `Загалом: ${Object.values(imageSourcesMap).flat().length} зображень`,
+      `${t("total_images", lang)}: ${Object.values(imageSourcesMap).flat().length}`,
     ].join("\n"), {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "🖼 Переглянути зображення", callback_data: `cv_img_${draftId}` },
+            { text: t("view_images", lang), callback_data: `cv_img_${draftId}` },
           ],
           [
-            { text: "✅ Рендерити відразу", callback_data: `cv_rok_${draftId}` },
-            { text: "🔄 Перегенерувати", callback_data: `cv_vrg_${draftId}` },
+            { text: t("render_now", lang), callback_data: `cv_rok_${draftId}` },
+            { text: t("regenerate_btn", lang), callback_data: `cv_vrg_${draftId}` },
           ],
           [
-            { text: "❌ Скасувати", callback_data: `cv_skip_${draftId}` },
+            { text: t("cancel_btn", lang), callback_data: `cv_skip_${draftId}` },
           ],
         ],
       },
@@ -958,7 +1156,7 @@ RULES for imageSearchQueries:
     return json({ ok: true, draftId, imageCount: Object.values(imageSourcesMap).flat().length });
   } catch (e: any) {
     console.error(`❌ generate_scenario error: ${e.message}`);
-    await editMessage(chatId, statusMsgId, `❌ Помилка сценарію: ${escapeHtml(e.message)}`);
+    await editMessage(chatId, statusMsgId, `${t("error_scenario", lang)}: ${escapeHtml(e.message)}`);
 
     await supabase
       .from("custom_video_drafts")
@@ -987,6 +1185,7 @@ async function prepareImages(
       .single();
 
     if (!draft) throw new Error("Draft not found");
+    const lang = draft.language || "ua";
 
     const segments = draft.segment_scripts || [];
     const scenario = draft.visual_scenario?.segments || [];
@@ -999,7 +1198,7 @@ async function prepareImages(
       const imgs = (imageSources[String(i)] || []).slice(0, 10); // Telegram max 10 per group
 
       if (imgs.length === 0) {
-        await sendMessage(chatId, `🖼 Сегмент ${i + 1}: <b>${escapeHtml(seg.topic || "")}</b>\n⚠️ Зображень не знайдено`);
+        await sendMessage(chatId, `🖼 Segment ${i + 1}: <b>${escapeHtml(seg.topic || "")}</b>\n${t("no_images", lang)}`);
         continue;
       }
 
@@ -1008,7 +1207,7 @@ async function prepareImages(
         type: "photo",
         media: url,
         ...(j === 0 ? {
-          caption: `🖼 Сегмент ${i + 1}: ${seg.topic || ""}\n${vis.category || ""} | ${vis.mood || ""} | ${vis.accentColor || ""}`,
+          caption: `🖼 Segment ${i + 1}: ${seg.topic || ""}\n${vis.category || ""} | ${vis.mood || ""} | ${vis.accentColor || ""}`,
           parse_mode: "HTML",
         } : {}),
       }));
@@ -1039,21 +1238,21 @@ async function prepareImages(
     // Summary with render button
     const totalImages = Object.values(imageSources).flat().length;
     await sendMessage(chatId, [
-      `📊 <b>Підсумок:</b>`,
-      `Сегментів: ${segments.length}`,
-      `Зображень: ${totalImages}`,
-      `Музика: ${draft.bgm_mood || "corporate"}`,
-      `Тривалість: ~${draft.target_duration_seconds}с`,
-      `Формат: ${draft.format}`,
+      t("summary", lang),
+      `${t("segments", lang)}: ${segments.length}`,
+      `${t("images", lang)}: ${totalImages}`,
+      `${t("music", lang)}: ${draft.bgm_mood || "corporate"}`,
+      `${t("duration_label", lang)}: ~${draft.target_duration_seconds}s`,
+      `${t("format_btn", lang)}: ${draft.format}`,
     ].join("\n"), {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "✅ Рендерити", callback_data: `cv_rok_${draftId}` },
-            { text: "🔄 Перешукати", callback_data: `cv_vrg_${draftId}` },
+            { text: t("render_now", lang), callback_data: `cv_rok_${draftId}` },
+            { text: t("re_search", lang), callback_data: `cv_vrg_${draftId}` },
           ],
           [
-            { text: "❌ Скасувати", callback_data: `cv_skip_${draftId}` },
+            { text: t("cancel_btn", lang), callback_data: `cv_skip_${draftId}` },
           ],
         ],
       },
@@ -1062,7 +1261,7 @@ async function prepareImages(
     return json({ ok: true, totalImages });
   } catch (e: any) {
     console.error(`❌ prepare_images error: ${e.message}`);
-    await sendMessage(chatId, `❌ Помилка: ${escapeHtml(e.message)}`);
+    await sendMessage(chatId, `${t("error_generic", "ua")}: ${escapeHtml(e.message)}`);
     return json({ error: e.message }, 500);
   }
 }
@@ -1076,6 +1275,7 @@ async function triggerRender(
   chatId: string | number,
 ): Promise<Response> {
   console.log(`\n🎬 trigger_render v${VERSION}`);
+  let lang = "ua";
 
   try {
     const { data: draft } = await supabase
@@ -1085,12 +1285,13 @@ async function triggerRender(
       .single();
 
     if (!draft) throw new Error("Draft not found");
+    lang = draft.language || "ua";
 
     // Dispatch GitHub Actions
     const result = await triggerCustomVideoRender({
       draftId,
       format: (draft.format as any) || "horizontal",
-      language: draft.language || "en",
+      language: lang,
       youtubePrivacy: (draft.youtube_privacy as any) || "unlisted",
     });
 
@@ -1108,19 +1309,26 @@ async function triggerRender(
       .eq("id", draftId);
 
     await sendMessage(chatId, [
-      `🎬 <b>Рендеринг запущено!</b>`,
+      t("render_started", lang),
       ``,
-      `⏱ Очікуваний час: 10-20 хвилин`,
-      `📐 Формат: ${draft.format}`,
-      `🌐 Мова: ${draft.language}`,
+      t("render_eta", lang),
+      `📐 Format: ${draft.format}`,
+      `🌐 ${t("lang_label", lang)}: ${lang.toUpperCase()}`,
       ``,
-      `Повідомлю коли відео буде готове.`,
+      t("render_notify", lang),
     ].join("\n"));
 
     return json({ ok: true, draftId });
   } catch (e: any) {
     console.error(`❌ trigger_render error: ${e.message}`);
-    await sendMessage(chatId, `❌ Помилка запуску рендерингу: ${escapeHtml(e.message)}`);
+    await sendMessage(chatId, `${t("render_failed", lang)}: ${escapeHtml(e.message)}`, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: t("retry_btn", lang), callback_data: `cv_rok_${draftId}` }],
+          [{ text: t("cancel_btn", lang), callback_data: `cv_skip_${draftId}` }],
+        ],
+      },
+    });
 
     await supabase
       .from("custom_video_drafts")
@@ -1145,39 +1353,53 @@ async function notifyComplete(
   try {
     const { data: draft } = await supabase
       .from("custom_video_drafts")
-      .select("user_chat_id, youtube_title")
+      .select("user_chat_id, youtube_title, language")
       .eq("id", draftId)
       .single();
 
     if (!draft) throw new Error("Draft not found");
+    const lang = draft.language || "ua";
 
-    // Only mark completed if we have a real YouTube URL
-    if (!youtubeVideoId || !youtubeUrl) {
-      console.log("⚠️ notify_complete called without YouTube data — skipping");
-      return json({ ok: false, error: "No YouTube URL provided" });
+    if (youtubeVideoId && youtubeUrl) {
+      // YouTube upload succeeded
+      await supabase
+        .from("custom_video_drafts")
+        .update({
+          youtube_video_id: youtubeVideoId,
+          youtube_url: youtubeUrl,
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", draftId);
+
+      await sendMessage(draft.user_chat_id, [
+        t("video_published", lang),
+        ``,
+        `🎥 ${escapeHtml(draft.youtube_title || "Custom Video")}`,
+        ``,
+        `▶️ ${youtubeUrl}`,
+        ``,
+        `📋 ID: <code>${youtubeVideoId}</code>`,
+      ].join("\n"));
+    } else {
+      // YouTube was skipped — still notify user
+      await supabase
+        .from("custom_video_drafts")
+        .update({
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", draftId);
+
+      await sendMessage(draft.user_chat_id, [
+        t("video_rendered", lang),
+        ``,
+        `🎥 ${escapeHtml(draft.youtube_title || "Custom Video")}`,
+        ``,
+        `📋 Draft: <code>${draftId}</code>`,
+        t("yt_skipped", lang),
+      ].join("\n"));
     }
-
-    // Update DB
-    await supabase
-      .from("custom_video_drafts")
-      .update({
-        youtube_video_id: youtubeVideoId,
-        youtube_url: youtubeUrl,
-        status: "completed",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", draftId);
-
-    // Notify in Telegram
-    await sendMessage(draft.user_chat_id, [
-      `✅ <b>Відео опубліковано!</b>`,
-      ``,
-      `🎥 ${escapeHtml(draft.youtube_title || "Custom Video")}`,
-      ``,
-      `▶️ ${youtubeUrl}`,
-      ``,
-      `📋 ID: <code>${youtubeVideoId}</code>`,
-    ].join("\n"));
 
     return json({ ok: true });
   } catch (e: any) {
@@ -1193,49 +1415,68 @@ async function notifyComplete(
 async function toggleFormat(draftId: string, chatId: string | number): Promise<Response> {
   const { data: draft } = await supabase
     .from("custom_video_drafts")
-    .select("format")
+    .select("format, status, language")
     .eq("id", draftId)
     .single();
 
+  const lang = draft?.language || "ua";
   const newFormat = draft?.format === "horizontal" ? "vertical" : "horizontal";
+  const updateFields: Record<string, any> = { format: newFormat, updated_at: new Date().toISOString() };
 
-  await supabase
-    .from("custom_video_drafts")
-    .update({ format: newFormat, updated_at: new Date().toISOString() })
-    .eq("id", draftId);
+  // If script was already generated, reset to pending_script
+  if (["pending_scenario", "pending_images"].includes(draft?.status)) {
+    updateFields.status = "pending_script";
+    await sendMessage(chatId, `${t("format_changed", lang)}: <b>${newFormat}</b>\n${t("script_will_regen", lang)}`);
+  } else {
+    await sendMessage(chatId, `${t("format_changed", lang)}: <b>${newFormat}</b>`);
+  }
 
-  await sendMessage(chatId, `📐 Формат змінено на: <b>${newFormat}</b>`);
+  await supabase.from("custom_video_drafts").update(updateFields).eq("id", draftId);
   return json({ ok: true, format: newFormat });
 }
 
 async function toggleDuration(draftId: string, chatId: string | number): Promise<Response> {
   const { data: draft } = await supabase
     .from("custom_video_drafts")
-    .select("target_duration_seconds")
+    .select("target_duration_seconds, status, language")
     .eq("id", draftId)
     .single();
 
+  const lang = draft?.language || "ua";
   const durations = [60, 90, 120, 180, 300];
   const current = draft?.target_duration_seconds || 90;
   const idx = durations.indexOf(current);
   const next = durations[(idx + 1) % durations.length];
 
-  await supabase
-    .from("custom_video_drafts")
-    .update({ target_duration_seconds: next, updated_at: new Date().toISOString() })
-    .eq("id", draftId);
+  const updateFields: Record<string, any> = { target_duration_seconds: next, updated_at: new Date().toISOString() };
 
-  await sendMessage(chatId, `⏱ Тривалість змінена на: <b>~${next}с</b>`);
+  // If script was already generated, reset to pending_script
+  if (["pending_scenario", "pending_images"].includes(draft?.status)) {
+    updateFields.status = "pending_script";
+    await sendMessage(chatId, `${t("duration_changed", lang)}: <b>~${next}s</b>\n${t("script_will_regen", lang)}`);
+  } else {
+    await sendMessage(chatId, `${t("duration_changed", lang)}: <b>~${next}s</b>`);
+  }
+
+  await supabase.from("custom_video_drafts").update(updateFields).eq("id", draftId);
   return json({ ok: true, duration: next });
 }
 
 async function cancelDraft(draftId: string, chatId: string | number): Promise<Response> {
+  const { data: draft } = await supabase
+    .from("custom_video_drafts")
+    .select("language")
+    .eq("id", draftId)
+    .single();
+
+  const lang = draft?.language || "ua";
+
   await supabase
     .from("custom_video_drafts")
     .update({ status: "failed", error_message: "Cancelled by user", updated_at: new Date().toISOString() })
     .eq("id", draftId);
 
-  await sendMessage(chatId, "❌ Відео скасовано.");
+  await sendMessage(chatId, t("cancelled", lang));
   return json({ ok: true });
 }
 
@@ -1265,6 +1506,9 @@ Deno.serve(async (req) => {
     switch (action) {
       case "analyze_prompt":
         return await analyzePrompt(body.prompt || body.text || "", chatId);
+
+      case "set_language":
+        return await setLanguage(draftId, body.language || "en", chatId);
 
       case "generate_script":
         return await generateScript(draftId, chatId);

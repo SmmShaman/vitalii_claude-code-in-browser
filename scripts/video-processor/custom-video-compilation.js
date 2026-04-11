@@ -20,12 +20,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 import fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import path from 'path';
 import os from 'os';
 import { execSync } from 'child_process';
 import { generateVoiceover, VOICE_PRESETS } from './generate-voiceover.js';
 import { downloadPexelsMedia } from './pexels-media.js';
-import { directVisuals } from './visual-director.js';
 
 // ── Config ──
 
@@ -68,6 +68,17 @@ const IMAGE_SIGNATURES = {
   gif: [0x47, 0x49, 0x46],
 };
 
+// Audio magic bytes for validation
+const AUDIO_SIGNATURES = {
+  mp3_id3: [0x49, 0x44, 0x33],       // ID3 tag
+  mp3_sync: [0xFF, 0xFB],            // MP3 sync word
+  mp3_sync2: [0xFF, 0xFA],           // MP3 sync word variant
+  mp3_sync3: [0xFF, 0xF3],           // MP3 sync word variant
+  mp3_sync4: [0xFF, 0xF2],           // MP3 sync word variant
+  ogg: [0x4F, 0x67, 0x67, 0x53],     // OggS
+  wav: [0x52, 0x49, 0x46, 0x46],     // RIFF (shared with WebP)
+};
+
 function isValidImage(buffer) {
   if (buffer.length < 8) return false;
   for (const [, sig] of Object.entries(IMAGE_SIGNATURES)) {
@@ -76,7 +87,21 @@ function isValidImage(buffer) {
   return false;
 }
 
-async function downloadFile(url, destPath) {
+function isValidAudio(buffer) {
+  if (buffer.length < 4) return false;
+  for (const [, sig] of Object.entries(AUDIO_SIGNATURES)) {
+    if (sig.every((byte, i) => buffer[i] === byte)) return true;
+  }
+  return false;
+}
+
+/**
+ * Download a file with format validation.
+ * @param {string} url
+ * @param {string} destPath
+ * @param {'image'|'audio'|'none'} validateAs - validation mode
+ */
+async function downloadFile(url, destPath, validateAs = 'image') {
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VideoBot/1.0)' },
@@ -87,9 +112,13 @@ async function downloadFile(url, destPath) {
     const buffer = Buffer.from(await res.arrayBuffer());
     if (buffer.length < 1000) return false; // Too small, probably an error page
 
-    // Validate image format via magic bytes
-    if (!isValidImage(buffer)) {
+    // Validate format via magic bytes
+    if (validateAs === 'image' && !isValidImage(buffer)) {
       console.log(`    ⚠️ Invalid image (not JPG/PNG/WebP): ${url.slice(0, 80)}`);
+      return false;
+    }
+    if (validateAs === 'audio' && !isValidAudio(buffer)) {
+      console.log(`    ⚠️ Invalid audio (not MP3/OGG/WAV): ${url.slice(0, 80)}`);
       return false;
     }
 
@@ -295,14 +324,19 @@ async function main() {
   console.log('\n🎵 Step 3: Setting up background music...');
   let bgmSrc = null;
 
+  // Ensure bgm subdirectory exists
+  await fs.mkdir(path.join(publicDir, 'bgm'), { recursive: true }).catch(() => {});
+
   // Try downloading from Pixabay URL
   if (draft.bgm_url) {
     try {
       const bgmFilename = `custom_bgm_${Date.now()}.mp3`;
-      const ok = await downloadFile(draft.bgm_url, path.join(publicDir, bgmFilename));
+      const ok = await downloadFile(draft.bgm_url, path.join(publicDir, bgmFilename), 'audio');
       if (ok) {
         bgmSrc = bgmFilename;
         console.log(`  ✅ Downloaded Pixabay BGM: ${bgmFilename}`);
+      } else {
+        console.log(`  ⚠️ Pixabay BGM download failed or invalid audio: ${draft.bgm_url.slice(0, 80)}`);
       }
     } catch (e) {
       console.warn(`  ⚠️ BGM download failed: ${e.message}`);
@@ -325,7 +359,7 @@ async function main() {
         bgmSrc = 'bgm.mp3';
         console.log(`  ✅ Using root bgm.mp3`);
       } catch {
-        console.log(`  ⚠️ No BGM available`);
+        console.log(`  ⚠️ No BGM available — video will render without background music`);
       }
     }
   }
@@ -408,8 +442,6 @@ async function main() {
     ].join('\n');
 
     try {
-      const videoFile = await fs.readFile(outputPath);
-
       const uploadRes = await youtube.videos.insert({
         part: ['snippet', 'status'],
         requestBody: {
@@ -426,7 +458,7 @@ async function main() {
           },
         },
         media: {
-          body: await fs.open(outputPath, 'r').then(fh => fh.createReadStream()),
+          body: createReadStream(outputPath),
         },
       });
 
@@ -474,7 +506,8 @@ async function main() {
       })
       .eq('id', DRAFT_ID);
 
-    await notifyTelegram(`✅ Custom video rendered (YouTube skip)\nDraft: <code>${DRAFT_ID}</code>`);
+    // Notify via edge function so user gets structured Telegram message
+    await notifyComplete(DRAFT_ID, '', '');
   }
 
   // Cleanup
@@ -482,10 +515,10 @@ async function main() {
   try { await fs.unlink(outputPath); } catch { /* ok */ }
   try { await fs.unlink(propsFile); } catch { /* ok */ }
 
-  // Clean public dir custom files
+  // Clean public dir custom + intro files
   const publicFiles = await fs.readdir(publicDir);
   for (const f of publicFiles) {
-    if (f.startsWith('custom_')) {
+    if (f.startsWith('custom_') || f.startsWith('intro_')) {
       try { await fs.unlink(path.join(publicDir, f)); } catch { /* ok */ }
     }
   }

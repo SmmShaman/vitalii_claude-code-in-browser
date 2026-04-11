@@ -1962,6 +1962,16 @@ Return ONLY the cleaned request, nothing else.` }] },
       } else if (callbackData.startsWith('cv_dur_')) {
         action = 'cv_dur'
         newsId = callbackData.replace('cv_dur_', '')
+      // Custom Video language selection (cv_lu=UA, cv_ln=NO, cv_le=EN)
+      } else if (callbackData.startsWith('cv_lu_')) {
+        action = 'cv_lu'
+        newsId = callbackData.replace('cv_lu_', '')
+      } else if (callbackData.startsWith('cv_ln_')) {
+        action = 'cv_ln'
+        newsId = callbackData.replace('cv_ln_', '')
+      } else if (callbackData.startsWith('cv_le_')) {
+        action = 'cv_le'
+        newsId = callbackData.replace('cv_le_', '')
 
       } else if (callbackData.startsWith('reject_')) {
         action = 'reject'
@@ -5330,7 +5340,13 @@ Return ONLY the cleaned request, nothing else.` }] },
           'cv_skip': 'cancel',
           'cv_fmt': 'toggle_format',
           'cv_dur': 'toggle_duration',
+          'cv_lu': 'set_language',
+          'cv_ln': 'set_language',
+          'cv_le': 'set_language',
         }
+
+        // Extract language from language selection callbacks
+        const cvLangMap: Record<string, string> = { 'cv_lu': 'ua', 'cv_ln': 'no', 'cv_le': 'en' }
 
         const cvAction = cvActionMap[action] || action
         console.log(`🎬 Custom Video: ${action} → ${cvAction} for ${draftId}`)
@@ -5341,15 +5357,21 @@ Return ONLY the cleaned request, nothing else.` }] },
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callback_query_id: callbackId, text: '⏳ Обробляю...', show_alert: false })
+            body: JSON.stringify({ callback_query_id: callbackId, text: '⏳...', show_alert: false })
           }
         )
+
+        // Build dispatch body — include language for set_language action
+        const cvDispatchBody: Record<string, any> = { draftId: draftId, chatId: chatId }
+        if (cvLangMap[action]) {
+          cvDispatchBody.language = cvLangMap[action]
+        }
 
         // Fire-and-forget dispatch to custom-video-bot
         fetch(`${SUPABASE_URL}/functions/v1/custom-video-bot?action=${cvAction}`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ draftId: draftId, chatId: chatId })
+          body: JSON.stringify(cvDispatchBody)
         }).catch(err => console.error('❌ Custom video bot dispatch failed:', err))
 
       } else if (action === 'reject') {
