@@ -700,9 +700,11 @@ Rules:
   ).join("\n\n---\n\n");
 
   try {
-    const synthesisPrompt = `You are a research analyst preparing a brief for a video about: "${userPrompt}"
+    const synthesisPrompt = `You are a creative research analyst preparing a brief for a PERSONAL STORYTELLING VIDEO about: "${userPrompt}"
 
-Analyze these ${sources.length} sources and create a comprehensive research brief.
+This is NOT a documentary or news report. This is a personal, emotional narrative video. The research should SUPPORT the story, not BE the story.
+
+Analyze these ${sources.length} sources and create a research brief that balances EMOTION with FACTS.
 
 ${sourcesContext}
 
@@ -710,18 +712,21 @@ ${existingContent ? `ADDITIONAL CONTEXT FROM USER:\n${existingContent.slice(0, 2
 
 Return JSON:
 {
-  "synthesis": "3-5 paragraph comprehensive summary of findings in ${langName}. Include specific facts, numbers, and details from the sources.",
-  "keyFacts": ["5-15 specific facts with numbers/data from the sources"],
-  "dataPoints": [{"value": "specific number", "label": "what it measures", "context": "source context"}],
-  "suggestedSegments": ["5-8 video segment topics based on the research, ordered for storytelling flow"]
+  "synthesis": "3-5 paragraphs in ${langName}. Write as a NARRATIVE, not a report. Weave facts into an emotional story. Describe scenes, feelings, atmospheres. Include only 2-3 most striking facts naturally embedded in the text. The synthesis should read like a personal essay, not Wikipedia.",
+  "keyFacts": ["3-5 MOST IMPACTFUL facts only. Choose facts that create emotion or surprise, not dry statistics. Quality over quantity."],
+  "dataPoints": [{"value": "number", "label": "what", "context": "why it matters emotionally"}],
+  "suggestedSegments": ["5-8 video segments as STORY CHAPTERS, not topic headers. Each should evoke an image or emotion. Example: 'Ранок біля океану' not 'Вартість життя'"]
 }
 
 Rules:
-- Write synthesis in ${langName}
-- keyFacts: only include VERIFIED facts from the sources, not AI assumptions
-- dataPoints: extract concrete numbers for infographic overlays (temperatures, costs, percentages, distances, populations)
-- suggestedSegments: create a narrative arc (WHY → WHAT → HOW → CHALLENGES → CONCLUSION)
-- Be specific: "Середня температура у Форталезі — 27°C" not "погода тепла"`;
+- Write synthesis in ${langName} as a PERSONAL NARRATIVE
+- keyFacts: MAX 5 facts. Only the most emotionally impactful ones. No dry statistics dumps.
+- dataPoints: MAX 4. Only numbers that will look powerful as visual infographics (cost of rent, temperature, distance from home)
+- suggestedSegments: these are STORY CHAPTERS, each should paint a picture
+  GOOD: "Перший ранок у новому місті", "Коли океан стає сусідом"
+  BAD: "Вартість оренди", "Статистика народжуваності"
+- NEVER include shocking/negative statistics unless directly relevant to the personal story
+- Focus on: daily life, atmosphere, personal experiences, practical wisdom`;
 
     const synthesisRaw = await callClaude(synthesisPrompt, `Synthesize research for: ${userPrompt}`, 4000);
     const synthesis = safeJsonParse(synthesisRaw);
@@ -1387,7 +1392,7 @@ async function generateScript(
       projectContext = `RESEARCH FINDINGS:\n${research.synthesis}\n`;
 
       if (research.keyFacts?.length > 0) {
-        projectContext += `\nKEY FACTS (use these EXACT numbers in the script):\n${research.keyFacts.map((f: string) => `- ${f}`).join("\n")}\n`;
+        projectContext += `\nKEY FACTS (weave 2-3 of these naturally into the narrative — don't list them all):\n${research.keyFacts.map((f: string) => `- ${f}`).join("\n")}\n`;
       }
 
       if (research.allDataPoints?.length > 0) {
