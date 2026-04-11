@@ -163,6 +163,10 @@ const UI: Record<string, Record<string, string>> = {
   features_label: { en: "features", no: "funksjoner", ua: "фіч" },
   data_points: { en: "data points", no: "datapunkter", ua: "дата-поінтів" },
   tech_stack: { en: "Tech", no: "Teknologi", ua: "Технології" },
+  deep_research: { en: "🔬 Deep research...", no: "🔬 Dyp research...", ua: "🔬 Глибоке дослідження..." },
+  sources_found: { en: "sources analyzed", no: "kilder analysert", ua: "джерел проаналізовано" },
+  key_facts: { en: "key facts", no: "nøkkelfakta", ua: "ключових фактів" },
+  research_label: { en: "🔬 Research", no: "🔬 Forskning", ua: "🔬 Дослідження" },
   // Style labels
   st_showcase: { en: "showcase", no: "utstilling", ua: "демонстрація" },
   st_case_study: { en: "case study", no: "casestudie", ua: "кейс-стаді" },
@@ -331,6 +335,184 @@ async function callAIText(systemPrompt: string, userPrompt: string, maxTokens = 
     .map((p: any) => p.text || "")
     .join("")
     .trim();
+}
+
+// ── Deep Web Research (Perplexity-style) ──
+
+interface ResearchSource {
+  url: string;
+  title: string;
+  content: string;
+}
+
+interface ResearchResult {
+  sources: ResearchSource[];
+  synthesis: string;
+  keyFacts: string[];
+  dataPoints: { value: string; label: string; context: string }[];
+  suggestedSegments: string[];
+  searchQueries: string[];
+}
+
+async function deepWebResearch(
+  userPrompt: string,
+  topics: string[],
+  existingContent: string,
+  language: string,
+): Promise<ResearchResult> {
+  console.log(`\n🔬 Deep Web Research for: "${userPrompt.slice(0, 80)}..."`);
+
+  const empty: ResearchResult = {
+    sources: [], synthesis: "", keyFacts: [], dataPoints: [],
+    suggestedSegments: [], searchQueries: [],
+  };
+
+  // Step 1: AI generates targeted search queries (in English for best results)
+  let queries: string[] = [];
+  try {
+    const queryPrompt = `Generate 5-8 diverse search queries for researching this video topic.
+Topic: "${userPrompt}"
+Additional context: ${topics.join(", ")}
+
+Return JSON: { "queries": ["query1", "query2", ...] }
+
+Rules:
+- Write queries in ENGLISH (best search results)
+- Cover different angles: facts/statistics, practical info, cultural context, costs, personal experiences
+- Be specific, not generic (e.g., "Fortaleza Brazil cost of living 2025" not just "Brazil")
+- Include location-specific queries if a place is mentioned
+- Include queries about challenges, tips, and real experiences`;
+
+    const queryRaw = await callAI(queryPrompt, `Generate search queries for: ${userPrompt}`, 500);
+    const queryResult = safeJsonParse(queryRaw);
+    queries = (queryResult.queries || []).slice(0, 8);
+    console.log(`  🔍 Generated ${queries.length} search queries`);
+  } catch (e: any) {
+    console.warn(`  ⚠️ Query generation failed: ${e.message}`);
+    // Fallback: use topics directly
+    queries = topics.slice(0, 3).map((t) => `${t} guide overview`);
+  }
+
+  if (queries.length === 0) return empty;
+
+  // Step 2: Serper search — all queries in parallel
+  const allUrls: Map<string, { title: string; snippet: string }> = new Map();
+
+  if (SERPER_API_KEY) {
+    const searchResults = await Promise.allSettled(
+      queries.map(async (q) => {
+        const res = await fetch("https://google.serper.dev/search", {
+          method: "POST",
+          headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ q, num: 5 }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data.organic || []).slice(0, 3).map((r: any) => ({
+          url: r.link,
+          title: r.title || "",
+          snippet: r.snippet || "",
+        }));
+      }),
+    );
+
+    for (const result of searchResults) {
+      if (result.status !== "fulfilled") continue;
+      for (const item of result.value) {
+        if (item.url && !allUrls.has(item.url)) {
+          allUrls.set(item.url, { title: item.title, snippet: item.snippet });
+        }
+      }
+    }
+  }
+
+  console.log(`  📎 Found ${allUrls.size} unique URLs from Serper`);
+
+  // Step 3: Jina Reader — read top 10 articles in parallel
+  const urlsToRead = Array.from(allUrls.entries()).slice(0, 10);
+  const sources: ResearchSource[] = [];
+
+  if (urlsToRead.length > 0) {
+    const readResults = await Promise.allSettled(
+      urlsToRead.map(async ([url, meta]) => {
+        try {
+          const res = await fetch(`https://r.jina.ai/${url}`, {
+            headers: { "Accept": "text/markdown" },
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const markdown = await res.text();
+          // Extract meaningful content (skip navigation, truncate)
+          const content = markdown
+            .replace(/\[.*?\]\(.*?\)/g, (m) => m.replace(/\[|\]/g, "").replace(/\(.*?\)/, "")) // simplify links
+            .slice(0, 3000);
+          return { url, title: meta.title, content };
+        } catch {
+          // Fallback: use Serper snippet
+          return { url, title: meta.title, content: meta.snippet };
+        }
+      }),
+    );
+
+    for (const result of readResults) {
+      if (result.status === "fulfilled" && result.value.content.length > 50) {
+        sources.push(result.value);
+      }
+    }
+  }
+
+  console.log(`  📄 Read ${sources.length}/${urlsToRead.length} articles via Jina Reader`);
+
+  if (sources.length === 0) return { ...empty, searchQueries: queries };
+
+  // Step 4: AI synthesis — analyze all sources
+  const langName = language === "ua" ? "Ukrainian" : language === "no" ? "Norwegian" : "English";
+  const sourcesContext = sources.map((s, i) =>
+    `SOURCE ${i + 1} [${s.title}] (${s.url}):\n${s.content}`
+  ).join("\n\n---\n\n");
+
+  try {
+    const synthesisPrompt = `You are a research analyst preparing a brief for a video about: "${userPrompt}"
+
+Analyze these ${sources.length} sources and create a comprehensive research brief.
+
+${sourcesContext}
+
+${existingContent ? `ADDITIONAL CONTEXT FROM USER:\n${existingContent.slice(0, 2000)}` : ""}
+
+Return JSON:
+{
+  "synthesis": "3-5 paragraph comprehensive summary of findings in ${langName}. Include specific facts, numbers, and details from the sources.",
+  "keyFacts": ["5-15 specific facts with numbers/data from the sources"],
+  "dataPoints": [{"value": "specific number", "label": "what it measures", "context": "source context"}],
+  "suggestedSegments": ["5-8 video segment topics based on the research, ordered for storytelling flow"]
+}
+
+Rules:
+- Write synthesis in ${langName}
+- keyFacts: only include VERIFIED facts from the sources, not AI assumptions
+- dataPoints: extract concrete numbers for infographic overlays (temperatures, costs, percentages, distances, populations)
+- suggestedSegments: create a narrative arc (WHY → WHAT → HOW → CHALLENGES → CONCLUSION)
+- Be specific: "Середня температура у Форталезі — 27°C" not "погода тепла"`;
+
+    const synthesisRaw = await callAI(synthesisPrompt, `Synthesize research for: ${userPrompt}`, 4000);
+    const synthesis = safeJsonParse(synthesisRaw);
+
+    console.log(`  ✅ Synthesis: ${(synthesis.keyFacts || []).length} facts, ${(synthesis.dataPoints || []).length} data points, ${(synthesis.suggestedSegments || []).length} segments`);
+
+    return {
+      sources,
+      synthesis: synthesis.synthesis || "",
+      keyFacts: synthesis.keyFacts || [],
+      dataPoints: synthesis.dataPoints || [],
+      suggestedSegments: synthesis.suggestedSegments || [],
+      searchQueries: queries,
+    };
+  } catch (e: any) {
+    console.error(`  ❌ Synthesis failed: ${e.message}`);
+    return { sources, synthesis: "", keyFacts: [], dataPoints: [], suggestedSegments: [], searchQueries: queries };
+  }
 }
 
 // ── JSON Helper ──
@@ -687,6 +869,32 @@ Rules:
       console.log(`  ✅ Research brief: ${featuresWithData.length} features, ${researchBrief.allDataPoints.length} data points, ${allTech.size} technologies`);
     }
 
+    // 3b. Deep web research for freeform/mixed topics
+    if (!researchBrief && (contentType === "freeform" || contentType === "mixed" || contentType === "web_scrape")) {
+      await editMessage(chatId, statusMsgId, t("deep_research", language));
+
+      const webResearch = await deepWebResearch(
+        userPrompt,
+        analysis.topics || [userPrompt],
+        scrapedContent,
+        language,
+      );
+
+      if (webResearch.sources.length > 0) {
+        researchBrief = {
+          type: "web_research",
+          sourceCount: webResearch.sources.length,
+          synthesis: webResearch.synthesis,
+          keyFacts: webResearch.keyFacts,
+          allDataPoints: webResearch.dataPoints,
+          suggestedSegments: webResearch.suggestedSegments,
+          sources: webResearch.sources.map((s) => ({ url: s.url, title: s.title })),
+          searchQueries: webResearch.searchQueries,
+        };
+        console.log(`  ✅ Web research: ${webResearch.sources.length} sources, ${webResearch.keyFacts.length} facts`);
+      }
+    }
+
     // 4. Create draft record
     const enrichedBrief = researchBrief
       ? { ...analysis, research: researchBrief }
@@ -743,11 +951,18 @@ Rules:
       `<b>${t("topic", language)}:</b> ${escapeHtml(analysis.briefSummary || userPrompt.slice(0, 100))}`,
     ];
 
-    // Show project details for deep dive
-    if (researchBrief) {
+    // Show research details
+    if (researchBrief?.type === "web_research") {
+      // Web research (freeform/mixed)
+      briefLines.push(
+        `<b>${t("type_label", language)}:</b> ${contentLabel}`,
+        `<b>${t("research_label", language)}:</b> ${researchBrief.sourceCount} ${t("sources_found", language)}, ${(researchBrief.keyFacts || []).length} ${t("key_facts", language)}, ${(researchBrief.allDataPoints || []).length} ${t("data_points", language)}`,
+      );
+    } else if (researchBrief) {
+      // Project deep dive
       briefLines.push(
         `<b>${t("project_label", language)}:</b> ${escapeHtml(researchBrief.projectName)}`,
-        `<b>${t("type_label", language)}:</b> ${contentLabel} (${researchBrief.featureCount} ${t("features_label", language)}, ${researchBrief.allDataPoints.length} ${t("data_points", language)})`,
+        `<b>${t("type_label", language)}:</b> ${contentLabel} (${researchBrief.featureCount} ${t("features_label", language)}, ${(researchBrief.allDataPoints || []).length} ${t("data_points", language)})`,
         `<b>${t("tech_stack", language)}:</b> ${researchBrief.techStackSummary.slice(0, 6).join(", ")}${researchBrief.techStackSummary.length > 6 ? "..." : ""}`,
       );
     } else {
@@ -882,6 +1097,27 @@ async function generateScript(
           const result = f[`result_${lang}`] || f.result_en;
           return `FEATURE ${i + 1}: ${title}\n  Problem: ${problem}\n  Solution: ${solution}\n  Result: ${result}\n  Tech: ${(f.tech_stack || []).join(", ")}`;
         }).join("\n\n");
+      }
+    }
+
+    // 2b. Web research brief (freeform/mixed with deep research)
+    if (research?.type === "web_research" && research.synthesis) {
+      projectContext = `RESEARCH FINDINGS:\n${research.synthesis}\n`;
+
+      if (research.keyFacts?.length > 0) {
+        projectContext += `\nKEY FACTS (use these EXACT numbers in the script):\n${research.keyFacts.map((f: string) => `- ${f}`).join("\n")}\n`;
+      }
+
+      if (research.allDataPoints?.length > 0) {
+        projectContext += `\nDATA POINTS FOR INFOGRAPHICS:\n${research.allDataPoints.map((d: any) => `${d.value} ${d.label} (${d.context})`).join("\n")}\n`;
+      }
+
+      if (research.suggestedSegments?.length > 0) {
+        projectContext += `\nSUGGESTED VIDEO SEGMENTS:\n${research.suggestedSegments.map((s: string, i: number) => `${i + 1}. ${s}`).join("\n")}\n`;
+      }
+
+      if (research.sources?.length > 0) {
+        projectContext += `\nSOURCES (${research.sources.length} articles analyzed):\n${research.sources.slice(0, 5).map((s: any) => `- ${s.title}`).join("\n")}\n`;
       }
     }
 
