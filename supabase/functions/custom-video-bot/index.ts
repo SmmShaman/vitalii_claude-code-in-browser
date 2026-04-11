@@ -792,11 +792,12 @@ Return JSON:
 Rules:
 - If user asks about a SPECIFIC PROJECT (Elvarika, JobBot, Calendar Bot, etc.) → contentType="project_deep_dive", detectedProject=matching project ID
 - If user asks about portfolio features or personal work in general → contentType="portfolio", detectedProject=null
-- If user asks about general topics (trends, tutorials) → contentType="freeform"
+- If user asks about ANY other topic (travel, lifestyle, education, trends, personal stories, dreams, plans, ANY freeform topic) → contentType="freeform"
+- contentType="freeform" means: the system will do deep web research on this topic. ANY topic is valid.
 - For project_deep_dive: match only features RELEVANT to that project (3-8 max)
 - For portfolio: select 3-8 most relevant features across all projects
-- suggestedDuration: short showcase=60-90, case study=120-180, deep dive=180-300
-- If the user prompt is very short or unclear, set contentType="unclear"`;
+- suggestedDuration: short showcase=60-90, case study=120-180, deep dive/freeform=180-300
+- ONLY set contentType="unclear" if the prompt is just a greeting ("привіт", "hello") or completely empty. ANY topic with a clear subject → "freeform"`;
 
     const analysisRaw = await callAI(analysisPrompt, `Analyze this request: ${userPrompt}`, 2000);
     const analysis = safeJsonParse(analysisRaw);
