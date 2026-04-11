@@ -501,20 +501,22 @@ async function analyzePrompt(
     if (detectedUrls.length > 0) {
       await editMessage(chatId, statusMsgId, t("scraping", language));
 
-      for (const url of detectedUrls.slice(0, 3)) {
+      const safeUrls = detectedUrls.slice(0, 3).filter((url) => {
         if (!isUrlSafe(url)) {
           console.log(`  ⚠️ Blocked unsafe URL: ${url}`);
-          continue;
+          return false;
         }
-        const scraped = await scrapePageContent(url);
-        if (scraped.success) {
-          scrapedTitle = scraped.title || scrapedTitle;
-          scrapedContent += `\n\nCONTENT FROM ${url}:\nTitle: ${scraped.title}\nDescription: ${scraped.description}\n${scraped.text}`;
-          scrapedImages.push(...scraped.images);
-          console.log(`  ✅ Scraped ${url}: ${scraped.text.length} chars`);
-        } else {
-          console.log(`  ⚠️ Failed to scrape ${url}, will use Serper fallback`);
-          // Serper fallback: search for this URL's content
+        return true;
+      });
+
+      // Scrape all URLs in parallel
+      const scrapeResults = await Promise.allSettled(
+        safeUrls.map(async (url) => {
+          const scraped = await scrapePageContent(url);
+          if (scraped.success) {
+            return { url, scraped, type: "scraped" as const };
+          }
+          // Serper fallback
           if (SERPER_API_KEY) {
             try {
               const sRes = await fetch("https://google.serper.dev/search", {
@@ -527,10 +529,25 @@ async function analyzePrompt(
                 const snippets = (sData.organic || []).slice(0, 3)
                   .map((r: any) => `- ${r.title}: ${r.snippet}`)
                   .join("\n");
-                if (snippets) scrapedContent += `\n\nSEARCH RESULTS FOR ${url}:\n${snippets}`;
+                if (snippets) return { url, snippets, type: "serper" as const };
               }
             } catch { /* skip */ }
           }
+          return null;
+        }),
+      );
+
+      for (const result of scrapeResults) {
+        if (result.status !== "fulfilled" || !result.value) continue;
+        const v = result.value;
+        if (v.type === "scraped") {
+          scrapedTitle = v.scraped.title || scrapedTitle;
+          scrapedContent += `\n\nCONTENT FROM ${v.url}:\nTitle: ${v.scraped.title}\nDescription: ${v.scraped.description}\n${v.scraped.text}`;
+          scrapedImages.push(...v.scraped.images);
+          console.log(`  ✅ Scraped ${v.url}: ${v.scraped.text.length} chars`);
+        } else {
+          scrapedContent += `\n\nSEARCH RESULTS FOR ${v.url}:\n${v.snippets}`;
+          console.log(`  ✅ Serper fallback for ${v.url}`);
         }
       }
 
@@ -747,14 +764,12 @@ async function generateScript(
       console.log(`  📄 Using scraped content: ${webResearch[0].content.length} chars`);
     }
 
-    // 3b. Serper fallback for freeform topics without scraped content
-    if (!webContext && (draft.content_type === "freeform" || draft.content_type === "mixed")) {
+    // 3b. Serper fallback for freeform topics without scraped content (parallel)
+    if (!webContext && (draft.content_type === "freeform" || draft.content_type === "mixed") && SERPER_API_KEY) {
       const topics = draft.content_brief?.topics || [draft.user_prompt];
-      const searchResults: string[] = [];
 
-      for (const topic of topics.slice(0, 3)) {
+      const searchPromises = topics.slice(0, 3).map(async (topic: string) => {
         try {
-          if (!SERPER_API_KEY) continue;
           const res = await fetch("https://google.serper.dev/search", {
             method: "POST",
             headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
@@ -765,10 +780,16 @@ async function generateScript(
             const snippets = (data.organic || []).slice(0, 3)
               .map((r: any) => `- ${r.title}: ${r.snippet}`)
               .join("\n");
-            if (snippets) searchResults.push(`TOPIC "${topic}":\n${snippets}`);
+            if (snippets) return `TOPIC "${topic}":\n${snippets}`;
           }
         } catch { /* skip */ }
-      }
+        return null;
+      });
+
+      const results = await Promise.allSettled(searchPromises);
+      const searchResults = results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled" && !!r.value)
+        .map((r) => r.value);
 
       if (searchResults.length > 0) {
         webContext = `\n\nWEB RESEARCH:\n${searchResults.join("\n\n")}`;
@@ -1059,17 +1080,18 @@ RULES for imageSearchQueries:
       );
       allImages.push(...scrapedForSegment);
 
-      // Search via Serper for each query (with error boundaries)
-      for (const q of queries.slice(0, 3)) {
-        try {
-          const imgs = await searchSerperImages(q, 3);
-          for (const img of imgs) {
+      // Search via Serper for all queries in parallel
+      const queryResults = await Promise.allSettled(
+        queries.slice(0, 3).map((q: string) => searchSerperImages(q, 3)),
+      );
+      for (const qr of queryResults) {
+        if (qr.status === "fulfilled") {
+          for (const img of qr.value) {
             if (!allImages.includes(img)) allImages.push(img);
           }
-        } catch (e: any) {
-          console.warn(`    ⚠️ Image search failed for "${q}": ${e.message}`);
+        } else {
+          console.warn(`    ⚠️ Image search failed: ${qr.reason?.message || "unknown"}`);
         }
-        await new Promise(r => setTimeout(r, 300)); // Rate limit
       }
 
       // Pexels fallback if not enough
@@ -1089,7 +1111,17 @@ RULES for imageSearchQueries:
       console.log(`   Segment ${idx + 1}: ${allImages.length} images found`);
     });
 
-    const imageResults = await Promise.allSettled(imagePromises);
+    // 4. Search images + music in parallel
+    const mood = draft.content_brief?.mood || mapContentToMood(
+      draft.content_type || "portfolio",
+      draft.video_style || "showcase",
+    );
+
+    const [imageResults, musicResult] = await Promise.all([
+      Promise.allSettled(imagePromises),
+      findBestMusic(mood, draft.target_duration_seconds || 90),
+    ]);
+
     for (let i = 0; i < imageResults.length; i++) {
       if (imageResults[i].status === "rejected") {
         console.warn(`  ⚠️ Image search failed for segment ${i + 1}: ${(imageResults[i] as PromiseRejectedResult).reason?.message || "unknown"}`);
@@ -1097,12 +1129,7 @@ RULES for imageSearchQueries:
       }
     }
 
-    // 4. Search background music
-    const mood = draft.content_brief?.mood || mapContentToMood(
-      draft.content_type || "portfolio",
-      draft.video_style || "showcase",
-    );
-    const { track, localFile } = await findBestMusic(mood, draft.target_duration_seconds || 90);
+    const { track, localFile } = musicResult;
 
     // 5. Update draft
     await supabase
