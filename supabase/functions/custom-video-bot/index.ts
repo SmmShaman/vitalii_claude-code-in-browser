@@ -43,8 +43,11 @@ Portfolio: https://vitalii.no`;
 // Personal memory cache (loaded once per request)
 let personalMemoryCache: string | null = null;
 
-async function loadPersonalMemory(): Promise<string> {
-  if (personalMemoryCache) return personalMemoryCache;
+// Raw memory entries cache
+let personalMemoryData: any[] | null = null;
+
+async function loadPersonalMemoryRaw(): Promise<any[]> {
+  if (personalMemoryData) return personalMemoryData;
 
   try {
     const { data } = await supabase
@@ -54,23 +57,159 @@ async function loadPersonalMemory(): Promise<string> {
       .order("sort_order");
 
     if (data && data.length > 0) {
-      personalMemoryCache = data
-        .map((m: any) => `[${m.category.toUpperCase()}] ${m.title}: ${m.content}`)
-        .join("\n\n");
-
-      // Update PROFILE_BIO from personal memory
+      personalMemoryData = data;
       const profile = data.find((m: any) => m.category === "profile");
       if (profile) PROFILE_BIO = profile.content;
-
-      console.log(`  📋 Personal memory loaded: ${data.length} entries (${personalMemoryCache.length} chars)`);
-      return personalMemoryCache;
+      console.log(`  📋 Personal memory loaded: ${data.length} entries`);
+      return data;
     }
   } catch (e: any) {
     console.warn(`  ⚠️ Failed to load personal memory: ${e.message}`);
   }
 
-  personalMemoryCache = PROFILE_BIO;
-  return personalMemoryCache;
+  personalMemoryData = [{ category: "profile", title: "Profile", content: PROFILE_BIO }];
+  return personalMemoryData;
+}
+
+// Priority map: which memory categories matter most per content type
+const MEMORY_PRIORITY: Record<string, { primary: string[]; secondary: string[]; minimal: string[] }> = {
+  // Personal/lifestyle topics: family, dreams, preferences first
+  freeform: {
+    primary: ["family", "dreams", "values", "preferences"],
+    secondary: ["profile", "events", "context"],
+    minimal: ["work"],
+  },
+  // Project deep dive: work, events first
+  project_deep_dive: {
+    primary: ["work", "events", "profile"],
+    secondary: ["values", "context"],
+    minimal: ["family", "dreams", "preferences"],
+  },
+  // Portfolio overview
+  portfolio: {
+    primary: ["work", "profile", "events"],
+    secondary: ["values", "context"],
+    minimal: ["family", "dreams", "preferences"],
+  },
+  // Web scrape (could be anything)
+  web_scrape: {
+    primary: ["profile", "context"],
+    secondary: ["work", "values", "dreams"],
+    minimal: ["family", "events", "preferences"],
+  },
+};
+
+/**
+ * Build adaptive personal context — prioritized by content type.
+ * Uses XML tags for Claude-optimized structuring.
+ */
+function buildAdaptiveContext(memories: any[], contentType: string, userPrompt: string): string {
+  const priority = MEMORY_PRIORITY[contentType] || MEMORY_PRIORITY.freeform;
+  const byCategory = new Map<string, string>();
+  for (const m of memories) {
+    byCategory.set(m.category, m.content);
+  }
+
+  // Detect personal keywords in prompt to boost family/dreams priority
+  const personalKeywords = /сім|дітей|діти|дружин|родин|family|children|kids|wife|life|dream|мрі|подорож|travel|move|переїзд/i;
+  const isPersonalTopic = personalKeywords.test(userPrompt);
+
+  const lines: string[] = [];
+
+  // Primary context — full content, highlighted
+  lines.push(`<primary_context relevance="high">`);
+  const primaryCats = isPersonalTopic
+    ? ["family", "dreams", "values", "profile", "preferences"]
+    : priority.primary;
+  for (const cat of primaryCats) {
+    const content = byCategory.get(cat);
+    if (content && !content.includes("[TO BE FILLED")) {
+      lines.push(`<${cat}>${content}</${cat}>`);
+    }
+  }
+  lines.push(`</primary_context>`);
+
+  // Secondary context — included but not emphasized
+  lines.push(`<secondary_context relevance="medium">`);
+  const secondaryCats = isPersonalTopic ? ["events", "work", "context"] : priority.secondary;
+  for (const cat of secondaryCats) {
+    if (primaryCats.includes(cat)) continue;
+    const content = byCategory.get(cat);
+    if (content && !content.includes("[TO BE FILLED")) {
+      lines.push(`<${cat}>${content}</${cat}>`);
+    }
+  }
+  lines.push(`</secondary_context>`);
+
+  // Minimal context — only if very relevant
+  const minimalCats = priority.minimal;
+  const minimalEntries = minimalCats
+    .filter((cat) => !primaryCats.includes(cat) && !secondaryCats.includes(cat))
+    .map((cat) => byCategory.get(cat))
+    .filter((c) => c && !c.includes("[TO BE FILLED"));
+  if (minimalEntries.length > 0) {
+    lines.push(`<background_context relevance="low">`);
+    lines.push(minimalEntries.join(" "));
+    lines.push(`</background_context>`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Build adaptive instruction based on content type and prompt analysis.
+ */
+function buildAdaptiveInstruction(contentType: string, userPrompt: string): string {
+  const personalKeywords = /сім|дітей|діти|дружин|родин|family|children|kids|wife|life|dream|мрі|подорож|travel|move|переїзд|ocean|океан/i;
+  const isPersonalTopic = personalKeywords.test(userPrompt);
+
+  if (isPersonalTopic) {
+    return `<adaptive_instruction>
+This is a PERSONAL/LIFESTYLE video. The viewer should feel like a friend is sharing their real life.
+- USE children's names from <family> when relevant
+- REFERENCE real dreams and aspirations from <dreams>
+- CONNECT the topic to personal values from <values>
+- Share SPECIFIC personal details (not generic "my family")
+- Tone: warm, honest, slightly vulnerable — like a personal diary entry
+- If the topic involves a place/country: connect it to the presenter's real life situation
+</adaptive_instruction>`;
+  }
+
+  if (contentType === "project_deep_dive") {
+    return `<adaptive_instruction>
+This is a PROJECT SHOWCASE video. The viewer should understand the journey behind the project.
+- Focus on WORK experience and career path from <work>
+- Reference KEY EVENTS that led to building this project
+- Use SPECIFIC technical details and real numbers
+- Tone: confident, entrepreneurial — like a founder pitch but authentic
+- Connect the project to the presenter's broader mission
+</adaptive_instruction>`;
+  }
+
+  if (contentType === "portfolio") {
+    return `<adaptive_instruction>
+This is a PORTFOLIO OVERVIEW video. The viewer should see the breadth of work.
+- Highlight the CAREER JOURNEY from <events>
+- Show RANGE of skills and projects from <work>
+- Tone: professional but personal — like a relaxed conference talk
+- Each project should feel like a chapter in a larger story
+</adaptive_instruction>`;
+  }
+
+  // Default: freeform/web_scrape
+  return `<adaptive_instruction>
+This is a FREEFORM TOPIC video. Make it personal by connecting the topic to the presenter's real life.
+- Find connections between the topic and the presenter's experiences
+- Use personal anecdotes where relevant
+- Tone: curious, exploratory — like sharing a discovery with a friend
+- Ground abstract topics with personal examples
+</adaptive_instruction>`;
+}
+
+// Legacy wrapper for backward compatibility
+async function loadPersonalMemory(): Promise<string> {
+  const data = await loadPersonalMemoryRaw();
+  return data.map((m: any) => `[${m.category.toUpperCase()}] ${m.content}`).join("\n\n");
 }
 
 // ── Telegram Helpers ──
@@ -1361,31 +1500,42 @@ STRUCTURE RULES:
 - Each segment = one clear topic with beginning-middle-END
 - Select the most relevant features to cover`;
 
-    // Load personal memory for context
-    const personalContext = await loadPersonalMemory();
+    // Load personal memory and build adaptive context
+    const memoryData = await loadPersonalMemoryRaw();
+    const adaptiveContext = buildAdaptiveContext(memoryData, draft.content_type, draft.user_prompt);
+    const adaptiveInstruction = buildAdaptiveInstruction(draft.content_type, draft.user_prompt);
 
-    const scriptPrompt = `You are a professional video scriptwriter writing for Vitalii Berbeha's personal video channel.
+    const scriptPrompt = `<role>
+You are a professional video scriptwriter writing for Vitalii Berbeha's personal video channel.
+You write in first person as Vitalii. Your scripts feel like a real person sharing authentic experiences — never like AI-generated corporate content.
+</role>
 
-PERSONAL CONTEXT (use this to make the video personal and authentic):
-${personalContext}
+<personal_memory>
+${adaptiveContext}
+</personal_memory>
 
-PRESENTER: ${PROFILE_BIO}
+${adaptiveInstruction}
 
-VIDEO REQUEST: "${draft.user_prompt}"
-LANGUAGE: ${langName}
-DURATION: ~${duration} seconds
-SEGMENTS: ${segmentCount} content segments + intro + outro
-WORDS PER SEGMENT: ~${wordsPerSegment} words
-STYLE: ${draft.video_style}
+<video_request>
+<topic>${escapeHtml(draft.user_prompt)}</topic>
+<language>${langName}</language>
+<duration>${duration} seconds</duration>
+<segments>${segmentCount} content segments + intro + outro</segments>
+<words_per_segment>~${wordsPerSegment}</words_per_segment>
+<style>${draft.video_style}</style>
+</video_request>
 
-${projectContext}
-${featureContent ? `${isDeepDive ? "PROJECT FEATURES (choose 3-5 most compelling)" : "PORTFOLIO FEATURES TO COVER"}:\n${featureContent}` : ""}
-${webContext}
+${projectContext ? `<research_data>\n${projectContext}\n</research_data>` : ""}
+${featureContent ? `<features context="${isDeepDive ? "choose 3-5 most compelling" : "cover relevant"}">\n${featureContent}\n</features>` : ""}
+${webContext ? `<web_research>\n${webContext}\n</web_research>` : ""}
 
+<voice_rules>
 ${HUMANIZER_VIDEO}
 ${VOICE_SPOKEN}
+</voice_rules>
 
-Write a video script in ${langName}. Return ONLY valid JSON:
+<output_format>
+Return ONLY valid JSON:
 {
   "intro": "Opening text (2-3 sentences, ~${wordsPerSegment} words)",
   "segments": [
@@ -1401,18 +1551,22 @@ Write a video script in ${langName}. Return ONLY valid JSON:
   "youtubeDescription": "3-sentence description in ${langName} with vitalii.no link",
   "youtubeTags": ["tag1", "tag2", "tag3"]
 }
+</output_format>
+
 ${ttsRules}
 ${storyRules}
 
-SCRIPT RULES:
+<script_rules>
 - Write for the EAR (spoken audio), not the eye
 - Keep sentences SHORT (max 12 words)
 - Each segment MUST have a complete thought with proper conclusion
 - NEVER end a segment mid-sentence or mid-thought
 - Last sentence of each segment should feel like a natural pause point
 - NO AI-speak: no "delve", "landscape", "groundbreaking", "testament"
-- Segment transitions should flow naturally: end of segment N should connect to start of segment N+1
-- dataPoints: extract real numbers from the features for visual infographics (counter, keyFigure, comparison types)`;
+- Segment transitions should flow naturally
+- dataPoints: extract real numbers for visual infographics (counter, keyFigure, comparison types)
+- USE data from <primary_context> tags — these are the most relevant personal details for THIS video
+</script_rules>`;
 
     const scriptRaw = await callClaude(scriptPrompt, `Generate script for: ${draft.user_prompt}`, 8000);
     const script = safeJsonParse(scriptRaw);
