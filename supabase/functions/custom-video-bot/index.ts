@@ -954,10 +954,10 @@ Rules:
 
     // Show research details
     if (researchBrief?.type === "web_research") {
-      // Web research (freeform/mixed)
       briefLines.push(
         `<b>${t("type_label", language)}:</b> ${contentLabel}`,
-        `<b>${t("research_label", language)}:</b> ${researchBrief.sourceCount} ${t("sources_found", language)}, ${(researchBrief.keyFacts || []).length} ${t("key_facts", language)}, ${(researchBrief.allDataPoints || []).length} ${t("data_points", language)}`,
+        `<b>${t("lang_label", language)}:</b> ${langEmoji} | <b>${t("duration_label", language)}:</b> ~${analysis.suggestedDuration}s | <b>${t("style_label", language)}:</b> ${styleLabel}`,
+        `<b>${t("mood_label", language)}:</b> ${moodLabel}`,
       );
     } else if (researchBrief) {
       // Project deep dive
@@ -972,17 +972,71 @@ Rules:
       );
     }
 
-    briefLines.push(
-      `<b>${t("lang_label", language)}:</b> ${langEmoji} | <b>${t("duration_label", language)}:</b> ~${analysis.suggestedDuration}s | <b>${t("style_label", language)}:</b> ${styleLabel}`,
-      `<b>${t("mood_label", language)}:</b> ${moodLabel}`,
-      ``,
-      t("select_lang", language),
-    );
+    if (!researchBrief?.type || researchBrief?.type !== "web_research") {
+      briefLines.push(
+        `<b>${t("lang_label", language)}:</b> ${langEmoji} | <b>${t("duration_label", language)}:</b> ~${analysis.suggestedDuration}s | <b>${t("style_label", language)}:</b> ${styleLabel}`,
+        `<b>${t("mood_label", language)}:</b> ${moodLabel}`,
+        ``,
+        t("select_lang", language),
+      );
+    }
 
     const briefText = briefLines.join("\n");
 
     const draftId = draft.id;
 
+    // For web research: show detailed report + review step
+    if (researchBrief?.type === "web_research") {
+      await editMessage(chatId, statusMsgId, briefText);
+
+      // Send detailed research report as separate message
+      const sources = researchBrief.sources || [];
+      const facts = researchBrief.keyFacts || [];
+      const dataPoints = researchBrief.allDataPoints || [];
+
+      const reportLines = [
+        ``,
+        `🔬🔬🔬 <b>RESEARCH REPORT</b> 🔬🔬🔬`,
+        ``,
+        `📚 <b>SOURCES (${sources.length}):</b>`,
+        ...sources.map((s: any, i: number) => `  ${i + 1}. ${escapeHtml(s.title || s.url)}`),
+        ``,
+        `📊 <b>KEY FACTS (${facts.length}):</b>`,
+        ...facts.map((f: string, i: number) => `  ${i + 1}. ${escapeHtml(f)}`),
+        ``,
+        `📈 <b>DATA POINTS (${dataPoints.length}):</b>`,
+        ...dataPoints.map((d: any) => `  • <b>${escapeHtml(d.value)}</b> ${escapeHtml(d.label)} — ${escapeHtml(d.context || "")}`),
+      ];
+
+      const reportText = safeTruncateHtml(reportLines.join("\n"), 4000);
+
+      await sendMessage(chatId, reportText, {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "🇺🇦 UA", callback_data: `cv_lu_${draftId}` },
+              { text: "🇳🇴 NO", callback_data: `cv_ln_${draftId}` },
+              { text: "🇬🇧 EN", callback_data: `cv_le_${draftId}` },
+            ],
+            [
+              { text: t("duration_btn", language), callback_data: `cv_dur_${draftId}` },
+              { text: t("format_btn", language), callback_data: `cv_fmt_${draftId}` },
+            ],
+            [
+              { text: "🔄 Re-research", callback_data: `cv_vrg_${draftId}` },
+              { text: t("cancel_btn", language), callback_data: `cv_skip_${draftId}` },
+            ],
+          ],
+        },
+      });
+
+      // Hint about adding sources
+      await sendMessage(chatId, `💡 To add a source — reply with a URL\n<code>cv_edit_${draftId}</code>`);
+
+      return json({ ok: true, draftId, analysis, researchSources: sources.length });
+    }
+
+    // Non-research path: show language selection directly
     await editMessage(chatId, statusMsgId, briefText, {
       reply_markup: {
         inline_keyboard: [
