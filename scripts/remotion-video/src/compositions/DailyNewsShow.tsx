@@ -298,30 +298,32 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
     const segColor = segment.accentColor || accentColor;
     const dividerFrames = Math.ceil(dividerDurationSeconds * fps);
 
-    // Segment divider
-    sequences.push({
-      component: (
-        <SegmentDividerScene
-          segmentNumber={i + 1}
-          totalSegments={segments.length}
-          category={segment.category}
-          accentColor={segColor}
-        />
-      ),
-      startFrame: currentFrame,
-      durationFrames: dividerFrames,
-    });
-
-    // Transition SFX at divider
-    if (transitionSfxSrc) {
-      sfxSequences.push({
-        src: transitionSfxSrc,
+    // Segment divider — skip for custom videos (artistic flow, no numbered segments)
+    if (showType !== 'custom') {
+      sequences.push({
+        component: (
+          <SegmentDividerScene
+            segmentNumber={i + 1}
+            totalSegments={segments.length}
+            category={segment.category}
+            accentColor={segColor}
+          />
+        ),
         startFrame: currentFrame,
-        durationFrames: Math.min(dividerFrames, Math.ceil(1.5 * fps)),
+        durationFrames: dividerFrames,
       });
-    }
 
-    currentFrame += dividerFrames;
+      // Transition SFX at divider
+      if (transitionSfxSrc) {
+        sfxSequences.push({
+          src: transitionSfxSrc,
+          startFrame: currentFrame,
+          durationFrames: Math.min(dividerFrames, Math.ceil(1.5 * fps)),
+        });
+      }
+
+      currentFrame += dividerFrames;
+    }
 
     // Split segment time: 30% headline, 70% content (or 25/50/25 if stats)
     const segFrames = Math.ceil(segment.durationSeconds * fps);

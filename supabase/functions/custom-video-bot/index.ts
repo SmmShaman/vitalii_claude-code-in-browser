@@ -1563,10 +1563,24 @@ ${storyRules}
 - NEVER end a segment mid-sentence or mid-thought
 - Last sentence of each segment should feel like a natural pause point
 - NO AI-speak: no "delve", "landscape", "groundbreaking", "testament"
-- Segment transitions should flow naturally
-- dataPoints: extract real numbers for visual infographics (counter, keyFigure, comparison types)
 - USE data from <primary_context> tags — these are the most relevant personal details for THIS video
-</script_rules>`;
+- dataPoints: extract real numbers for visual infographics (counter, keyFigure, comparison types)
+</script_rules>
+
+<narrative_flow_rules>
+CRITICAL: This is an ARTISTIC NARRATIVE, NOT a news digest or feature list.
+- Do NOT number segments ("1.", "2.", etc.) — segments flow organically like chapters of a story
+- Segment "topic" should be a POETIC/ARTISTIC phrase, not a category label
+  BAD: "AI Startup", "Budget Analysis", "Technology Stack"
+  GOOD: "Мрія, що почала дихати", "Перші кроки новим берегом", "Коли код стає мистецтвом"
+- Each segment should FLOW into the next — the end of one should naturally lead to the beginning of the next
+- NO hard transitions like "Now let's talk about..." or "Далі розглянемо..."
+- Instead use ORGANIC bridges: a question, an image, an emotion that connects two topics
+- Every sentence should contain at least one VISUAL KEYWORD — a concrete noun or image that can be illustrated
+  BAD: "Це було цікаво" (nothing to show)
+  GOOD: "Океанський бриз торкався обличчя" (ocean, breeze, face — all visual)
+- Write like a documentary narrator, not a PowerPoint presenter
+</narrative_flow_rules>`;
 
     const scriptRaw = await callClaude(scriptPrompt, `Generate script for: ${draft.user_prompt}`, 8000);
     const script = safeJsonParse(scriptRaw);
@@ -1767,8 +1781,11 @@ RULES for imageSearchQueries:
 - Use REAL names: "Supabase Edge Functions dashboard", "Remotion video rendering", "Next.js 15 app router"
 - For portfolio projects: search for app screenshots, technology diagrams, architecture visuals
 - Each query = different visual aspect
-- 3-4 queries per segment
+- 5-8 queries per segment (MORE images = better visual variety, images cycle every 3-4 seconds)
 - NO generic stock phrases
+- Every significant visual keyword in the script should have a matching image query
+- For lifestyle/personal videos: search for SPECIFIC scenes (e.g., "family walking Fortaleza beach sunset", not just "Brazil beach")
+- For project videos: search for ACTUAL UI screenshots, architecture diagrams, code editors
 - If segment has DATA POINTS, include them in facts array for infographic overlays`;
 
     const scenarioRaw = await callAI(scenarioPrompt, "Plan the visual scenario", 6000);
