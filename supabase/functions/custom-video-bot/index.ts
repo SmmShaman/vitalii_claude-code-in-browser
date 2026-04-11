@@ -622,7 +622,10 @@ Rules:
     // 3. Build research brief if specific project detected
     let researchBrief: any = null;
     const detectedProjectId = analysis.detectedProject;
-    const contentType = scrapedContent ? "web_scrape" : (analysis.contentType || "portfolio");
+    // project_deep_dive takes priority over web_scrape — scraped content becomes additional context
+    const contentType = (analysis.contentType === "project_deep_dive" && detectedProjectId)
+      ? "project_deep_dive"
+      : scrapedContent ? "web_scrape" : (analysis.contentType || "portfolio");
 
     if (detectedProjectId && contentType === "project_deep_dive") {
       console.log(`  🔬 Building research brief for project: ${detectedProjectId}`);
