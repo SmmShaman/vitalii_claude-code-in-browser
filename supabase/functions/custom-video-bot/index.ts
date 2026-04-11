@@ -22,7 +22,7 @@ import { HUMANIZER_VIDEO, VOICE_SPOKEN } from "../_shared/humanizer-prompt.ts";
 import { collectImages, searchSerperImages, searchPexelsImages } from "../_shared/image-search.ts";
 import { findBestMusic, mapContentToMood, getLocalTrackFilename } from "../_shared/music-search.ts";
 
-const VERSION = "2026-04-11-v2";
+const VERSION = "2026-04-11-v3";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -32,14 +32,46 @@ const supabase = createClient(
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")!;
 const GEMINI_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const SERPER_API_KEY = Deno.env.get("SERPER_API_KEY") || "";
 
-// Profile bio context (hardcoded from translations.ts)
-const PROFILE_BIO = `Vitalii Berbeha — Marketing & Analytics Expert, Creator of Elvarika.
+// Profile bio — loaded from personal_memory at runtime (see loadPersonalMemory)
+let PROFILE_BIO = `Vitalii Berbeha — Marketing & Analytics Expert, Creator of Elvarika.
 Based in Norway. 20+ years experience. Entrepreneur who builds with code.
-Tech: React, TypeScript, Next.js, Supabase, AI (Claude, Gemini, GPT), Telegram API, Deno, Remotion.
-Languages: Ukrainian, English, Norwegian (fluent).
 Portfolio: https://vitalii.no`;
+
+// Personal memory cache (loaded once per request)
+let personalMemoryCache: string | null = null;
+
+async function loadPersonalMemory(): Promise<string> {
+  if (personalMemoryCache) return personalMemoryCache;
+
+  try {
+    const { data } = await supabase
+      .from("personal_memory")
+      .select("category, title, content")
+      .eq("is_active", true)
+      .order("sort_order");
+
+    if (data && data.length > 0) {
+      personalMemoryCache = data
+        .map((m: any) => `[${m.category.toUpperCase()}] ${m.title}: ${m.content}`)
+        .join("\n\n");
+
+      // Update PROFILE_BIO from personal memory
+      const profile = data.find((m: any) => m.category === "profile");
+      if (profile) PROFILE_BIO = profile.content;
+
+      console.log(`  📋 Personal memory loaded: ${data.length} entries (${personalMemoryCache.length} chars)`);
+      return personalMemoryCache;
+    }
+  } catch (e: any) {
+    console.warn(`  ⚠️ Failed to load personal memory: ${e.message}`);
+  }
+
+  personalMemoryCache = PROFILE_BIO;
+  return personalMemoryCache;
+}
 
 // ── Telegram Helpers ──
 
@@ -337,6 +369,62 @@ async function callAIText(systemPrompt: string, userPrompt: string, maxTokens = 
     .trim();
 }
 
+// ── Claude API (Anthropic) — used for script generation ──
+
+async function callClaude(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
+  if (!ANTHROPIC_API_KEY) {
+    console.log("  ⚠️ ANTHROPIC_API_KEY not set, falling back to Gemini");
+    return await callAI(systemPrompt, userPrompt, maxTokens);
+  }
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: maxTokens,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+        }),
+      });
+
+      if (res.status === 429 || res.status === 529) {
+        const delay = Math.pow(2, attempt) * 3000;
+        console.log(`  ⏳ Claude rate limited (${res.status}), retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`Claude ${res.status}: ${errText.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      const text = (data.content || [])
+        .filter((b: any) => b.type === "text")
+        .map((b: any) => b.text || "")
+        .join("")
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/gi, "")
+        .trim();
+
+      return text;
+    } catch (e: any) {
+      if (attempt === 2) throw e;
+      console.log(`  ⚠️ Claude attempt ${attempt + 1} failed: ${e.message}`);
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+  throw new Error("Claude call exhausted retries");
+}
+
 // ── Deep Web Research (Perplexity-style) ──
 
 interface ResearchSource {
@@ -496,7 +584,7 @@ Rules:
 - suggestedSegments: create a narrative arc (WHY → WHAT → HOW → CHALLENGES → CONCLUSION)
 - Be specific: "Середня температура у Форталезі — 27°C" not "погода тепла"`;
 
-    const synthesisRaw = await callAI(synthesisPrompt, `Synthesize research for: ${userPrompt}`, 4000);
+    const synthesisRaw = await callClaude(synthesisPrompt, `Synthesize research for: ${userPrompt}`, 4000);
     const synthesis = safeJsonParse(synthesisRaw);
 
     console.log(`  ✅ Synthesis: ${(synthesis.keyFacts || []).length} facts, ${(synthesis.dataPoints || []).length} data points, ${(synthesis.suggestedSegments || []).length} segments`);
@@ -1273,7 +1361,13 @@ STRUCTURE RULES:
 - Each segment = one clear topic with beginning-middle-END
 - Select the most relevant features to cover`;
 
-    const scriptPrompt = `You are a professional video scriptwriter writing for Vitalii Berbeha's video channel.
+    // Load personal memory for context
+    const personalContext = await loadPersonalMemory();
+
+    const scriptPrompt = `You are a professional video scriptwriter writing for Vitalii Berbeha's personal video channel.
+
+PERSONAL CONTEXT (use this to make the video personal and authentic):
+${personalContext}
 
 PRESENTER: ${PROFILE_BIO}
 
@@ -1320,7 +1414,7 @@ SCRIPT RULES:
 - Segment transitions should flow naturally: end of segment N should connect to start of segment N+1
 - dataPoints: extract real numbers from the features for visual infographics (counter, keyFigure, comparison types)`;
 
-    const scriptRaw = await callAI(scriptPrompt, `Generate script for: ${draft.user_prompt}`, 8000);
+    const scriptRaw = await callClaude(scriptPrompt, `Generate script for: ${draft.user_prompt}`, 8000);
     const script = safeJsonParse(scriptRaw);
 
     // 5. Validate
