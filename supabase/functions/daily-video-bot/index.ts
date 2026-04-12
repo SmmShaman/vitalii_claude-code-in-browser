@@ -21,7 +21,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 import { HUMANIZER_VIDEO, VOICE_SPOKEN } from "../_shared/humanizer-prompt.ts";
 
-const VERSION = "2026-03-30-v33-azure-removed";
+const VERSION = "2026-04-12-v34-await-chain";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -1032,12 +1032,18 @@ Return JSON: {"introScript": "Velkommen til dagens nyhetsdigest fra Vitalii Berb
   const baseUrl = Deno.env.get("SUPABASE_URL")!;
   const srvKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Fire-and-forget: call generate_scenario which will chain to next steps
-  fetch(`${baseUrl}/functions/v1/daily-video-bot?action=auto_chain&target_date=${date}`, {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${srvKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  }).catch(e => console.error(`⚠️ Auto-chain dispatch failed: ${e.message}`));
+  // Dispatch auto_chain — must await to ensure request is sent before worker terminates
+  try {
+    const chainResp = await fetch(`${baseUrl}/functions/v1/daily-video-bot?action=auto_chain&target_date=${date}`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${srvKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    console.log(`✅ auto_chain dispatched: HTTP ${chainResp.status}`);
+  } catch (e: any) {
+    console.error(`⚠️ Auto-chain dispatch failed: ${e.message}`);
+    await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Auto-chain dispatch failed:</b> ${e.message}`);
+  }
 
   return json({ ok: true, draftId: draft.id, selected: validSelectedIds.length, total: articles.length });
 }
@@ -3284,14 +3290,20 @@ Deno.serve(async (req) => {
         console.log(`🤖 Auto-chain step 1: generateScenario for ${targetDate}`);
         try {
           await generateScenario(targetDate, tgChat1, 0);
-          // Dispatch step 2 (fire-and-forget, separate invocation)
+          // Dispatch step 2 — must await to ensure request is sent before worker terminates
           const baseUrl1 = Deno.env.get("SUPABASE_URL")!;
           const srvKey1 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-          fetch(`${baseUrl1}/functions/v1/daily-video-bot?action=auto_chain_2&target_date=${targetDate}`, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${srvKey1}`, "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-          }).catch(e => console.error(`⚠️ auto_chain_2 dispatch failed: ${e.message}`));
+          try {
+            const chain2Resp = await fetch(`${baseUrl1}/functions/v1/daily-video-bot?action=auto_chain_2&target_date=${targetDate}`, {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${srvKey1}`, "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            console.log(`✅ auto_chain_2 dispatched: HTTP ${chain2Resp.status}`);
+          } catch (e2: any) {
+            console.error(`⚠️ auto_chain_2 dispatch failed: ${e2.message}`);
+            await sendMessage(TELEGRAM_CHAT_ID, `⚠️ <b>Auto-chain step 2 dispatch failed:</b> ${e2.message}`);
+          }
           return json({ ok: true, message: "Scenario done, dispatching images+render" });
         } catch (e: any) {
           console.error(`❌ Auto-chain step 1 failed: ${e.message}`);
