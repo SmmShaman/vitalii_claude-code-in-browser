@@ -13,7 +13,9 @@ import {
   AbsoluteFill,
   Audio,
   Sequence,
+  useCurrentFrame,
   useVideoConfig,
+  interpolate,
   staticFile,
 } from "remotion";
 import { ShowIntroScene } from "../components/ShowIntroScene";
@@ -325,14 +327,91 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       currentFrame += dividerFrames;
     }
 
-    // Split segment time: 30% headline, 70% content (or 25/50/25 if stats)
+    // Segment duration in frames
     const segFrames = Math.ceil(segment.durationSeconds * fps);
 
     // Remember segment start for audio sequence
     const segmentStartFrame = currentFrame;
 
-    if (segment.facts && segment.facts.length > 0) {
-      // With stats: headline 25% → content 50% → stats 25%
+    const hasVisualBlocks = segment.visualBlocks && segment.visualBlocks.length > 0;
+
+    if (hasVisualBlocks) {
+      // ── LAYERED MODE: VisualBlockScene spans FULL segment ──
+      // Visual blocks have absolute timestamps from TTS, so they MUST run
+      // for the full segment duration to stay in sync with voiceover audio.
+      // Headline and Stats render as overlays on top.
+
+      const HEADLINE_OVERLAY_SEC = 3.5;
+      const STATS_OVERLAY_SEC = 3.5;
+      const headlineOverlayFrames = Math.min(
+        Math.ceil(HEADLINE_OVERLAY_SEC * fps),
+        Math.ceil(segFrames * 0.35),
+      );
+      const statsOverlayFrames = segment.facts && segment.facts.length > 0
+        ? Math.min(Math.ceil(STATS_OVERLAY_SEC * fps), Math.ceil(segFrames * 0.35))
+        : 0;
+
+      // Layer 1: VisualBlockScene — full segment duration (synced with voiceover)
+      sequences.push({
+        component: (
+          <VisualBlockScene
+            imageSrc={segment.imageSrc}
+            videoSrc={segment.videoSrc}
+            subtitles={segment.subtitles || []}
+            accentColor={segColor}
+            headline={segment.headline}
+            category={segment.category}
+            segmentNumber={i + 1}
+            totalSegments={segments.length}
+            mood={segment.mood}
+            alternateImages={segment.alternateImages}
+            visualBlocks={segment.visualBlocks!}
+          />
+        ),
+        startFrame: currentFrame,
+        durationFrames: segFrames,
+      });
+
+      // Layer 2: Headline overlay — first ~3.5s, fades out
+      sequences.push({
+        component: (
+          <HeadlineOverlay durationFrames={headlineOverlayFrames} fps={fps}>
+            <SceneTransition type={(segment.transition as TransitionType) || "fade"}>
+              <HeadlineScene
+                text={segment.headline}
+                imageSrc={segment.imageSrc}
+                accentColor={segColor}
+                mood={segment.mood}
+                textReveal={segment.textReveal as any}
+              />
+            </SceneTransition>
+          </HeadlineOverlay>
+        ),
+        startFrame: currentFrame,
+        durationFrames: headlineOverlayFrames,
+      });
+
+      // Layer 3: Stats overlay — last ~3.5s, fades in (only if facts present)
+      if (statsOverlayFrames > 0) {
+        sequences.push({
+          component: (
+            <StatsOverlay durationFrames={statsOverlayFrames} fps={fps}>
+              <StatsScene
+                facts={segment.facts!}
+                accentColor={segColor}
+                visualType={segment.statsVisualType}
+              />
+            </StatsOverlay>
+          ),
+          startFrame: currentFrame + segFrames - statsOverlayFrames,
+          durationFrames: statsOverlayFrames,
+        });
+      }
+
+      currentFrame += segFrames;
+
+    } else if (segment.facts && segment.facts.length > 0) {
+      // ── SEQUENTIAL MODE (no visualBlocks, with stats): 25/50/25 ──
       const headlineFrames = Math.ceil(segFrames * 0.25);
       const contentFrames = Math.ceil(segFrames * 0.5);
       const statsFrames = segFrames - headlineFrames - contentFrames;
@@ -354,24 +433,8 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       });
       currentFrame += headlineFrames;
 
-      // Use VisualBlockScene when visual blocks are available, else fallback to ContentScene
-      const hasVisualBlocks = segment.visualBlocks && segment.visualBlocks.length > 0;
       sequences.push({
-        component: hasVisualBlocks ? (
-          <VisualBlockScene
-            imageSrc={segment.imageSrc}
-            videoSrc={segment.videoSrc}
-            subtitles={segment.subtitles || []}
-            accentColor={segColor}
-            headline={segment.headline}
-            category={segment.category}
-            segmentNumber={i + 1}
-            totalSegments={segments.length}
-            mood={segment.mood}
-            alternateImages={segment.alternateImages}
-            visualBlocks={segment.visualBlocks!}
-          />
-        ) : (
+        component: (
           <ContentScene
             imageSrc={segment.imageSrc}
             videoSrc={segment.videoSrc}
@@ -410,7 +473,7 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       });
       currentFrame += statsFrames;
     } else {
-      // Without stats: headline 30% → content 70%
+      // ── SEQUENTIAL MODE (no visualBlocks, no stats): 30/70 ──
       const headlineFrames = Math.ceil(segFrames * 0.3);
       const contentFrames = segFrames - headlineFrames;
 
@@ -431,24 +494,8 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       });
       currentFrame += headlineFrames;
 
-      // Use VisualBlockScene when visual blocks are available, else fallback to ContentScene
-      const hasVB = segment.visualBlocks && segment.visualBlocks.length > 0;
       sequences.push({
-        component: hasVB ? (
-          <VisualBlockScene
-            imageSrc={segment.imageSrc}
-            videoSrc={segment.videoSrc}
-            subtitles={segment.subtitles || []}
-            accentColor={segColor}
-            headline={segment.headline}
-            category={segment.category}
-            segmentNumber={i + 1}
-            totalSegments={segments.length}
-            mood={segment.mood}
-            alternateImages={segment.alternateImages}
-            visualBlocks={segment.visualBlocks!}
-          />
-        ) : (
+        component: (
           <ContentScene
             imageSrc={segment.imageSrc}
             videoSrc={segment.videoSrc}
@@ -593,6 +640,50 @@ export const DailyNewsShow: React.FC<DailyNewsShowProps> = ({
       {/* Persistent broadcast graphics */}
       <ProgressBar accentColor={accentColor} />
       <AnimatedLogo accentColor={accentColor} />
+    </AbsoluteFill>
+  );
+};
+
+// ── Overlay wrappers for layered segment rendering ──
+
+const FADE_FRAMES = 12;
+
+/** Headline overlay: fully opaque, fades out in the last FADE_FRAMES frames */
+const HeadlineOverlay: React.FC<{
+  durationFrames: number;
+  fps: number;
+  children: React.ReactNode;
+}> = ({ durationFrames, children }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(
+    frame,
+    [durationFrames - FADE_FRAMES, durationFrames],
+    [1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      {children}
+    </AbsoluteFill>
+  );
+};
+
+/** Stats overlay: fades in during the first FADE_FRAMES frames, then stays opaque */
+const StatsOverlay: React.FC<{
+  durationFrames: number;
+  fps: number;
+  children: React.ReactNode;
+}> = ({ children }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(
+    frame,
+    [0, FADE_FRAMES],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      {children}
     </AbsoluteFill>
   );
 };
