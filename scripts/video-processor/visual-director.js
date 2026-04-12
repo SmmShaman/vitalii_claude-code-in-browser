@@ -346,7 +346,7 @@ function dataPointToOverlay(dp, showAt, hideAt, position) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  AI Visual Director (NVIDIA NIM / Gemini)
+//  AI Visual Director (NVIDIA NIM / Claude)
 // ═══════════════════════════════════════════════════════════════════
 
 import { callLLMJson } from './llm-helper.js';
@@ -356,7 +356,7 @@ import { callLLMJson } from './llm-helper.js';
  * Each segment gets its own prompt with FULL article context + creative hints.
  */
 async function aiDirectSingleSegment(script, article, segmentMeta, segIndex, totalSegs) {
-  if (!process.env.NVIDIA_API_KEY && !process.env.GOOGLE_API_KEY) return null;
+  if (!process.env.NVIDIA_API_KEY && !process.env.ANTHROPIC_API_KEY) return null;
 
   const title = article?.title_en || article?.title_no || segmentMeta?.headline || '';
   const content = (article?.content_en || article?.content_no || article?.original_content || '').substring(0, 1500);
@@ -468,7 +468,7 @@ Return JSON:
     const parsed = await callLLMJson(
       systemPrompt,
       'Generate the frame-by-frame visual breakdown for this segment.',
-      { maxTokens: 2000, temperature: 0.7 },
+      { maxTokens: 4000, temperature: 0.7 },
     );
     return parsed;
   } catch (err) {
@@ -482,7 +482,7 @@ Return JSON:
  * Each segment gets its own AI call for detailed cinematic scenes.
  */
 async function aiDirectVisuals(segmentScripts, segments, articles) {
-  if (!process.env.NVIDIA_API_KEY && !process.env.GOOGLE_API_KEY) return null;
+  if (!process.env.NVIDIA_API_KEY && !process.env.ANTHROPIC_API_KEY) return null;
 
   const totalSegs = segmentScripts.length;
   const results = [];
@@ -512,10 +512,43 @@ async function aiDirectVisuals(segmentScripts, segments, articles) {
 //  Fallback Visual Director (heuristic, no AI)
 // ═══════════════════════════════════════════════════════════════════
 
+/**
+ * Select a limited effect palette for the entire video based on dominant category.
+ * 2-3 effects per type — consistency like NowThis/Vox, not PowerPoint randomness.
+ */
+function selectVideoPalette(segments) {
+  const catCounts = {};
+  for (const seg of segments) {
+    const cat = seg.category || 'news';
+    catCounts[cat] = (catCounts[cat] || 0) + 1;
+  }
+  const dominantCat = Object.entries(catCounts)
+    .sort(([, a], [, b]) => b - a)[0]?.[0] || 'news';
+
+  const PALETTE_MAP = {
+    tech:     { te: ['blurReveal', 'typewriter'],    bg: ['colorShift', 'zoomPulse'] },
+    business: { te: ['fadeUp', 'splitScale'],         bg: ['kenBurns', 'slowPan'] },
+    ai:       { te: ['blurReveal', 'springPop'],      bg: ['colorShift', 'zoomPulse'] },
+    startup:  { te: ['springPop', 'fadeUp'],           bg: ['kenBurns', 'zoomPulse'] },
+    science:  { te: ['typewriter', 'fadeUp'],          bg: ['slowPan', 'kenBurns'] },
+    politics: { te: ['fadeUp', 'splitScale'],          bg: ['slowPan', 'kenBurns'] },
+    crypto:   { te: ['springPop', 'blurReveal'],       bg: ['zoomPulse', 'colorShift'] },
+    health:   { te: ['fadeUp', 'blurReveal'],          bg: ['kenBurns', 'slowPan'] },
+    news:     { te: ['fadeUp', 'springPop'],           bg: ['kenBurns', 'slowPan'] },
+  };
+
+  const palette = PALETTE_MAP[dominantCat] || PALETTE_MAP.news;
+  console.log(`  🎨 Video palette: ${dominantCat} → text:[${palette.te}] bg:[${palette.bg}]`);
+  return palette;
+}
+
 function fallbackDirectVisuals(segmentScripts, segments, segmentVoiceovers) {
   const segTracker = new VarietyTracker();
   const result = [];
   const totalSegs = segmentScripts.length;
+
+  // Select a limited palette for the entire video (2-3 effects, not 5+)
+  const palette = selectVideoPalette(segments);
 
   for (let i = 0; i < totalSegs; i++) {
     const script = segmentScripts[i] || '';
@@ -524,8 +557,6 @@ function fallbackDirectVisuals(segmentScripts, segments, segmentVoiceovers) {
     const segDur = seg.durationSeconds || Number(segmentVoiceovers[i]?.durationSeconds) || 15;
 
     // ── Rhythm system: phrase duration adapts to position in show ──
-    // Early segments → longer blocks (3.5s), later → shorter blocks (2s)
-    // Creates natural acceleration through the show
     const positionRatio = totalSegs > 1 ? i / (totalSegs - 1) : 0;
     const rhythmTarget = 3.5 - positionRatio * 1.5; // 3.5s → 2.0s
 
@@ -538,13 +569,9 @@ function fallbackDirectVisuals(segmentScripts, segments, segmentVoiceovers) {
       const cls = classifyPhrase(phrase.text);
       const dataPoints = extractDataPoints(phrase.text);
 
-      // Pick text effect (variety-ensured within segment)
-      const teOpts = METAPHOR_TEXT_EFFECTS[cls.metaphor] || TEXT_EFFECTS;
-      const textEffect = blockTracker.pick('te', teOpts);
-
-      // Pick background effect (variety-ensured within segment)
-      const bgOpts = METAPHOR_BG_EFFECTS[cls.metaphor] || BACKGROUND_EFFECTS;
-      const backgroundEffect = blockTracker.pick('bg', bgOpts);
+      // Pick from video-wide palette (consistent across all segments)
+      const textEffect = blockTracker.pick('te', palette.te);
+      const backgroundEffect = blockTracker.pick('bg', palette.bg);
 
       // Resolve graphic data from actual extracted numbers
       let graphicType = cls.graphicType;

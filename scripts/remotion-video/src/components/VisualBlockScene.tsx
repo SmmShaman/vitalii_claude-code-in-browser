@@ -262,7 +262,7 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
         }}
       />
 
-      {/* ─── Layer 2: Per-block text + graphics ─── */}
+      {/* ─── Layer 2: Per-block text + graphics + key phrase callouts ─── */}
       {visualBlocks.map((block, bi) => {
         const startF = Math.round(block.startTime * fps);
         const durF = Math.max(1, Math.round(block.duration * fps));
@@ -274,23 +274,15 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
               isVertical={isVertical}
               moodTempo={moodCfg.tempo}
               images={allImages}
+              blockIndex={bi}
+              allBlocks={visualBlocks}
             />
           </Sequence>
         );
       })}
 
-      {/* ─── Layer 3: Subtitles (HIDE when scene effect or graphic active) ─── */}
-      {subtitles.length > 0 && (
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 10,
-          // Hide subtitles when active block has scene effect or graphic — avoid text clutter
-          opacity: activeBlockHasEffect || (visualBlocks[activeIdx]?.graphicType !== 'none' && visualBlocks[activeIdx]?.graphicData != null) ? 0 : 1,
-        }}>
-          <AnimatedSubtitles subtitles={subtitles} isVertical={isVertical} />
-        </div>
-      )}
+      {/* Subtitles removed — key data shown via KeyPhraseCallout in BlockContent.
+          Full subtitles remain in ContentScene fallback path. */}
 
       {/* ─── Layer 4: CategoryBadge — only first 2 seconds ─── */}
       {category && (
@@ -353,17 +345,196 @@ export const VisualBlockScene: React.FC<VisualBlockSceneProps> = ({
 //  BlockContent — text effect + graphic overlay for a single block
 // ══════════════════════════════════════════════════════════════════
 
+// ── Key phrase detection: only show numbers, names, quotes — not every word ──
+
+type CalloutType = "number" | "name" | "quote" | null;
+interface CalloutInfo { type: CalloutType; text: string; label?: string }
+
+function detectKeyPhrase(
+  block: VisualBlock,
+  blockIndex: number,
+  allBlocks: VisualBlock[],
+): CalloutInfo | null {
+  const text = block.phraseText || "";
+
+  // Skip if block already has graphic data (GraphicCard handles it)
+  if (block.graphicType !== "none" && block.graphicData != null) return null;
+
+  // 1. Numbers/percentages/money → large callout
+  const numMatch = text.match(
+    /(\d[\d\s.,]*\d?)\s*(%|prosent|percent|million|milliard|billion|tusen|kroner|dollar|euro|mrd|mill|kr)/i,
+  );
+  if (numMatch) {
+    return { type: "number", text: numMatch[0].trim() };
+  }
+
+  // 2. Company/person name (first mention) → lower third
+  //    Match 2+ capitalized words not at sentence start
+  const nameMatch = text.match(
+    /(?:[\s,])((?:[A-ZÆØÅА-ЯІЇЄҐ][a-zA-ZæøåÆØÅа-яіїєґА-ЯІЇЄҐ]+[\s-]){0,2}[A-ZÆØÅА-ЯІЇЄҐ][a-zA-ZæøåÆØÅа-яіїєґА-ЯІЇЄҐ]{2,})/,
+  );
+  if (nameMatch) {
+    const name = nameMatch[1].trim();
+    const priorMention = allBlocks
+      .slice(0, blockIndex)
+      .some((b) => b.phraseText?.includes(name));
+    if (!priorMention) {
+      return { type: "name", text: name };
+    }
+  }
+
+  // 3. Quoted text → quote callout
+  const quoteMatch = text.match(/["«""]([^"»""]{10,})["»""]/);
+  if (quoteMatch) {
+    return { type: "quote", text: quoteMatch[1].trim() };
+  }
+
+  return null;
+}
+
+// ── KeyPhraseCallout: renders number/name/quote overlays ──
+
+const KeyPhraseCallout: React.FC<{
+  callout: CalloutInfo;
+  accentColor: string;
+  isVertical: boolean;
+}> = ({ callout, accentColor, isVertical }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const scale = spring({ frame, fps, config: { damping: 14, stiffness: 80, mass: 0.7 } });
+
+  if (callout.type === "number") {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: isVertical ? "30%" : "25%",
+          left: "10%",
+          right: "10%",
+          textAlign: "center",
+          zIndex: 6,
+          transform: `scale(${scale})`,
+        }}
+      >
+        <div
+          style={{
+            display: "inline-block",
+            background: "rgba(0,0,0,0.7)",
+            backdropFilter: "blur(12px)",
+            borderRadius: 16,
+            padding: isVertical ? "20px 32px" : "16px 40px",
+            borderLeft: `4px solid ${accentColor}`,
+          }}
+        >
+          <span
+            style={{
+              fontSize: isVertical ? 72 : 64,
+              fontWeight: 800,
+              color: "#fff",
+              fontFamily: "Comfortaa, sans-serif",
+            }}
+          >
+            {callout.text}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (callout.type === "name") {
+    const slideIn = interpolate(frame, [0, 10], [60, 0], clampBoth);
+    return (
+      <div
+        style={{
+          position: "absolute",
+          bottom: isVertical ? "30%" : "22%",
+          left: isVertical ? 24 : 40,
+          zIndex: 6,
+          transform: `translateX(-${slideIn}px)`,
+          opacity: scale,
+        }}
+      >
+        <div
+          style={{
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(12px)",
+            borderRadius: 8,
+            padding: "12px 24px",
+            borderLeft: `3px solid ${accentColor}`,
+          }}
+        >
+          <span
+            style={{
+              fontSize: isVertical ? 36 : 30,
+              fontWeight: 700,
+              color: "#fff",
+              fontFamily: "Comfortaa, sans-serif",
+            }}
+          >
+            {callout.text}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (callout.type === "quote") {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: "20%",
+          left: "8%",
+          right: "8%",
+          textAlign: "center",
+          zIndex: 6,
+          opacity: scale,
+          transform: `scale(${scale})`,
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 3,
+            backgroundColor: accentColor,
+            margin: "0 auto 16px",
+            borderRadius: 2,
+          }}
+        />
+        <span
+          style={{
+            fontSize: isVertical ? 32 : 28,
+            fontWeight: 700,
+            color: "#fff",
+            fontFamily: "Comfortaa, sans-serif",
+            lineHeight: 1.3,
+            fontStyle: "italic",
+            textShadow: "0 2px 12px rgba(0,0,0,0.8)",
+          }}
+        >
+          &ldquo;{callout.text}&rdquo;
+        </span>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+// ── BlockContent — renders graphic, scene effect, or key phrase callout ──
+
 const BlockContent: React.FC<{
   block: VisualBlock;
   accentColor: string;
   isVertical: boolean;
   moodTempo?: number;
   images?: string[];
-}> = ({ block, accentColor, isVertical, moodTempo = 1.0, images = [] }) => {
+  blockIndex: number;
+  allBlocks: VisualBlock[];
+}> = ({ block, accentColor, isVertical, moodTempo = 1.0, images = [], blockIndex, allBlocks }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Mood-driven fade: faster tempo → shorter fades
   const blockFade = Math.max(4, Math.round(8 / moodTempo));
   const fadeIn = interpolate(frame, [0, blockFade], [0, 1], clampBoth);
   const fadeOut = interpolate(
@@ -377,19 +548,21 @@ const BlockContent: React.FC<{
   const hasGraphic =
     block.graphicType !== "none" && block.graphicData != null;
 
-  // Resolve scene effect from sceneDescription/renderHint keywords
   const sceneEffect = resolveSceneEffect(block);
   const hasSceneEffect = sceneEffect !== null;
 
-  // Rule "max 2 text elements": show PhraseText ONLY when it adds value
-  // - YES: when there's a graphic card WITHOUT scene effect (text labels the data)
-  // - NO: for narrative blocks (subtitles already show the words)
-  // - NO: when a scene effect is active (effect IS the visual, don't cover it with text)
+  // For narrative blocks (no graphic, no scene effect), detect key phrases
+  const callout =
+    !hasGraphic && !hasSceneEffect
+      ? detectKeyPhrase(block, blockIndex, allBlocks)
+      : null;
+
+  // Show PhraseText only when graphic card is present (labels the data)
   const showText = hasGraphic && !hasSceneEffect;
 
   return (
     <AbsoluteFill style={{ opacity, zIndex: 5 }}>
-      {/* Scene effect layer (behind text, above background) */}
+      {/* Scene effect layer */}
       {hasSceneEffect && (
         <div style={{ position: "absolute", inset: 0, zIndex: 4 }}>
           <SceneEffectRenderer
@@ -401,7 +574,7 @@ const BlockContent: React.FC<{
         </div>
       )}
 
-      {/* Phrase text effect */}
+      {/* Phrase text (only with graphic cards) */}
       {showText && (
         <PhraseText
           block={block}
@@ -423,6 +596,15 @@ const BlockContent: React.FC<{
         >
           <GraphicCard block={block} accentColor={accentColor} />
         </div>
+      )}
+
+      {/* Key phrase callout (numbers, names, quotes — NOT every word) */}
+      {callout && (
+        <KeyPhraseCallout
+          callout={callout}
+          accentColor={accentColor}
+          isVertical={isVertical}
+        />
       )}
     </AbsoluteFill>
   );
