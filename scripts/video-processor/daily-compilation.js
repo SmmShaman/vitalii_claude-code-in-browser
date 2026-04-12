@@ -214,15 +214,17 @@ Return valid JSON:
       throw new Error('Invalid show plan structure');
     }
 
+    // Remove roundup — narrative style does not list headlines at the start
+    delete plan.roundupScript;
+
     // Backward compat: build showScript from parts for fallback
-    plan.showScript = [plan.introScript, plan.roundupScript, ...plan.segmentScripts, plan.overflowScript, plan.outroScript].filter(Boolean).join(' ');
+    plan.showScript = [plan.introScript, ...plan.segmentScripts, plan.overflowScript, plan.outroScript].filter(Boolean).join(' ');
     plan.hasOverflow = hasOverflow;
     plan.overflowCount = overflowCount;
 
     const totalWords = plan.showScript.split(/\s+/).length;
     console.log(`📝 Script: ${totalWords} words (${plan.segmentScripts.length} segments)`);
     console.log(`📊 Segments: ${plan.segments.length}${hasOverflow ? ` + ${overflowCount} overflow` : ''}`);
-    if (plan.roundupScript) console.log(`📋 Roundup script: ${plan.roundupScript.split(/\s+/).length} words`);
     if (plan.overflowScript) console.log(`📋 Overflow script: ${plan.overflowScript.split(/\s+/).length} words`);
 
     return plan;
@@ -550,26 +552,45 @@ async function main() {
     dateStr = draft.dateStr;
     displayDate = draft.displayDate;
   } else {
-    // ── Normal mode: fetch + AI ──
-    articles = await fetchYesterdayNews();
-    console.log(`📰 Found ${articles.length} articles from yesterday`);
-
-    if (articles.length === 0) {
-      console.log('✅ No articles yesterday, skipping video generation');
-      return;
-    }
-
-    if (articles.length < 2) {
-      console.log('⚠️ Only 1 article, need at least 2 for a compilation');
-      return;
-    }
-
+    // ── Try to find existing draft by target_date before regenerating ──
     const range = getTargetDateRange();
     dateStr = range.dateStr;
     displayDate = formatDateNorwegian(dateStr);
 
-    console.log('\n🎬 Step 1: Directing the show...');
-    plan = await directDailyShow(articles, displayDate);
+    const { data: existingDraft } = await supabase
+      .from('daily_video_drafts')
+      .select('id')
+      .eq('target_date', dateStr)
+      .in('status', ['pending_script', 'pending_scenario', 'pending_images', 'rendering', 'completed'])
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingDraft) {
+      console.log(`📋 Found existing draft for ${dateStr}: ${existingDraft.id}`);
+      const draft = await loadFromDraft(existingDraft.id);
+      articles = draft.articles;
+      plan = draft.plan;
+      dateStr = draft.dateStr;
+      displayDate = draft.displayDate;
+    } else {
+      // ── Normal mode: fetch + AI ──
+      articles = await fetchYesterdayNews();
+      console.log(`📰 Found ${articles.length} articles from yesterday`);
+
+      if (articles.length === 0) {
+        console.log('✅ No articles yesterday, skipping video generation');
+        return;
+      }
+
+      if (articles.length < 2) {
+        console.log('⚠️ Only 1 article, need at least 2 for a compilation');
+        return;
+      }
+
+      console.log('\n🎬 Step 1: Directing the show...');
+      plan = await directDailyShow(articles, displayDate);
+    }
   }
 
   // Articles reference for Visual Director context
