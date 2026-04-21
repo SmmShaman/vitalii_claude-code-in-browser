@@ -107,28 +107,27 @@ jobs:
           echo "Found $COUNT feat: commits"
           echo "has_commits=true" >> $GITHUB_OUTPUT
 
-          # Step 2: Collect full commit messages + diffs (truncated per commit)
-          COMMITS=""
+          # Step 2: Write commits + diffs directly to file (avoids shell variable limits)
+          : > /tmp/commits.txt
           while IFS= read -r HASH; do
             [ -z "$HASH" ] && continue
-            MSG=$(git log -1 --format="%h %s%n%n%b" "$HASH" 2>/dev/null || true)
-            DIFF=$(git show "$HASH" --stat --unified=3 2>/dev/null | head -80 || true)
-            COMMITS+="$(printf '--- COMMIT %s ---\n%s\n\nDIFF:\n%s\n\n' "$HASH" "$MSG" "$DIFF" 2>/dev/null || true)"
+            echo "--- COMMIT ${HASH} ---" >> /tmp/commits.txt
+            git log -1 --format="%h %s%n%b" "$HASH" >> /tmp/commits.txt 2>/dev/null || true
+            echo "DIFF:" >> /tmp/commits.txt
+            git show "$HASH" --stat --unified=3 2>/dev/null | head -80 >> /tmp/commits.txt || true
+            echo "" >> /tmp/commits.txt
           done <<< "$FEAT_HASHES"
+          echo "Commits file: $(wc -c < /tmp/commits.txt) bytes"
 
           # Step 3: Read project context (CLAUDE.md, README)
-          PROJECT_CONTEXT=""
+          : > /tmp/project_context.txt
           if [ -f "CLAUDE.md" ]; then
-            # Take first 2000 chars of CLAUDE.md for project context
-            PROJECT_CONTEXT=$(head -c 2000 CLAUDE.md)
+            head -c 2000 CLAUDE.md > /tmp/project_context.txt
             echo "Found CLAUDE.md ($(wc -c < CLAUDE.md) bytes)"
           elif [ -f "README.md" ]; then
-            PROJECT_CONTEXT=$(head -c 2000 README.md)
-            echo "Found README.md ($(wc -c < README.md) bytes)"
+            head -c 2000 README.md > /tmp/project_context.txt
+            echo "Found README.md"
           fi
-
-          echo "$COMMITS" > /tmp/commits.txt
-          echo "$PROJECT_CONTEXT" > /tmp/project_context.txt
 
       - name: Call discover-features Edge Function
         if: steps.commits.outputs.has_commits == 'true'
