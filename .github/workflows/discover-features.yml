@@ -79,7 +79,9 @@ jobs:
         include: ${{ fromJSON(needs.discover-repos.outputs.repos) }}
     steps:
       - name: Checkout ${{ matrix.repo }}
+        id: checkout
         uses: actions/checkout@v4
+        continue-on-error: true
         with:
           repository: ${{ matrix.repo }}
           fetch-depth: 100
@@ -87,12 +89,13 @@ jobs:
 
       - name: Collect commits with full context
         id: commits
+        if: steps.checkout.outcome == 'success'
         run: |
           SINCE="${{ inputs.since || '1 day ago' }}"
           echo "📦 Scanning ${{ matrix.repo }} since: $SINCE"
 
           # Step 1: Find feat: commits
-          FEAT_HASHES=$(git log --since="$SINCE" --grep="^feat" --format="%h" 2>/dev/null)
+          FEAT_HASHES=$(git log --since="$SINCE" --grep="^feat" --format="%h" 2>/dev/null || true)
 
           if [ -z "$FEAT_HASHES" ]; then
             echo "No feat: commits found"

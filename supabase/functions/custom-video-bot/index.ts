@@ -22,7 +22,7 @@ import { HUMANIZER_VIDEO, VOICE_SPOKEN } from "../_shared/humanizer-prompt.ts";
 import { collectImages, searchSerperImages, searchPexelsImages } from "../_shared/image-search.ts";
 import { findBestMusic, mapContentToMood, getLocalTrackFilename } from "../_shared/music-search.ts";
 
-const VERSION = "2026-04-11-v3";
+const VERSION = "2026-04-12-v1";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -31,7 +31,6 @@ const supabase = createClient(
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")!;
-const GEMINI_API_KEY = Deno.env.get("GOOGLE_API_KEY") || "";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const SERPER_API_KEY = Deno.env.get("SERPER_API_KEY") || "";
 
@@ -426,95 +425,10 @@ function safeTruncateHtml(html: string, maxLen: number): string {
   return truncated + "\n\n[...]";
 }
 
-// ── LLM Helper ──
-
-async function callAI(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
-  if (!GEMINI_API_KEY) throw new Error("GOOGLE_API_KEY not configured");
-
-  const model = "gemini-2.5-flash-lite";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: maxTokens,
-            responseMimeType: "application/json",
-          },
-        }),
-      });
-
-      if (res.status === 429 || res.status === 503) {
-        const delay = Math.pow(2, attempt) * 3000;
-        console.log(`  ⏳ Rate limited (${res.status}), retrying in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        throw new Error(`Gemini ${res.status}: ${errText.slice(0, 200)}`);
-      }
-
-      const data = await res.json();
-      const text = (data.candidates?.[0]?.content?.parts || [])
-        .map((p: any) => p.text || "")
-        .join("")
-        .replace(/```json\s*/gi, "")
-        .replace(/```\s*/gi, "")
-        .trim();
-
-      return text;
-    } catch (e: any) {
-      if (attempt === 2) throw e;
-      console.log(`  ⚠️ Attempt ${attempt + 1} failed: ${e.message}`);
-      await new Promise(r => setTimeout(r, 3000));
-    }
-  }
-  throw new Error("LLM call exhausted retries");
-}
-
-// Call AI without JSON mode (for plain text responses)
-async function callAIText(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
-  if (!GEMINI_API_KEY) throw new Error("GOOGLE_API_KEY not configured");
-
-  const model = "gemini-2.5-flash-lite";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: maxTokens,
-      },
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Gemini ${res.status}`);
-  const data = await res.json();
-  return (data.candidates?.[0]?.content?.parts || [])
-    .map((p: any) => p.text || "")
-    .join("")
-    .trim();
-}
-
-// ── Claude API (Anthropic) — used for script generation ──
+// ── LLM Helper (Claude API — all calls via Anthropic) ──
 
 async function callClaude(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
-  if (!ANTHROPIC_API_KEY) {
-    console.log("  ⚠️ ANTHROPIC_API_KEY not set, falling back to Gemini");
-    return await callAI(systemPrompt, userPrompt, maxTokens);
-  }
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -563,6 +477,10 @@ async function callClaude(systemPrompt: string, userPrompt: string, maxTokens = 
   }
   throw new Error("Claude call exhausted retries");
 }
+
+// Aliases for backward compatibility (all route to Claude now)
+const callAI = callClaude;
+const callAIText = callClaude;
 
 // ── Deep Web Research (Perplexity-style) ──
 

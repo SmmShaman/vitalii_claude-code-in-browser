@@ -1,7 +1,7 @@
 /**
  * AI Script Generator
  *
- * Uses LLM (NVIDIA NIM / Gemini) to generate a short, punchy voiceover script
+ * Uses LLM (NVIDIA NIM / Claude) to generate a short, punchy voiceover script
  * from the original news article text.
  *
  * This runs inside the GitHub Actions video-processor pipeline

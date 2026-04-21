@@ -90,7 +90,7 @@ jobs:
 
           # LLM
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
           # TTS (Zvukogram)
           ZVUKOGRAM_TOKEN: ${{ secrets.ZVUKOGRAM_TOKEN }}

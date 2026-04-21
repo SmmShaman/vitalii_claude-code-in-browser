@@ -1,12 +1,12 @@
 /**
  * LLM Helper for Video Processor scripts (Node.js)
  *
- * Priority: NVIDIA NIM (free, 40 RPM) → Gemini 2.5 Flash (fallback)
+ * Priority: NVIDIA NIM (free, 40 RPM) → Claude Sonnet 4.6 (fallback)
  * Replaces all Azure OpenAI calls removed in March 2026.
  */
 
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const LLM_TIMEOUT_MS = 60_000;
 
 /** Fetch with AbortController timeout */
@@ -34,23 +34,23 @@ export async function callLLM(systemPrompt, userPrompt, options = {}) {
       return await callNvidia(systemPrompt, userPrompt, { maxTokens, temperature, jsonMode });
     } catch (err) {
       errors.push(`NVIDIA: ${err.message}`);
-      console.warn(`⚠️ NVIDIA NIM failed: ${err.message}, falling back to Gemini`);
+      console.warn(`⚠️ NVIDIA NIM failed: ${err.message}, falling back to Claude`);
     }
   }
 
-  // Fallback to Gemini
-  if (GOOGLE_API_KEY) {
+  // Fallback to Claude
+  if (ANTHROPIC_API_KEY) {
     try {
-      return await callGemini(systemPrompt, userPrompt, { maxTokens, temperature, jsonMode });
+      return await callClaude(systemPrompt, userPrompt, { maxTokens, temperature, jsonMode });
     } catch (err) {
-      errors.push(`Gemini: ${err.message}`);
+      errors.push(`Claude: ${err.message}`);
     }
   }
 
   if (errors.length > 0) {
     throw new Error(`All LLM backends failed:\n  - ${errors.join('\n  - ')}`);
   }
-  throw new Error('No LLM credentials available (NVIDIA_API_KEY or GOOGLE_API_KEY required)');
+  throw new Error('No LLM credentials available (NVIDIA_API_KEY or ANTHROPIC_API_KEY required)');
 }
 
 /**
@@ -115,37 +115,41 @@ async function callNvidia(systemPrompt, userPrompt, { maxTokens, temperature, js
   return content;
 }
 
-// ── Gemini 2.5 Flash ──
+// ── Claude Sonnet 4.6 (Anthropic) ──
 
-async function callGemini(systemPrompt, userPrompt, { maxTokens, temperature, jsonMode }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
-
-  const response = await fetchWithTimeout(url, {
+async function callClaude(systemPrompt, userPrompt, { maxTokens, temperature, jsonMode }) {
+  const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ parts: [{ text: userPrompt }] }],
-      generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens,
-        ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
-      },
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
     }),
   });
 
   if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini ${response.status}: ${err}`);
+    let err;
+    try { err = await response.text(); } catch { err = `${response.status}`; }
+    throw new Error(`Claude ${response.status}: ${err}`);
   }
 
   const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!content) throw new Error('Empty Gemini response');
+  const content = (data.content || [])
+    .filter(b => b.type === 'text')
+    .map(b => b.text || '')
+    .join('')
+    .trim();
+  if (!content) throw new Error('Empty Claude response');
 
-  const usage = data.usageMetadata;
+  const usage = data.usage;
   if (usage) {
-    console.log(`💰 Gemini tokens: ${usage.promptTokenCount}+${usage.candidatesTokenCount}`);
+    console.log(`💰 Claude tokens: ${usage.input_tokens}+${usage.output_tokens}`);
   }
 
   return content;
