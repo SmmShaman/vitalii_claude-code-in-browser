@@ -135,7 +135,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          COMMITS=$(cat /tmp/commits.txt)
+          # Truncate to 100KB to stay within jq/curl arg limits
+          COMMITS=$(head -c 100000 /tmp/commits.txt)
           PROJECT_CONTEXT=$(cat /tmp/project_context.txt)
 
           RESPONSE=$(curl -s -w "\n%{http_code}" \
