@@ -111,9 +111,9 @@ jobs:
           COMMITS=""
           while IFS= read -r HASH; do
             [ -z "$HASH" ] && continue
-            MSG=$(git log -1 --format="%h %s%n%n%b" "$HASH" 2>/dev/null)
-            DIFF=$(git diff "${HASH}^..${HASH}" --stat --unified=3 2>/dev/null | head -80)
-            COMMITS+="$(printf '--- COMMIT %s ---\n%s\n\nDIFF:\n%s\n\n' "$HASH" "$MSG" "$DIFF")"
+            MSG=$(git log -1 --format="%h %s%n%n%b" "$HASH" 2>/dev/null || true)
+            DIFF=$(git show "$HASH" --stat --unified=3 2>/dev/null | head -80 || true)
+            COMMITS+="$(printf '--- COMMIT %s ---\n%s\n\nDIFF:\n%s\n\n' "$HASH" "$MSG" "$DIFF" 2>/dev/null || true)"
           done <<< "$FEAT_HASHES"
 
           # Step 3: Read project context (CLAUDE.md, README)
