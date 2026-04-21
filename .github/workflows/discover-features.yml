@@ -84,7 +84,7 @@ jobs:
         continue-on-error: true
         with:
           repository: ${{ matrix.repo }}
-          fetch-depth: 100
+          fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
 
       - name: Collect commits with full context
