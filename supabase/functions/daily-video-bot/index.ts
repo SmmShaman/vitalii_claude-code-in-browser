@@ -21,7 +21,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { triggerDailyVideoRender } from "../_shared/github-actions.ts";
 import { HUMANIZER_VIDEO, VOICE_SPOKEN } from "../_shared/humanizer-prompt.ts";
 
-const VERSION = "2026-04-12-v34-await-chain";
+const VERSION = "2026-04-21-v35-selection-retry";
 const MAX_DETAILED = 10;
 
 const supabase = createClient(
@@ -486,24 +486,6 @@ Return JSON:
   "rankingReasoning": "Brief explanation"
 }`;
 
-  console.log(`📋 LLM Call 1: Selecting top-${topN} articles...`);
-  let selectResponse = await callAI(selectPrompt, `Select top ${topN} from ${displayDate}:\n\n${articleData}`, 2000);
-  let selection: any;
-  try {
-    selection = JSON.parse(selectResponse);
-  } catch {
-    const jsonMatch = selectResponse.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try { selection = JSON.parse(jsonMatch[0]); } catch {
-        await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (вибір статей).`);
-        return json({ error: "Invalid AI JSON in selection" }, 500);
-      }
-    } else {
-      await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI повернув невалідний JSON (вибір статей).`);
-      return json({ error: "Invalid AI JSON in selection" }, 500);
-    }
-  }
-
   // LLM may return article NUMBERS instead of UUIDs — build mapping
   const articleNumToId = new Map<string, string>();
   articles.forEach((a: any, i: number) => articleNumToId.set(String(i + 1), a.id));
@@ -515,23 +497,79 @@ Return JSON:
     return str;
   };
 
-  // Parse groups (new format) or flat IDs (legacy fallback)
-  const groups: { articleIds: string[]; topic: string }[] = [];
-  if (selection.selectedGroups && Array.isArray(selection.selectedGroups)) {
-    for (const g of selection.selectedGroups) {
-      const ids = (g.articleIds || []).map(mapId).filter((id: string) => articleMap.has(id));
-      if (ids.length > 0) groups.push({ articleIds: ids, topic: g.topic || "" });
+  const minGroups = Math.min(3, topN);
+  const MAX_SELECT_ATTEMPTS = 2;
+  let groups: { articleIds: string[]; topic: string }[] = [];
+
+  for (let selectAttempt = 1; selectAttempt <= MAX_SELECT_ATTEMPTS; selectAttempt++) {
+    console.log(`📋 LLM Call 1: Selecting top-${topN} articles (attempt ${selectAttempt}/${MAX_SELECT_ATTEMPTS})...`);
+    const selectResponse = await callAI(selectPrompt, `Select top ${topN} from ${displayDate}:\n\n${articleData}`, 3000);
+    console.log(`📋 Raw LLM selection (${selectResponse.length} chars): ${selectResponse.substring(0, 300)}...`);
+
+    let selection: any;
+    try {
+      selection = JSON.parse(selectResponse);
+    } catch {
+      const jsonMatch = selectResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try { selection = JSON.parse(jsonMatch[0]); } catch { selection = null; }
+      }
     }
-  } else if (selection.selectedArticleIds) {
-    // Legacy: flat list of IDs → each is its own group
-    for (const id of selection.selectedArticleIds) {
-      const mapped = mapId(id);
-      if (articleMap.has(mapped)) groups.push({ articleIds: [mapped], topic: "" });
+
+    if (!selection) {
+      console.warn(`⚠️ Attempt ${selectAttempt}: invalid JSON from LLM`);
+      if (selectAttempt < MAX_SELECT_ATTEMPTS) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      break;
+    }
+
+    // Parse groups (new format) or flat IDs (legacy fallback)
+    groups = [];
+    if (selection.selectedGroups && Array.isArray(selection.selectedGroups)) {
+      for (const g of selection.selectedGroups) {
+        const ids = (g.articleIds || []).map(mapId).filter((id: string) => articleMap.has(id));
+        if (ids.length > 0) groups.push({ articleIds: ids, topic: g.topic || "" });
+      }
+    } else if (selection.selectedArticleIds) {
+      for (const id of selection.selectedArticleIds) {
+        const mapped = mapId(id);
+        if (articleMap.has(mapped)) groups.push({ articleIds: [mapped], topic: "" });
+      }
+    }
+
+    console.log(`📋 Attempt ${selectAttempt}: ${groups.length} groups parsed (need >= ${minGroups})`);
+    if (selection.rankingReasoning) console.log(`   Reasoning: ${(selection.rankingReasoning || "").substring(0, 150)}`);
+
+    if (groups.length >= minGroups) break;
+
+    if (selectAttempt < MAX_SELECT_ATTEMPTS) {
+      console.warn(`⚠️ Only ${groups.length} groups selected (need ${minGroups}+), retrying...`);
+      await new Promise(r => setTimeout(r, 2000));
     }
   }
 
+  // Fallback: if LLM still returned too few groups, pick top articles by score
+  if (groups.length < minGroups) {
+    console.warn(`⚠️ LLM returned only ${groups.length} groups after ${MAX_SELECT_ATTEMPTS} attempts — using score-based fallback`);
+    const usedIds = new Set(groups.flatMap(g => g.articleIds));
+    const remaining = articles
+      .filter((a: any) => !usedIds.has(a.id))
+      .map((a: any) => {
+        const analysis = a.rss_analysis || {};
+        const score = (analysis.linkedin_score || 0) + (analysis.relevance_score || 0) + (analysis.trending_data?.total_bonus || 0);
+        return { ...a, _score: score };
+      })
+      .sort((a: any, b: any) => b._score - a._score);
+
+    for (const a of remaining) {
+      if (groups.length >= topN) break;
+      const title = a.title_no || a.title_en || a.original_title || "";
+      groups.push({ articleIds: [a.id], topic: title.substring(0, 60) });
+    }
+    console.log(`📋 After fallback: ${groups.length} groups total`);
+  }
+
   if (groups.length === 0) {
-    await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Помилка:</b> AI не обрав жодної статті.`);
+    await sendMessage(TELEGRAM_CHAT_ID, `❌ <b>Пом��лка:</b> AI не обр��в жодної статті.`);
     return json({ error: "AI returned empty selection" }, 500);
   }
 
@@ -539,7 +577,6 @@ Return JSON:
   for (const g of groups) {
     console.log(`   📦 [${g.articleIds.length} articles] ${g.topic || g.articleIds[0].substring(0, 8)}`);
   }
-  console.log(`   Reasoning: ${(selection.rankingReasoning || "").substring(0, 150)}`);
 
   // ══════════════════════════════════════════════════════════════
   // LLM CALL 2: Write scripts + extract entities for grouped articles
