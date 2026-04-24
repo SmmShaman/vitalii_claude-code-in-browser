@@ -123,7 +123,7 @@ async function main() {
   }
   const output = results.filter(Boolean);
   console.log('\nGenerated ' + output.length + '/' + projects.length);
-  fs.writeFileSync('/mnt/c/Users/stuar/Projects/vitalii_claude-code-in-browser/scripts/project-descriptions.json', JSON.stringify(output, null, 2));
+  fs.writeFileSync('/mnt/c/Users/stuar/Projects/vitalii-no-platform/scripts/project-descriptions.json', JSON.stringify(output, null, 2));
   console.log('Saved');
   for (const r of output) {
     console.log('\n=== ' + r.id + ' ===');

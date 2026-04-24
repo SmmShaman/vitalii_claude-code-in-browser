@@ -22,7 +22,7 @@ export async function triggerVideoProcessing(
   options: TriggerVideoProcessingOptions = {}
 ): Promise<{ success: boolean; error?: string }> {
   const ghPat = Deno.env.get('GH_PAT');
-  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii-no-platform';
 
   if (!ghPat) {
     console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');
@@ -95,7 +95,7 @@ export async function triggerLinkedInVideo(
   options: TriggerLinkedInVideoOptions
 ): Promise<{ success: boolean; error?: string }> {
   const ghPat = Deno.env.get('GH_PAT');
-  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii-no-platform';
 
   if (!ghPat) {
     console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');
@@ -159,7 +159,7 @@ export async function triggerFacebookVideo(
   options: TriggerFacebookVideoOptions
 ): Promise<{ success: boolean; error?: string }> {
   const ghPat = Deno.env.get('GH_PAT');
-  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii-no-platform';
 
   if (!ghPat) {
     console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');
@@ -224,7 +224,7 @@ export async function triggerInstagramVideo(
   options: TriggerInstagramVideoOptions
 ): Promise<{ success: boolean; error?: string }> {
   const ghPat = Deno.env.get('GH_PAT');
-  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii-no-platform';
 
   if (!ghPat) {
     console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');
@@ -288,7 +288,7 @@ export async function triggerCustomVideoRender(
   options: TriggerCustomVideoRenderOptions
 ): Promise<{ success: boolean; error?: string }> {
   const ghPat = Deno.env.get('GH_PAT');
-  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii-no-platform';
 
   if (!ghPat) {
     console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');
@@ -358,7 +358,7 @@ export async function triggerDailyVideoRender(
   options: TriggerDailyVideoRenderOptions
 ): Promise<{ success: boolean; error?: string }> {
   const ghPat = Deno.env.get('GH_PAT');
-  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii_claude-code-in-browser';
+  const ghRepo = Deno.env.get('GH_REPO') || 'SmmShaman/vitalii-no-platform';
 
   if (!ghPat) {
     console.warn('⚠️ GH_PAT not configured - cannot trigger GitHub Action');

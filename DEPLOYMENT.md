@@ -16,7 +16,7 @@
 2. **Додайте новий сайт:**
    - На дашборді Netlify натисніть **"Add new site"** → **"Import an existing project"**
    - Виберіть **"Deploy with GitHub"**
-   - Знайдіть репозиторій `vitalii_claude-code-in-browser`
+   - Знайдіть репозиторій `vitalii-no-platform`
    - Виберіть гілку: `claude/portfolio-bento-grid-011CURe2swFk5krQjcH5hZay`
 
 3. **Налаштування білда:**

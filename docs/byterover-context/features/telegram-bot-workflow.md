@@ -342,7 +342,7 @@ if (!datetime) {
 ```
 
 2. **Перевірка GitHub Actions logs:**
-- Відкрити https://github.com/SmmShaman/vitalii_claude-code-in-browser/actions
+- Відкрити https://github.com/SmmShaman/vitalii-no-platform/actions
 - Знайти workflow run "Deploy Supabase Edge Functions"
 - Відкрити job "deploy"
 - Розгорнути step "Deploy all functions"

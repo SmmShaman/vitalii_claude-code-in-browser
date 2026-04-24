@@ -143,7 +143,7 @@ GH_PAT=xxxxx  # Personal Access Token з repo scope
 curl -X POST \
   -H "Authorization: token ${GH_PAT}" \
   -H "Accept: application/vnd.github.v3+json" \
-  https://api.github.com/repos/SmmShaman/vitalii_claude-code-in-browser/dispatches \
+  https://api.github.com/repos/SmmShaman/vitalii-no-platform/dispatches \
   -d '{"event_type":"instagram-video","client_payload":{"news_id":"uuid-here","language":"en"}}'
 ```
 

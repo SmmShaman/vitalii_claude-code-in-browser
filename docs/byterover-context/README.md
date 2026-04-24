@@ -713,7 +713,7 @@ brv curate "$(cat implementation/utility-functions.md)" --files lib/utils.ts
 ### Автоматично (Рекомендовано)
 
 ```bash
-cd /home/stuard/vitalii_claude-code-in-browser/docs/byterover-context
+cd /home/stuard/vitalii-no-platform/docs/byterover-context
 ./curate-all.sh
 ```
 
