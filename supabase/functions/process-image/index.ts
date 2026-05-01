@@ -1308,6 +1308,15 @@ async function downloadImage(url: string): Promise<string> {
     throw new Error(`Failed to download image: ${response.status}`)
   }
 
+  const contentType = response.headers.get('content-type') || ''
+  if (!contentType.startsWith('image/')) {
+    throw new Error(`Invalid content type: ${contentType}`)
+  }
+  const contentLengthHeader = response.headers.get('content-length')
+  if (contentLengthHeader && parseInt(contentLengthHeader) > 15_000_000) {
+    throw new Error(`Image too large: ${contentLengthHeader} bytes`)
+  }
+
   const arrayBuffer = await response.arrayBuffer()
   const base64 = btoa(
     new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
