@@ -9,6 +9,7 @@ import {
   type ContentType,
   type Language
 } from '../_shared/social-media-helpers.ts'
+import { fetchWithRetry } from '../_shared/fetch-with-retry.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -665,7 +666,7 @@ async function postToLinkedIn(content: {
 
     console.log('📤 Sending to LinkedIn API...')
 
-    const response = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+    const response = await fetchWithRetry('https://api.linkedin.com/v2/ugcPosts', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LINKEDIN_ACCESS_TOKEN}`,
