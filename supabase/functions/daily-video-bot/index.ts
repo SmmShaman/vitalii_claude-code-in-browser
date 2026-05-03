@@ -391,7 +391,8 @@ async function autoDigest(targetDate?: string, youtubePrivacy = "public"): Promi
     .eq("is_published", true)
     .gte("published_at", start)
     .lte("published_at", end)
-    .order("published_at", { ascending: true });
+    .order("published_at", { ascending: true })
+    .limit(200);
 
   if (error) throw new Error(`DB error: ${error.message}`);
   if (!articles || articles.length === 0) {

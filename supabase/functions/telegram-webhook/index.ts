@@ -61,6 +61,18 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL ?? '', SUPABASE_SERVICE_ROLE_KEY ?? '')
 
+    // Idempotency: prevent duplicate processing if Telegram resends the same update
+    const updateId = update.update_id?.toString()
+    if (updateId) {
+      const { error: dedupError } = await supabase
+        .from('processed_telegram_messages')
+        .insert({ message_id: updateId })
+      if (dedupError?.code === '23505') {
+        console.log(`⏭ Duplicate update ${updateId} — already processed, skipping`)
+        return new Response('OK', { status: 200 })
+      }
+    }
+
     // =================================================================
     // 🆕 НОВИЙ HANDLER: Channel Post (пости з каналів)
     // =================================================================
