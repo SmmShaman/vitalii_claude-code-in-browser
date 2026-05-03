@@ -15,6 +15,12 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
 const TELEGRAM_CHAT_ID = Deno.env.get('TELEGRAM_CHAT_ID')
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+}
+
 interface SendRSSRequest {
   newsId: string
 }
@@ -147,7 +153,9 @@ serve(async (req) => {
           let origDomain = 'RSS'
           try { origDomain = new URL(origUrl).hostname.replace('www.', '') } catch {}
 
-          const tgText = `📰 Опубліковано: <a href="${origUrl}">${escapeHtml((news.original_title || 'Untitled').substring(0, 150))}</a>\n📌 ${escapeHtml(origDomain)} · ${analysis.relevance_score}/10 | 🔗 LI:${linkedinScore}/10${articleUrl ? `\n🌐 <a href="${articleUrl}">vitalii.no</a>` : ''}`
+          const cleanTitle = decodeHtmlEntities(news.original_title || 'Untitled').substring(0, 150)
+          const statusPrefix = articleUrl ? '✅ Опубліковано' : '📰 Знайдено (не опубліковано)'
+          const tgText = `${statusPrefix}: <a href="${origUrl}">${escapeHtml(cleanTitle)}</a>\n📌 ${escapeHtml(origDomain)} · ${analysis.relevance_score}/10 | 🔗 LI:${linkedinScore}/10${articleUrl ? `\n🌐 <a href="${articleUrl}">vitalii.no</a>` : ''}`
 
           const tgResp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
