@@ -292,6 +292,35 @@ ${VOICE_JOURNALISM}`
     console.error('⚠️ Cross-link enrichment failed (non-critical):', e)
   }
 
+  // Auto-generate LinkedIn teaser (non-blocking, best-effort)
+  try {
+    console.log('📣 Triggering LinkedIn teaser generation...')
+    const { data: newsRecord } = await supabase
+      .from('news')
+      .select('title_en,content_en')
+      .eq('id', newsId)
+      .single()
+    if (newsRecord?.title_en && newsRecord?.content_en) {
+      await fetch(`${SUPABASE_URL}/functions/v1/generate-social-teasers`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          newsId,
+          title: newsRecord.title_en,
+          content: newsRecord.content_en,
+          platform: 'linkedin',
+          language: 'en'
+        })
+      })
+      console.log('✅ LinkedIn teaser generated')
+    }
+  } catch (e) {
+    console.error('⚠️ LinkedIn teaser generation failed (non-critical):', e)
+  }
+
   // Update AI prompt usage count
   await supabase
     .from('ai_prompts')

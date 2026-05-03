@@ -118,7 +118,7 @@ async function generatePostsWithGemini(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: userMsg }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 4000 },
+        generationConfig: { temperature: 0.5, maxOutputTokens: 8000 },
       }),
     },
   )
@@ -129,8 +129,16 @@ async function generatePostsWithGemini(
   }
 
   const data = await res.json()
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  // Gemini 2.5 Flash thinking model may return multiple parts — find the non-thought part
+  const parts: Array<{text?: string; thought?: boolean}> = data?.candidates?.[0]?.content?.parts || []
+  const responsePart = parts.find(p => !p.thought) || parts[0]
+  const text = responsePart?.text || ''
+  if (!text) {
+    console.error('Empty Gemini response, parts count:', parts.length)
+    return null
+  }
   const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  console.log('Gemini response preview:', cleaned.slice(0, 150))
 
   try {
     return JSON.parse(cleaned)
